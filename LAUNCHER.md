@@ -12,7 +12,7 @@ On first launch, review the setup message and type `SETUP` to create the platfor
 
 The bootstrap serializes setup/startup, checks an app/installation/configuration identity, and reuses a matching service on the configured port. A different listener is reported as a conflict and remains running. Failed startup stops only the child created by that invocation and points to `.launcher/server.log`. A successful server keeps running after the bootstrap exits. Closing a browser tab does not stop it.
 
-The server reads `config.toml` and the existing supported local overrides. `--port`, `--data-dir`, `--mcp-http-port`, `--mcp-sse-port` and `--upload-dir` retain the existing configuration-loader behavior. Use distinct web **and MCP** ports when running multiple installations. The shortcut supports loopback binding only. Existing `run.py` remains available for explicit server operation.
+The server reads `config.toml` and the existing supported local overrides. `--port`, `--data-dir`, `--mcp-http-port`, `--mcp-sse-port` and `--upload-dir` retain the existing configuration-loader behavior. Use distinct web **and MCP** ports when running multiple installations. The shortcut supports loopback binding only. Existing `run.py` remains available for explicit server operation. Windows `start.bat` pauses after errors so desktop users can read them; automated callers should invoke `python launcher.py` directly to avoid that pause.
 
 Pre-flight finds CLI paths without executing the commands. Unknown version, unchecked startup, unknown authentication/connection and unverified readiness are shown explicitly. Refresh repeats these passive checks; it never authenticates or installs anything.
 

@@ -4,6 +4,35 @@ Target: `3bf7da0484f7dbe308076803efa4e7ff7aff6222`. Independent code review rema
 
 Use the supplied `ticket-2-omarchy-3bf7da0.zip`, which contains tracked source at that commit, without Windows environments, local settings or runtime history. Copy it into your Omarchy install. Run everything below in an **Omarchy terminal**, not PowerShell/Git Bash. Stop at a failed step and report its output.
 
+## Running directly from the repo
+
+You can use the existing checkout instead of extracting the ZIP. Confirm it contains the implementation:
+
+```sh
+git merge-base --is-ancestor 3bf7da0484f7dbe308076803efa4e7ff7aff6222 HEAD
+```
+
+Exit code 0 means the target is included. The feature branch has not been pushed; a separate clone may not have it yet. Stop if the check fails.
+
+From the repo root in Omarchy, set these overrides in the test terminal:
+
+```sh
+TEST_DATA=$(mktemp -d "$HOME/agentchattr-ticket2-data.XXXXXX")
+export AGENTCHATTR_PORT=19300
+export AGENTCHATTR_MCP_HTTP_PORT=19200
+export AGENTCHATTR_MCP_SSE_PORT=19201
+export AGENTCHATTR_DATA_DIR="$TEST_DATA/data"
+export AGENTCHATTR_UPLOAD_DIR="$TEST_DATA/uploads"
+python3 --version
+python3 launcher.py --check
+```
+
+Then run steps 3, 4 and 6 below in that same terminal. **Skip steps 1 and 2:** do not edit shared `config.toml`. Existing `.venv-linux` may already be ready; if so, setup/cancellation is not exercised and should be marked skipped. The Windows environment remains separate.
+
+**Skip step 5 for this route.** A menu launch does not inherit these terminal overrides and could open the default instance. Record menu testing as pending; use the disposable-copy route when testing the actual menu shortcut. These exports last only for this terminal, so close it after the test. Keep test data until its server is stopped.
+
+## Disposable-copy route
+
 1. **Prepare a fresh copy.** Substitute the actual location of the copied zip. Keep this terminal open through the tests.
 
    ```sh
