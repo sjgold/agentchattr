@@ -1,6 +1,6 @@
 # Ticket #2 implementation review
 
-Status: ready for independent review, not approved or shipped. Review the code-freeze commit on `codex/ticket-2-preflight` immediately before the documentation-only review receipt commit. Base: `4bc8a3a96f1c26c73e9694a1372c4d469b4b11d9`. The final receipt records the exact target hash.
+Status: ready for independent review, not approved or shipped. Frozen code target: `3bf7da0484f7dbe308076803efa4e7ff7aff6222` on `codex/ticket-2-preflight`. Base: `4bc8a3a96f1c26c73e9694a1372c4d469b4b11d9`. The following commit only records this review target in documentation; inspect the frozen target for implementation review.
 
 Reviewer must use a different model family from the Codex builder, record actual provider/model identity, and distinguish source review from independently executed checks. Checkout/test access is needed for meaningful process/HTTP verification; the earlier pasted-only Muse review covered ticket #1, not these changes. Do not call providers, start agent wrappers, edit the working Desktop installation or change user settings.
 
