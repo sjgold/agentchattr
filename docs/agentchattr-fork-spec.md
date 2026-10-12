@@ -1,6 +1,6 @@
 # Agentchattr review fork — product and implementation specification
 
-Version: 1.5 · 12 October 2026 · Author: Haalee
+Version: 1.6 · 12 October 2026 · Author: Haalee
 
 Status: implementation specification for review. This document authorizes no deployment, provider purchase, or upstream submission. No application implementation has begun.
 
@@ -199,7 +199,7 @@ Keep `general` protected. Deletion requires confirmation describing what is remo
 
 ### DA-1 — Intake
 
-Support pasted text, `.md`/`.txt`, and individually selected source files (including `.py`, `.mjs`, `.js`, `.ts`, `.tsx`, `.jsx`, `.json`, `.yaml`, `.yml`, `.toml`, `.css`, and `.html`) as plain UTF-8 text. Reject binary or undecodable input and apply the same size/context limits; never execute or render imported source. Directory crawling and automatic multi-file package ingestion remain out of scope. Show extracted text, title, size, and source identity before committing an input revision. Snapshot the text; store content hashes and stable references. Later edits to the original file cannot mutate an in-progress review.
+Support pasted text, `.md`/`.txt`, and individually selected source files (including `.py`, `.mjs`, `.js`, `.ts`, `.tsx`, `.jsx`, `.json`, `.yaml`, `.yml`, `.toml`, `.css`, and `.html`) as plain UTF-8 text. Reject binary or undecodable input and apply the same size/context limits; never execute or render imported source. Multi-file packets are required after the initial build: allow an explicit selection of files to form one review packet, preserving per-file identity and quote attribution. Initial-build intake may handle individual files first. Automatic directory crawling is not implied. Show extracted text, title, size, and source identity before committing an input revision. Snapshot the text; store content hashes and stable references. Later edits to the original file cannot mutate an in-progress review.
 
 The application loads documents and supplies their content to participants. A direct API participant therefore does not need arbitrary filesystem access. Optional project reading is a separate declared capability, scoped to the selected project; review mode must not grant source-writing permissions by default.
 
@@ -233,7 +233,7 @@ Use at least two fresh API reviewer contexts for the independent first pass. Con
 
 Results may remain visible in chat: subsequent first-pass requests must still omit them. No sealed result store or CLI isolation infrastructure is required. CLI seats remain available for coordination, synthesis, discussion, and ordinary reviews. If two API reviewers are unavailable, explain the requirement and allow an ordinary review without claiming independence. Report the actual models; different seat names alone do not imply model diversity.
 
-Use the existing immutable document packet and input-size checks. Do not add Tribunal-specific package ingestion, checkpoint, or replacement-model rules. General run ownership, Stop, retry, and stale-result protection still apply.
+Use the existing immutable document packet and input-size checks. Use the later shared multi-file packet feature when available; do not add a separate Tribunal ingestion system, checkpoint policy, or replacement-model rules. General run ownership, Stop, retry, and stale-result protection still apply.
 
 ### TR-3 — Mechanical quotation checks
 
@@ -293,6 +293,10 @@ Exit: all selected participant types receive the intended source revision across
 ### D — Deliverables and release
 
 Add requested artifacts, Markdown reader, revisions, and exact transcript export. Validate the complete workflow and package the entry point. Document unsupported clients/capabilities and recovery paths. General upstream fixes may be proposed independently; release does not wait on their acceptance.
+
+### Post-initial-build — Multi-file packets
+
+Support selecting multiple text/source files into one immutable review packet, with a preview of the file list, per-file IDs, individual and aggregate limits, and no silent truncation. Deliver the same packet revision to the selected reviewers and bind quote checks to the named file. Verify two files with identical quoted text cannot validate a citation against the wrong file, and that changing one file creates a new packet revision. This is required follow-on scope, not a blocker for the initial launch/Stop milestone.
 
 ### E — Lightweight independent review
 

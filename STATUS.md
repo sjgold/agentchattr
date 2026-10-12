@@ -8,23 +8,24 @@
 
 ## Latest reviewer additions
 
-- v1.5 adds a small JSON findings contract with separate parse-failure flags, individual source-file intake as plain text, and a narrow Git exception for the spec.
-- Public push is pending explicit user approval after automatic approval review blocked disclosure; keep the documentation checkpoint local until approved.
+- v1.6 adds a small JSON findings contract with separate parse-failure flags, individual source-file intake as plain text, and a narrow Git exception for the spec.
+- User authorized pushing documentation as needed; the earlier public-push approval blocker is resolved.
+- Multi-file review packets are required follow-on scope after the initial build; preserve file identity and shared packet revisions.
 
 - Opus identified two candidate freeze paths: console-only API errors with no session timeout, and distinct CLI triggers collapsed in one poll. Source paths verified; the historical GLM incident is not proven without contemporaneous console/error evidence.
-- Spec v1.5 requires a durable API result outbox, idempotent delivery, operator-selected CLI message-ID recovery, and a durable queue preserving each turn envelope. AT-21a through AT-21d exercise both freeze mechanisms and recovery provenance. No application fixes yet.
+- Spec v1.6 requires a durable API result outbox, idempotent delivery, operator-selected CLI message-ID recovery, and a durable queue preserving each turn envelope. AT-21a through AT-21d exercise both freeze mechanisms and recovery provenance. No application fixes yet.
 
 ## Latest scope clarification
 
-- v1.5 supersedes the heavyweight Tribunal requirements. AT-14 through AT-16 and AT-19 cover the lighter behavior; AT-17/18 are explicitly retired to preserve numbering. General recovery safeguards remain.
+- v1.6 supersedes the heavyweight Tribunal requirements. AT-14 through AT-16 and AT-19 cover the lighter behavior; AT-17/18 are explicitly retired to preserve numbering. General recovery safeguards remain.
 
-- Spec v1.5 adds explicit configurable participant capacity and per-turn recovery. Six participants must fit in one phase; configured packages larger than six must be representable.
+- Spec v1.6 adds explicit configurable participant capacity and per-turn recovery. Six participants must fit in one phase; configured packages larger than six must be representable.
 - A lost GLM turn/participant must expose retry, recover delivered answer, replace, skip, or stop without losing completed work. Deadlines and receipt states must be visible.
 - Seth reported a freeze and GLM re-submission; its root cause has not been reproduced. The source caps are verified separately. Acceptance IDs AT-01 through AT-22 remain; AT-21 now has four explicit subcases covering API failure, poll batching, result recovery, and participant loss. No implementation changes.
 
 ## Next step
 
-**Action:** Compare the existing Desktop installation against this clean upstream baseline. Identify local additions worth retaining and recheck the audit defects against current code. Use spec v1.5 as the scope; prepare a bounded Stage A implementation plan.
+**Action:** Compare the existing Desktop installation against this clean upstream baseline. Identify local additions worth retaining and recheck the audit defects against current code. Use spec v1.6 as the scope; prepare a bounded Stage A implementation plan.
 **Who:** Next implementation agent; no builder assigned yet.
 **Done when:** Local changes are inventoried, baseline-specific defects have reproducible evidence, and Stage A implementation has a concrete bounded scope.
 
@@ -36,7 +37,7 @@
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** unchanged upstream source. No dependencies installed, agents launched, or tests run in this checkout.
 - **Ignore-rule note:** upstream .gitignore excludes docs/. A narrow .gitignore exception tracks only docs/agentchattr-fork-spec.md; other docs contents remain ignored.
-- **Documentation:** spec v1.5, this status file, and the dated Codex handoff form the documentation checkpoint. Application source remains at the raw upstream baseline.
+- **Documentation:** spec v1.6, this status file, and the dated Codex handoff form the documentation checkpoint. Application source remains at the raw upstream baseline.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
 - **In flight:** Project bootstrap and specification only. No implementation PR.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
