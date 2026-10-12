@@ -7,7 +7,7 @@ Received from Seth on 2026-10-12. Verdict: **PASS WITH NONBLOCKING NOTES**.
 - Reviewer reports independent Windows 11 execution of the 173-test suite (4 skips), real-server integration, JavaScript/diff checks, Windows/Git Bash passive entry points, and both shortcut installers including collision refusal. The supplied report below is the evidence; Codex did not rerun these checks while recording this documentation-only receipt.
 - Nonblocking disposition: retain the Windows error pause and document direct Python invocation for automation; leave the generic terminal icon until release packaging (#23); preserve in-page network failure/retry as an unverified browser interaction. No application code revisions requested or made, so the reviewed code target is unchanged.
 - Linux/Omarchy remains unverified. Seth deferred Windows-hosted testing because of mounted filesystem issues and explicitly does not want troubleshooting now. Dual boot is deferred while four lanes are active.
-- Seth gave final sign-off and explicitly authorized push/merge on 2026-10-12 ("im good with it push merge"). Publication/closure is tracked in `STATUS.md`; this does not authorize dependent implementation.
+- Seth gave final sign-off and explicitly authorized push/merge on 2026-10-12 ("im good with it push merge"). The implementation is merged/published on origin/main, and GitHub issue #2 is confirmed closed. `STATUS.md` records the next action; this does not authorize dependent implementation.
 
 ## Supplied review
 

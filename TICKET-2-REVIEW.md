@@ -1,6 +1,6 @@
 # Ticket #2 implementation review
 
-Status: independent review received, **PASS WITH NONBLOCKING NOTES**, Seth signed off and authorized push/merge on 2026-10-12; see `STATUS.md` for publication/closure. See `REVIEW-GEMINI-TICKET-2.md` for the supplied report and dispositions. Frozen code target: `3bf7da0484f7dbe308076803efa4e7ff7aff6222` on `codex/ticket-2-preflight`. Base: `4bc8a3a96f1c26c73e9694a1372c4d469b4b11d9`. The following commit only records this review target in documentation; inspect the frozen target for implementation review.
+Status: independent review received, **PASS WITH NONBLOCKING NOTES**, Seth signed off on 2026-10-12; merged/published on main and GitHub issue #2 confirmed closed. See `STATUS.md` for the next action. See `REVIEW-GEMINI-TICKET-2.md` for the supplied report and dispositions. Frozen code target: `3bf7da0484f7dbe308076803efa4e7ff7aff6222` on `codex/ticket-2-preflight`. Base: `4bc8a3a96f1c26c73e9694a1372c4d469b4b11d9`. The following commit only records this review target in documentation; inspect the frozen target for implementation review.
 
 Reviewer must use a different model family from the Codex builder, record actual provider/model identity, and distinguish source review from independently executed checks. Checkout/test access is needed for meaningful process/HTTP verification; the earlier pasted-only Muse review covered ticket #1, not these changes. Do not call providers, start agent wrappers, edit the working Desktop installation or change user settings.
 
