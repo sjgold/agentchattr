@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-12 (ticket #1 baseline audit and Stage A plan written; independent review pending; no application implementation)
+**Updated:** 2026-10-12 (ticket #1 signed off and closed; reviewed baseline checkpoint ready for publication; next: ticket #2; no application implementation)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -15,7 +15,7 @@
 - Retain newer fork source. Adapt the installation's shared-launch concept and optional API/Hermes/OMP aliases; do not bulk-copy source/configuration. Fork `archive.py` exists, so no missing-file fix is planned.
 - User added Linux/Omarchy launcher equivalents to the launch scope and offered Windows-hosted or dual-boot testing. Plan includes shared launch behavior, separate platform environments, tmux/ownership tests and later native desktop validation. No Omarchy execution yet.
 - Passive Windows discovery found OMP and Hermes EXE/CMD; CodeBuddy was not found. Authentication, versions, connection and current readiness are unverified. Optional-client source/configuration diagnostic pass is bounded and complete; live diagnosis is deferred to an authorized package.
-- Seth selected Meta as the quota-eligible different-family reviewer and will handle the handoff. [Self-contained Meta review pack](META-REVIEW-HANDOFF.md) is prepared. Installed configuration names `muse-spark-1.3-contributor`; actual reviewer response identity remains to be recorded. No Meta MCP alias is exposed and `META_API_KEY` is absent from this session's environment, so no direct model call was made and no secret file was read. Review target is the Git commit containing this checkpoint (resolve with `git log -1 --format=%H -- META-REVIEW-HANDOFF.md`). Review pending; issue #1 remains open; human retains final completion sign-off.
+- Meta returned **PASS WITH NONBLOCKING NOTES** on the pack frozen at `fc19bc57daad9373ac9593163ff4fdd179c5a3da`. Reviewer self-identifies as Muse Spark (Muse family, Meta); exact backend ID unavailable. [Review receipt](REVIEW-MUSE-TICKET-1.md) records its source/plan review without repo access or independently executed tests. Both documentation notes are addressed: explicit normalized equality versus raw hashes, and separate Node E10 provenance in JSON metadata. No substantive fixes/recheck requested. Historical handoff remains unchanged. Seth gave final sign-off ("ship it") on 2026-10-12; GitHub issue #1 is closed as completed.
 - Optional Lavish review surface was generated using the product's design tokens, but its local server failed to start. Durable audit/plan Markdown files remain available; no browser review is claimed.
 - Always specify `-R sjgold/agentchattr` for GitHub reads. Implicit selection returned an unrelated upstream issue; explicit fork reads verified #1 and the 26-ticket backlog. Issue bodies still link a v1.6 snapshot; v1.7 remains the local scope authority, with the user's additive Omarchy request recorded here and in the plan.
 
@@ -38,15 +38,15 @@
 
 ## Ticket execution and review
 
-- [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1) has a local audit/plan checkpoint awaiting freeze and independent review. No application builder or independent reviewer has been launched.
+- [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1) is closed after Meta source/plan review, documentation corrections and Seth's final sign-off. No application implementation has begun.
 - First milestone: #1-8, #10-12, and #16. Includes visible stalls/retry and full six-seat capacity. Full restart reconciliation (#9) follows; Stop persistence remains mandatory in #10.
 - Reviewer selection follows quota: Meta Muse 1.3, DeepSeek Flash 4.1, Grok 4.7, GLM 5.3 (user-provided labels). Use a different model family from the builder and record actual model IDs. No eligible quota means review pending, not self-approval. Human retains final sign-off.
 
 ## Next step
 
-**Action:** Seth sends `META-REVIEW-HANDOFF.md` to Meta and brings back its review. Address/recheck substantive findings against the frozen ticket #1 checkpoint, then obtain human sign-off. Afterward start issue #2 (Open pre-flight from one shortcut). Configuration/exit fixes belong to #4 after #2; frozen-input delivery belongs to #6 after #3/#4. Include the user's Omarchy requirements in #2-#4.
-**Who:** Current Codex session produced the audit/plan; Seth owns the Meta handoff. User requested Luna at Max for this work; exact backend model ID/settings are not exposed and were not inferred. Meta is selected for independent review; actual reviewer identity/outcome awaits its response. Sol remains the recorded preference for subsequent implementation.
-**Done when:** The frozen baseline pack has an independent review outcome, substantive fixes are rechecked, human signs off #1, and #2 is ready to start with its bounded scope.
+**Action:** Start issue #2 (Open pre-flight from one shortcut); read its current acceptance criteria and blockers, then prepare the bounded shared-launch/pre-flight implementation. Configuration/exit fixes belong to #4 after #2; frozen-input delivery belongs to #6 after #3/#4. Include Omarchy requirements in #2-#4. Prefer a reviewer with checkout/test access for implementation, especially process ownership, cancellation, storage and native Linux behavior.
+**Who:** Codex produced the audit/plan and addressed Meta's documentation notes. Meta/Muse Spark supplied independent source/plan review; Seth signed off #1. Sol remains the recorded preference for subsequent implementation.
+**Done when:** #2 provides one supervised entry point with app-specific readiness, bounded startup, duplicate-launch reuse and actionable conflict/failure reporting, with Windows and Omarchy requirements covered by its implementation plan and verification evidence.
 
 ## Now
 
@@ -58,7 +58,7 @@
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, root agent instructions, baseline audit/evidence/scripts, bounded Stage A plan, this status file, and the dated Codex handoff. Application source remains at the raw upstream baseline.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** Ticket #1 audit/plan checkpoint, independent review pending. No application implementation PR.
+- **In flight:** Ticket #1 complete and closed; ticket #2 is next and has not begun. No application implementation PR.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
@@ -90,7 +90,7 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 
 ## Waiting on Seth
 
-- Send the prepared Meta handoff and return its review/model identity. Human final sign-off remains required after substantive findings are addressed and rechecked.
+- No question blocks starting #2. #1 received final sign-off; Meta's documentation notes are addressed.
 - Later: select the live-test agent/model package and authorize usage-consuming acceptance when ready.
 - No Tribunal code reuse or release-terms decision is needed for the agreed behavioral implementation.
 

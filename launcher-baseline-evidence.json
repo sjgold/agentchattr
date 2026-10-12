@@ -549,5 +549,6 @@
     "hermes": true,
     "hermes.cmd": true,
     "codebuddy": false
-  }
+  },
+  "note": "Observations contain Python E01-E09 and optional E11. E10 is emitted separately by node tools/audit_recipient_baseline.cjs; this JSON alone is not the complete observation set."
 }

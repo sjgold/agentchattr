@@ -242,6 +242,7 @@ def main():
         "head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "pinned_upstream": "d775776a30e8af4c85ea16b3caaf9c79d65cb239",
         "method": "allowlisted source comparison; AST-extracted functions with fake dependencies",
+        "note": "Observations contain Python E01-E09 and optional E11. E10 is emitted separately by node tools/audit_recipient_baseline.cjs; this JSON alone is not the complete observation set.",
         "files": files, "observations": characterize(args.installed),
         "extra_installed_agent_ids": sorted(set(installed_cfg["agents"]) - set(fork_cfg["agents"])),
         "passive_executable_found": {name: shutil.which(name) is not None
