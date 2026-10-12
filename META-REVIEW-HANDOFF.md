@@ -6,7 +6,7 @@ Configured reviewer label found in the existing installation: Meta `muse-spark-1
 
 ## Review target and rules
 
-Review the frozen evidence and plan below. No application implementation is included. Do not write code, contact services, launch agents, or declare live acceptance. Source excerpts are exact local file contents; their hashes bind the reviewed baseline. You may request missing evidence. Do not approve a claim you cannot verify.
+Review the frozen evidence and plan below. No application implementation is included. Do not write code, contact services, launch agents, or declare live acceptance. Source excerpts preserve local code with line numbers added and trailing whitespace omitted for display; their hashes bind the original reviewed files. You may request missing evidence. Do not approve a claim you cannot verify.
 
 Review these questions:
 
@@ -1183,14 +1183,14 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 38: def _write_json_mcp_settings(config_file: Path, url: str, transport: str = "http",
 39:                               *, token: str = "", http_key: str = "httpUrl") -> Path:
 40:     """Write/merge a settings-style JSON file with nested mcpServers config.
-41: 
+41:
 42:     Preserves existing servers in the file — only updates the agentchattr entry.
-43: 
+43:
 44:     Gemini CLI 0.32+ expects:
 45:       - "httpUrl" key (not "url") for streamable-http transport
 46:       - "url" key for SSE transport
 47:       - "trust": true to skip per-call approval prompts
-48: 
+48:
 49:     `http_key` controls which JSON key names the HTTP transport URL. Defaults
 50:     to "httpUrl" (Gemini/Qwen). Providers like CodeBuddy that follow the
 51:     standard MCP shape should set `mcp_http_key = "url"` in their config.
@@ -1215,14 +1215,14 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 70:         entry["headers"] = {"Authorization": f"Bearer {token}"}
 71:     servers[SERVER_NAME] = entry
 72:     existing["mcpServers"] = servers
-73: 
+73:
 74:     # Enable folder trust so ~/.gemini/trustedFolders.json is respected
 75:     security = existing.get("security", {})
 76:     folder_trust = security.get("folderTrust", {})
 77:     folder_trust["enabled"] = True
 78:     security["folderTrust"] = folder_trust
 79:     existing["security"] = security
-80: 
+80:
 81:     config_file.write_text(json.dumps(existing, indent=2) + "\n", "utf-8")
 82:     return config_file
 ```
@@ -1231,11 +1231,11 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 
 ```text
 163: _VALID_INJECT_MODES = {"settings_file", "env", "flag", "proxy_flag", "env_content"}
-164: 
-165: 
+164:
+165:
 166: def _provider_from_command(command: object) -> str:
 167:     """Return a built-in provider for an exact configured executable name.
-168: 
+168:
 169:     Named agent identities (for example ``claude2``) are independent of
 170:     the CLI they launch.  Resolve only exact known executable basenames; do
 171:     not guess from prefixes or arbitrary command text.
@@ -1248,8 +1248,8 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 178:             executable = executable[:-len(suffix)]
 179:             break
 180:     return executable if executable in _BUILTIN_DEFAULTS else ""
-181: 
-182: 
+181:
+182:
 183: def _resolve_mcp_inject(agent: str, agent_cfg: dict) -> dict:
 184:     """Resolve MCP injection config: explicit config > provider defaults > none."""
 185:     if agent_cfg.get("mcp_inject"):
@@ -1262,8 +1262,8 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 192:         merged.update({k: v for k, v in agent_cfg.items() if k.startswith("mcp_")})
 193:         return merged
 194:     return {}
-195: 
-196: 
+195:
+196:
 197: def _get_server_url(mcp_cfg: dict, transport: str) -> str:
 198:     """Build the MCP server URL for the given transport."""
 199:     if transport == "sse":
@@ -1271,7 +1271,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 201:         return f"http://127.0.0.1:{port}/sse"
 202:     port = mcp_cfg.get("http_port", 8200)
 203:     return f"http://127.0.0.1:{port}/mcp"
-204: 
+204:
 ```
 
 ### wrapper.py:206
@@ -1288,23 +1288,23 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 214:     project_dir: Path | None = None,
 215: ) -> tuple[list[str], dict[str, str], Path | None]:
 216:     """Apply MCP config injection based on the resolved inject config.
-217: 
+217:
 218:     Returns (extra_launch_args, inject_env, settings_path_or_None).
 219:     settings_path is stored so re-registration can rewrite it.
 220:     """
 221:     mode = inject_cfg.get("mcp_inject")
 222:     if not mode:
 223:         return [], {}, None
-224: 
+224:
 225:     launch_args: list[str] = []
 226:     inject_env: dict[str, str] = {}
 227:     settings_path: Path | None = None
 228:     config_dir = data_dir / "provider-config"
 229:     transport = inject_cfg.get("mcp_transport", "http")
 230:     server_url = _get_server_url(mcp_cfg or {}, transport)
-231: 
+231:
 232:     http_key = inject_cfg.get("mcp_http_key", "httpUrl")
-233: 
+233:
 234:     if mode == "settings_file":
 235:         # Write a settings JSON file at a user-specified path (e.g. .qwen/settings.json,
 236:         # or ~/.codebuddy/.mcp.json for user-scope configs).
@@ -1343,7 +1343,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 367:     project_dir: Path | None = None,
 368: ) -> tuple[list[str], dict[str, str], dict[str, str], Path | None]:
 369:     """Return provider-specific launch args/env/inject_env/settings_path.
-370: 
+370:
 371:     inject_env: env vars that must propagate INTO the agent process.  On
 372:     Mac/Linux these are prefixed onto the tmux command via ``env VAR=val``
 373:     because subprocess.run(env=...) only affects the tmux client binary.
@@ -1354,10 +1354,10 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 378:         inject_cfg, instance_name, data_dir, proxy_url,
 379:         token=token, mcp_cfg=mcp_cfg, project_dir=project_dir,
 380:     )
-381: 
+381:
 382:     launch_args = [*mcp_args, *extra_args]
 383:     launch_env = dict(env)
-384: 
+384:
 385:     return launch_args, launch_env, inject_env, settings_path
 ```
 
@@ -1378,7 +1378,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 484:                 with open(queue_file, "r", encoding="utf-8") as f:
 485:                     lines = f.readlines()
 486:                 queue_file.write_text("", "utf-8")
-487: 
+487:
 488:                 has_trigger = False
 489:                 channel = "general"
 490:                 for line in lines:
@@ -1392,13 +1392,13 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 498:                     has_trigger = True
 499:                     if isinstance(data, dict) and "channel" in data:
 500:                         channel = data["channel"]
-501: 
+501:
 502:                 if has_trigger:
 503:                     # Signal activity BEFORE injecting — covers the thinking phase
 504:                     if trigger_flag is not None:
 505:                         trigger_flag[0] = True
 506:                     time.sleep(0.5)
-507: 
+507:
 508:                     # Check if this is a job/activity-scoped trigger
 509:                     job_id = None
 510:                     custom_prompt = ""
@@ -1416,14 +1416,14 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 522:                                     custom_prompt = raw_prompt.strip()
 523:                         except json.JSONDecodeError:
 524:                             pass
-525: 
+525:
 526:                     if custom_prompt:
 527:                         prompt = custom_prompt
 528:                     elif job_id:
 529:                         prompt = f"use mcp to read job_id={job_id} - you're mentioned in a job thread, take appropriate action and respond"
 530:                     else:
 531:                         prompt = f"use mcp to read #{channel} - you're mentioned, take appropriate action and respond"
-532: 
+532:
 533:                     # Use current identity (may have changed via rename)
 534:                     current_name, _ = get_identity_fn()
 535:                     # Append role if set — check both current name and base name
@@ -1432,7 +1432,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 538:                         role = _fetch_role(server_port, agent_name)
 539:                     if role:
 540:                         prompt += f"\n\nROLE: {role}"
-541: 
+541:
 542:                     # Smart rules injection: first trigger, epoch change, or periodic refresh
 543:                     _token = get_token_fn() if get_token_fn else ""
 544:                     rules_data = _fetch_active_rules(server_port, _token)
@@ -1451,7 +1451,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 557:                                 prompt += f"\n\nRULES:\n{rules_text}"
 558:                             last_rules_epoch = rules_data["epoch"]
 559:                             _report_rule_sync(server_port, current_name, rules_data["epoch"], _token)
-560: 
+560:
 561:                     if first_mention and is_multi_instance:
 562:                         prompt += _IDENTITY_HINT
 563:                         first_mention = False
@@ -1461,7 +1461,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 567:                     inject_fn(prompt.replace("\n", " "))
 568:         except Exception:
 569:             pass
-570: 
+570:
 571:         time.sleep(1)
 ```
 
@@ -1499,13 +1499,13 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 929:             print(f"  Deregistered {current_name}")
 930:         except Exception:
 931:             pass
-932: 
+932:
 933:         if proxy is not None:
 934:             proxy.stop()
-935: 
+935:
 936:     print("  Wrapper stopped.")
-937: 
-938: 
+937:
+938:
 939: if __name__ == "__main__":
 940:     main()
 ```
@@ -1520,11 +1520,11 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 414:     # One-shot at startup (with diagnostic print) then a keepalive thread.
 415:     enable_vt_mode()
 416:     _vt_keepalive_thread()
-417: 
+417:
 418:     if inject_env:
 419:         env = {**env, **inject_env}
 420:     start_watcher(lambda text: inject(text, delay=inject_delay, enter_backend=enter_backend))
-421: 
+421:
 422:     while True:
 423:         try:
 424:             proc = subprocess.Popen([command] + extra_args, cwd=cwd, env=env)
@@ -1533,10 +1533,10 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 427:             proc.wait()
 428:             if pid_holder is not None:
 429:                 pid_holder[0] = None
-430: 
+430:
 431:             if no_restart:
 432:                 break
-433: 
+433:
 434:             print(f"\n  {agent.capitalize()} exited (code {proc.returncode}).")
 435:             print(f"  Restarting in 3s... (Ctrl+C to quit)")
 436:             time.sleep(3)
@@ -1583,7 +1583,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 211:         )
 212:         with urllib.request.urlopen(req, timeout=10) as resp:
 213:             return json.loads(resp.read())
-214: 
+214:
 215:     # Send message back to chat
 216:     def send_message(text, channel="general"):
 217:         body = json.dumps({"text": text, "channel": channel}).encode()
@@ -1595,7 +1595,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 223:         )
 224:         with urllib.request.urlopen(req, timeout=10) as resp:
 225:             return json.loads(resp.read())
-226: 
+226:
 227:     # Call OpenAI-compatible chat completions API
 228:     def call_model(messages):
 229:         url = f"{base_url}/chat/completions"
@@ -1605,11 +1605,11 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 233:         if temperature is not None:
 234:             payload["temperature"] = temperature
 235:         body = json.dumps(payload).encode()
-236: 
+236:
 237:         headers = {"Content-Type": "application/json"}
 238:         if api_key:
 239:             headers["Authorization"] = f"Bearer {api_key}"
-240: 
+240:
 241:         req = urllib.request.Request(url, method="POST", data=body, headers=headers)
 242:         with urllib.request.urlopen(req, timeout=120) as resp:
 243:             data = json.loads(resp.read())
@@ -1621,7 +1621,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 ```text
 247:     def format_messages(chat_msgs):
 248:         my_name = get_name()
-249: 
+249:
 250:         # Build dynamic system prompt with online status, role, and mention instructions
 251:         online = get_online_agents()
 252:         others = [n for n in online if n != my_name]
@@ -1636,7 +1636,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 261:                          "use @name (e.g. " + ", ".join(f"@{n}" for n in others[:3]) + ").")
 262:         parts.append(f"Your name in this chat is {my_name}. Do not prefix your "
 263:                      "messages with your own name.")
-264: 
+264:
 265:         messages = [{"role": "system", "content": " ".join(parts)}]
 266:         for msg in chat_msgs:
 267:             sender = msg.get("sender", "")
@@ -1646,7 +1646,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 271:             role = "assistant" if sender == my_name else "user"
 272:             messages.append({"role": role, "content": f"{sender}: {text}"})
 273:         return messages
-274: 
+274:
 275:     # Handle a trigger — read context, call model, respond
 276:     def handle_trigger(channel="general"):
 277:         my_name = get_name()
@@ -1655,22 +1655,22 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 280:             chat_msgs = read_messages(channel=channel, limit=context_messages)
 281:             if not chat_msgs:
 282:                 return
-283: 
+283:
 284:             messages = format_messages(chat_msgs)
 285:             print(f"  [{channel}] Calling model with {len(messages)} messages...")
-286: 
+286:
 287:             response = call_model(messages)
 288:             response = response.strip()
 289:             if not response:
 290:                 return
-291: 
+291:
 292:             # Strip self-prefix if the model echoes its own name
 293:             prefixes = [f"{my_name}: ", f"{my_name}:"]
 294:             for prefix in prefixes:
 295:                 if response.startswith(prefix):
 296:                     response = response[len(prefix):]
 297:                     break
-298: 
+298:
 299:             send_message(response, channel=channel)
 300:             print(f"  [{channel}] Responded ({len(response)} chars)")
 301:         except Exception as exc:
@@ -1685,26 +1685,26 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 307:     queue_file = data_dir / f"{name}_queue.jsonl"
 308:     if queue_file.exists():
 309:         queue_file.write_text("", "utf-8")
-310: 
+310:
 311:     print(f"\n  === {agent_cfg.get('label', agent)} API Wrapper ===")
 312:     print(f"  Model endpoint: {base_url}/chat/completions")
 313:     if model:
 314:         print(f"  Model: {model}")
 315:     print(f"  @{name} mentions trigger model calls")
 316:     print(f"  Ctrl+C to stop\n")
-317: 
+317:
 318:     try:
 319:         while True:
 320:             try:
 321:                 # Update queue file path in case of rename
 322:                 current_name = get_name()
 323:                 qf = data_dir / f"{current_name}_queue.jsonl"
-324: 
+324:
 325:                 if qf.exists() and qf.stat().st_size > 0:
 326:                     with open(qf, "r", encoding="utf-8") as f:
 327:                         lines = f.readlines()
 328:                     qf.write_text("", "utf-8")
-329: 
+329:
 330:                     channels_triggered = set()
 331:                     for line in lines:
 332:                         line = line.strip()
@@ -1716,12 +1716,12 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 338:                             channels_triggered.add(ch)
 339:                         except json.JSONDecodeError:
 340:                             channels_triggered.add("general")
-341: 
+341:
 342:                     for ch in channels_triggered:
 343:                         handle_trigger(channel=ch)
 344:             except Exception:
 345:                 pass
-346: 
+346:
 347:             time.sleep(1)
 ```
 
@@ -1734,14 +1734,14 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 82:         if session:
 83:             log.info("Session %d interrupted: %s", session_id, reason)
 84:         return session
-85: 
+85:
 86:     def get_active(self, channel: str) -> dict | None:
 87:         """Get the active session for a channel, enriched with phase info."""
 88:         session = self._store.get_active(channel)
 89:         if not session:
 90:             return None
 91:         return self._enrich(session)
-92: 
+92:
 93:     def get_allowed_agent(self, channel: str) -> str | None:
 94:         """If a session is active on this channel, return the agent whose turn it is.
 95:         Returns None if no session is active (meaning all agents are allowed)."""
@@ -1758,36 +1758,36 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 132:         """Called on every new chat message. Checks if it advances a session."""
 133:         channel = msg.get("channel", "general")
 134:         sender = msg.get("sender", "")
-135: 
+135:
 136:         # Ignore system-generated messages (banners, phase markers, etc.)
 137:         if sender == "system" or msg.get("type", "chat") not in ("chat", "decision"):
 138:             return
-139: 
+139:
 140:         with self._lock:
 141:             self._handle_participant_message(msg, channel, sender)
-142: 
+142:
 143:     def _handle_participant_message(self, msg: dict, channel: str, sender: str):
 144:         session = self._store.get_active(channel)
 145:         if not session:
 146:             return
-147: 
+147:
 148:         expected_agent = self._get_expected_agent(session)
 149:         if not expected_agent:
 150:             return
-151: 
+151:
 152:         cast_agents = set(session.get("cast", {}).values())
 153:         sender_is_agent = self._is_agent(sender)
-154: 
+154:
 155:         # Agent not in this session's cast — ignore
 156:         if sender_is_agent and sender not in cast_agents:
 157:             return
-158: 
+158:
 159:         # A choice card asks for input; it is not the participant's completed turn.
 160:         if msg.get("type") == "decision":
 161:             if sender == expected_agent:
 162:                 self._store.set_choice(session["id"], msg["id"])
 163:             return
-164: 
+164:
 165:         choice_id = session.get("choice_message_id")
 166:         if choice_id is not None and not sender_is_agent and msg.get("reply_to") is not None:
 167:             choice = self._messages.get_by_id(msg["reply_to"])
@@ -1798,7 +1798,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 172:                 # Normal @mention routing wakes the participant with the answer.
 173:                 # An older card must not release the current question.
 174:                 return
-175: 
+175:
 176:         # Human spoke but it's not their turn — pause if an agent is expected
 177:         if not sender_is_agent and sender != expected_agent and self._is_agent(expected_agent):
 178:             if choice_id is not None:
@@ -1806,7 +1806,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 180:             self._store.pause(session["id"])
 181:             log.info("Session %d paused: human interruption by %s", session["id"], sender)
 182:             return
-183: 
+183:
 184:         if sender == expected_agent:
 185:             if choice_id is not None:
 186:                 return
@@ -1817,12 +1817,12 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 191:             # before phase/completion banners are added
 192:             threading.Timer(0.3, self._advance, args=(session, msg["id"])).start()
 193:             return
-194: 
+194:
 195:         # Wrong agent spoke - ignore
 196:         return
-197: 
+197:
 198:     # --- Engine core ---
-199: 
+199:
 200:     def _advance(self, session: dict, message_id: int):
 201:         """Advance once, only if this response still belongs to the current turn."""
 202:         with self._lock:
@@ -1839,64 +1839,64 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 ### session_engine.py:258
 
 ```text
-258: 
+258:
 259:     def _trigger_current(self, session: dict):
 260:         """Trigger the agent whose turn it is."""
 261:         tmpl = self._store.get_template(session["template_id"])
 262:         if not tmpl:
 263:             return
-264: 
+264:
 265:         phases = tmpl.get("phases", [])
 266:         phase_idx = session["current_phase"]
 267:         turn_idx = session["current_turn"]
-268: 
+268:
 269:         if phase_idx >= len(phases):
 270:             return
-271: 
+271:
 272:         phase = phases[phase_idx]
 273:         participants = phase.get("participants", [])
-274: 
+274:
 275:         if turn_idx >= len(participants):
 276:             return
-277: 
+277:
 278:         role = participants[turn_idx]
 279:         cast = session.get("cast", {})
 280:         agent = cast.get(role)
-281: 
+281:
 282:         if not agent:
 283:             log.warning("Session %d: no agent cast for role '%s'", session["id"], role)
 284:             self._store.interrupt(session["id"], f"no agent for role '{role}'")
 285:             return
-286: 
+286:
 287:         if not self._is_agent(agent):
 288:             # Human's turn - just mark as waiting, don't trigger
 289:             self._store.set_waiting(session["id"], agent)
 290:             return
-291: 
+291:
 292:         # Mark waiting
 293:         self._store.set_waiting(session["id"], agent)
-294: 
+294:
 295:         # Assemble the prompt
 296:         prompt = self._assemble_prompt(session, tmpl, phase, role)
-297: 
+297:
 298:         # Trigger the agent
 299:         channel = session.get("channel", "general")
 300:         log.info("Session %d: triggering %s (%s) for phase '%s'",
 301:                  session["id"], agent, role, phase["name"])
-302: 
+302:
 303:         try:
 304:             self._trigger.trigger_sync(agent, channel=channel, prompt=prompt)
 305:         except Exception as exc:
 306:             log.error("Session %d: failed to trigger %s: %s",
 307:                       session["id"], agent, exc)
-308: 
+308:
 309:     def _assemble_prompt(self, session: dict, tmpl: dict, phase: dict,
 310:                          role: str) -> str:
 311:         """Build the session-aware prompt for an agent."""
 312:         phases = tmpl.get("phases", [])
 313:         phase_idx = session["current_phase"]
 314:         total_phases = len(phases)
-315: 
+315:
 316:         channel = session.get("channel", "general")
 317:         lines = [
 318:             f"SESSION: {tmpl.get('name', '?')}",
@@ -1906,18 +1906,18 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 322:         lines.append(f"PHASE: {phase['name']} ({phase_idx + 1}/{total_phases})")
 323:         lines.append(f"YOUR ROLE: {role}")
 324:         lines.append(f"INSTRUCTION: {phase.get('prompt', '')}")
-325: 
+325:
 326:         # Dissent mandate for review/critique roles
 327:         if role.lower() in _DISSENT_ROLES:
 328:             lines.append(f"\n{_DISSENT_LINE}")
-329: 
+329:
 330:         lines.append("")
 331:         lines.append(f"IMPORTANT: You MUST respond using the 'chat_send' tool in the #{channel} channel. "
 332:                       "The session flow is blocked until your message appears in the chat. "
 333:                       "Do NOT respond only in your terminal.")
 334:         lines.append("Read recent messages in the channel for context (use 'chat_read' or 'mcp read'), "
 335:                       "then post your response. Stay focused on the session goal.")
-336: 
+336:
 337:         # Use double newlines to ensure separation in TUIs that might collapse single newlines
 338:         return "\n\n".join(lines)
 ```
@@ -1928,28 +1928,28 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 324: def validate_session_template(tmpl: dict) -> list[str]:
 325:     """Validate a session template dict. Returns list of errors (empty = valid)."""
 326:     errors = []
-327: 
+327:
 328:     if not isinstance(tmpl, dict):
 329:         return ["Template must be a JSON object"]
-330: 
+330:
 331:     if not tmpl.get("name") or not isinstance(tmpl.get("name"), str):
 332:         errors.append("Missing or invalid 'name' (string required)")
-333: 
+333:
 334:     roles = tmpl.get("roles", [])
 335:     if not isinstance(roles, list) or len(roles) == 0:
 336:         errors.append("'roles' must be a non-empty array")
 337:     elif len(roles) > 6:
 338:         errors.append(f"Too many roles ({len(roles)}, max 6)")
-339: 
+339:
 340:     phases = tmpl.get("phases", [])
 341:     if not isinstance(phases, list) or len(phases) == 0:
 342:         errors.append("'phases' must be a non-empty array")
 343:     elif len(phases) > 6:
 344:         errors.append(f"Too many phases ({len(phases)}, max 6)")
-345: 
+345:
 346:     roles_set = set(roles) if isinstance(roles, list) else set()
 347:     output_count = 0
-348: 
+348:
 349:     for i, phase in enumerate(phases if isinstance(phases, list) else []):
 350:         if not isinstance(phase, dict):
 351:             errors.append(f"Phase {i + 1}: must be an object")
@@ -1969,12 +1969,12 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 365:             errors.append(f"Phase {i + 1}: prompt too long ({len(prompt)} chars, max 200)")
 366:         if phase.get("is_output"):
 367:             output_count += 1
-368: 
+368:
 369:     if output_count == 0 and isinstance(phases, list) and len(phases) > 0:
 370:         errors.append("No phase marked as 'is_output: true'")
 371:     elif output_count > 1:
 372:         errors.append(f"Multiple phases marked as output ({output_count}, expected 1)")
-373: 
+373:
 374:     return errors
 ```
 
@@ -1984,9 +1984,9 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 2484: function sendMessage() {
 2485:     const input = document.getElementById('input');
 2486:     let text = input.value.trim();
-2487: 
+2487:
 2488:     if (!text && pendingAttachments.length === 0) return;
-2489: 
+2489:
 2490:     // Prepend active mention toggles if the message doesn't already mention them
 2491:     // Skip for non-broadcast slash commands (e.g. /clear, /continue)
 2492:     let skipMentions = false;
@@ -2017,7 +2017,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 2517:             text = missing.map(n => `@${n}`).join(' ') + ' ' + text;
 2518:         }
 2519:     }
-2520: 
+2520:
 2521:     const payload = {
 2522:         type: 'message',
 2523:         text: text,
@@ -2032,11 +2032,11 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 2532:     if (replyingTo) {
 2533:         payload.reply_to = replyingTo.id;
 2534:     }
-2535: 
+2535:
 2536:     if (ws && ws.readyState === WebSocket.OPEN) {
 2537:         ws.send(JSON.stringify(payload));
 2538:     }
-2539: 
+2539:
 2540:     input.value = '';
 2541:     restartVoiceAfterEdit();
 2542:     input.style.height = 'auto';
@@ -2045,7 +2045,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 2545:     updateSendButton();
 2546:     input.focus();
 2547: }
-2548: 
+2548:
 2549: // --- Image paste/drop ---
 ```
 
@@ -2057,7 +2057,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 3: REM Usage: start_api_agent.bat <agent_name>
 4: REM Example: start_api_agent.bat qwen
 5: cd /d "%~dp0.."
-6: 
+6:
 7: set AGENT_NAME=%~1
 8: if "%AGENT_NAME%"=="" (
 9:     echo.
@@ -2073,14 +2073,14 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 19:     pause
 20:     exit /b 1
 21: )
-22: 
+22:
 23: REM Auto-create venv and install deps on first run
 24: if not exist ".venv" (
 25:     python -m venv .venv
 26:     .venv\Scripts\pip install -q -r requirements.txt >nul 2>nul
 27: )
 28: call .venv\Scripts\activate.bat
-29: 
+29:
 30: REM Start server if not already running, then wait for it
 31: netstat -ano | findstr :8300 | findstr LISTENING >nul 2>&1
 32: if %errorlevel% neq 0 (
@@ -2092,7 +2092,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 38:     timeout /t 1 /nobreak >nul
 39:     goto :wait_server
 40: )
-41: 
+41:
 42: python wrapper_api.py %AGENT_NAME%
 43: pause
 ```
@@ -2105,13 +2105,13 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 3: # Usage: sh start_api_agent.sh <agent_name>
 4: # Example: sh start_api_agent.sh qwen
 5: cd "$(dirname "$0")/.."
-6: 
+6:
 7: if [ -z "$1" ]; then
 8:     echo "Usage: start_api_agent.sh <agent_name>"
 9:     echo "Example: start_api_agent.sh qwen"
 10:     exit 1
 11: fi
-12: 
+12:
 13: PYTHON_BIN=""
 14: if command -v python3 >/dev/null 2>&1; then
 15:     PYTHON_BIN="python3"
@@ -2121,13 +2121,13 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 19:     echo "Python 3 is required but was not found on PATH."
 20:     exit 1
 21: fi
-22: 
+22:
 23: ensure_venv() {
 24:     if [ -d ".venv" ] && [ ! -x ".venv/bin/python" ]; then
 25:         echo "Recreating .venv for this platform..."
 26:         rm -rf .venv
 27:     fi
-28: 
+28:
 29:     if [ ! -x ".venv/bin/python" ]; then
 30:         echo "Creating virtual environment..."
 31:         "$PYTHON_BIN" -m venv .venv || {
@@ -2140,14 +2140,14 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 38:         }
 39:     fi
 40: }
-41: 
+41:
 42: is_server_running() {
 43:     lsof -i :8300 -sTCP:LISTEN >/dev/null 2>&1 || \
 44:     ss -tlnp 2>/dev/null | grep -q ':8300 '
 45: }
-46: 
+46:
 47: ensure_venv
-48: 
+48:
 49: if ! is_server_running; then
 50:     if [ "$(uname -s)" = "Darwin" ]; then
 51:         osascript -e "tell app \"Terminal\" to do script \"cd '$(pwd)' && .venv/bin/python run.py\"" > /dev/null 2>&1
@@ -2160,7 +2160,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 58:             .venv/bin/python run.py > data/server.log 2>&1 &
 59:         fi
 60:     fi
-61: 
+61:
 62:     i=0
 63:     while [ "$i" -lt 30 ]; do
 64:         if is_server_running; then
@@ -2170,7 +2170,7 @@ Line numbers refer to the fork source at the audit baseline. These are evidence,
 68:         i=$((i + 1))
 69:     done
 70: fi
-71: 
+71:
 72: .venv/bin/python wrapper_api.py "$1"
 ```
 
