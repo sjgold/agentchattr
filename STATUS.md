@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-12 (ticket #2 implemented and locally verified; independent review and native Omarchy verification pending)
+**Updated:** 2026-10-12 (ticket #2 implemented and locally verified; Windows-hosted Omarchy test plan supplied; independent review pending)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -20,6 +20,8 @@
 - Always specify `-R sjgold/agentchattr` for GitHub reads. Implicit selection returned an unrelated upstream issue; explicit fork reads verified #1 and the 26-ticket backlog. Issue bodies still link a v1.6 snapshot; v1.7 remains the local scope authority, with the user's additive Omarchy request recorded here and in the plan.
 
 ## Ticket #2 verification and limits
+
+- Windows-hosted Omarchy test plan supplied in `OMARCHY-TEST-PLAN.md`, with a source-only archive frozen at `3bf7da0` under ignored `.audit-tmp`. The plan uses a disposable Linux copy, distinct web/MCP ports and no agents/providers; no user test results received yet.
 
 - Platform environments are separate; no deletion or migration of existing `.venv`/working installation. Passive checks never install packages or execute agent commands. Setup requires `SETUP` in a terminal or explicit `--setup`.
 - App-specific loopback health binds checkout, host, port, data/upload paths and MCP configuration. Kernel locking serializes startup; foreign listeners are preserved; failure/timeout cleanup targets only the invocation's child. Server logs omit the browser session token.
@@ -54,8 +56,8 @@
 
 ## Next step
 
-**Action:** Hand the frozen ticket #2 changes and `TICKET-2-REVIEW.md` to a different-family reviewer with checkout/test access; resolve findings and recheck substantive fixes. Seth can run the documented launcher/menu-entry checks on native Omarchy. Keep #2 open until review and human sign-off. Configuration/exit fixes belong to #4 after #2; frozen-input delivery belongs to #6 after #3/#4. Include Omarchy requirements in #2-#4. Prefer a reviewer with checkout/test access for implementation, especially process ownership, cancellation, storage and native Linux behavior.
-**Who:** Codex implemented and verified #2. Independent implementation reviewer unassigned; Meta/Muse supplied the earlier #1 source/plan review only. Seth retains final sign-off and offered native Omarchy testing.
+**Action:** Hand the frozen ticket #2 changes and `TICKET-2-REVIEW.md` to a different-family reviewer with checkout/test access; resolve findings and recheck substantive fixes. Seth can run `OMARCHY-TEST-PLAN.md` in his Windows-hosted Omarchy installation; dual boot is unavailable while four lanes are active and is deferred. Keep #2 open until review and human sign-off. Configuration/exit fixes belong to #4 after #2; frozen-input delivery belongs to #6 after #3/#4. Include Omarchy requirements in #2-#4. Prefer a reviewer with checkout/test access for implementation, especially process ownership, cancellation, storage and native Linux behavior.
+**Who:** Codex implemented and verified #2. Independent implementation reviewer unassigned; Meta/Muse supplied the earlier #1 source/plan review only. Seth retains final sign-off and offered Windows-hosted Omarchy testing; no dual boot requested.
 **Done when:** #2 provides one supervised entry point with app-specific readiness, bounded startup, duplicate-launch reuse and actionable conflict/failure reporting, with Windows and Omarchy requirements covered by its implementation plan and verification evidence.
 
 ## Now
@@ -100,7 +102,7 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 
 ## Waiting on Seth
 
-- Select a different-family implementation reviewer with checkout/test access for #2; a pasted-only Meta review cannot independently run process/HTTP checks. Native Omarchy testing and #2 final sign-off remain pending. #1 received final sign-off.
+- Select a different-family implementation reviewer with checkout/test access for #2; a pasted-only Meta review cannot independently run process/HTTP checks. Windows-hosted Omarchy smoke testing and #2 final sign-off remain pending; native dual-boot testing is deferred. #1 received final sign-off.
 - Later: select the live-test agent/model package and authorize usage-consuming acceptance when ready.
 - No Tribunal code reuse or release-terms decision is needed for the agreed behavioral implementation.
 
