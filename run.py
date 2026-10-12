@@ -98,18 +98,25 @@ def main():
 
     static_dir = ROOT / "static"
 
+    def browser_page(filename):
+        html = (static_dir / filename).read_text("utf-8")
+        injected = html.replace(
+            "</head>",
+            f'<script>window.__SESSION_TOKEN__="{session_token}";</script>\n</head>',
+        )
+        return HTMLResponse(injected, headers={"Cache-Control": "no-store"})
+
+    @app.get("/preflight")
+    async def preflight():
+        return browser_page("preflight.html")
+
     @app.get("/")
     async def index():
         # Read index.html fresh each request so changes take effect without restart.
         # Inject the session token into the HTML so the browser client can use it.
         # This is safe: same-origin policy prevents cross-origin pages from reading
         # the response body, so only the user's own browser tab gets the token.
-        html = (static_dir / "index.html").read_text("utf-8")
-        injected = html.replace(
-            "</head>",
-            f'<script>window.__SESSION_TOKEN__="{session_token}";</script>\n</head>',
-        )
-        return HTMLResponse(injected, headers={"Cache-Control": "no-store"})
+        return browser_page("index.html")
 
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
@@ -157,7 +164,6 @@ def main():
     print(f"  MCP SSE:  http://{host}:{sse_port}/sse   (Gemini)")
     print(f"  Data:    {data_dir}")
     print(f"  Agents auto-trigger on @mention")
-    print(f"\n  Session token: {session_token}\n")
 
     uvicorn.run(app, host=host, port=port, log_level="info")
 

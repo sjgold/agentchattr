@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pre-flight · agentchattr</title>
+<link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/preflight.css">
+<script src="/static/preflight.js" defer></script>
+</head><body class="preflight-page"><main>
+<header><p class="eyebrow">agentchattr</p><h1>Pre-flight</h1><p>Check your environment before opening chat.</p></header>
+<section aria-labelledby="server-title"><h2 id="server-title">Local server</h2>
+<p id="server-status" role="status">Checking connection…</p><p id="checked-at"></p>
+<div class="actions"><button id="refresh" type="button">Refresh checks</button><a class="open-chat" href="/">Open chat</a></div></section>
+<section aria-labelledby="agents-title"><h2 id="agents-title">Configured agents</h2>
+<p>These checks only find executables. They do not start agents, install software, sign in, or send model requests.</p>
+<p>Authentication and connection remain unknown until checked. Finding a command does not mean an agent is ready.</p>
+<div id="agents" class="agent-grid"></div></section>
+</main></body></html>

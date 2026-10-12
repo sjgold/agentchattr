@@ -204,16 +204,22 @@ def _install_security_middleware(token: str, cfg: dict):
     allowed_origins = {
         f"http://127.0.0.1:{port}",
         f"http://localhost:{port}",
+        f"http://[::1]:{port}",
     }
 
     class SecurityMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request: Request, call_next):
             path = request.url.path
 
+            if path == "/api/health":
+                if not request.client or request.client.host not in ("127.0.0.1", "::1", "localhost"):
+                    return JSONResponse({"error": "loopback only"}, status_code=403)
+                return await call_next(request)
+
             # Static assets, index page, and uploaded images are public.
             # The index page injects the token client-side via same-origin script.
             # Uploads use random filenames and have path-traversal protection.
-            if path == "/" or path.startswith(("/static/", "/uploads/", "/api/roles")):
+            if path in ("/", "/preflight") or path.startswith(("/static/", "/uploads/", "/api/roles")):
                 return await call_next(request)
 
             # Agent registration/heartbeat: loopback only (no remote agent minting).
@@ -256,6 +262,20 @@ def _install_security_middleware(token: str, cfg: dict):
             return await call_next(request)
 
     app.add_middleware(SecurityMiddleware)
+
+
+@app.get("/api/health")
+async def get_health():
+    from launcher import instance_identity, PROTOCOL
+    return JSONResponse({"app": "agentchattr", "protocol": PROTOCOL,
+                         "identity": instance_identity(Path(__file__).parent, config),
+                         "state": "ready"}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/preflight")
+async def get_preflight():
+    from launcher import preflight_snapshot
+    return JSONResponse(preflight_snapshot(config), headers={"Cache-Control": "no-store"})
 
 
 def configure(cfg: dict, session_token: str = ""):

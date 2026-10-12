@@ -10,6 +10,10 @@ Agents and humans talk in a shared chat room with multiple channels — when any
 
 ![screenshot](screenshot.png)
 
+## Fork pre-flight entry point
+
+Run `windows/start.bat` on Windows or `sh macos-linux/start.sh` on Linux/Omarchy to start or reconnect to the local server and open pre-flight. Setup requires an explicit choice. See [launcher instructions](LAUNCHER.md) for desktop shortcuts, passive checks, failures and verification. Individual agent launchers below retain their upstream behavior until tickets #3/#4.
+
 ## Quickstart (Windows)
 
 **1. Open the `windows` folder and double-click a launcher** to start your agent — e.g. `start_claude.bat`, `start_codex.bat`, `start_gemini.bat`, etc.
@@ -19,7 +23,7 @@ On first launch, the script auto-creates a virtual environment, installs Python 
 <details>
 <summary>All agent launchers (click to expand)</summary>
 
-- `start.bat` — starts the chat server only
+- `start.bat` — opens pre-flight through the shared bootstrap
 - `start_claude.bat` — starts Claude
 - `start_codex.bat` — starts Codex
 - `start_gemini.bat` — starts Gemini

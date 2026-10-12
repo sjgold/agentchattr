@@ -1,40 +1,12 @@
 #!/usr/bin/env sh
-# agentchattr - starts the server only
-cd "$(dirname "$0")/.."
-
-PYTHON_BIN=""
+# Shared pre-flight bootstrap; safe for a checkout also used from Windows.
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd) || exit 1
 if command -v python3 >/dev/null 2>&1; then
-    PYTHON_BIN="python3"
+    PYTHON_BIN=python3
 elif command -v python >/dev/null 2>&1; then
-    PYTHON_BIN="python"
+    PYTHON_BIN=python
 else
-    echo "Python 3 is required but was not found on PATH."
+    echo "Python 3.11 or newer is required. Install Python and retry." >&2
     exit 1
 fi
-
-ensure_venv() {
-    if [ -d ".venv" ] && [ ! -x ".venv/bin/python" ]; then
-        echo "Recreating .venv for this platform..."
-        rm -rf .venv
-    fi
-
-    if [ ! -x ".venv/bin/python" ]; then
-        echo "Creating virtual environment..."
-        "$PYTHON_BIN" -m venv .venv || {
-            echo "Error: failed to create .venv with $PYTHON_BIN."
-            exit 1
-        }
-        .venv/bin/python -m pip install -q -r requirements.txt || {
-            echo "Error: failed to install Python dependencies."
-            exit 1
-        }
-    fi
-}
-
-ensure_venv
-
-.venv/bin/python run.py
-code=$?
-echo ""
-echo "=== Server exited with code $code ==="
-exit "$code"
+exec "$PYTHON_BIN" "$ROOT/launcher.py" "$@"

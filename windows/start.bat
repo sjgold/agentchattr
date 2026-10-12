@@ -1,15 +1,21 @@
 @echo off
-REM agentchattr — starts the server only
+setlocal
 cd /d "%~dp0.."
-
-REM Auto-create venv and install deps on first run
-if not exist ".venv" (
-    python -m venv .venv
-    .venv\Scripts\pip install -q -r requirements.txt >nul 2>nul
+where python >nul 2>nul
+if not errorlevel 1 (
+    python launcher.py %*
+) else (
+    where py >nul 2>nul
+    if errorlevel 1 (
+        echo Python 3.11 or newer is required. Install Python and retry.
+        pause
+        exit /b 1
+    )
+    py -3 launcher.py %*
 )
-call .venv\Scripts\activate.bat
-
-python run.py
-echo.
-echo === Server exited with code %ERRORLEVEL% ===
-pause
+set "launch_code=%ERRORLEVEL%"
+if not "%launch_code%"=="0" (
+    echo Launcher exited with code %launch_code%.
+    pause
+)
+exit /b %launch_code%
