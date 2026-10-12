@@ -1,0 +1,553 @@
+{
+  "head": "8a51299c195cabc5f309d6e2ea9991b120e4bd36",
+  "pinned_upstream": "d775776a30e8af4c85ea16b3caaf9c79d65cb239",
+  "method": "allowlisted source comparison; AST-extracted functions with fake dependencies",
+  "files": [
+    {
+      "path": "VERSION",
+      "state": "same",
+      "fork_sha256": "c2f2fc398169dfaf4b6a16077a5938b7361aefac1143f532b17ea18c3229cf3a",
+      "installed_sha256": "a0ad50640139a524f86591157145bf1d4674ea9c065bfea21558f0f7b04430c8"
+    },
+    {
+      "path": "agents.py",
+      "state": "same",
+      "fork_sha256": "2c7b55355ddfb6c2aaacb17ec0180fcd0dc60a20cf1373c09e7d74c2fc4eac7e",
+      "installed_sha256": "2c7b55355ddfb6c2aaacb17ec0180fcd0dc60a20cf1373c09e7d74c2fc4eac7e"
+    },
+    {
+      "path": "app.py",
+      "state": "different",
+      "fork_sha256": "24128606beb07ac3185f149ba6c400f1c96c534747babfbffce308943779e158",
+      "installed_sha256": "9e78ef0af85ed077ec31d6f9e650bad28a1b006688f562d3761065c70c72cdf0"
+    },
+    {
+      "path": "archive.py",
+      "state": "fork_only",
+      "fork_sha256": "b17e8bca0170f40b685bbbcd5b0108368633b89b5a6eaf82633e4008dcaca82e",
+      "installed_sha256": null
+    },
+    {
+      "path": "build_release.py",
+      "state": "fork_only",
+      "fork_sha256": "f647f2b7e82ec91a31f0e4cd4438018590ed11eba5659edd5c7ab1b7e19a0268",
+      "installed_sha256": null
+    },
+    {
+      "path": "config.toml",
+      "state": "different",
+      "fork_sha256": "607c6dbd6522c6da99beed5c9ffd3f620151fbe8e67115acb5539283e70c8599",
+      "installed_sha256": "203f981054105ba0337eed08aff53e59d0ce8b39758af53b55da0b96d37de693"
+    },
+    {
+      "path": "config_loader.py",
+      "state": "same",
+      "fork_sha256": "853aa1dbec7dc6fe1dcc301d4be61f8c542b77e40f1ce925cc712f33ce6b0b7d",
+      "installed_sha256": "853aa1dbec7dc6fe1dcc301d4be61f8c542b77e40f1ce925cc712f33ce6b0b7d"
+    },
+    {
+      "path": "jobs.py",
+      "state": "same",
+      "fork_sha256": "031466f02775c3da9541356b2cbca967c2768ee20413805c4614a4729f2197e6",
+      "installed_sha256": "031466f02775c3da9541356b2cbca967c2768ee20413805c4614a4729f2197e6"
+    },
+    {
+      "path": "macos-linux/start.sh",
+      "state": "same",
+      "fork_sha256": "dc8afad4c2b4ae2aaea79e97201017eccc917a3479974ad026cefaef9a75f37d",
+      "installed_sha256": "dc8afad4c2b4ae2aaea79e97201017eccc917a3479974ad026cefaef9a75f37d"
+    },
+    {
+      "path": "macos-linux/start_antigravity.sh",
+      "state": "same",
+      "fork_sha256": "3de63332314ea11e150e78a4504f0399006673b06594110a1927e1baa3ff2783",
+      "installed_sha256": "3de63332314ea11e150e78a4504f0399006673b06594110a1927e1baa3ff2783"
+    },
+    {
+      "path": "macos-linux/start_api_agent.sh",
+      "state": "same",
+      "fork_sha256": "f7e2c543c17a0e7ffb498b5dd8ce53cf405db3e09e271e9ec9ae06cf0a82e545",
+      "installed_sha256": "701690d0abf15c383b39432a5a5b22f82bea6a4364e30409e1ca524c204100a9"
+    },
+    {
+      "path": "macos-linux/start_claude.sh",
+      "state": "same",
+      "fork_sha256": "563e86c9247e02dc97e7e2391d0c685e88b4670ad0a91f69d1aea1cec7caf8eb",
+      "installed_sha256": "563e86c9247e02dc97e7e2391d0c685e88b4670ad0a91f69d1aea1cec7caf8eb"
+    },
+    {
+      "path": "macos-linux/start_claude_skip-permissions.sh",
+      "state": "same",
+      "fork_sha256": "e945cb69c696178d4fe0a0309c5229205c2ebf4cc53238bbaed433923176e280",
+      "installed_sha256": "e945cb69c696178d4fe0a0309c5229205c2ebf4cc53238bbaed433923176e280"
+    },
+    {
+      "path": "macos-linux/start_codebuddy.sh",
+      "state": "same",
+      "fork_sha256": "bb1c1f5cc2a7019c703831818238574cb18bd00a6c44f0ee2dc76beca51045fe",
+      "installed_sha256": "bb1c1f5cc2a7019c703831818238574cb18bd00a6c44f0ee2dc76beca51045fe"
+    },
+    {
+      "path": "macos-linux/start_codex.sh",
+      "state": "same",
+      "fork_sha256": "4944a49250a13bed1651fba04c91f89910c143d3abdbaf75b2337982c148c7ae",
+      "installed_sha256": "4944a49250a13bed1651fba04c91f89910c143d3abdbaf75b2337982c148c7ae"
+    },
+    {
+      "path": "macos-linux/start_codex_bypass.sh",
+      "state": "same",
+      "fork_sha256": "9ea1fef6e1654d34e86cb5cde02e17829e0f55ca643c01a4af5c3afcc6f1b48d",
+      "installed_sha256": "9ea1fef6e1654d34e86cb5cde02e17829e0f55ca643c01a4af5c3afcc6f1b48d"
+    },
+    {
+      "path": "macos-linux/start_copilot.sh",
+      "state": "same",
+      "fork_sha256": "040828de7137816edd3fe432c9c96f3ba97267709f8a13ecb2dbc96bc7f4df37",
+      "installed_sha256": "040828de7137816edd3fe432c9c96f3ba97267709f8a13ecb2dbc96bc7f4df37"
+    },
+    {
+      "path": "macos-linux/start_gemini.sh",
+      "state": "same",
+      "fork_sha256": "0563215f624d195f91781997ff98ba48d27dfb5c134a450e27fef4a3356ad2a2",
+      "installed_sha256": "0563215f624d195f91781997ff98ba48d27dfb5c134a450e27fef4a3356ad2a2"
+    },
+    {
+      "path": "macos-linux/start_gemini_yolo.sh",
+      "state": "same",
+      "fork_sha256": "c44ff6e35ddc3bb03302e3dbed809d08c0c69a1efd5fc524affb6a766e1deb26",
+      "installed_sha256": "c44ff6e35ddc3bb03302e3dbed809d08c0c69a1efd5fc524affb6a766e1deb26"
+    },
+    {
+      "path": "macos-linux/start_kilo.sh",
+      "state": "same",
+      "fork_sha256": "04bacb4d4b5909326f67a4cd6d21379f0e63f514b4fc89e203aaaad439f3a307",
+      "installed_sha256": "04bacb4d4b5909326f67a4cd6d21379f0e63f514b4fc89e203aaaad439f3a307"
+    },
+    {
+      "path": "macos-linux/start_kimi.sh",
+      "state": "same",
+      "fork_sha256": "32f0b95787459c014018f2206237d433b0b5d5e3adf5c51238e6dc73874ce11d",
+      "installed_sha256": "32f0b95787459c014018f2206237d433b0b5d5e3adf5c51238e6dc73874ce11d"
+    },
+    {
+      "path": "macos-linux/start_minimax.sh",
+      "state": "same",
+      "fork_sha256": "b52b9f0ed603cec0730eefae5935f0adb060ff6b615ce31d970c16d9fde965da",
+      "installed_sha256": "b52b9f0ed603cec0730eefae5935f0adb060ff6b615ce31d970c16d9fde965da"
+    },
+    {
+      "path": "macos-linux/start_qwen.sh",
+      "state": "same",
+      "fork_sha256": "8bc952d988b6a77e92cc686913660fb2e14363c743e3d43a181d1a1dc9b62024",
+      "installed_sha256": "8bc952d988b6a77e92cc686913660fb2e14363c743e3d43a181d1a1dc9b62024"
+    },
+    {
+      "path": "macos-linux/start_qwen_yolo.sh",
+      "state": "same",
+      "fork_sha256": "0631b3d671423967ae21c9c6c4a79e3e8bc62c402fd8bde7d19b7ce92e67f56a",
+      "installed_sha256": "0631b3d671423967ae21c9c6c4a79e3e8bc62c402fd8bde7d19b7ce92e67f56a"
+    },
+    {
+      "path": "mcp_bridge.py",
+      "state": "different",
+      "fork_sha256": "46684dbe60b1862d7eb392c929257d9c6bd7462717651359292d5ec2f07565b0",
+      "installed_sha256": "d6a627eeb6a401145969a7a9b7b718a9440e30b0ed1ae1eef6895ecee505c103"
+    },
+    {
+      "path": "mcp_proxy.py",
+      "state": "same",
+      "fork_sha256": "02f67941a6e98932aeee1f12d727c8a35ee97e026b07a6e5a21c44b0b34bc32f",
+      "installed_sha256": "02f67941a6e98932aeee1f12d727c8a35ee97e026b07a6e5a21c44b0b34bc32f"
+    },
+    {
+      "path": "open_chat.html",
+      "state": "same",
+      "fork_sha256": "f707e304f78bd0c0ef5d8d2f69b188dcda981f6197014b69db0393906c10b97c",
+      "installed_sha256": "1eafd18eae325b1735b164e70a0516db3be906be1ad94d79fa08781a423c3604"
+    },
+    {
+      "path": "registry.py",
+      "state": "same",
+      "fork_sha256": "660eb28ee79435304e2779c30f03bd9435d15ea66f6652a258843bdb72f5c22f",
+      "installed_sha256": "660eb28ee79435304e2779c30f03bd9435d15ea66f6652a258843bdb72f5c22f"
+    },
+    {
+      "path": "requirements.txt",
+      "state": "different",
+      "fork_sha256": "3ab722855a78c318d6695563f9817b45ca7f3aa46838c4e0e4bfb292ab8e3928",
+      "installed_sha256": "9658a5ef30e6479463bfdc1d3876830af88ef88cb8a328229da6977de890999f"
+    },
+    {
+      "path": "router.py",
+      "state": "same",
+      "fork_sha256": "66db4df09cc78307d79b79fd2c334a1bab7c7430fdb3f262d12d08ff07ccadbd",
+      "installed_sha256": "5a70f3adc156eed2b7163f40a2f75898ed088a6345c120c47d9190253c5dc3a2"
+    },
+    {
+      "path": "rules.py",
+      "state": "different",
+      "fork_sha256": "c68e3b792cfb44f08d6bdb9465f0f7ec4f5e7a8d2d3d313dac41a03797b54006",
+      "installed_sha256": "320eea4f7ed50c601c393e65ef7b3914f428208698aaab6230e11a431bd2332a"
+    },
+    {
+      "path": "run.py",
+      "state": "same",
+      "fork_sha256": "ad42c38340b1f617cdfea788b01b78b1dfe719d51cb0573b8888e74a5f1e4cbc",
+      "installed_sha256": "ad42c38340b1f617cdfea788b01b78b1dfe719d51cb0573b8888e74a5f1e4cbc"
+    },
+    {
+      "path": "schedules.py",
+      "state": "different",
+      "fork_sha256": "52384133bd7161d40e99daa06a18250bc968233634add50eb85b1ac858a483c3",
+      "installed_sha256": "82f61784e0ffadc55949c6f4818fb056b2d68c8041d61f7b3b4562c99fbd9947"
+    },
+    {
+      "path": "session_engine.py",
+      "state": "different",
+      "fork_sha256": "1af08c2168bfc48e2a7460540248615c654e03e4e4ebebc46a9d9ebc553f3d8d",
+      "installed_sha256": "b67b098c32675a415009e41df56ac1531ad0184f98bc2aeaa6a18812bbfb2c57"
+    },
+    {
+      "path": "session_store.py",
+      "state": "different",
+      "fork_sha256": "b737074d2d287df5b328bfdeb25769041d112bf19c821d6381272d69c94a52b8",
+      "installed_sha256": "ceb6accb696ae53a9fc9f421e5cafc1504faec86dbd2002df53a69e0e334bd8f"
+    },
+    {
+      "path": "session_templates/code-review.json",
+      "state": "same",
+      "fork_sha256": "983a5e9fabc832708e4b1465b275ec4403315e79bece3b9ba94914f175c82c90",
+      "installed_sha256": "d64c024cffa5cad15d38ff2c69be44d146fa132e08df8f0c973b6200df90f6a1"
+    },
+    {
+      "path": "session_templates/debate.json",
+      "state": "same",
+      "fork_sha256": "43850230a198fce922c0994afc6e449ff93a1e8173899414feae09a42548ea94",
+      "installed_sha256": "f20f4fce014f277295da2b55c5318c78cff789d945ebbda257c5d89dbc6a3a1a"
+    },
+    {
+      "path": "session_templates/design-critique.json",
+      "state": "same",
+      "fork_sha256": "f09e83ef68b0028f83c0a56b4ae1f6c91d1d548c9b2b216bd125c297e756d300",
+      "installed_sha256": "ba80336243ab3b06b5592d37cd0bbb3c70d4c7e5a0f89ae6d8e579fbb5a48246"
+    },
+    {
+      "path": "session_templates/planning.json",
+      "state": "same",
+      "fork_sha256": "5433ceec3d95cba81013c74ece9287e55289d3b4a4ad1c9ca009c2e5869d331b",
+      "installed_sha256": "f1e44b7e1ba5331c75c402d6f886aa82de162a30dc96a9f0e44d67e1869b8e7a"
+    },
+    {
+      "path": "static/channels.js",
+      "state": "different",
+      "fork_sha256": "a823675fa1a4e44eb7d63a8cf6bcdaeb27ae42255973b2eb8f4c57af38617c17",
+      "installed_sha256": "a4900323ddaf607fe4a2de02eb34d7ba56afd053f600890c8b0473acb7950334"
+    },
+    {
+      "path": "static/chat.js",
+      "state": "different",
+      "fork_sha256": "19f8c32d1ee7ee81c10563a23c0a5690a23db13c08a9c8ed1ae9c5f6faa902e0",
+      "installed_sha256": "8ee336a2d3fb1348d2dc47676b92dcb02980d735195b8f545dc279ee49ba6844"
+    },
+    {
+      "path": "static/core.js",
+      "state": "same",
+      "fork_sha256": "f9107290e3566901546817d91654d4d106d4b9910ff89043052be72a6da88cd8",
+      "installed_sha256": "f9107290e3566901546817d91654d4d106d4b9910ff89043052be72a6da88cd8"
+    },
+    {
+      "path": "static/index.html",
+      "state": "different",
+      "fork_sha256": "0ae68addf9225f3efec67ea044a9167cbc33f1baf9b7cbcada00daaa9a367929",
+      "installed_sha256": "47a0ad27ad943bebeccb90d14ee9fcaf4467036e4b8cf015b8a4497ad79035ff"
+    },
+    {
+      "path": "static/jobs.css",
+      "state": "same",
+      "fork_sha256": "a40480704d2b31c96bed2b62a20754d90f4d53fb9e98301d4ad2e1daab057f8b",
+      "installed_sha256": "a40480704d2b31c96bed2b62a20754d90f4d53fb9e98301d4ad2e1daab057f8b"
+    },
+    {
+      "path": "static/jobs.js",
+      "state": "same",
+      "fork_sha256": "eeef8c4340cf5a3bdfe4de51fdc5a675a039d6f9a5cb1bb0531b4d7913f5058a",
+      "installed_sha256": "eeef8c4340cf5a3bdfe4de51fdc5a675a039d6f9a5cb1bb0531b4d7913f5058a"
+    },
+    {
+      "path": "static/rules-panel.js",
+      "state": "different",
+      "fork_sha256": "e7142fa01ba60b84218310d22b97a82500797ba5e59701d40d919d168e4efc0d",
+      "installed_sha256": "1b4e1c86fa41afe11a01a12c4830876b09417fa26b0c4a1f03d6878326fc9755"
+    },
+    {
+      "path": "static/sessions.css",
+      "state": "same",
+      "fork_sha256": "e11750a72cbc42ac8f37aec4d3dc48429df2bd4865bbf880fa1d85b5cc4cc04c",
+      "installed_sha256": "e11750a72cbc42ac8f37aec4d3dc48429df2bd4865bbf880fa1d85b5cc4cc04c"
+    },
+    {
+      "path": "static/sessions.js",
+      "state": "different",
+      "fork_sha256": "b76237a4cae84f4dc3d85065b9ec777195cb25739e03c99af13a37545dd09c04",
+      "installed_sha256": "4776af58e1985482fce663ebdd6ceeb8b7e76e7e1d54b314ea1b8d24866db8cc"
+    },
+    {
+      "path": "static/store.js",
+      "state": "same",
+      "fork_sha256": "3ef05b6111e9dc03fb805084e8bcb09dec3591f4277d35cdf113d673e605bbf6",
+      "installed_sha256": "3ef05b6111e9dc03fb805084e8bcb09dec3591f4277d35cdf113d673e605bbf6"
+    },
+    {
+      "path": "static/style.css",
+      "state": "different",
+      "fork_sha256": "6a3dd55e6f609eb08f4ae85160fedba47adee3b5c4ed3429b1ca65e6188f130b",
+      "installed_sha256": "cb91276eb1342d1bff06219c54e4da774fe655b9344316feb61e9c6ef5e7e432"
+    },
+    {
+      "path": "store.py",
+      "state": "same",
+      "fork_sha256": "9d17d519e80ae1e412a424452810b15a331827ef8a058d6912a566d05144ad1d",
+      "installed_sha256": "9d17d519e80ae1e412a424452810b15a331827ef8a058d6912a566d05144ad1d"
+    },
+    {
+      "path": "summaries.py",
+      "state": "same",
+      "fork_sha256": "7627b2dfff9412208a9b5fd8117252e8381a74f0b257dbf3fc5d08336e062038",
+      "installed_sha256": "7627b2dfff9412208a9b5fd8117252e8381a74f0b257dbf3fc5d08336e062038"
+    },
+    {
+      "path": "test_cli_launchers.py",
+      "state": "installed_only",
+      "fork_sha256": null,
+      "installed_sha256": "6d9a78b56aac05ff6a7b0934669fdf245d7a110a123f578be21aeb233de87c65"
+    },
+    {
+      "path": "windows/start.bat",
+      "state": "same",
+      "fork_sha256": "20b2c7a76336d3751303756cf5f2186bd03291ffb358b8beb37a3b09e125c266",
+      "installed_sha256": "20b2c7a76336d3751303756cf5f2186bd03291ffb358b8beb37a3b09e125c266"
+    },
+    {
+      "path": "windows/start_antigravity.bat",
+      "state": "same",
+      "fork_sha256": "dff43e2c1e848c3e3734c7466ef982edebe6abe3e697a9a5f47600efc9fbeb12",
+      "installed_sha256": "9dd9245b4b0f4efb5f83444ad9bee3859779970cf51cf8e8a3b968e50ec44462"
+    },
+    {
+      "path": "windows/start_api_agent.bat",
+      "state": "same",
+      "fork_sha256": "702c61af1623d30b7279577eea92b84effacc088aed1101597cdba55f6ea04f5",
+      "installed_sha256": "702c61af1623d30b7279577eea92b84effacc088aed1101597cdba55f6ea04f5"
+    },
+    {
+      "path": "windows/start_claude.bat",
+      "state": "same",
+      "fork_sha256": "2545bf41cd88bda5b181977084710640c9dac98dd0c4ffe59f90915c527a04bb",
+      "installed_sha256": "2545bf41cd88bda5b181977084710640c9dac98dd0c4ffe59f90915c527a04bb"
+    },
+    {
+      "path": "windows/start_claude_skip-permissions.bat",
+      "state": "same",
+      "fork_sha256": "7b4337d6a36ec0fb7d56bba7cf887e5420122b1ea77f16986c09be63c1289662",
+      "installed_sha256": "7b4337d6a36ec0fb7d56bba7cf887e5420122b1ea77f16986c09be63c1289662"
+    },
+    {
+      "path": "windows/start_cli_agent.bat",
+      "state": "installed_only",
+      "fork_sha256": null,
+      "installed_sha256": "0f34b67ae5ccddb725f262db828b5056febe647ed0cdc3b5f51c135524e9fd85"
+    },
+    {
+      "path": "windows/start_codebuddy.bat",
+      "state": "same",
+      "fork_sha256": "cead0a29698492bd91e12df6d64edaa967621959907b8a5199d3077e1f4406e8",
+      "installed_sha256": "b6e783a77689a15d1e99b65b80e05d28ca24deb9aca105cd945e9e580fad871f"
+    },
+    {
+      "path": "windows/start_codex.bat",
+      "state": "same",
+      "fork_sha256": "d2607b48600c8d17ea565cd319b9198e6a1fecf2c75ecf6f8a7da2c218480877",
+      "installed_sha256": "d2607b48600c8d17ea565cd319b9198e6a1fecf2c75ecf6f8a7da2c218480877"
+    },
+    {
+      "path": "windows/start_codex_bypass.bat",
+      "state": "same",
+      "fork_sha256": "a79d682b438b1982f7abe0a14183f42e02c658ad7711737295a7e2df19ac84b9",
+      "installed_sha256": "a79d682b438b1982f7abe0a14183f42e02c658ad7711737295a7e2df19ac84b9"
+    },
+    {
+      "path": "windows/start_copilot.bat",
+      "state": "same",
+      "fork_sha256": "28ddcd8d2a25b817d66312f7b2d3a2c4e72c943f11c4c3b8a67b170bc4bffcc3",
+      "installed_sha256": "f59b0ed7aaffc272f12c7dbfd32d1f1b2e0024bcde8ec022a31e35b7c612e790"
+    },
+    {
+      "path": "windows/start_deepseek.bat",
+      "state": "installed_only",
+      "fork_sha256": null,
+      "installed_sha256": "d1941a1a425ddb5e0b25739a3866b2cba0cf108b9885d91016416b9ea2bb4169"
+    },
+    {
+      "path": "windows/start_gemini.bat",
+      "state": "same",
+      "fork_sha256": "3972c6621a45815f23a59125afae061facd1912b6328168befba4fcf53444d95",
+      "installed_sha256": "3972c6621a45815f23a59125afae061facd1912b6328168befba4fcf53444d95"
+    },
+    {
+      "path": "windows/start_gemini_yolo.bat",
+      "state": "same",
+      "fork_sha256": "e7c3a37fbf95b12b96c99483840fd4ed198460efd5474d3e54447c75b34ec069",
+      "installed_sha256": "e7c3a37fbf95b12b96c99483840fd4ed198460efd5474d3e54447c75b34ec069"
+    },
+    {
+      "path": "windows/start_glm.bat",
+      "state": "installed_only",
+      "fork_sha256": null,
+      "installed_sha256": "363505136146705500382511d2b3145413396e255db5bfe9f827717e061bbc39"
+    },
+    {
+      "path": "windows/start_hermes.bat",
+      "state": "installed_only",
+      "fork_sha256": null,
+      "installed_sha256": "052348581bc047296e93298d679af0ed60f7ab0834d50ffeb0ca3585f0650dec"
+    },
+    {
+      "path": "windows/start_kilo.bat",
+      "state": "same",
+      "fork_sha256": "512dc5755ca8a0bab54e829cd1be6d110501b5ba9ac963311a10bf8feb96dab2",
+      "installed_sha256": "512dc5755ca8a0bab54e829cd1be6d110501b5ba9ac963311a10bf8feb96dab2"
+    },
+    {
+      "path": "windows/start_kimi.bat",
+      "state": "same",
+      "fork_sha256": "e47ea8520ec7205a7280b77a375560bb602ce27bd13eb5b25bf59ab8d822b713",
+      "installed_sha256": "e47ea8520ec7205a7280b77a375560bb602ce27bd13eb5b25bf59ab8d822b713"
+    },
+    {
+      "path": "windows/start_minimax.bat",
+      "state": "same",
+      "fork_sha256": "6bf273d87ee0167b46c465604739eed1fde801e5ecd5cd1555f7f6807208fc42",
+      "installed_sha256": "6bf273d87ee0167b46c465604739eed1fde801e5ecd5cd1555f7f6807208fc42"
+    },
+    {
+      "path": "windows/start_muse.bat",
+      "state": "installed_only",
+      "fork_sha256": null,
+      "installed_sha256": "2f07432e66b6b92b4e11096a9aca970c883081048bc6adc14dcdaa9fa0f53593"
+    },
+    {
+      "path": "windows/start_omp.bat",
+      "state": "installed_only",
+      "fork_sha256": null,
+      "installed_sha256": "16964cc0b50d8eceb14b3712a0163de7b49b8681883e081cf421eafc278cf964"
+    },
+    {
+      "path": "windows/start_qwen.bat",
+      "state": "same",
+      "fork_sha256": "f676bf5e74da9a50a3f012697564f4577cdf1df699e9b71fd99d03bd5e9bfdf7",
+      "installed_sha256": "f676bf5e74da9a50a3f012697564f4577cdf1df699e9b71fd99d03bd5e9bfdf7"
+    },
+    {
+      "path": "windows/start_qwen_yolo.bat",
+      "state": "same",
+      "fork_sha256": "8f62dd261f07d25a170bb7359b9073911d7ddb66bcb6bb000ed9fb6bad6d7425",
+      "installed_sha256": "8f62dd261f07d25a170bb7359b9073911d7ddb66bcb6bb000ed9fb6bad6d7425"
+    },
+    {
+      "path": "wrapper.py",
+      "state": "different",
+      "fork_sha256": "0bbbcd89ad5eaf1981b5dd789fec46830f8b7f0e3a0a98b5c6ce9e2666b02d5c",
+      "installed_sha256": "55b4d9d04be86442b15bd83c3df91c848d849bdf48e757bf55fb34bddb951754"
+    },
+    {
+      "path": "wrapper_api.py",
+      "state": "same",
+      "fork_sha256": "68536fa16b9a1e9993e55e5c5e1825c59e3ea54270cc331e658260f606695c20",
+      "installed_sha256": "68536fa16b9a1e9993e55e5c5e1825c59e3ea54270cc331e658260f606695c20"
+    },
+    {
+      "path": "wrapper_unix.py",
+      "state": "different",
+      "fork_sha256": "71d9cdd7609e586e296ed4a7a35cd7dc83b6eda964cd085ffe942e2eaef724a1",
+      "installed_sha256": "db434a8f66dbe7ee834c2eba3c33839349651094551b35c62ae9a8c335d806ac"
+    },
+    {
+      "path": "wrapper_windows.py",
+      "state": "same",
+      "fork_sha256": "ab6566afa3e3b6f275f1e6ca6c693148ef61786ab273ab5afe551cab46981ee7",
+      "installed_sha256": "ab6566afa3e3b6f275f1e6ca6c693148ef61786ab273ab5afe551cab46981ee7"
+    }
+  ],
+  "observations": [
+    {
+      "id": "E01",
+      "observation": "Malformed JSON overwritten by shared writer"
+    },
+    {
+      "id": "E02",
+      "child_exit": 23,
+      "runner_return": null
+    },
+    {
+      "id": "E03",
+      "queued": 2,
+      "injected": 1,
+      "first_job_lost": true
+    },
+    {
+      "id": "E04",
+      "queued": 2,
+      "api_calls": 1,
+      "prompts_forwarded": false
+    },
+    {
+      "id": "E05",
+      "history_limit": 20,
+      "system_message_included": false,
+      "attachment_included": false
+    },
+    {
+      "id": "E06",
+      "failure_posted": false,
+      "failure_printed": true
+    },
+    {
+      "id": "E07",
+      "status_schedules_advance": true,
+      "paused_session_resumed": true
+    },
+    {
+      "id": "E08",
+      "end_updates_store": true,
+      "trigger_cancellation_calls": 0
+    },
+    {
+      "id": "E09",
+      "six_seat_errors": [
+        "Phase 1: too many participants (6, max 4)"
+      ],
+      "seven_role_errors": [
+        "Too many roles (7, max 6)"
+      ]
+    },
+    {
+      "id": "E11",
+      "hermes_mapping_and_backup_preserved": true,
+      "malformed_yaml_preserved": true,
+      "invalid_server_sequence_replaced": true
+    }
+  ],
+  "extra_installed_agent_ids": [
+    "deepseek",
+    "glm",
+    "hermes",
+    "muse",
+    "omp"
+  ],
+  "passive_executable_found": {
+    "omp": true,
+    "hermes": true,
+    "hermes.cmd": true,
+    "codebuddy": false
+  }
+}
