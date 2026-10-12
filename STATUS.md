@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-12 (GitHub fork and clean upstream checkout created; lightweight review scope and handoff prepared; no implementation)
+**Updated:** 2026-10-12 (approved tickets published; quota-based cross-model review required; no implementation)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -8,25 +8,31 @@
 
 ## Latest reviewer additions
 
-- v1.6 adds a small JSON findings contract with separate parse-failure flags, individual source-file intake as plain text, and a narrow Git exception for the spec.
+- v1.7 adds a small JSON findings contract with separate parse-failure flags, individual source-file intake as plain text, and a narrow Git exception for the spec.
 - User authorized pushing documentation as needed; the earlier public-push approval blocker is resolved.
 - Multi-file review packets are required follow-on scope after the initial build; preserve file identity and shared packet revisions.
 
 - Opus identified two candidate freeze paths: console-only API errors with no session timeout, and distinct CLI triggers collapsed in one poll. Source paths verified; the historical GLM incident is not proven without contemporaneous console/error evidence.
-- Spec v1.6 requires a durable API result outbox, idempotent delivery, operator-selected CLI message-ID recovery, and a durable queue preserving each turn envelope. AT-21a through AT-21d exercise both freeze mechanisms and recovery provenance. No application fixes yet.
+- Spec v1.7 requires a durable API result outbox, idempotent delivery, operator-selected CLI message-ID recovery, and a durable queue preserving each turn envelope. AT-21a through AT-21d exercise both freeze mechanisms and recovery provenance. No application fixes yet.
 
 ## Latest scope clarification
 
-- v1.6 supersedes the heavyweight Tribunal requirements. AT-14 through AT-16 and AT-19 cover the lighter behavior; AT-17/18 are explicitly retired to preserve numbering. General recovery safeguards remain.
+- v1.7 supersedes the heavyweight Tribunal requirements. AT-14 through AT-16 and AT-19 cover the lighter behavior; AT-17/18 are explicitly retired to preserve numbering. General recovery safeguards remain.
 
-- Spec v1.6 adds explicit configurable participant capacity and per-turn recovery. Six participants must fit in one phase; configured packages larger than six must be representable.
+- Spec v1.7 adds explicit configurable participant capacity and per-turn recovery. Six participants must fit in one phase; configured packages larger than six must be representable.
 - A lost GLM turn/participant must expose retry, recover delivered answer, replace, skip, or stop without losing completed work. Deadlines and receipt states must be visible.
 - Seth reported a freeze and GLM re-submission; its root cause has not been reproduced. The source caps are verified separately. Acceptance IDs AT-01 through AT-22 remain; AT-21 now has four explicit subcases covering API failure, poll batching, result recovery, and participant loss. No implementation changes.
 
+## Ticket execution and review
+
+- [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. Start with [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1). No builder or reviewer has been launched.
+- First milestone: #1-8, #10-12, and #16. Includes visible stalls/retry and full six-seat capacity. Full restart reconciliation (#9) follows; Stop persistence remains mandatory in #10.
+- Reviewer selection follows quota: Meta Muse 1.3, DeepSeek Flash 4.1, Grok 4.7, GLM 5.3 (user-provided labels). Use a different model family from the builder and record actual model IDs. No eligible quota means review pending, not self-approval. Human retains final sign-off.
+
 ## Next step
 
-**Action:** Compare the existing Desktop installation against this clean upstream baseline. Identify local additions worth retaining and recheck the audit defects against current code. Use spec v1.6 as the scope; prepare a bounded Stage A implementation plan.
-**Who:** Next implementation agent; no builder assigned yet.
+**Action:** Start GitHub issue #1 (Establish the launcher baseline). Compare the existing Desktop installation against this clean upstream baseline. Identify local additions worth retaining and recheck the audit defects against current code. Use spec v1.7 as the scope; prepare a bounded Stage A implementation plan.
+**Who:** Sol for the next build steps; independent different-family reviewer chosen by quota. No agent assigned/launched yet.
 **Done when:** Local changes are inventoried, baseline-specific defects have reproducible evidence, and Stage A implementation has a concrete bounded scope.
 
 ## Now
@@ -37,9 +43,9 @@
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** unchanged upstream source. No dependencies installed, agents launched, or tests run in this checkout.
 - **Ignore-rule note:** upstream .gitignore excludes docs/. A narrow .gitignore exception tracks only docs/agentchattr-fork-spec.md; other docs contents remain ignored.
-- **Documentation:** spec v1.6, this status file, and the dated Codex handoff form the documentation checkpoint. Application source remains at the raw upstream baseline.
+- **Documentation:** spec v1.7, this status file, and the dated Codex handoff form the documentation checkpoint. Application source remains at the raw upstream baseline.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** Project bootstrap and specification only. No implementation PR.
+- **In flight:** Approved issue backlog and documentation only. No implementation PR.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
@@ -67,7 +73,7 @@
 4. **Stage D:** requested artifacts, viewer/revisions, exact transcript exports, everyday-use release.
 5. **Stage E:** lightweight independent review and quote checks; replace the chosen daily workflow without claiming full Tribunal feature parity.
 
-Build preference: GPT-6 Luna/max for bounded work; GPT-6.1 Sol for lifecycle changes and integration review. Independently review cancellation, routing, storage, and first-pass input construction.
+Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional Astra escalation for unresolved correctness disagreement or reproduced failures; ask the user to bring Astra in with an evidence pack. Astra is not required upfront and does not replace cross-model final review.
 
 ## Waiting on Seth
 

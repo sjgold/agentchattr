@@ -1,6 +1,6 @@
 # Agentchattr review fork — product and implementation specification
 
-Version: 1.6 · 12 October 2026 · Author: Haalee
+Version: 1.7 · 12 October 2026 · Author: Haalee
 
 Status: implementation specification for review. This document authorizes no deployment, provider purchase, or upstream submission. No application implementation has begun.
 
@@ -282,7 +282,7 @@ Exit: adapter matrix distinguishes recorded successful use, current probe result
 
 Implement bootstrap, package persistence, model settings, instance isolation, consistent turn inputs, explicit completion, and Stop/correct/restart. These form the first usable milestone; do not hide unmanaged processes behind pre-flight.
 
-Exit: one shortcut launches a saved team and a review can be stopped and restarted with corrected pasted text without accepting stale output.
+Exit: one shortcut launches a saved team, a six-seat phase works, a stalled or failed turn becomes visible with wait/retry, and a review can be stopped and restarted with corrected pasted text without accepting stale output. The first milestone includes durable per-turn delivery and explicit completion. Full restart reconciliation and recovery of existing answers/replacement/skip follow; persisted Stop must already survive restart.
 
 ### C — Documents and daily controls
 
@@ -304,7 +304,7 @@ Add fresh API first-pass payloads, mechanical quotation checks, and synthesis in
 
 Exit: the lightweight acceptance checks pass and one real review demonstrates independent inputs, useful quote flags, and readable synthesis. Describe this as replacing the user's chosen Tribunal workflow, not full Tribunal feature parity. Retirement or migration remains a separate explicit choice.
 
-Implementation model preference: GPT-6 Luna at max reasoning for bounded work; GPT-6.1 Sol for lifecycle changes and integration review. This is a build preference, not a hard-coded product model list. Independent review is required for cancellation, routing, and storage changes.
+Implementation model preference: Sol for the next build steps. Astra is an optional escalation, not a prerequisite: on tickets #7-14 and #24, ask the user to bring it in if builder/reviewer disagreement or a reproduced correctness failure remains unresolved. Supply a frozen change and compact reproduction/evidence pack. Do not automatically launch Astra or replace the independent different-family reviewer with it. This is a build preference, not a hard-coded product model list. Every implementation ticket requires independent review by a different model family against a frozen change and reproducible evidence. Reviewer choice is driven by available quota from the user-configured pool: Meta Muse 1.3, DeepSeek Flash 4.1, Grok 4.7, and GLM 5.3 (user-provided labels; resolve actual provider/model IDs at execution time). Do not require Claude/Opus. Record builder and reviewer model identities, findings, and recheck outcome. If no eligible reviewer has quota, leave review pending rather than self-approving. The human retains final completion sign-off. Cancellation, routing, and storage changes must receive particular scrutiny.
 
 ## 11. Acceptance and verification
 

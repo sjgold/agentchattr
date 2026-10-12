@@ -22,7 +22,7 @@ The user wants agentchattr to replace the daily Warroom workflow and the useful 
 
 - Created the public fork at https://github.com/sjgold/agentchattr with origin pointing there and upstream pointing to bcurts/agentchattr.
 - Recorded upstream baseline `d775776a30e8af4c85ea16b3caaf9c79d65cb239` on `main`; application source remains unchanged.
-- Updated `docs/agentchattr-fork-spec.md` to v1.6, including simplified section 8A and matching acceptance criteria. AT-17/18 are retired, not renumbered.
+- Updated `docs/agentchattr-fork-spec.md` to v1.7, including simplified section 8A and matching acceptance criteria. AT-17/18 are retired, not renumbered.
 - Retained SC-5 durable dispatch, API outbox, selected CLI message recovery, visible deadlines, retry/replace/skip, and AT-21a-d failure cases.
 - Added a narrow `.gitignore` exception, deterministic JSON findings parsing with distinct parse flags, and individual source-file plain-text intake.
 - Updated `STATUS.md` for the daily-review collector and removed machine-specific absolute paths from published documentation.
@@ -39,9 +39,13 @@ The user wants agentchattr to replace the daily Warroom workflow and the useful 
 - No Tribunal code import, automatic repair loops, derived verdicts, voting rules, CLI isolation machinery, or separate Tribunal checkpoint/model-replacement policies.
 - No old-project retirement or data migration.
 
+## Ticketing update
+
+The user approved the revised 26-ticket breakdown after Opus review. First milestone is #1-8, #10-12 and #16; full reconciliation is #9 and follows. All 26 issues are published with native blockers. Begin with #1 using Sol; consult STATUS.md. Every build ticket requires a different-model-family review, selected by quota from Meta Muse 1.3, DeepSeek Flash 4.1, Grok 4.7 or GLM 5.3. Resolve user-provided labels to actual IDs at execution, record evidence, and leave final sign-off to the human. No reviewer has been invoked or assigned. Tickets #7-14 and #24 permit user-invoked Astra escalation only for unresolved correctness disputes/reproduced failures, not mandatory upfront review.
+
 ## What's next
 
-1. Read `STATUS.md` and spec v1.6, then compare the original `Desktop/agentchattr-0.5.0` installation with this `Documents/CodePlayground/agentchattr` checkout. Inventory local launchers/adapters and verify Stage A defects against the pinned baseline without launching providers or copying credentials/history.
+1. Read `STATUS.md` and spec v1.7, then compare the original `Desktop/agentchattr-0.5.0` installation with this `Documents/CodePlayground/agentchattr` checkout. Inventory local launchers/adapters and verify Stage A defects against the pinned baseline without launching providers or copying credentials/history.
 2. Produce a bounded Stage A implementation plan with reproducible evidence and retained-launcher decisions.
 3. Implement verified baseline fixes, then Stage B launch ownership and Stop/correct/restart with fake-adapter tests.
 4. Continue C/D daily controls and artifacts, then E lightweight independent review. Request a specific live-test package before usage-consuming acceptance.
@@ -70,7 +74,7 @@ None beyond the expressly requested specification/status update. No governing ro
 
 **Modified this session:**
 - `.gitignore` — allow only the canonical spec under docs.
-- `docs/agentchattr-fork-spec.md` — v1.6 product/implementation requirements and acceptance criteria.
+- `docs/agentchattr-fork-spec.md` — v1.7 product/implementation requirements and acceptance criteria.
 - `STATUS.md` — current state and next step for daily collection.
 - `2026-10-12-SESSION-HANDOFF-gpt-6.md` — this resume checkpoint.
 
@@ -82,5 +86,5 @@ None beyond the expressly requested specification/status update. No governing ro
 ## Next prompt
 
 ```text
-Continue agentchattr from STATUS.md and 2026-10-12-SESSION-HANDOFF-gpt-6.md in Documents/CodePlayground/agentchattr. Use docs/agentchattr-fork-spec.md v1.6: Tribunal's spirit, not its engine. Begin Stage A with a read-only comparison against Desktop/agentchattr-0.5.0, inventory local launchers/adapters, and reproduce baseline defect candidates with scoped inspection or fake adapters. Produce a bounded implementation plan; preserve the original installation and do not launch providers or copy secrets/history.
+Continue agentchattr from STATUS.md and 2026-10-12-SESSION-HANDOFF-gpt-6.md in Documents/CodePlayground/agentchattr. Use docs/agentchattr-fork-spec.md v1.7: Tribunal's spirit, not its engine. Begin Stage A with a read-only comparison against Desktop/agentchattr-0.5.0, inventory local launchers/adapters, and reproduce baseline defect candidates with scoped inspection or fake adapters. Produce a bounded implementation plan; preserve the original installation and do not launch providers or copy secrets/history.
 ```
