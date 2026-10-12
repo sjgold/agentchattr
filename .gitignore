@@ -17,7 +17,8 @@ build/
 .gemini/
 .claude/
 agents_lineup.svg
-docs/
+docs/*
+!docs/agentchattr-fork-spec.md
 goals.py
 pr-reviews/
 agentchattr-*.zip
