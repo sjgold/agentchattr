@@ -1,6 +1,6 @@
 # Ticket #3 independent review handoff
 
-Status: implemented and builder-verified, independent review and human sign-off pending. Frozen target will be recorded after the local implementation commit. Base: `8127ea1992e464cbbc56d63df2325742b8382bc9`. Branch: `codex/ticket-3-api-seat`.
+Status: implemented and builder-verified, independent review and human sign-off pending. Frozen implementation target: `b4fd3d68b61dbcfd8420f4a3caffc11fc77cfdd6`. Subsequent freeze-receipt documentation does not change the reviewed application code. Base: `8127ea1992e464cbbc56d63df2325742b8382bc9`. Branch: `codex/ticket-3-api-seat`.
 
 Scope: issue #3, spec v1.7 PF-2/3/4 and AT-02; see `TICKET-3-PLAN.md` and `API-SEATS.md`. Review must come from a different family than OpenAI Codex. Builder backend ID is not exposed by this session; Sol was the requested build preference. Record actual reviewer identity, frozen hash, verdict, substantive findings, exact commands/results and platforms not verified. Do not self-approve, call live providers, use real credentials, touch the working Desktop installation or begin dependent tickets.
 
