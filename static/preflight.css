@@ -18,4 +18,10 @@
 .preflight-page dd { margin:4px 0 0; overflow-wrap:anywhere; line-height:1.5; }
 .preflight-page .error { color:var(--error-color); }
 .preflight-page .success { color:var(--success); }
+.preflight-page .seat-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr)); gap:16px; margin:16px 0; }
+.preflight-page label { display:flex; flex-direction:column; gap:8px; min-width:0; line-height:1.4; }
+.preflight-page input, .preflight-page select { box-sizing:border-box; width:100%; min-width:0; background:var(--bg-input); color:var(--text); border:1px solid var(--border-strong); padding:10px; border-radius:var(--radius-md); font:inherit; }
+.preflight-page fieldset { min-width:0; margin:20px 0; padding:16px; border:1px solid var(--border); border-radius:var(--radius-lg); }
+.preflight-page legend { color:var(--text-muted); padding:0 8px; }
+.preflight-page button:disabled { opacity:.5; cursor:wait; }
 @media (max-width:500px) { .preflight-page main { padding:24px 16px; } .preflight-page section { padding:18px; } }

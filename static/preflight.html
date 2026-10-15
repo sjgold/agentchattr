@@ -4,6 +4,7 @@
 <title>Pre-flight · agentchattr</title>
 <link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/preflight.css">
 <script src="/static/preflight.js" defer></script>
+<script src="/static/api_seats.js" defer></script>
 </head><body class="preflight-page"><main>
 <header><p class="eyebrow">agentchattr</p><h1>Pre-flight</h1><p>Check your environment before opening chat.</p></header>
 <section aria-labelledby="server-title"><h2 id="server-title">Local server</h2>
@@ -13,4 +14,16 @@
 <p>These checks only find executables. They do not start agents, install software, sign in, or send model requests.</p>
 <p>Authentication and connection remain unknown until checked. Finding a command does not mean an agent is ready.</p>
 <div id="agents" class="agent-grid"></div></section>
+<section aria-labelledby="api-seats-title"><h2 id="api-seats-title">API seats</h2>
+<p>Save provider and model choices, then launch the chat adapters. Launch does not call a model. Sending a chat message to a seat can consume provider usage.</p>
+<p>Provider templates come from your configured API agents. Manual model IDs are unverified. Saved edits apply on the next launch; a running seat requires an explicit restart.</p>
+<p id="api-seat-status" role="status"></p>
+<div class="actions"><label>Saved package <select id="api-package-select"><option value="">New package</option></select></label><button id="api-package-new" type="button">New package</button></div>
+<form id="api-package-form">
+<div class="seat-fields"><label>Package ID <input id="api-package-id" required pattern="[a-z][a-z0-9-]{0,47}" maxlength="48" placeholder="daily-team"></label><label>Package name <input id="api-package-name" required maxlength="100" placeholder="Daily team"></label></div>
+<div id="api-seat-editors"></div>
+<div class="actions"><button id="api-seat-add" type="button">Add API seat</button><button type="submit">Save package</button></div>
+</form>
+<div id="api-seat-runtime" class="agent-grid"></div>
+</section>
 </main></body></html>

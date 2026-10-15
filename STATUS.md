@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-12 (ticket #2 reviewed, signed off, merged and published on main; #2 closed; next: #3; Omarchy testing deferred)
+**Updated:** 2026-10-15 (ticket #3 implemented and builder-verified; local freeze for independent review; Omarchy testing deferred)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -31,6 +31,17 @@
 - Browser-harness could not connect to normal Chrome. A separate `chrome-devtools-axi` test session verified rendered pre-flight, refresh and chat navigation. Screenshot inspection found inherited header styling, which was corrected; DOM check at 390px confirmed block header/no overflow. Offline emulation reloaded the browser instead of testing the in-page error state; that interaction is not claimed as verified.
 - Independent review received: **PASS WITH NONBLOCKING NOTES** on `3bf7da0484f7dbe308076803efa4e7ff7aff6222`. Reviewer self-identifies as Google / Gemini 3.8 Flash (Antigravity); exact backend ID not independently attested. [Receipt](REVIEW-GEMINI-TICKET-2.md) preserves the supplied report, including independent Windows execution of 173 tests (4 skips), real-server integration and shortcut collision checks. Notes verified against source: retain Windows batch error pause (automation now explicitly documented to use Python directly), product icon deferred to #23, live browser failure/retry remains unverified. No application code changed or substantive recheck required. Seth gave final sign-off and authorized push/merge on 2026-10-12 ("im good with it push merge"). Existing individual agent launchers retain upstream behavior until #3/#4; restart reconciliation remains #9. Web health does not certify agent authentication or MCP adapter readiness.
 
+## Ticket #3 implementation and evidence
+
+- Seth authorized #3 on 2026-10-15. Implemented saved API-seat packages, provider-template/model/reasoning validation, secret references only, immutable launch snapshots, app-owned wrapper attempts, and authenticated pre-flight save/launch/restart/stop controls. Two seats may share one configured provider with different models. Manual IDs remain unverified; Provider default omits model, and unsupported settings fail validation.
+- Requested model reaches the actual managed request payload; confirmed model is recorded only from the response. Launch proves chat-adapter connection without provider calls; authentication remains unknown until a successful completion. Missing credentials produce a user-action state. Saved edits do not change active runtime settings; mismatches require explicit restart. Removing a live seat requires targeted stop first.
+- Builder verification: **198 tests run, OK, 4 Unix/tmux skips**. Nine configuration/payload/storage tests, fourteen runtime tests, and pre-flight authentication/origin/schema tests cover the new behavior. New tests were observed failing before implementation/fixes. Local fake-HTTP tests verify payload and response model identity separately. JavaScript syntax and diff whitespace checks pass.
+- End-to-end fake-provider integration uses two actual wrappers, isolated data and web/MCP ports. It verifies zero provider calls on launch, credential-reference resolution, selected model/reasoning, evidence-based confirmation, matching reuse, mismatch rejection, 401 action-needed state, targeted restart/retry/stop and actual-worker stop acknowledgement. Five final consecutive runs passed. No live external providers or usage-consuming acceptance calls.
+- Investigation found a Windows receipt replacement race (WinError 5 while a reader holds the destination). Bounded transient retries fix it; permanent errors preserve the previous file. Actual-worker stop acknowledgement was added rather than relying on supervisor state. A final inventory found no surviving isolated fake-server processes. Earlier failing runs are not counted as acceptance passes.
+- Browser verified loading/saving a two-seat package, launching a stopped fake seat to ready, targeted stop leaving its peer ready, controls reenabled and no overflow at 390px. Screenshot tool did not return a saved path, so no visual screenshot inspection is claimed. Last-adapter-check label was added after those interaction checks; its status field is covered in runtime output. Narrow design-hook false-positive suppression is persisted for preflight.html, which contains no glow declarations.
+- Runtime currently supports IPv4 loopback only, with explicit rejection of IPv6-only server configuration. Native Linux/Omarchy and real-provider compatibility remain unverified/deferred. Full restart reconciliation (#9), durable turn delivery/outbox and per-turn cancellation remain later scope. Stopping a local wrapper does not guarantee remote-provider cancellation.
+- See `API-SEATS.md`, `TICKET-3-PLAN.md` and `TICKET-3-REVIEW.md`. Code freeze hash will be recorded after commit. Independent different-family implementation review and Seth's final sign-off are pending; #3 remains open and no implementation push/merge is authorized yet.
+
 ## Latest reviewer additions
 
 - v1.7 adds a small JSON findings contract with separate parse-failure flags, individual source-file intake as plain text, and a narrow Git exception for the spec.
@@ -56,21 +67,21 @@
 
 ## Next step
 
-**Action:** Await explicit authorization to begin ticket #3 (Launch a configured API seat). Read its full acceptance criteria and spec v1.7, then prepare the bounded implementation for provider/model selection, secret references and readiness/failure/retry. Ticket #2 is complete and closed; no #3/#4 implementation started. Windows-hosted Omarchy testing remains deferred due to mounted filesystem issues; no troubleshooting requested. Dual boot remains deferred while four lanes are active.
-**Who:** Next-ticket builder/reviewer unassigned until authorized. Codex shipped #2 after Google / Gemini 3.8 Flash (Antigravity, supplied identity) review and Seth's final sign-off.
-**Done when:** #3's authorized scope is implemented, verified against its acceptance criteria, independently reviewed by a different family, and signed off by Seth. No usage-consuming live model test is authorized by #2 shipping approval.
+**Action:** Hand the frozen ticket #3 implementation and `TICKET-3-REVIEW.md` to a different-family reviewer with local checkout/test access. Resolve findings and recheck substantive fixes before Seth's final sign-off. Do not merge, push, close #3 or begin #4 automatically. Routine checks use the loopback fake provider; live acceptance requires an explicitly authorized package. Omarchy testing/troubleshooting remains deferred.
+**Who:** Codex implemented and verified #3 on `codex/ticket-3-api-seat`; independent reviewer unassigned, selected by Seth/quota. Builder backend ID is not exposed by this session; Sol was the requested preference.
+**Done when:** Frozen #3 passes independent review, any substantive fixes are rechecked, and Seth gives final completion sign-off. Current verification is builder evidence only.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** main, synchronized with origin/main; reviewed ticket #2 fast-forward merged from `codex/ticket-2-preflight` (base `4bc8a3a`). Initial upstream baseline: d775776a30e8af4c85ea16b3caaf9c79d65cb239, "Ignore Codex idle input particles when detecting activity".
+- **Branch:** codex/ticket-3-api-seat (base main `8127ea1`); reviewed ticket #2 fast-forward merged from `codex/ticket-2-preflight` (base `4bc8a3a`). Initial upstream baseline: d775776a30e8af4c85ea16b3caaf9c79d65cb239, "Ignore Codex idle input particles when detecting activity".
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
-- **Current build:** shared bootstrap, pre-flight API/page, Windows shortcut installer and Linux/Omarchy menu installer implemented. Dependencies installed only in ignored `.venv-windows`; no agents/providers launched. Full suite: 173 tests run, OK with 4 Unix/tmux skips. Real isolated startup, two separate relaunches, token enforcement and token-free supervised logging passed. Browser: ten agent cards, Refresh, Open chat and 390px no-overflow checks passed using an isolated Chrome session; test server/session stopped. Shell syntax and Git Bash passive entry point passed; native Linux/Omarchy runtime remains unverified.
+- **Current build:** reviewed ticket #2 plus unreviewed ticket #3 API-seat implementation. Full suite: 198 tests run, OK with 4 Unix/tmux skips. Five final real-wrapper/fake-provider integration runs passed with actual stop acknowledgement; browser package/save/launch/stop and 390px layout checked. Dependencies remain only in ignored `.venv-windows`. Only isolated test wrappers and fake providers were launched; no external model calls. Test servers/browser stopped; native Omarchy unverified. No provider credentials/history copied from the working Desktop installation.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
-- **Documentation:** spec v1.7, root agent instructions, baseline audit/evidence/scripts, bounded Stage A plan, this status file, and the dated Codex handoff. Application source contains independently reviewed ticket #2 changes; later changes are documentation only.
+- **Documentation:** spec v1.7, root agent instructions, baseline audit/evidence/scripts, bounded Stage A plan, this status file, and the dated Codex handoff. Application source contains independently reviewed ticket #2 and builder-verified, review-pending ticket #3 changes.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** Ticket #1 complete and closed; ticket #2 independently reviewed with nonblocking notes, signed off, merged, published and confirmed closed; code frozen at `3bf7da0484f7dbe308076803efa4e7ff7aff6222`; implementation published on origin/main through `6c6aa7e`; no implementation PR. Final documentation checkpoint follows in the same branch. Seat/package launch controls remain in #3/#4; #2 performs passive executable discovery only. Review guide: `TICKET-2-REVIEW.md`; user launch instructions: `LAUNCHER.md`.
+- **In flight:** #1/#2 complete and closed. #3 implemented locally on `codex/ticket-3-api-seat`, ready for independent review; no push, merge, PR or ticket closure. #4 not started. Review guide: `TICKET-3-REVIEW.md`; user instructions: `API-SEATS.md`.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
@@ -102,7 +113,7 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 
 ## Waiting on Seth
 
-- Explicit authorization to start #3. #2 received sign-off, was published on main and is closed. Windows-hosted Omarchy testing is deferred due to mounted filesystem problems at Seth's request, with no troubleshooting now; native dual boot is also deferred. #1 received final sign-off.
+- Select a different-family reviewer with checkout/test access for #3. Implementation and builder checks are complete; independent review and final sign-off are pending. No live acceptance package selected. Windows-hosted Omarchy testing is deferred due to mounted filesystem problems at Seth's request, with no troubleshooting now; native dual boot is also deferred. #1 received final sign-off.
 - Later: select the live-test agent/model package and authorize usage-consuming acceptance when ready.
 - No Tribunal code reuse or release-terms decision is needed for the agreed behavioral implementation.
 

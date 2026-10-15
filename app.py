@@ -278,6 +278,86 @@ async def get_preflight():
     return JSONResponse(preflight_snapshot(config), headers={"Cache-Control": "no-store"})
 
 
+api_seat_store = None
+api_seat_manager = None
+
+
+@app.get('/api/preflight/seats')
+async def get_api_seats():
+    from api_seats import SeatError
+    if api_seat_store is None:
+        return JSONResponse({'error': 'API-seat storage unavailable.'}, status_code=503)
+    try:
+        packages = await asyncio.to_thread(api_seat_store.list)
+        runtime = await asyncio.to_thread(api_seat_manager.snapshot)
+        return JSONResponse({'providers': api_seat_store.describe_providers(), 'packages': packages,
+                             'runtime': runtime}, headers={'Cache-Control': 'no-store'})
+    except (SeatError, OSError):
+        return JSONResponse({'error': 'Saved packages cannot be read. They were preserved; repair or restore before retrying.'}, status_code=409)
+
+
+async def _seat_body(request):
+    from api_seats import SeatError
+    raw = await request.body()
+    if len(raw) > 1024 * 1024:
+        raise SeatError('API-seat request exceeds the 1 MiB request limit.')
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        raise SeatError('Invalid JSON.')
+    if not isinstance(body, dict):
+        raise SeatError('Request must be a JSON object.')
+    return body
+
+
+@app.post('/api/preflight/packages')
+async def save_api_package(request: Request):
+    from api_seats import SeatError
+    if api_seat_store is None:
+        return JSONResponse({'error': 'API-seat storage unavailable.'}, status_code=503)
+    try:
+        package = await _seat_body(request)
+        result = await asyncio.to_thread(api_seat_manager.save, package)
+        return JSONResponse(result)
+    except SeatError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+    except OSError:
+        return JSONResponse({'error': 'Package could not be saved. Check data-directory permissions.'}, status_code=503)
+
+
+@app.post('/api/preflight/seats/{package_id}/{seat_id}/launch')
+async def launch_api_seat(package_id: str, seat_id: str, request: Request):
+    from api_seats import SeatError
+    if api_seat_manager is None:
+        return JSONResponse({'error': 'API-seat runtime unavailable.'}, status_code=503)
+    try:
+        body = await _seat_body(request)
+        if set(body) - {'restart'} or not isinstance(body.get('restart', False), bool):
+            raise SeatError('Launch supports only a boolean restart choice.')
+        result = await asyncio.to_thread(api_seat_manager.launch, package_id, seat_id, body.get('restart', False))
+        return JSONResponse(result)
+    except SeatError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=409)
+
+
+@app.post('/api/preflight/seats/{package_id}/{seat_id}/stop')
+async def stop_api_seat(package_id: str, seat_id: str):
+    from api_seats import SeatError
+    if api_seat_manager is None:
+        return JSONResponse({'error': 'API-seat runtime unavailable.'}, status_code=503)
+    try:
+        result = await asyncio.to_thread(api_seat_manager.stop, package_id, seat_id)
+        return JSONResponse(result)
+    except SeatError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=409)
+
+
+@app.on_event('shutdown')
+async def release_api_seats():
+    if api_seat_manager is not None:
+        await asyncio.to_thread(api_seat_manager.shutdown)
+
+
 def configure(cfg: dict, session_token: str = ""):
     global store, rules, summaries, jobs, schedules, router, agents, registry, session_store, session_engine, config
     config = cfg
@@ -326,6 +406,13 @@ def configure(cfg: dict, session_token: str = ""):
     registry = RuntimeRegistry(data_dir=data_dir)
     registry.seed(cfg.get("agents", {}))
     registry.on_change(_on_registry_change)
+    from api_seats import SeatStore, provider_templates
+    from api_seat_runtime import SeatManager
+    global api_seat_store, api_seat_manager
+    if api_seat_manager is not None:
+        api_seat_manager.shutdown()
+    api_seat_store = SeatStore(Path(data_dir).resolve(), provider_templates(cfg))
+    api_seat_manager = SeatManager(Path(__file__).parent, cfg, api_seat_store, registry)
 
     # Router starts with base agent names (backward compat for direct MCP users),
     # registry.on_change updates it dynamically when instances register/deregister

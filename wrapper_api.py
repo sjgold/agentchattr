@@ -31,6 +31,10 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 
 
+class _ManagedProviderFailure(Exception):
+    """Provider diagnostic already recorded without exposing response bodies."""
+
+
 def _auth_headers(token: str, *, include_json: bool = False) -> dict[str, str]:
     headers = {"Authorization": f"Bearer {token}"}
     if include_json:
@@ -47,6 +51,23 @@ def main():
     # server launched with matching flags.
     apply_cli_overrides()
     config = load_config(ROOT)
+    # Managed seats use an immutable app-owned snapshot, never mutate config.toml.
+    preparse = argparse.ArgumentParser(add_help=False)
+    preparse.add_argument('--seat-file')
+    managed_args, _ = preparse.parse_known_args()
+    managed = None
+    receipt = None
+    if managed_args.seat_file:
+        from api_seats import Receipt, validate_seat
+        managed = json.loads(Path(managed_args.seat_file).read_text('utf-8'))
+        validate_seat(managed['seat'], {managed['seat']['provider']: managed['provider']})
+        config['server'] = managed['server']
+        config['agents'] = {managed['base']: {**managed['provider'], 'type': 'api',
+                           'model': managed['seat']['model'], 'label': managed['seat']['name'],
+                           'api_key_env': managed['seat']['secret_ref']}}
+        receipt = Receipt(Path(managed_args.seat_file).with_name('receipt.json'), managed['attempt'])
+        receipt.update()
+        receipt.watch_for_stop()
     agent_names = list(config.get("agents", {}).keys())
     api_agents = [n for n in agent_names if config["agents"][n].get("type") == "api"]
 
@@ -62,6 +83,7 @@ def main():
     parser.add_argument("agent", choices=api_agents,
                         help=f"API agent to run ({', '.join(api_agents)})")
     parser.add_argument("--label", type=str, default=None, help="Custom display label")
+    parser.add_argument("--seat-file", help="App-owned immutable managed API-seat snapshot")
     # Per-project isolation flags (consumed by apply_cli_overrides above;
     # listed here so --help shows them and argparse doesn't error on them).
     parser.add_argument("--data-dir",      default=None, help="Override server.data_dir (path)")
@@ -103,6 +125,8 @@ def main():
     try:
         registration = _register_instance(server_port, agent, args.label)
     except Exception as exc:
+        if receipt:
+            receipt.update(state='failed', error='Registration failed. Check the local server and retry this seat.')
         print(f"  Registration failed ({exc}).")
         print("  Is the server running? Start it with: python run.py")
         sys.exit(1)
@@ -139,6 +163,7 @@ def main():
             return _state["working"]
 
     # Heartbeat thread — same pattern as wrapper.py
+    last_heartbeat = [time.monotonic()]
     def _heartbeat():
         while True:
             try:
@@ -156,6 +181,9 @@ def main():
                 if server_name != n:
                     set_identity(new_name=server_name)
                     print(f"  Identity updated: {n} -> {server_name}")
+                if receipt:
+                    receipt.update(adapter_connected=True, name=get_name())
+                last_heartbeat[0] = time.monotonic()
             except urllib.error.HTTPError as exc:
                 if exc.code == 409:
                     try:
@@ -166,6 +194,11 @@ def main():
                         pass
             except Exception:
                 pass
+            if receipt and time.monotonic() - last_heartbeat[0] > 15:
+                receipt.update(state='failed', adapter_connected=False,
+                               error='Local server connection lost. Restart this seat from pre-flight.')
+                # Do not keep a managed child when its server stays unreachable.
+                os._exit(1)
             time.sleep(5)
 
     threading.Thread(target=_heartbeat, daemon=True).start()
@@ -226,6 +259,22 @@ def main():
 
     # Call OpenAI-compatible chat completions API
     def call_model(messages):
+        if managed:
+            from api_seats import request_completion
+            try:
+                result = request_completion(managed['seat'], managed['provider'], messages)
+            except Exception as exc:
+                auth_failure = isinstance(exc, urllib.error.HTTPError) and exc.code in (401, 403)
+                diagnostic = (f'Provider returned HTTP {exc.code}. Check provider settings/limits and retry this seat.'
+                              if isinstance(exc, urllib.error.HTTPError) else
+                              'Provider request failed, timed out or returned invalid text. Check provider availability/settings and retry this seat.')
+                receipt.update(state='action_required' if auth_failure else 'failed',
+                               authentication='failed' if auth_failure else receipt.value['authentication'],
+                               error='Provider rejected authentication. Check the credential reference and retry.' if auth_failure else diagnostic)
+                raise _ManagedProviderFailure() from None
+            receipt.update(confirmed_model=result['confirmed_model'], authentication='verified',
+                           state='ready', error=None)
+            return result['content']
         url = f"{base_url}/chat/completions"
         payload = {"messages": messages}
         if model:
@@ -299,7 +348,12 @@ def main():
             send_message(response, channel=channel)
             print(f"  [{channel}] Responded ({len(response)} chars)")
         except Exception as exc:
-            print(f"  Error handling trigger: {exc}")
+            if receipt:
+                if not isinstance(exc, _ManagedProviderFailure):
+                    receipt.update(state='failed', error='Local chat dispatch or delivery failed. Check server connectivity and retry this seat.')
+                print('  Managed API turn failed; see pre-flight diagnostics.')
+            else:
+                print(f"  Error handling trigger: {exc}")
         finally:
             set_working(False)
 
@@ -307,6 +361,8 @@ def main():
     queue_file = data_dir / f"{name}_queue.jsonl"
     if queue_file.exists():
         queue_file.write_text("", "utf-8")
+    if receipt:
+        receipt.update(state='ready', adapter_connected=True, name=get_name())
 
     print(f"\n  === {agent_cfg.get('label', agent)} API Wrapper ===")
     print(f"  Model endpoint: {base_url}/chat/completions")
@@ -348,6 +404,8 @@ def main():
     except KeyboardInterrupt:
         print("\n  Shutting down...")
     finally:
+        if receipt:
+            receipt.update(state='stopped', adapter_connected=False)
         try:
             n = get_name()
             t = get_token()

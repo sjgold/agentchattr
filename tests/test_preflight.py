@@ -51,6 +51,45 @@ class PreflightTests(unittest.TestCase):
         self.assertIn('/api/health', paths)
         self.assertIn('/api/preflight', paths)
 
+    def test_managed_seat_endpoints_require_session_token(self):
+        for function in ('get_api_seats', 'save_api_package', 'launch_api_seat', 'stop_api_seat'):
+            self.assertTrue(hasattr(app, function), f'{function} endpoint missing')
+        self.api.add_api_route('/api/preflight/seats', app.get_api_seats)
+        self.api.add_api_route('/api/preflight/packages', app.save_api_package, methods=['POST'])
+        self.assertEqual(self.client.get('/api/preflight/seats').status_code, 403)
+        self.assertEqual(self.client.post('/api/preflight/packages', json={}).status_code, 403)
+
+    def test_package_api_validation_roundtrip_and_missing_credential_state(self):
+        import tempfile
+        from api_seats import SeatStore
+        from api_seat_runtime import SeatManager
+        from registry import RuntimeRegistry
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory(dir=root / '.audit-tmp') as temporary:
+            store = SeatStore(temporary, {'fake': {'type': 'api', 'base_url': 'http://127.0.0.1:19999/v1'}})
+            manager = SeatManager(root, self.cfg, store, RuntimeRegistry(temporary), monitor=False)
+            self.addCleanup(manager.shutdown)
+            self.api.add_api_route('/api/preflight/seats', app.get_api_seats)
+            self.api.add_api_route('/api/preflight/packages', app.save_api_package, methods=['POST'])
+            self.api.add_api_route('/api/preflight/seats/{package_id}/{seat_id}/launch', app.launch_api_seat, methods=['POST'])
+            headers = {'x-session-token': 'test-session-token'}
+            package = {'id': 'team', 'name': 'Team', 'seats': [{'id': 'writer', 'name': 'Writer',
+                       'adapter': 'openai-compatible', 'provider': 'fake', 'model': 'requested',
+                       'reasoning': None, 'launch_profile': 'standard', 'secret_ref': 'MISSING_TEST_SECRET'}]}
+            with patch.object(app, 'api_seat_store', store), patch.object(app, 'api_seat_manager', manager):
+                self.assertEqual(self.client.post('/api/preflight/packages', json=[], headers=headers).status_code, 400)
+                self.assertEqual(self.client.post('/api/preflight/packages', json={**package, 'api_key': 'never-save'}, headers=headers).status_code, 400)
+                self.assertEqual(self.client.post('/api/preflight/packages', json=package, headers={**headers, 'Origin': 'https://example.invalid'}).status_code, 403)
+                self.assertEqual(self.client.post('/api/preflight/packages', json=package, headers=headers).status_code, 200)
+                result = self.client.get('/api/preflight/seats', headers=headers)
+                self.assertEqual(result.json()['packages'], [package])
+                path = '/api/preflight/seats/team/writer/launch'
+                self.assertEqual(self.client.post(path, json={'restart': 'yes'}, headers=headers).status_code, 409)
+                with patch.dict('os.environ', {}, clear=True):
+                    result = self.client.post(path, json={}, headers=headers)
+                self.assertEqual(result.json()['state'], 'action_required')
+                self.assertIsNone(result.json()['confirmed_model'])
+
 
 if __name__ == '__main__':
     unittest.main()

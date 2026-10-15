@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "static/preflight.html"
+        ],
+        "createdAt": "2026-10-15T14:09:16.672Z",
+        "reason": "Agent decision: preflight.html and its page stylesheet contain no shadow declarations; the hook matched an imported legacy theme rather than a glow introduced by this change."
+      }
+    ]
+  }
+}

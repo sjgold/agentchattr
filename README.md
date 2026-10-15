@@ -12,7 +12,7 @@ Agents and humans talk in a shared chat room with multiple channels — when any
 
 ## Fork pre-flight entry point
 
-Run `windows/start.bat` on Windows or `sh macos-linux/start.sh` on Linux/Omarchy to start or reconnect to the local server and open pre-flight. Setup requires an explicit choice. See [launcher instructions](LAUNCHER.md) for desktop shortcuts, passive checks, failures and verification. Individual agent launchers below retain their upstream behavior until tickets #3/#4.
+Run `windows/start.bat` on Windows or `sh macos-linux/start.sh` on Linux/Omarchy to start or reconnect to the local server and open pre-flight. Setup requires an explicit choice. See [launcher instructions](LAUNCHER.md) for desktop shortcuts, passive checks, failures and verification. Individual agent launchers below retain their upstream behavior until tickets #3/#4. Configured API-seat packages and launch controls are described in [API seats](API-SEATS.md); individual legacy agent launchers remain separate.
 
 ## Quickstart (Windows)
 
