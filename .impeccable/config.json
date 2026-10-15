@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-10-15T14:09:16.672Z",
         "reason": "Agent decision: preflight.html and its page stylesheet contain no shadow declarations; the hook matched an imported legacy theme rather than a glow introduced by this change."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "static/preflight.html"
+        ],
+        "createdAt": "2026-10-15T14:30:38.900Z",
+        "reason": "Agent decision: pre-flight inherits Inter from the existing product stylesheet at static/style.css:126. Ticket 3 preserves that product theme; changing shared typography would broaden the API-seat task."
       }
     ]
   }
