@@ -420,8 +420,8 @@ def run_agent(command, extra_args, cwd, env, queue_file, agent, no_restart, star
     # Batch launchers pass through cmd.exe even with shell=False. Reject its
     # expansion/control syntax rather than reinterpret saved values as code.
     if str(command).lower().endswith(('.cmd', '.bat')):
-        if any(any(c in str(arg) for c in '"&|<>^%!\r\n') for arg in [command, *extra_args]):
-            raise ValueError('Batch CLI arguments contain unsupported shell expansion characters. Use a native executable or a safe client profile.')
+        if any(any(c in str(arg) for c in '"&|<>^%!,;=\r\n') for arg in [command, *extra_args]):
+            raise ValueError('Batch CLI arguments contain unsupported shell expansion or delimiter characters. Use a native executable or a safe client profile.')
     while True:
         proc = None
         try:

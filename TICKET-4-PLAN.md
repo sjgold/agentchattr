@@ -47,3 +47,5 @@ Ruling: Hermes/OMP aliases route configured templates; native adapters and YAML 
 Fix receipt: A failing worker regression exposed that setting the stop event before classifying an exit could mislabel failure as stopped. Classification now uses the distinct explicit-stop reason. The integration asserts exit 23 has state failed as well as the exact code.
 
 Next gate: freeze code, independent different-family review, resolve substantive findings and recheck, then Seth's final sign-off. No push or merge authorization.
+
+Review follow-up: Antigravity passed the initial freeze with nonblocking notes. A native batch fixture reproduced comma/semicolon/equals argument splitting. Extended the existing batch-only guard after observing failing regressions; full suite 229 OK (4 skips), fake-CLI integration PASS. Independent recheck required. No new features or native-executable argument restrictions.

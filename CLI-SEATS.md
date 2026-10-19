@@ -32,7 +32,7 @@ Saved edits apply to the next launch. Reusing a healthy seat requires identical 
 
 Named Windows and POSIX launchers route through `launch_agent.py` and the shared bootstrap. They use platform-specific environments and bounded server health checks. They install dependencies only with explicit `--setup`; a normal launch reports setup requirements. Failed child status propagates through the wrapper and launcher. Legacy convenience flags remain on their corresponding named profiles.
 
-Generic entries: `windows/start_cli_agent.bat NAME` and `sh macos-linux/start_cli_agent.sh NAME`. `start_hermes` and `start_omp` are aliases for explicitly configured templates. They do not install clients or invent MCP contracts. A client without a supported identity configuration remains unavailable until configured. Windows batch-based clients reject shell expansion characters in arguments; use a native executable or compatible safe profile when needed.
+Generic entries: `windows/start_cli_agent.bat NAME` and `sh macos-linux/start_cli_agent.sh NAME`. `start_hermes` and `start_omp` are aliases for explicitly configured templates. They do not install clients or invent MCP contracts. A client without a supported identity configuration remains unavailable until configured. Windows batch-based clients reject shell expansion characters and argument delimiters (including commas, semicolons and equals signs); use a native executable or compatible safe profile for complex arguments.
 
 ## Verification boundary
 

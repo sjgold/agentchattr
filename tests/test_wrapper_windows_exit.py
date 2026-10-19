@@ -66,6 +66,15 @@ class RunAgentExitStatusTests(unittest.TestCase):
             result = wrapper_windows.run_agent(**self._run_kwargs())
         self.assertEqual(result, 23)
 
+    def test_batch_model_delimiters_fail_before_spawning_client(self):
+        for value in ('alpha,beta', 'alpha;beta', 'alpha=beta'):
+            kwargs = self._run_kwargs()
+            kwargs.update(command='fake.cmd', extra_args=['--model', value])
+            with self.subTest(value=value), patch.object(wrapper_windows.subprocess, 'Popen') as spawn:
+                with self.assertRaises(ValueError):
+                    wrapper_windows.run_agent(**kwargs)
+                spawn.assert_not_called()
+
     def test_pid_holder_cleared_after_successful_exit(self):
         proc = MagicMock()
         proc.pid = 555

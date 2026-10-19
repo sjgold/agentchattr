@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-18 (ticket #4 frozen and builder-verified; independent Antigravity review assigned at Seth's request; #3 remains complete)
+**Updated:** 2026-10-18 (ticket #4 initial review passed with notes; batch delimiter fix verified; Antigravity recheck pending)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -51,6 +51,9 @@
 - Browser-harness on an isolated fake-client server verified selecting CLI, saving model/reasoning, launch to ready, honest unknown auth/confirmation, targeted stop and no horizontal overflow at 390px. Screenshot `.audit-tmp/ticket4-preflight-390.png` was saved and visually inspected. Test tab/server stopped. No live provider/client calls, native Linux/Omarchy run, credential copies or Desktop changes. Full turn recovery, server-restart adoption and remote cancellation remain later scope.
 - Implementation is frozen at `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3`. At Seth's explicit preference, the same Antigravity reviewer used for #3 (`ec1fbcd1-4a02-410e-9029-e498f67918c8`, configured `gemini-3.8-flash`, high) received the complete #4 briefing. The Opus assignment was stopped and archived before delivery; it supplied no review. Review result and Seth's final sign-off are pending. No #5 work, push, merge or issue closure authorized.
 
+- Independent Antigravity review of `f933f59` returned **PASS WITH NONBLOCKING NOTES**, independently reporting 228 tests OK (4 skips), real fake-CLI and fake-API integrations PASS, JS/diff checks PASS. Notes: Windows batch delimiters, orphaned Unix exit receipts after SIGKILL, and existing deferred `detail()` helper coupling. Native Linux/live-client limits remain.
+- Codex reproduced the delimiter note using a disposable `.cmd`: each of `alpha,beta`, `alpha;beta`, `alpha=beta` arrived as two batch parameters. A new regression failed for all three before extending the existing batch-only rejection guard. Now these fail before client spawn; native executables are unaffected. Full suite **229 tests OK (4 skips)**, real fake-CLI integration PASS (including exact exit 23 / failed), JS/diff checks PASS. The same reviewer must recheck this application change before final acceptance. The initial report's copied HEAD and broad persistence wording are being returned for correction; frozen implementation hash is unchanged for its initial review.
+
 ## Latest reviewer additions
 
 - v1.7 adds a small JSON findings contract with separate parse-failure flags, individual source-file intake as plain text, and a narrow Git exception for the spec.
@@ -76,8 +79,8 @@
 
 ## Next step
 
-**Action:** Await independent #4 review of `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3` using `TICKET-4-REVIEW.md`. Resolve substantive findings and recheck before Seth's final sign-off. No push, merge, ticket closure, live acceptance or #5 start authorized.
-**Who:** Codex builder; Sonnet test author `fcc36344-f0ca-4514-9288-74753be75947` completed the regression/integration tests. Independent reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8`, the same Antigravity / Gemini 3.8 Flash reviewer used for #3, has checkout/test access and the frozen #4 briefing at Seth's explicit request. Opus assignment stopped/archived before delivery. Results pending; actual backend IDs are not independently attested.
+**Action:** Obtain Antigravity recheck of the batch-delimiter fix after its initial PASS WITH NONBLOCKING NOTES on `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3`. Resolve substantive findings and recheck before Seth's final sign-off. No push, merge, ticket closure, live acceptance or #5 start authorized.
+**Who:** Codex builder; Sonnet test author `fcc36344-f0ca-4514-9288-74753be75947` completed the regression/integration tests. Independent reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8`, the same Antigravity / Gemini 3.8 Flash reviewer used for #3, has checkout/test access and the frozen #4 briefing at Seth's explicit request. Opus assignment stopped/archived before delivery. Initial review passed with nonblocking notes; the same reviewer will recheck the delimiter fix. Actual backend IDs are not independently attested.
 **Done when:** PF-2/3/4 and AT-02/03 pass bounded fake-CLI verification, frozen implementation receives different-family review and substantive-fix recheck, and Seth gives final completion sign-off.
 
 ## Now
