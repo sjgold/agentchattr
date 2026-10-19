@@ -1,6 +1,6 @@
 # Ticket #4 independent review handoff
 
-Status: implemented and builder-verified; independent review and human completion sign-off pending. Frozen implementation: `f933f59` (resolve with `git rev-parse f933f59`); base `ca50827`. Branch: `codex/ticket-4-cli-seat`. Later documentation-only commits may record review assignment; verify application code equality before executing checks.
+Status: initial independent review passed with nonblocking notes; substantive batch-delimiter fix recheck and human completion sign-off pending. Current frozen target: `c7ffb3b18e70c71de76df9d85ef218dca9d5b2d2`; initial reviewed target: `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3`; base `ca50827`. Branch: `codex/ticket-4-cli-seat`. Later documentation-only commits may record review assignment; verify application code equality before executing checks.
 
 ## Scope and identity
 
@@ -37,3 +37,7 @@ git diff --check
 ```
 
 The CLI integration is Windows-only and uses actual console windows/keystrokes; it never starts a live agent. `--serve` keeps an isolated fixture server open for manual browser checks; stop its owned workers and server afterwards. Preserve user browser tabs. No application changes, commits, push, merge, ticket closure or #5 start by the reviewer. Validate each finding against code and a concrete trigger; report PASS, PASS WITH NONBLOCKING NOTES or FAIL with file/line, impact and reproducible evidence. Substantive fixes need a new frozen target and independent recheck.
+
+## Delimiter recheck
+
+Antigravity initial review passed with notes. A native disposable batch fixture reproduced comma/semicolon/equals splitting. Commit `c7ffb3b18e70c71de76df9d85ef218dca9d5b2d2` extends the existing batch-only argument rejection before client spawn; one new three-case regression was observed failing before the fix. Builder verification: 229 tests OK (four skips), real fake-CLI integration PASS, JS/diff checks PASS. Same Antigravity reviewer assigned the substantive recheck. Native executables are unchanged. MCP bearer identities intentionally reside in private runtime files; secret-exclusion claims apply to saved packages/launch snapshots, not all persisted files.
