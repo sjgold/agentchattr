@@ -1,11 +1,12 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-18 (ticket #4 approved, merged and published; issue #4 closed; #5 unstarted)
+**Updated:** 2026-10-18 (session handoff recorded; #1-4 approved/published/closed; #5 remains unstarted)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
 - Update actual results and next steps, not intended features presented as shipped.
 - Root `AGENTS.md` requires agents to read this file before work and maintain current status, verification, blockers, and the next action before handing off.
+- Latest resume note: [2026-10-18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md). The October 12 handoff describes an earlier checkpoint; use this status and the latest handoff on resume.
 
 ## Ticket #1 checkpoint
 
@@ -87,7 +88,7 @@
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** main; #4 fast-forward merged from `codex/ticket-4-cli-seat`, published at `612c9f6`. Feature branch retained. #1-4 are approved and closed.
+- **Branch:** main; #4 fast-forward merged from `codex/ticket-4-cli-seat`, published at `612c9f6`; publication/closure status checkpoint `c97943f`. Feature branch retained. #1-4 are approved and closed.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published and approved #1-4 including the CLI-seat implementation reviewed through frozen target `c7ffb3b`. Latest Windows suite: 229 tests OK (4 platform skips) after the batch-delimiter follow-up; real fake-CLI console integration passed again. Fake-API integration also passed on independent recheck. Exact CLI exit 23, targeted stop acknowledgement and distinct identities verified. Browser save/launch/stop and inspected 390px screenshot pass. Independent #4 review and delimiter-fix recheck passed with nonblocking notes; human completion sign-off received; merged and published; no live external model calls or native Linux/Omarchy pass. Test browser/server stopped. Existing ignored platform environment reused; working Desktop installation unchanged.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
