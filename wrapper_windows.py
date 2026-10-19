@@ -407,7 +407,7 @@ def _vt_keepalive_thread():
     t.start()
 
 
-def run_agent(command, extra_args, cwd, env, queue_file, agent, no_restart, start_watcher, strip_env=None, pid_holder=None, session_name=None, inject_env=None, inject_delay: float = 0.3, enter_backend: str = "console_input"):
+def run_agent(command, extra_args, cwd, env, queue_file, agent, no_restart, start_watcher, strip_env=None, pid_holder=None, session_name=None, inject_env=None, inject_delay: float = 0.3, enter_backend: str = "console_input", stop_event=None):
     """Run agent as a direct subprocess, inject via Win32 console."""
     # Newer codex/claude/etc TUIs require VT processing on the parent console;
     # without this, ANSI escape sequences leak as text into the terminal.
@@ -417,22 +417,41 @@ def run_agent(command, extra_args, cwd, env, queue_file, agent, no_restart, star
 
     if inject_env:
         env = {**env, **inject_env}
-    start_watcher(lambda text: inject(text, delay=inject_delay, enter_backend=enter_backend))
-
+    # Batch launchers pass through cmd.exe even with shell=False. Reject its
+    # expansion/control syntax rather than reinterpret saved values as code.
+    if str(command).lower().endswith(('.cmd', '.bat')):
+        if any(any(c in str(arg) for c in '"&|<>^%!\r\n') for arg in [command, *extra_args]):
+            raise ValueError('Batch CLI arguments contain unsupported shell expansion characters. Use a native executable or a safe client profile.')
     while True:
+        proc = None
         try:
             proc = subprocess.Popen([command] + extra_args, cwd=cwd, env=env)
             if pid_holder is not None:
                 pid_holder[0] = proc.pid
-            proc.wait()
-            if pid_holder is not None:
-                pid_holder[0] = None
+            start_watcher(lambda text: inject(text, delay=inject_delay, enter_backend=enter_backend))
+            if stop_event is None:
+                proc.wait()
+            else:
+                while proc.poll() is None and not stop_event.wait(0.1):
+                    pass
+                if stop_event.is_set():
+                    from launcher import stop_owned_child
+                    stop_owned_child(proc)
 
             if no_restart:
-                break
+                return proc.returncode
 
             print(f"\n  {agent.capitalize()} exited (code {proc.returncode}).")
             print(f"  Restarting in 3s... (Ctrl+C to quit)")
             time.sleep(3)
         except KeyboardInterrupt:
-            break
+            if proc is not None:
+                from launcher import stop_owned_child
+                stop_owned_child(proc)
+            return 130
+        finally:
+            if pid_holder is not None:
+                pid_holder[0] = None
+            if proc is not None and proc.poll() is None:
+                from launcher import stop_owned_child
+                stop_owned_child(proc)

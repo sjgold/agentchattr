@@ -52,3 +52,12 @@
 # label = "MiniMax"
 # api_key_env = "MINIMAX_API_KEY"
 # temperature = 1.0
+
+# --- CLI seat argument contracts ---
+# Add these fields to a configured CLI template only after checking that
+# installed client's documented flags. Values here illustrate the schema.
+# cli_model_args = ["--model", "{model}"]
+# cli_reasoning_args = ["--reasoning", "{reasoning}"]
+# reasoning_efforts = ["high"]
+# cli_version_args = ["--version"]
+# A fixed mcp_settings_path permits one owned seat at a time. See CLI-SEATS.md.

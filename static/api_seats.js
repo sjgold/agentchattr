@@ -59,7 +59,7 @@
     function addEditor(seat = {}) {
         const editor = document.createElement('fieldset');
         const legend = document.createElement('legend');
-        legend.textContent = 'API seat';
+        legend.textContent = 'Agent seat';
         const fields = document.createElement('div');
         fields.className = 'seat-fields';
         const id = input(fields, 'Seat ID', seat.id, true);
@@ -67,12 +67,20 @@
         id.maxLength = 48;
         const name = input(fields, 'Display name', seat.name, true);
         name.maxLength = 100;
-        const provider = field(fields, 'Provider template', document.createElement('select'));
+        const adapter = field(fields, 'Client adapter', document.createElement('select'));
+        option(adapter, 'openai-compatible', 'Direct API');
+        option(adapter, 'cli', 'Interactive CLI');
+        adapter.value = seat.adapter || 'openai-compatible';
+        const provider = field(fields, 'Configured template', document.createElement('select'));
         provider.required = true;
-        option(provider, '', 'Select a provider');
-        for (const item of snapshot.providers) {
-            if (!item.error) option(provider, item.id, item.name);
+        function templates() {
+            provider.replaceChildren();
+            option(provider, '', 'Select a configured template');
+            for (const item of snapshot.providers) {
+                if (!item.error && item.adapter === adapter.value) option(provider, item.id, item.name);
+            }
         }
+        templates();
         provider.value = seat.provider || '';
         const model = input(fields, 'Model ID · blank uses Provider default; manual IDs unverified', seat.model);
         const suggestions = document.createElement('datalist');
@@ -83,6 +91,8 @@
         const secret = input(fields, 'Credential environment-variable reference · never the key itself', seat.secret_ref);
         secret.maxLength = 128;
         secret.pattern = '[A-Za-z_][A-Za-z0-9_]{0,127}';
+        const effects = document.createElement('p');
+        fields.append(effects);
         function capabilities(reset) {
             const selected = snapshot.providers.find(p => p.id === provider.value);
             suggestions.replaceChildren();
@@ -92,15 +102,21 @@
             option(reasoning, '', 'Provider default · no reasoning override');
             for (const effort of selected?.reasoning_efforts || []) option(reasoning, effort, effort);
             if (!reset && seat.reasoning) reasoning.value = seat.reasoning;
-            if (reset) secret.value = selected?.secret_ref || '';
+            const cli = adapter.value === 'cli';
+            secret.disabled = cli;
+            if (reset || cli) secret.value = selected?.secret_ref || '';
+            model.disabled = cli && !selected?.supports_model;
+            if (model.disabled || reset) model.value = '';
+            effects.textContent = cli ? (selected?.configuration_effects || 'Select a CLI template to see its launch configuration changes.') : '';
         }
+        adapter.addEventListener('change', () => { templates(); capabilities(true); });
         provider.addEventListener('change', () => capabilities(true));
         capabilities(false);
         editor.append(legend, fields);
         button(editor, 'Remove from package', () => editor.remove());
         editor.readSeat = () => ({id: id.value, name: name.value, provider: provider.value,
             model: model.value || null, reasoning: reasoning.value || null,
-            secret_ref: secret.value, adapter: 'openai-compatible', launch_profile: 'standard'});
+            secret_ref: secret.value, adapter: adapter.value, launch_profile: 'standard'});
         editors.append(editor);
     }
     function editPackage(id) {
@@ -128,7 +144,15 @@
             detail(list, 'Provider authentication', state.authentication || 'unknown');
             detail(list, 'Chat adapter', state.adapter_connected ? 'Connected' : 'Not connected');
             detail(list, 'Last adapter check', state.last_adapter_check ? new Date(state.last_adapter_check * 1000).toLocaleString() : 'Not checked');
-            detail(list, 'Readiness', state.state === 'ready' ? 'Chat dispatch ready; provider verified only after a successful response' : 'Not ready');
+            if (seat.adapter === 'cli') {
+                detail(list, 'Executable', state.executable || 'Not checked at launch');
+                detail(list, 'Client started', state.startup_checked ? 'Yes' : 'Not checked');
+                detail(list, 'Client version', state.version || 'Unknown');
+                detail(list, 'Child exit code', state.child_exit_code ?? (state.state === 'stopped' ? 'Unknown after stop' : 'Still running or not started'));
+            }
+            detail(list, 'Readiness', state.state === 'ready' ? (seat.adapter === 'cli' ?
+                'Mention injection ready; CLI login, MCP tool use and model confirmation remain unverified' :
+                'Chat dispatch ready; provider verified only after a successful response') : 'Not ready');
             if (state.error) detail(list, 'Action needed', state.error);
             card.append(title, list);
             const actions = document.createElement('div');
@@ -167,9 +191,9 @@
             }
             renderRuntime();
             if (!editors.children.length) addEditor();
-            if (!snapshot.providers.some(p => !p.error)) message('No usable API provider templates. Configure an API agent endpoint first.', true);
+            if (!snapshot.providers.some(p => !p.error)) message('No usable agent templates. Configure an API provider or CLI client first.', true);
             if (pollsLeft-- > 0) timer = setTimeout(() => refresh(false), 1000);
-        } catch (error) { message(`API seats unavailable. ${error.message}`, true); }
+        } catch (error) { message(`Agent seats unavailable. ${error.message}`, true); }
     }
     form.addEventListener('submit', async event => {
         event.preventDefault();

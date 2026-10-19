@@ -19,6 +19,10 @@ How it works:
 """
 
 import json
+import hashlib
+from contextlib import contextmanager
+import tempfile
+import uuid
 import os
 import shutil
 import sys
@@ -35,92 +39,107 @@ SERVER_NAME = "agentchattr"
 # Per-instance provider config
 # ---------------------------------------------------------------------------
 
-def _write_json_mcp_settings(config_file: Path, url: str, transport: str = "http",
-                              *, token: str = "", http_key: str = "httpUrl") -> Path:
-    """Write/merge a settings-style JSON file with nested mcpServers config.
+def _read_config_object(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("Configuration root must be a JSON object; file preserved.")
+    return value
 
-    Preserves existing servers in the file — only updates the agentchattr entry.
 
-    Gemini CLI 0.32+ expects:
-      - "httpUrl" key (not "url") for streamable-http transport
-      - "url" key for SSE transport
-      - "trust": true to skip per-call approval prompts
+def _map_field(data, name):
+    value = data.get(name, {})
+    if not isinstance(value, dict):
+        raise ValueError(f"Configuration {name} must be an object; file preserved.")
+    return value
 
-    `http_key` controls which JSON key names the HTTP transport URL. Defaults
-    to "httpUrl" (Gemini/Qwen). Providers like CodeBuddy that follow the
-    standard MCP shape should set `mcp_http_key = "url"` in their config.
-    Only affects settings_file / env injector modes (not the Claude flag
-    writer or Kilo env_content writer).
-    """
+
+@contextmanager
+def _config_write_lock(path):
+    from launcher import startup_lock
+    name = hashlib.sha256(os.path.normcase(str(Path(path).resolve())).encode()).hexdigest()
+    with startup_lock(ROOT / '.launcher' / 'config-writes' / (name + '.lock'), time.monotonic() + 10):
+        yield
+
+
+def _replace_config_bytes(config_file: Path, content: bytes) -> None:
+    """Caller has validated and locked the document. Preserve its exact prior bytes."""
+    config_file = Path(config_file)
     config_file.parent.mkdir(parents=True, exist_ok=True)
-    existing: dict = {}
     if config_file.exists():
-        try:
-            existing = json.loads(config_file.read_text("utf-8"))
-        except Exception:
+        backup = config_file.with_name(config_file.name + '.' + uuid.uuid4().hex + '.bak')
+        # Reserve this name exclusively; copy2 must succeed before replacement.
+        with backup.open('xb'):
             pass
-    servers = existing.get("mcpServers", {})
-    # Default: Gemini-style "httpUrl" for HTTP. Override with http_key="url"
-    # for providers that follow the standard MCP shape (e.g. CodeBuddy).
-    if transport in ("http", "streamable-http"):
-        entry: dict = {"type": "http", http_key: url, "trust": True}
-    else:
-        entry = {"type": transport, "url": url, "trust": True}
-    if token:
-        entry["headers"] = {"Authorization": f"Bearer {token}"}
-    servers[SERVER_NAME] = entry
-    existing["mcpServers"] = servers
+        shutil.copy2(config_file, backup)
+    fd, temporary = tempfile.mkstemp(prefix=config_file.name + '.', suffix='.tmp', dir=config_file.parent)
+    try:
+        with os.fdopen(fd, 'wb') as output:
+            output.write(content)
+            output.flush()
+            os.fsync(output.fileno())
+        for attempt in range(8):
+            try:
+                os.replace(temporary, config_file)
+                break
+            except PermissionError:
+                if attempt == 7:
+                    raise
+                time.sleep(min(0.005 * 2 ** attempt, 0.08))
+    finally:
+        Path(temporary).unlink(missing_ok=True)
 
-    # Enable folder trust so ~/.gemini/trustedFolders.json is respected
-    security = existing.get("security", {})
-    folder_trust = security.get("folderTrust", {})
-    folder_trust["enabled"] = True
-    security["folderTrust"] = folder_trust
-    existing["security"] = security
 
-    config_file.write_text(json.dumps(existing, indent=2) + "\n", "utf-8")
+def _write_json_mcp_settings(config_file: Path, url: str, transport: str = "http",
+                              *, token: str = "", http_key: str = "httpUrl",
+                              project_servers: dict | None = None) -> Path:
+    with _config_write_lock(config_file):
+        existing = _read_config_object(config_file)
+        servers = _map_field(existing, 'mcpServers')
+        security = _map_field(existing, 'security')
+        trust = _map_field(security, 'folderTrust')
+        for name, cfg in (project_servers or {}).items():
+            if name not in servers:
+                entry = dict(cfg)
+                if entry.get('type', 'http') in ('http', 'streamable-http') and http_key != 'url':
+                    if 'url' in entry and http_key not in entry:
+                        entry[http_key] = entry.pop('url')
+                servers[name] = entry
+        entry = ({'type': 'http', http_key: url, 'trust': True} if transport in ('http', 'streamable-http')
+                 else {'type': transport, 'url': url, 'trust': True})
+        if token:
+            entry['headers'] = {'Authorization': f'Bearer {token}'}
+        servers[SERVER_NAME] = entry
+        trust['enabled'] = True
+        security['folderTrust'] = trust
+        existing.update(mcpServers=servers, security=security)
+        content = (json.dumps(existing, indent=2) + "\n").encode('utf-8')
+        _replace_config_bytes(config_file, content)
     return config_file
 
 
 def _read_project_mcp_servers(project_dir: Path) -> dict:
-    """Read existing MCP servers from the project's .mcp.json."""
-    mcp_file = project_dir / ".mcp.json"
-    if mcp_file.exists():
-        try:
-            data = json.loads(mcp_file.read_text("utf-8"))
-            servers = data.get("mcpServers", {})
-            # Remove agentchattr — we'll add our own authenticated version
-            servers.pop(SERVER_NAME, None)
-            return servers
-        except Exception:
-            pass
-    return {}
+    data = _read_config_object(project_dir / '.mcp.json')
+    servers = dict(_map_field(data, 'mcpServers'))
+    servers.pop(SERVER_NAME, None)
+    if any(not isinstance(cfg, dict) for cfg in servers.values()):
+        raise ValueError('Project MCP entries must be objects; file preserved.')
+    return servers
 
 
-def _write_claude_mcp_config(
-    config_file: Path,
-    url: str,
-    *,
-    token: str = "",
-    project_servers: dict | None = None,
-) -> Path:
-    """Write a Claude Code --mcp-config file with bearer auth.
-
-    Includes all project MCP servers (unity-mcp etc.) so --strict-mcp-config
-    can be used without losing other servers."""
-    config_file.parent.mkdir(parents=True, exist_ok=True)
-
-    # Start with other project servers (e.g. unity-mcp)
-    servers = dict(project_servers or {})
-
-    # Add agentchattr with bearer token for direct server auth
-    entry: dict = {"type": "http", "url": url}
-    if token:
-        entry["headers"] = {"Authorization": f"Bearer {token}"}
-    servers[SERVER_NAME] = entry
-
-    payload = {"mcpServers": servers}
-    config_file.write_text(json.dumps(payload, indent=2) + "\n", "utf-8")
+def _write_claude_mcp_config(config_file: Path, url: str, *, token: str = "",
+                              project_servers: dict | None = None) -> Path:
+    with _config_write_lock(config_file):
+        existing = _read_config_object(config_file)
+        servers = _map_field(existing, 'mcpServers')
+        servers.update(project_servers or {})
+        entry = {'type': 'http', 'url': url}
+        if token:
+            entry['headers'] = {'Authorization': f'Bearer {token}'}
+        servers[SERVER_NAME] = entry
+        existing['mcpServers'] = servers
+        _replace_config_bytes(config_file, (json.dumps(existing, indent=2) + "\n").encode('utf-8'))
     return config_file
 
 
@@ -256,34 +275,11 @@ def _apply_mcp_inject(
         env_var = inject_cfg.get("mcp_env_var")
         if not env_var:
             raise ValueError(f"mcp_inject = 'env' requires mcp_env_var")
+        project_servers = _read_project_mcp_servers(project_dir) if inject_cfg.get('mcp_merge_project') and project_dir else {}
         settings_path = _write_json_mcp_settings(
-            config_dir / f"{instance_name}-settings.json",
-            server_url, transport=transport, token=token, http_key=http_key,
+            config_dir / f"{instance_name}-settings.json", server_url,
+            transport=transport, token=token, http_key=http_key, project_servers=project_servers,
         )
-        # Merge project .mcp.json servers into the settings file
-        merge_project = inject_cfg.get("mcp_merge_project", False)
-        if merge_project and project_dir and settings_path:
-            project_servers = _read_project_mcp_servers(project_dir)
-            if project_servers:
-                try:
-                    data = json.loads(settings_path.read_text("utf-8"))
-                    servers = data.get("mcpServers", {})
-                    for name, cfg in project_servers.items():
-                        if name not in servers:
-                            # Normalize url key for providers that expect "httpUrl"
-                            # (Gemini/Qwen). For standard-MCP providers with
-                            # http_key="url", leave existing "url" entries as-is.
-                            entry = dict(cfg)
-                            srv_type = entry.get("type", "http")
-                            if srv_type in ("http", "streamable-http") and http_key != "url":
-                                if "url" in entry and http_key not in entry:
-                                    entry[http_key] = entry.pop("url")
-                            entry.setdefault("trust", True)
-                            servers[name] = entry
-                    data["mcpServers"] = servers
-                    settings_path.write_text(json.dumps(data, indent=2) + "\n", "utf-8")
-                except Exception:
-                    pass
         inject_env[env_var] = str(settings_path)
 
     elif mode == "flag":
@@ -333,24 +329,13 @@ def _ensure_gemini_folder_trusted(project_dir: Path) -> None:
     else:
         trusted_file = Path.home() / ".gemini" / "trustedFolders.json"
 
-    try:
-        data: dict = {}
-        if trusted_file.exists():
-            try:
-                data = json.loads(trusted_file.read_text("utf-8"))
-            except Exception:
-                data = {}
-
+    with _config_write_lock(trusted_file):
+        data = _read_config_object(trusted_file)
         folder_key = str(project_dir)
-        if data.get(folder_key) == "TRUST_FOLDER":
-            return  # already trusted — nothing to do
-
-        data[folder_key] = "TRUST_FOLDER"
-        trusted_file.parent.mkdir(parents=True, exist_ok=True)
-        trusted_file.write_text(json.dumps(data, indent=2) + "\n", "utf-8")
-        print(f"  Trusted folder for Gemini MCPs: {folder_key}")
-    except Exception as exc:
-        print(f"  Warning: could not update Gemini trusted folders: {exc}")
+        if data.get(folder_key) == 'TRUST_FOLDER':
+            return
+        data[folder_key] = 'TRUST_FOLDER'
+        _replace_config_bytes(trusted_file, (json.dumps(data, indent=2) + "\n").encode('utf-8'))
 
 
 def _build_provider_launch(
@@ -472,12 +457,12 @@ def _report_rule_sync(server_port: int, agent_name: str, epoch: int, token: str 
 
 def _queue_watcher(get_identity_fn, inject_fn, *, is_multi_instance: bool = False, trigger_flag=None,
                    server_port: int = 8300, agent_name: str = "", get_token_fn=None,
-                   refresh_interval: int = 10):
+                   refresh_interval: int = 10, stop_event=None):
     """Poll queue file and inject an MCP read task when triggered."""
     first_mention = True
     last_rules_epoch = 0  # 0 = unknown/cold start — will inject on first trigger
     trigger_count = 0
-    while True:
+    while stop_event is None or not stop_event.is_set():
         try:
             _, queue_file = get_identity_fn()
             if queue_file.exists() and queue_file.stat().st_size > 0:
@@ -603,6 +588,8 @@ def main():
     parser.add_argument("--mcp-sse-port",  default=None, help="Override mcp.sse_port (int)")
     parser.add_argument("--upload-dir",    default=None, help="Override images.upload_dir (path)")
     args, extra = parser.parse_known_args()
+    if extra and extra[0] == '--':
+        extra = extra[1:]
 
     agent = args.agent
     agent_cfg = config.get("agents", {}).get(agent, {})
@@ -620,321 +607,333 @@ def main():
         print("  Wrapper cannot continue without a registered identity.")
         sys.exit(1)
 
-    assigned_name = registration["name"]
-    assigned_token = registration["token"]
-    print(f"  Registered as: {assigned_name} (slot {registration.get('slot', '?')})")
-
+    from contextlib import ExitStack
+    resources = ExitStack()
     proxy = None
-    proxy_url = None
+    try:
+        assigned_name = registration["name"]
+        assigned_token = registration["token"]
+        print(f"  Registered as: {assigned_name} (slot {registration.get('slot', '?')})")
 
-    # Resolve MCP injection mode to determine if a proxy is needed.
-    # Direct-connect modes (settings_file, env, flag) don't need a proxy.
-    # proxy_flag mode needs a proxy. No mcp_inject = proxy fallback.
-    inject_cfg = _resolve_mcp_inject(agent, agent_cfg)
-    inject_mode = inject_cfg.get("mcp_inject", "")
-    if inject_mode and inject_mode not in _VALID_INJECT_MODES:
-        print(f"  Error: unknown mcp_inject mode '{inject_mode}' for agent '{agent}'.")
-        print(f"  Valid modes: {', '.join(sorted(_VALID_INJECT_MODES))}")
-        sys.exit(1)
-    needs_proxy = inject_mode in ("proxy_flag", "") or not inject_mode
+        proxy = None
+        proxy_url = None
 
-    if needs_proxy:
-        from mcp_proxy import McpIdentityProxy
-
-        transport = inject_cfg.get("mcp_transport", "http")
-        if transport == "sse":
-            upstream_base = f"http://127.0.0.1:{mcp_cfg.get('sse_port', 8201)}"
-            proxy_path = "/sse"
-        else:
-            upstream_base = f"http://127.0.0.1:{mcp_cfg.get('http_port', 8200)}"
-            proxy_path = "/mcp"
-
-        proxy = McpIdentityProxy(
-            upstream_base=upstream_base,
-            upstream_path=proxy_path,
-            agent_name=assigned_name,
-            instance_token=assigned_token,
-        )
-        if proxy.start() is False:
-            print("  Failed to start MCP proxy.")
+        # Resolve MCP injection mode to determine if a proxy is needed.
+        # Direct-connect modes (settings_file, env, flag) don't need a proxy.
+        # proxy_flag mode needs a proxy. No mcp_inject = proxy fallback.
+        inject_cfg = _resolve_mcp_inject(agent, agent_cfg)
+        inject_mode = inject_cfg.get("mcp_inject", "")
+        if inject_mode and inject_mode not in _VALID_INJECT_MODES:
+            print(f"  Error: unknown mcp_inject mode '{inject_mode}' for agent '{agent}'.")
+            print(f"  Valid modes: {', '.join(sorted(_VALID_INJECT_MODES))}")
             sys.exit(1)
-        proxy_url = f"{proxy.url}{proxy_path}"
+        needs_proxy = inject_mode in ("proxy_flag", "") or not inject_mode
 
-    _identity_lock = threading.Lock()
-    _identity = {
-        "name": assigned_name,
-        "queue": data_dir / f"{assigned_name}_queue.jsonl",
-        "token": assigned_token,
-    }
+        if needs_proxy:
+            from mcp_proxy import McpIdentityProxy
 
-    def get_identity():
-        with _identity_lock:
-            return _identity["name"], _identity["queue"]
+            transport = inject_cfg.get("mcp_transport", "http")
+            if transport == "sse":
+                upstream_base = f"http://127.0.0.1:{mcp_cfg.get('sse_port', 8201)}"
+                proxy_path = "/sse"
+            else:
+                upstream_base = f"http://127.0.0.1:{mcp_cfg.get('http_port', 8200)}"
+                proxy_path = "/mcp"
 
-    def get_token():
-        with _identity_lock:
-            return _identity["token"]
-
-    # Rewrite MCP config when token/name changes (e.g. after 409 re-register).
-    # Most CLIs won't re-read mid-session, but the file is correct for next restart.
-    def _rewrite_mcp_config(instance_name: str, new_token: str):
-        if not inject_mode or needs_proxy:
-            return  # proxy-based agents don't have config files to rewrite
-        try:
-            _apply_mcp_inject(
-                inject_cfg, instance_name, data_dir, proxy_url,
-                token=new_token, mcp_cfg=mcp_cfg,
-                project_dir=(ROOT / cwd).resolve(),
+            proxy = McpIdentityProxy(
+                upstream_base=upstream_base,
+                upstream_path=proxy_path,
+                agent_name=assigned_name,
+                instance_token=assigned_token,
             )
-        except Exception:
-            pass
+            if proxy.start() is False:
+                print("  Failed to start MCP proxy.")
+                sys.exit(1)
+            proxy_url = f"{proxy.url}{proxy_path}"
 
-    def set_runtime_identity(new_name: str | None = None, new_token: str | None = None):
-        with _identity_lock:
-            old_name = _identity["name"]
-            old_token = _identity["token"]
-            changed = False
-            if new_name and new_name != old_name:
-                _identity["name"] = new_name
-                _identity["queue"] = data_dir / f"{new_name}_queue.jsonl"
-                changed = True
-            if new_token and new_token != old_token:
-                _identity["token"] = new_token
-                changed = True
-            current_name = _identity["name"]
-            current_token = _identity["token"]
+        _identity_lock = threading.Lock()
+        _identity = {
+            "name": assigned_name,
+            "queue": data_dir / f"{assigned_name}_queue.jsonl",
+            "token": assigned_token,
+        }
 
-        if changed and proxy is not None:
-            proxy.agent_name = current_name
-            proxy.token = current_token
-        if changed:
-            if new_name and new_name != old_name:
-                print(f"  Identity updated: {old_name} -> {new_name}")
-            if new_token and new_token != old_token:
-                print(f"  Session refreshed for @{current_name}")
-            _rewrite_mcp_config(current_name, current_token)
+        def get_identity():
+            with _identity_lock:
+                return _identity["name"], _identity["queue"]
 
-        return changed
+        def get_token():
+            with _identity_lock:
+                return _identity["token"]
 
-    queue_file = _identity["queue"]
-    if queue_file.exists():
-        queue_file.write_text("", "utf-8")
-
-    strip_vars = {"CLAUDECODE"} | set(agent_cfg.get("strip_env", []))
-    env = {k: v for k, v in os.environ.items() if k not in strip_vars}
-
-    resolved = shutil.which(command)
-    if not resolved:
-        print(f"  Error: '{command}' not found on PATH.")
-        print("  Install it first, then try again.")
-        sys.exit(1)
-    command = resolved
-
-    project_dir = (ROOT / cwd).resolve()
-
-    # Gemini: ensure the project directory is trusted so MCPs are allowed.
-    # Gemini blocks ALL MCPs for untrusted folders — even system-settings ones.
-    if agent == "gemini" or inject_cfg.get("mcp_inject") == "env":
-        _ensure_gemini_folder_trusted(project_dir)
-
-    launch_args, env, inject_env, mcp_settings_path = _build_provider_launch(
-        agent=agent,
-        agent_cfg=agent_cfg,
-        instance_name=assigned_name,
-        data_dir=data_dir,
-        proxy_url=proxy_url,
-        extra_args=extra,
-        env=env,
-        token=assigned_token,
-        mcp_cfg=mcp_cfg,
-        project_dir=project_dir,
-    )
-
-    print(f"  === {assigned_name.capitalize()} Chat Wrapper ===")
-    if not needs_proxy:
-        print(f"  MCP: direct connect ({inject_mode}) with bearer auth")
-        if mcp_settings_path:
-            print(f"  Config: {mcp_settings_path}")
-    elif proxy_url:
-        print(f"  Local MCP proxy: {proxy_url}")
-    print(f"  @{assigned_name} mentions auto-inject MCP reads")
-    print(f"  Starting {command} in {cwd}...\n")
-
-    def _heartbeat():
-        while True:
-            current_name, _ = get_identity()
-            current_token = get_token()
-            url = f"http://127.0.0.1:{server_port}/api/heartbeat/{current_name}"
+        # Rewrite MCP config when token/name changes (e.g. after 409 re-register).
+        # Most CLIs won't re-read mid-session, but the file is correct for next restart.
+        def _rewrite_mcp_config(instance_name: str, new_token: str):
+            if not inject_mode or needs_proxy:
+                return  # proxy-based agents don't have config files to rewrite
             try:
-                req = urllib.request.Request(
-                    url,
-                    method="POST",
-                    data=b"",
-                    headers=_auth_headers(current_token),
+                _apply_mcp_inject(
+                    inject_cfg, instance_name, data_dir, proxy_url,
+                    token=new_token, mcp_cfg=mcp_cfg,
+                    project_dir=(ROOT / cwd).resolve(),
                 )
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    resp_data = json.loads(resp.read())
-                server_name = resp_data.get("name", current_name)
-                if server_name != current_name:
-                    set_runtime_identity(server_name)
-            except urllib.error.HTTPError as exc:
-                if exc.code == 409:
-                    try:
-                        replacement = _register_instance(server_port, agent, args.label)
-                        set_runtime_identity(replacement["name"], replacement["token"])
-                        _notify_recovery(data_dir, replacement["name"])
-                    except Exception:
-                        pass
-                time.sleep(5)
-                continue
-            except Exception:
-                time.sleep(5)
-                continue
-
-            time.sleep(5)
-
-    threading.Thread(target=_heartbeat, daemon=True).start()
-
-    _watcher_inject_fn = None
-    _watcher_thread = None
-    _is_multi_instance = registration.get("slot", 1) > 1
-    _trigger_flag = [False]  # shared: queue watcher sets True, activity checker reads
-    _refresh_interval = 10  # default; overridden per-trigger by server settings
-
-    def start_watcher(inject_fn):
-        nonlocal _watcher_inject_fn, _watcher_thread
-        _watcher_inject_fn = inject_fn
-        _watcher_thread = threading.Thread(
-            target=_queue_watcher,
-            args=(get_identity, inject_fn),
-            kwargs={"is_multi_instance": _is_multi_instance, "trigger_flag": _trigger_flag,
-                    "server_port": server_port, "agent_name": assigned_name,
-                    "get_token_fn": get_token, "refresh_interval": _refresh_interval},
-            daemon=True,
-        )
-        _watcher_thread.start()
-
-    def _watcher_monitor():
-        nonlocal _watcher_thread
-        while True:
-            time.sleep(5)
-            if _watcher_thread and not _watcher_thread.is_alive() and _watcher_inject_fn:
-                _watcher_thread = threading.Thread(
-                    target=_queue_watcher,
-                    args=(get_identity, _watcher_inject_fn),
-                    kwargs={"is_multi_instance": _is_multi_instance, "trigger_flag": _trigger_flag,
-                            "server_port": server_port, "agent_name": assigned_name,
-                            "get_token_fn": get_token, "refresh_interval": _refresh_interval},
-                    daemon=True,
-                )
-                _watcher_thread.start()
-                current_name, _ = get_identity()
-                _notify_recovery(data_dir, current_name)
-
-    threading.Thread(target=_watcher_monitor, daemon=True).start()
-
-    _activity_checker = None
-
-    def _set_activity_checker(checker):
-        nonlocal _activity_checker
-        _activity_checker = checker
-
-    def _activity_monitor():
-        last_active = None
-        last_report_time = 0
-        REPORT_INTERVAL = 3  # re-send state every 3s while active (keeps server lease fresh)
-        while True:
-            time.sleep(1)
-            if not _activity_checker:
-                continue
-            try:
-                active = _activity_checker()
-                now = time.time()
-                # Send on state change, periodically while active (refresh lease),
-                # or periodically while idle (keep presence alive)
-                IDLE_REPORT_INTERVAL = 8  # keep-alive while idle
-                should_send = (
-                    active != last_active
-                    or (active and now - last_report_time >= REPORT_INTERVAL)
-                    or (not active and now - last_report_time >= IDLE_REPORT_INTERVAL)
-                )
-                if should_send:
-                    current_name, _ = get_identity()
-                    current_token = get_token()
-                    url = f"http://127.0.0.1:{server_port}/api/heartbeat/{current_name}"
-                    body = json.dumps({"active": active}).encode()
-                    req = urllib.request.Request(
-                        url,
-                        method="POST",
-                        data=body,
-                        headers=_auth_headers(current_token, include_json=True),
-                    )
-                    resp = urllib.request.urlopen(req, timeout=5)
-                    resp_code = resp.getcode()
-                    last_active = active
-                    last_report_time = now
             except Exception:
                 pass
 
-    threading.Thread(target=_activity_monitor, daemon=True).start()
+        def set_runtime_identity(new_name: str | None = None, new_token: str | None = None):
+            with _identity_lock:
+                old_name = _identity["name"]
+                old_token = _identity["token"]
+                changed = False
+                if new_name and new_name != old_name:
+                    _identity["name"] = new_name
+                    _identity["queue"] = data_dir / f"{new_name}_queue.jsonl"
+                    changed = True
+                if new_token and new_token != old_token:
+                    _identity["token"] = new_token
+                    changed = True
+                current_name = _identity["name"]
+                current_token = _identity["token"]
 
-    _agent_pid = [None]
+            if changed and proxy is not None:
+                proxy.agent_name = current_name
+                proxy.token = current_token
+            if changed:
+                if new_name and new_name != old_name:
+                    print(f"  Identity updated: {old_name} -> {new_name}")
+                if new_token and new_token != old_token:
+                    print(f"  Session refreshed for @{current_name}")
+                _rewrite_mcp_config(current_name, current_token)
 
-    if sys.platform == "win32":
-        from wrapper_windows import get_activity_checker, run_agent
+            return changed
 
-        _set_activity_checker(get_activity_checker(_agent_pid, agent_name=assigned_name, trigger_flag=_trigger_flag))
-    else:
-        from wrapper_unix import get_activity_checker, run_agent
+        queue_file = _identity["queue"]
+        if queue_file.exists():
+            queue_file.write_text("", "utf-8")
 
-        unix_session_name = f"agentchattr-{assigned_name}"
-        _set_activity_checker(get_activity_checker(
-            unix_session_name, trigger_flag=_trigger_flag,
-            provider=_provider_from_command(command),
-        ))
+        strip_vars = {"CLAUDECODE"} | set(agent_cfg.get("strip_env", []))
+        env = {k: v for k, v in os.environ.items() if k not in strip_vars}
 
-    run_kwargs = dict(
-        command=command,
-        extra_args=launch_args,
-        cwd=cwd,
-        env=env,
-        queue_file=queue_file,
-        agent=agent,
-        no_restart=args.no_restart,
-        start_watcher=start_watcher,
-        strip_env=list(strip_vars),
-        pid_holder=_agent_pid,
-        inject_env=inject_env,
-        inject_delay=agent_cfg.get("inject_delay", 0.3),
-    )
-    # Windows-only injection tuning (no-op on other platforms).
-    if sys.platform == "win32":
-        run_kwargs["enter_backend"] = agent_cfg.get("enter_backend", "console_input")
-    if sys.platform != "win32":
-        run_kwargs["session_name"] = unix_session_name
+        resolved = shutil.which(command)
+        if not resolved:
+            print(f"  Error: '{command}' not found on PATH.")
+            print("  Install it first, then try again.")
+            sys.exit(1)
+        command = resolved
 
-    try:
-        run_agent(**run_kwargs)
+        project_dir = (ROOT / cwd).resolve()
+        from cli_seats import config_resource
+        resource = config_resource(agent_cfg, project_dir)
+        if resource:
+            from launcher import startup_lock
+            target = Path(resource)
+            resources.enter_context(startup_lock(target.with_name(target.name + '.agentchattr.lock'), time.monotonic() + 0.2))
+
+        # Gemini: ensure the project directory is trusted so MCPs are allowed.
+        # Gemini blocks ALL MCPs for untrusted folders — even system-settings ones.
+        if agent == "gemini" or inject_cfg.get("mcp_inject") == "env":
+            _ensure_gemini_folder_trusted(project_dir)
+
+        launch_args, env, inject_env, mcp_settings_path = _build_provider_launch(
+            agent=agent,
+            agent_cfg=agent_cfg,
+            instance_name=assigned_name,
+            data_dir=data_dir,
+            proxy_url=proxy_url,
+            extra_args=extra,
+            env=env,
+            token=assigned_token,
+            mcp_cfg=mcp_cfg,
+            project_dir=project_dir,
+        )
+
+        print(f"  === {assigned_name.capitalize()} Chat Wrapper ===")
+        if not needs_proxy:
+            print(f"  MCP: direct connect ({inject_mode}) with bearer auth")
+            if mcp_settings_path:
+                print(f"  Config: {mcp_settings_path}")
+        elif proxy_url:
+            print(f"  Local MCP proxy: {proxy_url}")
+        print(f"  @{assigned_name} mentions auto-inject MCP reads")
+        print(f"  Starting {command} in {cwd}...\n")
+
+        def _heartbeat():
+            while True:
+                current_name, _ = get_identity()
+                current_token = get_token()
+                url = f"http://127.0.0.1:{server_port}/api/heartbeat/{current_name}"
+                try:
+                    req = urllib.request.Request(
+                        url,
+                        method="POST",
+                        data=b"",
+                        headers=_auth_headers(current_token),
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as resp:
+                        resp_data = json.loads(resp.read())
+                    server_name = resp_data.get("name", current_name)
+                    if server_name != current_name:
+                        set_runtime_identity(server_name)
+                except urllib.error.HTTPError as exc:
+                    if exc.code == 409:
+                        try:
+                            replacement = _register_instance(server_port, agent, args.label)
+                            set_runtime_identity(replacement["name"], replacement["token"])
+                            _notify_recovery(data_dir, replacement["name"])
+                        except Exception:
+                            pass
+                    time.sleep(5)
+                    continue
+                except Exception:
+                    time.sleep(5)
+                    continue
+
+                time.sleep(5)
+
+        threading.Thread(target=_heartbeat, daemon=True).start()
+
+        _watcher_inject_fn = None
+        _watcher_thread = None
+        _is_multi_instance = registration.get("slot", 1) > 1
+        _trigger_flag = [False]  # shared: queue watcher sets True, activity checker reads
+        _refresh_interval = 10  # default; overridden per-trigger by server settings
+
+        def start_watcher(inject_fn):
+            nonlocal _watcher_inject_fn, _watcher_thread
+            _watcher_inject_fn = inject_fn
+            _watcher_thread = threading.Thread(
+                target=_queue_watcher,
+                args=(get_identity, inject_fn),
+                kwargs={"is_multi_instance": _is_multi_instance, "trigger_flag": _trigger_flag,
+                        "server_port": server_port, "agent_name": assigned_name,
+                        "get_token_fn": get_token, "refresh_interval": _refresh_interval},
+                daemon=True,
+            )
+            _watcher_thread.start()
+
+        def _watcher_monitor():
+            nonlocal _watcher_thread
+            while True:
+                time.sleep(5)
+                if _watcher_thread and not _watcher_thread.is_alive() and _watcher_inject_fn:
+                    _watcher_thread = threading.Thread(
+                        target=_queue_watcher,
+                        args=(get_identity, _watcher_inject_fn),
+                        kwargs={"is_multi_instance": _is_multi_instance, "trigger_flag": _trigger_flag,
+                                "server_port": server_port, "agent_name": assigned_name,
+                                "get_token_fn": get_token, "refresh_interval": _refresh_interval},
+                        daemon=True,
+                    )
+                    _watcher_thread.start()
+                    current_name, _ = get_identity()
+                    _notify_recovery(data_dir, current_name)
+
+        threading.Thread(target=_watcher_monitor, daemon=True).start()
+
+        _activity_checker = None
+
+        def _set_activity_checker(checker):
+            nonlocal _activity_checker
+            _activity_checker = checker
+
+        def _activity_monitor():
+            last_active = None
+            last_report_time = 0
+            REPORT_INTERVAL = 3  # re-send state every 3s while active (keeps server lease fresh)
+            while True:
+                time.sleep(1)
+                if not _activity_checker:
+                    continue
+                try:
+                    active = _activity_checker()
+                    now = time.time()
+                    # Send on state change, periodically while active (refresh lease),
+                    # or periodically while idle (keep presence alive)
+                    IDLE_REPORT_INTERVAL = 8  # keep-alive while idle
+                    should_send = (
+                        active != last_active
+                        or (active and now - last_report_time >= REPORT_INTERVAL)
+                        or (not active and now - last_report_time >= IDLE_REPORT_INTERVAL)
+                    )
+                    if should_send:
+                        current_name, _ = get_identity()
+                        current_token = get_token()
+                        url = f"http://127.0.0.1:{server_port}/api/heartbeat/{current_name}"
+                        body = json.dumps({"active": active}).encode()
+                        req = urllib.request.Request(
+                            url,
+                            method="POST",
+                            data=body,
+                            headers=_auth_headers(current_token, include_json=True),
+                        )
+                        resp = urllib.request.urlopen(req, timeout=5)
+                        resp_code = resp.getcode()
+                        last_active = active
+                        last_report_time = now
+                except Exception:
+                    pass
+
+        threading.Thread(target=_activity_monitor, daemon=True).start()
+
+        _agent_pid = [None]
+
+        if sys.platform == "win32":
+            from wrapper_windows import get_activity_checker, run_agent
+
+            _set_activity_checker(get_activity_checker(_agent_pid, agent_name=assigned_name, trigger_flag=_trigger_flag))
+        else:
+            from wrapper_unix import get_activity_checker, run_agent
+
+            unix_session_name = f"agentchattr-{assigned_name}"
+            _set_activity_checker(get_activity_checker(
+                unix_session_name, trigger_flag=_trigger_flag,
+                provider=_provider_from_command(command),
+            ))
+
+        run_kwargs = dict(
+            command=command,
+            extra_args=launch_args,
+            cwd=str(project_dir),
+            env=env,
+            queue_file=queue_file,
+            agent=agent,
+            no_restart=args.no_restart,
+            start_watcher=start_watcher,
+            strip_env=list(strip_vars),
+            pid_holder=_agent_pid,
+            inject_env=inject_env,
+            inject_delay=agent_cfg.get("inject_delay", 0.3),
+        )
+        # Windows-only injection tuning (no-op on other platforms).
+        if sys.platform == "win32":
+            run_kwargs["enter_backend"] = agent_cfg.get("enter_backend", "console_input")
+        if sys.platform != "win32":
+            run_kwargs["session_name"] = unix_session_name
+
+        code = run_agent(**run_kwargs)
+        return code if isinstance(code, int) else 1
     finally:
         try:
-            current_name, _ = get_identity()
-            current_token = get_token()
+            current_name = registration['name']
+            current_token = registration['token']
+            if 'get_identity' in locals():
+                current_name, _ = get_identity()
+                current_token = get_token()
             dereg_req = urllib.request.Request(
                 f"http://127.0.0.1:{server_port}/api/deregister/{current_name}",
-                method="POST",
-                data=b"",
-                headers=_auth_headers(current_token),
-            )
-            urllib.request.urlopen(dereg_req, timeout=5)
-            print(f"  Deregistered {current_name}")
+                method="POST", data=b"", headers=_auth_headers(current_token))
+            with urllib.request.urlopen(dereg_req, timeout=5):
+                pass
         except Exception:
             pass
-
-        if proxy is not None:
-            proxy.stop()
+        try:
+            if proxy is not None:
+                proxy.stop()
+        finally:
+            resources.close()
 
     print("  Wrapper stopped.")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

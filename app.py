@@ -411,7 +411,8 @@ def configure(cfg: dict, session_token: str = ""):
     global api_seat_store, api_seat_manager
     if api_seat_manager is not None:
         api_seat_manager.shutdown()
-    api_seat_store = SeatStore(Path(data_dir).resolve(), provider_templates(cfg))
+    from cli_seats import cli_templates
+    api_seat_store = SeatStore(Path(data_dir).resolve(), {**provider_templates(cfg), **cli_templates(cfg)})
     api_seat_manager = SeatManager(Path(__file__).parent, cfg, api_seat_store, registry)
 
     # Router starts with base agent names (backward compat for direct MCP users),

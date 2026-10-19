@@ -14,15 +14,16 @@
 <p>These checks only find executables. They do not start agents, install software, sign in, or send model requests.</p>
 <p>Authentication and connection remain unknown until checked. Finding a command does not mean an agent is ready.</p>
 <div id="agents" class="agent-grid"></div></section>
-<section aria-labelledby="api-seats-title"><h2 id="api-seats-title">API seats</h2>
-<p>Save provider and model choices, then launch the chat adapters. Launch does not call a model. Sending a chat message to a seat can consume provider usage.</p>
-<p>Provider templates come from your configured API agents. Manual model IDs are unverified. Saved edits apply on the next launch; a running seat requires an explicit restart.</p>
+<section aria-labelledby="api-seats-title"><h2 id="api-seats-title">Your agent team</h2>
+<p>Save a team of API and interactive CLI seats. API launch starts a chat adapter; CLI launch opens the configured client in a Windows console or an owned tmux session. Sending instructions can consume provider usage.</p>
+<p>Templates come from configured agents. CLI model and reasoning controls require an explicit argument contract. Manual model IDs are unverified. Saved edits apply on the next launch; a running seat requires an explicit restart.</p>
+<p>CLI Launch writes MCP identity settings and keeps backups of intentional file edits. Native logins are reused. A client with a fixed shared settings file can run one owned seat at a time; conflicting seats require an isolated client profile.</p>
 <p id="api-seat-status" role="status"></p>
 <div class="actions"><label>Saved package <select id="api-package-select"><option value="">New package</option></select></label><button id="api-package-new" type="button">New package</button></div>
 <form id="api-package-form">
 <div class="seat-fields"><label>Package ID <input id="api-package-id" required pattern="[a-z][a-z0-9-]{0,47}" maxlength="48" placeholder="daily-team"></label><label>Package name <input id="api-package-name" required maxlength="100" placeholder="Daily team"></label></div>
 <div id="api-seat-editors"></div>
-<div class="actions"><button id="api-seat-add" type="button">Add API seat</button><button type="submit">Save package</button></div>
+<div class="actions"><button id="api-seat-add" type="button">Add agent seat</button><button type="submit">Save package</button></div>
 </form>
 <div id="api-seat-runtime" class="agent-grid"></div>
 </section>

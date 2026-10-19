@@ -18,7 +18,7 @@ Run `windows/start.bat` on Windows or `sh macos-linux/start.sh` on Linux/Omarchy
 
 **1. Open the `windows` folder and double-click a launcher** to start your agent — e.g. `start_claude.bat`, `start_codex.bat`, `start_gemini.bat`, etc.
 
-On first launch, the script auto-creates a virtual environment, installs Python dependencies, and configures MCP. Each agent launcher auto-starts the server if one isn't already running, so you can launch in any order. Run multiple launchers for multiple agents — they share the same server.
+Run `windows/start.bat --setup` once to prepare the Windows environment. Named launchers then start or reuse the matching server through bounded app-specific health checks and configure MCP on launch. Clients with fixed settings files permit one owned seat per path; other profiles can run multiple isolated seats.
 
 <details>
 <summary>All agent launchers (click to expand)</summary>
@@ -50,6 +50,8 @@ On first launch, the script auto-creates a virtual environment, installs Python 
 
 > **Tip:** To manually prompt an agent to check chat, type `mcp read #general` in their terminal.
 
+Saved packages can mix API and interactive CLI seats. See [CLI seat setup and launch behavior](CLI-SEATS.md) and [API seat controls](API-SEATS.md).
+
 ## Quickstart (Mac / Linux)
 
 **1. Make sure tmux is installed:**
@@ -63,7 +65,7 @@ brew install tmux    # macOS
 
 Open a terminal in the `macos-linux` folder (right-click → "Open Terminal Here", or `cd` into it) and run a launcher — e.g. `sh start_claude.sh`, `sh start_codex.sh`, `sh start_gemini.sh`, etc.
 
-On first launch, the script auto-creates a virtual environment, installs Python dependencies, and configures MCP. Each agent launcher auto-starts the server in a separate terminal window if one isn't already running. The agent opens inside a **tmux** session. Detach with `Ctrl+B, D` — the agent keeps running in the background. Reattach with `tmux attach -t agentchattr-claude`.
+Run the shared bootstrap with `--setup` once to prepare the platform environment. Named agent launchers then start or reuse the matching server through bounded app-specific health checks and configure MCP only on launch. The agent opens inside a **tmux** session. Detach with `Ctrl+B, D` — the agent keeps running in the background. Reattach with `tmux attach -t agentchattr-claude`.
 
 <details>
 <summary>All agent launchers (click to expand)</summary>
@@ -598,7 +600,7 @@ Available models: `MiniMax-M3` (default), `MiniMax-M2.7`, `MiniMax-M2.7-highspee
 - **Windows**: no extra dependencies
 - **Mac/Linux**: `tmux` (for auto-trigger — `brew install tmux` or `apt install tmux`)
 
-Python package dependencies (`fastapi`, `uvicorn`, `mcp`) are listed in `requirements.txt`. The quickstart scripts automatically create a virtual environment and install these on first launch — no manual `pip install` needed.
+Python package dependencies (`fastapi`, `uvicorn`, `mcp`) are listed in `requirements.txt`. Run the shared bootstrap with `--setup` to create the platform environment and install these dependencies. Normal launches do not install packages.
 
 ## Platform notes
 

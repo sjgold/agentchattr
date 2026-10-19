@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -38,6 +39,24 @@ class SeatManager:
 
     def _effective(self, seat):
         original = self.store.providers[seat['provider']]
+        if seat['adapter'] == 'cli':
+            from cli_seats import config_resource, validate_cli_seat
+            validate_cli_seat(seat, original)
+            client = {k: deepcopy(v) for k, v in original.items() if k in
+                      ('command', 'cwd', 'cli_args', 'cli_model_args', 'cli_reasoning_args',
+                       'cli_version_args', 'reasoning_efforts', 'strip_env', 'inject_delay', 'enter_backend')
+                      or k.startswith('mcp_')}
+            client['cwd'] = str((self.root / client.get('cwd', '.')).resolve())
+            if not Path(client['cwd']).is_dir():
+                raise SeatError('The configured CLI working directory does not exist.')
+            client['command'] = shutil.which(client['command']) or client['command']
+            server = deepcopy(self.config.get('server', {}))
+            server['data_dir'] = str(self.store.path.parent.resolve())
+            if server.get('host', '127.0.0.1') not in ('127.0.0.1', 'localhost'):
+                raise SeatError('Managed CLI seats require an IPv4 loopback server.')
+            return {'seat': seat, 'provider': client, 'server': server,
+                    'mcp': deepcopy(self.config.get('mcp', {})),
+                    'config_resource': config_resource(client, client['cwd'])}
         provider = {k: deepcopy(original[k]) for k in ('base_url', 'reasoning_efforts', 'temperature',
                     'api_key_env', 'system_prompt', 'context_messages') if k in original}
         server = deepcopy(self.config.get('server', {}))
@@ -75,6 +94,12 @@ class SeatManager:
                         return current
                     raise SeatError('This seat is already running with changed or failed settings; choose explicit restart.')
                 self._release(previous)
+            resource = effective.get('config_resource')
+            if resource:
+                for other in self.attempts.values():
+                    if (not other.get('released') and other.get('process') and other['process'].poll() is None
+                            and other['effective'].get('config_resource') == resource):
+                        raise SeatError('This client uses a shared settings file already owned by another seat. Stop it first or configure an isolated client profile.')
             attempt_id = uuid.uuid4().hex
             directory = self.store.path.parent / 'api_seat_runtime' / attempt_id
             attempt = {'id': attempt_id, 'fingerprint': fingerprint, 'process': None,
@@ -87,29 +112,37 @@ class SeatManager:
             if seat['secret_ref'] and not os.environ.get(seat['secret_ref']):
                 attempt.update(state='action_required', error='Required credential is unavailable in the server environment. Set its reference and restart the server.')
                 return self._view(attempt)
-            base = 'api-' + hashlib.sha256(key.encode()).hexdigest()[:8] + '-' + attempt_id[:12]
-            self.registry.seed({base: {'type': 'api', 'label': seat['name'], 'color': '#60a5fa'}})
+            cli = seat['adapter'] == 'cli'
+            if cli and not shutil.which(effective['provider']['command']):
+                attempt.update(state='action_required', error='CLI executable not found. Install or configure it, then retry.',
+                               executable=None, startup_checked=False)
+                return self._view(attempt)
+            base = ('cli-' if cli else 'api-') + hashlib.sha256(key.encode()).hexdigest()[:8] + '-' + attempt_id[:12]
+            self.registry.seed({base: {'type': 'cli' if cli else 'api', 'label': seat['name'], 'color': '#60a5fa'}})
             attempt['base'] = base
             snapshot = {**effective, 'attempt': attempt_id, 'base': base}
             try:
                 atomic_json(attempt['snapshot'], snapshot)
                 # No secret values in arguments, snapshot or managed diagnostics.
-                command = [sys.executable, '-u', str(self.root / 'wrapper_api.py'), base,
+                command = [sys.executable, '-u', str(self.root / ('cli_worker.py' if cli else 'wrapper_api.py')), base,
                            '--seat-file', str(attempt['snapshot'])]
                 options = {'cwd': str(self.root), 'stdin': subprocess.DEVNULL,
                            'stdout': subprocess.DEVNULL, 'stderr': subprocess.DEVNULL,
                            'close_fds': True}
                 if sys.platform == 'win32':
-                    options['creationflags'] = subprocess.CREATE_NO_WINDOW
+                    options['creationflags'] = subprocess.CREATE_NEW_CONSOLE if cli else subprocess.CREATE_NO_WINDOW
+                    if cli:
+                        for field in ('stdin', 'stdout', 'stderr'):
+                            options.pop(field)
                 else:
                     options['start_new_session'] = True
                 attempt['process'] = subprocess.Popen(command, **options)
             except OSError:
-                attempt.update(state='failed', error='Could not start this API wrapper. Check the application Python environment and retry.')
+                attempt.update(state='failed', error='Could not start this owned wrapper. Check the application Python environment and retry.')
             return self._view(attempt)
 
     def _view(self, attempt):
-        return {'attempt': attempt['id'], 'state': attempt['state'], 'error': attempt['error'],
+        result = {'attempt': attempt['id'], 'state': attempt['state'], 'error': attempt['error'],
                 'name': attempt['name'], 'requested_model': attempt['seat']['model'],
                 'confirmed_model': attempt['confirmed_model'], 'authentication': attempt['authentication'],
                 'adapter_connected': attempt['adapter_connected'],
@@ -117,6 +150,13 @@ class SeatManager:
                 'provider_verified': attempt['authentication'] == 'verified',
                 'last_adapter_check': attempt['last_receipt_at'],
                 'startup_deadline_seconds': self.timeout}
+        if attempt['seat']['adapter'] == 'cli':
+            result.update(adapter='cli', executable=attempt.get('executable', attempt['effective']['provider']['command']),
+                          startup_checked=attempt.get('startup_checked', False), version=attempt.get('version'),
+                          child_exit_code=attempt.get('child_exit_code'),
+                          ready_capability='mention_injection' if attempt['state'] == 'ready' else None,
+                          provider_verified=False)
+        return result
 
     def _inspect(self, key):
         attempt = self.attempts[key]
@@ -124,8 +164,22 @@ class SeatManager:
         if process is None or attempt.get('released') or attempt['state'] == 'stopped':
             return self._view(attempt)
         if process.poll() is not None:
+            if attempt['seat']['adapter'] == 'cli':
+                attempt['child_exit_code'] = process.returncode
+                try:
+                    final = json.loads(attempt['receipt'].read_text('utf-8'))
+                    if (final.get('attempt') == attempt['id'] and
+                            final.get('state') in ('stopped', 'failed', 'action_required')):
+                        for field in ('state', 'error', 'child_exit_code', 'startup_checked', 'version'):
+                            if field in final:
+                                attempt[field] = final[field]
+                        attempt['adapter_connected'] = False
+                        self._release(attempt)
+                        return self._view(attempt)
+                except (OSError, ValueError, AttributeError):
+                    pass
             self._release(attempt)
-            attempt.update(state='failed', adapter_connected=False, error='API wrapper exited. Retry this seat; other seats were not stopped.')
+            attempt.update(state='failed', adapter_connected=False, error=f'Owned wrapper exited (code {process.returncode}). Retry this seat; other seats were not stopped.')
             return self._view(attempt)
         receipt = None
         try:
@@ -144,6 +198,10 @@ class SeatManager:
             for field in ('state', 'name', 'error', 'authentication', 'adapter_connected', 'confirmed_model'):
                 if field in receipt:
                     attempt[field] = receipt[field]
+            if attempt['seat']['adapter'] == 'cli':
+                for field in ('startup_checked', 'version', 'child_exit_code'):
+                    if field in receipt:
+                        attempt[field] = receipt[field]
             if receipt['updated_at'] > time.time() + 5 or time.time() - receipt['updated_at'] > self.timeout:
                 self._release(attempt)
                 attempt.update(state='failed', adapter_connected=False, error='Adapter heartbeat deadline reached. Retry this seat.')

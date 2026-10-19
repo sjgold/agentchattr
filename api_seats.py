@@ -59,11 +59,14 @@ def validate_seat(seat, providers):
     identifier(seat['id'])
     if not isinstance(seat['name'], str) or not 1 <= len(seat['name'].strip()) <= 100:
         raise SeatError('Seat name must contain 1–100 characters.')
-    if seat['adapter'] != 'openai-compatible' or seat['launch_profile'] != 'standard':
-        raise SeatError('Only the openai-compatible adapter and standard launch profile are supported.')
+    if seat['adapter'] not in ('openai-compatible', 'cli') or seat['launch_profile'] != 'standard':
+        raise SeatError('Select an API or CLI adapter with the standard launch profile.')
     if not isinstance(seat['provider'], str) or seat['provider'] not in providers:
         raise SeatError('Select a configured API provider template.')
     provider = providers[seat['provider']]
+    if seat['adapter'] == 'cli':
+        from cli_seats import validate_cli_seat
+        return validate_cli_seat(seat, provider)
     validate_provider(provider)
     model = seat['model']
     if model is not None and (not isinstance(model, str) or not model.strip() or len(model) > 256
@@ -163,6 +166,18 @@ class SeatStore:
         result = []
         for name, cfg in self.providers.items():
             try:
+                if cfg.get('type') != 'api' and cfg.get('command'):
+                    from cli_seats import validate_cli_seat
+                    validate_cli_seat({'model': None, 'reasoning': None, 'launch_profile': 'standard', 'secret_ref': ''}, cfg)
+                    result.append({'id': name, 'name': cfg.get('label', name), 'adapter': 'cli',
+                                   'default_model': None, 'models': [m for m in cfg.get('models', []) if isinstance(m, str)] if isinstance(cfg.get('models', []), list) else [],
+                                   'reasoning_efforts': cfg.get('reasoning_efforts', []) if cfg.get('cli_reasoning_args') else [],
+                                   'supports_model': bool(cfg.get('cli_model_args')), 'secret_ref': '',
+                                   'configuration_effects': ('Launch merges MCP identity into ' + str(cfg.get('mcp_settings_path')) +
+                                       ' and creates a backup. Only one seat may own this fixed settings path.'
+                                       if cfg.get('mcp_inject') == 'settings_file' else
+                                       'Launch writes a private MCP identity configuration for this seat. Native login is reused; no authentication home is copied.')})
+                    continue
                 validate_provider(cfg)
                 models = cfg.get('models', [])
                 result.append({'id': name, 'name': cfg.get('label', name), 'adapter': 'openai-compatible',

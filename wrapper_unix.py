@@ -197,6 +197,8 @@ def run_agent(
     session_name=None,
     inject_env=None,
     inject_delay: float = 0.3,
+    stop_event=None,
+    managed=False,
 ):
     """Run agent inside a tmux session, inject via tmux send-keys."""
     _check_tmux()
@@ -225,56 +227,52 @@ def run_agent(
     from pathlib import Path
     abs_cwd = str(Path(cwd).resolve())
 
-    # Wire up injection with the tmux session name
-    inject_fn = lambda text: inject(text, tmux_session=session_name, delay=inject_delay)
-    start_watcher(inject_fn)
-
-    print(f"  Using tmux session: {session_name}")
-    print(f"  Detach: Ctrl+B, D  (agent keeps running)")
-    print(f"  Reattach: tmux attach -t {session_name}\n")
-
+    # Never adopt or destroy an existing session whose ownership is unknown.
+    if _session_exists(session_name):
+        print("  Session already exists; preserved. Choose another seat or stop its owner first.")
+        return 73
+    from pathlib import Path
+    import uuid
+    receipt_dir = Path(queue_file).parent / 'client-exits'
+    receipt_dir.mkdir(parents=True, exist_ok=True)
     while True:
+        receipt = receipt_dir / (uuid.uuid4().hex + '.txt')
+        command_with_status = (agent_cmd + '; code=$?; printf "%s" "$code" > '
+                               + shlex.quote(str(receipt)) + '; exit "$code"')
+        owned = False
         try:
-            # Clean up stale session from a previous crash
-            subprocess.run(
-                ["tmux", "kill-session", "-t", session_name],
-                capture_output=True,
-            )
-
-            # Create tmux session running the agent CLI
             result = subprocess.run(
                 ["tmux", "new-session", "-d", "-s", session_name,
-                 "-c", abs_cwd, agent_cmd],
-                env=env,
+                 "-c", abs_cwd, command_with_status], env=env, timeout=15,
             )
             if result.returncode != 0:
-                print(f"  Error: failed to create tmux session (exit {result.returncode})")
-                break
-
-            # Attach — blocks until agent exits or user detaches (Ctrl+B, D)
-            subprocess.run(["tmux", "attach-session", "-t", session_name])
-
-            # Check: did the agent exit, or did the user just detach?
-            if _session_exists(session_name):
-                # Session still alive — user detached, agent running in background.
-                # Keep the wrapper alive so the local proxy and heartbeats survive.
-                print(f"\n  Detached. {agent.capitalize()} still running in tmux.")
+                return result.returncode
+            owned = True
+            start_watcher(lambda text: inject(text, tmux_session=session_name, delay=inject_delay))
+            detached = False
+            if not managed:
+                print(f"  Using tmux session: {session_name}")
                 print(f"  Reattach: tmux attach -t {session_name}")
-                while _session_exists(session_name):
+                subprocess.run(["tmux", "attach-session", "-t", session_name])
+                detached = _session_exists(session_name)
+            while _session_exists(session_name):
+                if stop_event is not None and stop_event.wait(0.1):
+                    subprocess.run(["tmux", "kill-session", "-t", session_name], capture_output=True, timeout=5)
+                    return 130
+                if stop_event is None:
                     time.sleep(1)
-                break
-
-            # Session gone — agent exited
-            if no_restart:
-                break
-
-            print(f"\n  {agent.capitalize()} exited.")
-            print(f"  Restarting in 3s... (Ctrl+C to quit)")
+            owned = False
+            try:
+                code = int(receipt.read_text(encoding='utf-8').strip())
+            except (OSError, ValueError):
+                print("  Child exit receipt unavailable; attach success does not prove child success.")
+                return 1
+            if no_restart or detached:
+                return code
             time.sleep(3)
         except KeyboardInterrupt:
-            # Kill the tmux session on Ctrl+C
-            subprocess.run(
-                ["tmux", "kill-session", "-t", session_name],
-                capture_output=True,
-            )
-            break
+            return 130
+        finally:
+            if owned:
+                subprocess.run(["tmux", "kill-session", "-t", session_name], capture_output=True, timeout=5)
+            receipt.unlink(missing_ok=True)

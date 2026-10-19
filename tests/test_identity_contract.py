@@ -356,7 +356,8 @@ class WrapperUnixLifecycleTests(unittest.TestCase):
     def test_detach_keeps_wrapper_alive_until_tmux_session_ends(self):
         commands = []
         sleep_calls = []
-        has_session_states = iter([0, 0, 1])
+        # New first check refuses pre-existing sessions without killing them.
+        has_session_states = iter([1, 0, 0, 1])
 
         def fake_run(args, **kwargs):
             commands.append(args)
@@ -388,7 +389,7 @@ class WrapperUnixLifecycleTests(unittest.TestCase):
         has_session_checks = [
             args for args in commands if args[:2] == ["tmux", "has-session"]
         ]
-        self.assertEqual(len(has_session_checks), 3)
+        self.assertEqual(len(has_session_checks), 4)
         self.assertEqual(sleep_calls, [1])
 
 
