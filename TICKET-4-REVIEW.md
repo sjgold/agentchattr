@@ -1,6 +1,6 @@
 # Ticket #4 independent review handoff
 
-Status: independent review and substantive batch-delimiter recheck passed with nonblocking notes; human completion sign-off pending. Final receipt: `REVIEW-GEMINI-TICKET-4.md`. Current frozen target: `c7ffb3b18e70c71de76df9d85ef218dca9d5b2d2`; initial reviewed target: `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3`; base `ca50827`. Branch: `codex/ticket-4-cli-seat`. Later documentation-only commits may record review assignment; verify application code equality before executing checks.
+Status: independent review/recheck passed with nonblocking notes; Seth gave final completion sign-off and publication authorization on 2026-10-18. Merged/published on main at `612c9f6`; issue #4 closed. #5 remains unstarted. Final receipt: `REVIEW-GEMINI-TICKET-4.md`. Current frozen target: `c7ffb3b18e70c71de76df9d85ef218dca9d5b2d2`; initial reviewed target: `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3`; base `ca50827`. Branch: `codex/ticket-4-cli-seat`. Later documentation-only commits may record review assignment; verify application code equality before executing checks.
 
 ## Scope and identity
 
