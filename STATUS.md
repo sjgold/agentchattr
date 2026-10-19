@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-18 (ticket #4 frozen and builder-verified; independent Opus review assigned; #3 remains complete)
+**Updated:** 2026-10-18 (ticket #4 frozen and builder-verified; independent Antigravity review assigned at Seth's request; #3 remains complete)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -49,7 +49,7 @@
 - JSON settings/trust writes validate shape before mutation, preserve exact-byte backups and replace atomically. Fixed settings paths have lifetime locks across managed/compatibility launches; unsafe simultaneous seats are rejected. Windows failed child status propagates; Unix uses a separate child-exit receipt and preserves unknown sessions. Shared compatibility launchers use bounded bootstrap and explicit setup. Hermes/OMP aliases require configured supported templates; no native client/YAML integration or compatibility pass is claimed.
 - Full Windows suite: **228 tests, OK, 4 Unix/tmux skips**. New config/Windows exit, CLI schema/runtime, Unix ownership/child-exit and failed-worker regressions were observed failing before fixes. Sonnet ran real fake-CLI integration once successfully after correcting a test assumption about raw mention text; Codex reran with stronger failed-state/auth/model assertions and passed. Actual console keystroke injection, two distinct model/reasoning argv and MCP identities, no cross-delivery, matching reuse, changed-settings rejection, targeted restart/stop with worker acknowledgement and child exit **23** were verified. Existing real-wrapper/fake-API integration also passed. Actual Windows compatibility batch shim preserved **23**. JS syntax and whitespace checks pass.
 - Browser-harness on an isolated fake-client server verified selecting CLI, saving model/reasoning, launch to ready, honest unknown auth/confirmation, targeted stop and no horizontal overflow at 390px. Screenshot `.audit-tmp/ticket4-preflight-390.png` was saved and visually inspected. Test tab/server stopped. No live provider/client calls, native Linux/Omarchy run, credential copies or Desktop changes. Full turn recovery, server-restart adoption and remote cancellation remain later scope.
-- Implementation is frozen at `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3`. Fresh independent reviewer `51fb2ea6-a53f-423b-a3a2-f0ed2791424b` (configured Claude Opus 5 / medium, following the current Traycer guide) received the complete local-checkout/test briefing. Review result and Seth's final sign-off are pending. No #5 work, push, merge or issue closure authorized.
+- Implementation is frozen at `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3`. At Seth's explicit preference, the same Antigravity reviewer used for #3 (`ec1fbcd1-4a02-410e-9029-e498f67918c8`, configured `gemini-3.8-flash`, high) received the complete #4 briefing. The Opus assignment was stopped and archived before delivery; it supplied no review. Review result and Seth's final sign-off are pending. No #5 work, push, merge or issue closure authorized.
 
 ## Latest reviewer additions
 
@@ -72,12 +72,12 @@
 
 - [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1) is closed after Meta source/plan review, documentation corrections and Seth's final sign-off. Ticket #2 passed independent review and received Seth's final sign-off; reviewed branch is fast-forward merged and published on origin/main; GitHub issue #2 is confirmed closed as completed.
 - First milestone: #1-8, #10-12, and #16. Includes visible stalls/retry and full six-seat capacity. Full restart reconciliation (#9) follows; Stop persistence remains mandatory in #10.
-- Reviewer selection requires a different family, available quota and recorded identity. Earlier tickets used the suggested Meta/DeepSeek/Grok/GLM pool. For #4 the current Traycer agent-selection guide explicitly directs implemented-task review to latest Claude Opus on medium reasoning, so Opus 5 was assigned. This current user configuration takes precedence over the earlier suggested pool. No eligible quota means review pending, not self-approval. Human retains final sign-off.
+- Reviewer selection requires a different family, available quota and recorded identity. Seth explicitly preferred keeping the same Antigravity reviewer from #3 for #4; use that project preference over the generic Traycer guide's Opus default. The attempted Opus assignment was stopped/archived before delivery and supplied no review. No eligible quota means review pending, not self-approval. Human retains final sign-off.
 
 ## Next step
 
 **Action:** Await independent #4 review of `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3` using `TICKET-4-REVIEW.md`. Resolve substantive findings and recheck before Seth's final sign-off. No push, merge, ticket closure, live acceptance or #5 start authorized.
-**Who:** Codex builder; Sonnet test author `fcc36344-f0ca-4514-9288-74753be75947` completed the regression/integration tests. Fresh independent reviewer `51fb2ea6-a53f-423b-a3a2-f0ed2791424b`, configured Claude Opus 5 / medium under the current Traycer selection guide, has checkout/test access and the frozen-target briefing. Results pending; actual backend IDs are not independently attested.
+**Who:** Codex builder; Sonnet test author `fcc36344-f0ca-4514-9288-74753be75947` completed the regression/integration tests. Independent reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8`, the same Antigravity / Gemini 3.8 Flash reviewer used for #3, has checkout/test access and the frozen #4 briefing at Seth's explicit request. Opus assignment stopped/archived before delivery. Results pending; actual backend IDs are not independently attested.
 **Done when:** PF-2/3/4 and AT-02/03 pass bounded fake-CLI verification, frozen implementation receives different-family review and substantive-fix recheck, and Seth gives final completion sign-off.
 
 ## Now
