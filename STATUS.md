@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-18 (ticket #4 implemented and builder-verified; preparing independent review; #3 remains complete)
+**Updated:** 2026-10-18 (ticket #4 frozen and builder-verified; independent Opus review assigned; #3 remains complete)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -49,7 +49,7 @@
 - JSON settings/trust writes validate shape before mutation, preserve exact-byte backups and replace atomically. Fixed settings paths have lifetime locks across managed/compatibility launches; unsafe simultaneous seats are rejected. Windows failed child status propagates; Unix uses a separate child-exit receipt and preserves unknown sessions. Shared compatibility launchers use bounded bootstrap and explicit setup. Hermes/OMP aliases require configured supported templates; no native client/YAML integration or compatibility pass is claimed.
 - Full Windows suite: **228 tests, OK, 4 Unix/tmux skips**. New config/Windows exit, CLI schema/runtime, Unix ownership/child-exit and failed-worker regressions were observed failing before fixes. Sonnet ran real fake-CLI integration once successfully after correcting a test assumption about raw mention text; Codex reran with stronger failed-state/auth/model assertions and passed. Actual console keystroke injection, two distinct model/reasoning argv and MCP identities, no cross-delivery, matching reuse, changed-settings rejection, targeted restart/stop with worker acknowledgement and child exit **23** were verified. Existing real-wrapper/fake-API integration also passed. Actual Windows compatibility batch shim preserved **23**. JS syntax and whitespace checks pass.
 - Browser-harness on an isolated fake-client server verified selecting CLI, saving model/reasoning, launch to ready, honest unknown auth/confirmation, targeted stop and no horizontal overflow at 390px. Screenshot `.audit-tmp/ticket4-preflight-390.png` was saved and visually inspected. Test tab/server stopped. No live provider/client calls, native Linux/Omarchy run, credential copies or Desktop changes. Full turn recovery, server-restart adoption and remote cancellation remain later scope.
-- Implementation remains local. Independent different-family review and Seth's final sign-off are pending. No #5 work, push, merge or issue closure authorized.
+- Implementation is frozen at `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3`. Fresh independent reviewer `51fb2ea6-a53f-423b-a3a2-f0ed2791424b` (configured Claude Opus 5 / medium, following the current Traycer guide) received the complete local-checkout/test briefing. Review result and Seth's final sign-off are pending. No #5 work, push, merge or issue closure authorized.
 
 ## Latest reviewer additions
 
@@ -72,12 +72,12 @@
 
 - [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1) is closed after Meta source/plan review, documentation corrections and Seth's final sign-off. Ticket #2 passed independent review and received Seth's final sign-off; reviewed branch is fast-forward merged and published on origin/main; GitHub issue #2 is confirmed closed as completed.
 - First milestone: #1-8, #10-12, and #16. Includes visible stalls/retry and full six-seat capacity. Full restart reconciliation (#9) follows; Stop persistence remains mandatory in #10.
-- Reviewer selection follows quota: Meta Muse 1.3, DeepSeek Flash 4.1, Grok 4.7, GLM 5.3 (user-provided labels). Use a different model family from the builder and record actual model IDs. No eligible quota means review pending, not self-approval. Human retains final sign-off.
+- Reviewer selection requires a different family, available quota and recorded identity. Earlier tickets used the suggested Meta/DeepSeek/Grok/GLM pool. For #4 the current Traycer agent-selection guide explicitly directs implemented-task review to latest Claude Opus on medium reasoning, so Opus 5 was assigned. This current user configuration takes precedence over the earlier suggested pool. No eligible quota means review pending, not self-approval. Human retains final sign-off.
 
 ## Next step
 
-**Action:** Freeze #4 and obtain independent different-family review using `TICKET-4-REVIEW.md`. Resolve substantive findings and recheck before Seth's final sign-off. No push, merge, ticket closure, live acceptance or #5 start authorized.
-**Who:** Codex builder; Traycer Sonnet test agent `fcc36344-f0ca-4514-9288-74753be75947` owns configuration-preservation and Windows-exit regression tests. Independent final reviewer not assigned.
+**Action:** Await independent #4 review of `f933f59ca415bcbd3a2ac5fb0c2da4afe1c9d7e3` using `TICKET-4-REVIEW.md`. Resolve substantive findings and recheck before Seth's final sign-off. No push, merge, ticket closure, live acceptance or #5 start authorized.
+**Who:** Codex builder; Sonnet test author `fcc36344-f0ca-4514-9288-74753be75947` completed the regression/integration tests. Fresh independent reviewer `51fb2ea6-a53f-423b-a3a2-f0ed2791424b`, configured Claude Opus 5 / medium under the current Traycer selection guide, has checkout/test access and the frozen-target briefing. Results pending; actual backend IDs are not independently attested.
 **Done when:** PF-2/3/4 and AT-02/03 pass bounded fake-CLI verification, frozen implementation receives different-family review and substantive-fix recheck, and Seth gives final completion sign-off.
 
 ## Now
@@ -86,9 +86,9 @@
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
 - **Branch:** codex/ticket-4-cli-seat, base main `ca50827`. #3 was previously merged, published and closed.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
-- **Current build:** reviewed ticket #2 plus independently reviewed ticket #3 API-seat implementation, approved and published on origin/main. #3 is closed; #4 implementation is local and review pending. Full suite: 198 tests run, OK with 4 Unix/tmux skips. Five final real-wrapper/fake-provider integration runs passed with actual stop acknowledgement; browser package/save/launch/stop and 390px layout checked. Dependencies remain only in ignored `.venv-windows`. Only isolated test wrappers and fake providers were launched; no external model calls. Test servers/browser stopped; native Omarchy unverified. No provider credentials/history copied from the working Desktop installation.
+- **Current build:** published and approved #1-3 plus local #4 CLI-seat implementation frozen at `f933f59`. Windows suite: 228 tests OK (4 platform skips); real fake-CLI console and fake-API integrations passed, including exact CLI exit 23, targeted stop acknowledgement and distinct identities. Browser save/launch/stop and inspected 390px screenshot pass. Independent #4 review pending; no live external model calls or native Linux/Omarchy pass. Test browser/server stopped. Existing ignored platform environment reused; working Desktop installation unchanged.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
-- **Documentation:** spec v1.7, root agent instructions, baseline audit/evidence/scripts, bounded Stage A plan, this status file, and the dated Codex handoff. Application source contains independently reviewed ticket #2 and builder-verified and independently reviewed ticket #3 changes, approved and published on origin/main. Review receipt: `REVIEW-GEMINI-TICKET-3.md`.
+- **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Current application implementation is frozen locally for independent review.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
 - **In flight:** #4 implemented on `codex/ticket-4-cli-seat`, builder-verified, independent review pending. Plan: `TICKET-4-PLAN.md`; usage: `CLI-SEATS.md`. #1/#2/#3 complete and closed. No #4 push/merge/closure or #5 start.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
