@@ -15,7 +15,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-6 | Published and closed | Latest #6 publication `53a1b9b`, independent AGY PASS |
-| #7 durable queue | Planning | Codex contract; same AGY pressure-test before implementation |
+| #7 durable queue | Implemented; builder checks pass | Same AGY independently reviews frozen implementation next |
 | #8, #10-12, #16 | Pending, first milestone | Follow dependencies after #7 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#6 passed independent AGY review on frozen `e69442d`, was merged and pushed at `53a1b9b`, and issue #6 is confirmed closed. Post-merge 266 tests OK (4 platform skips), syntax and whitespace checks pass. Codex wrote `TICKET-7-PLAN.md`; same AGY owns the next move on the requested contract critique (expectReply:true), whose reply resumes implementation. No #7 production edits yet. Open questions are CLI transport release, claim/ack uncertainty and legacy queue preservation. The test-only helper remains separate from the AGY reviewer; no human approval is pending. No live provider, Desktop or native Omarchy work is authorized by this transition.
+#1-6 are published and closed. #7 is implemented locally on codex/ticket-7-durable-queue (base d16780b): 293 tests OK (four skips), real mixed-seat dispatch/owned-worker-stop integration and prior seat/package/frozen-brief integrations pass. A real early cooperative-release race was reproduced and fixed without weakening the integration assertion. Same AGY independently reviews the frozen implementation next; its requested reply resumes Codex for findings/recheck or publication, followed by #8. No human approval is pending. Native client cooperation, live provider usage, Desktop changes and native Omarchy are not claimed.

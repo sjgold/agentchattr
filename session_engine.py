@@ -330,10 +330,16 @@ class SessionEngine:
 
         try:
             extra = {'review_brief_id': brief_id} if brief_id else {}
+            if brief_id:
+                extra.update({key: envelope[key] for key in ('run_id', 'turn_id', 'attempt_id', 'input_revision')})
             self._trigger.trigger_sync(agent, channel=channel, prompt=prompt, **extra)
         except Exception as exc:
-            log.error("Session %d: failed to trigger %s: %s",
-                      session["id"], agent, exc)
+            log.error("Session %d: failed to persist dispatch for %s (%s)",
+                      session["id"], agent, type(exc).__name__)
+            self._store.interrupt(session['id'], 'Dispatch could not be persisted; no turn was delivered.')
+            self._messages.add('system', 'Dispatch could not be saved. Check queue storage before starting again.',
+                               msg_type='session_error', channel=channel)
+            return False
 
     def _assemble_prompt(self, session: dict, tmpl: dict, phase: dict,
                          role: str) -> str:

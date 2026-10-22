@@ -234,8 +234,10 @@ def main():
             return []
 
     # Read recent messages from chat server
-    def read_messages(channel="general", since_id=0, limit=20):
+    def read_messages(channel="general", since_id=0, limit=20, job_id=None):
         params = f"limit={limit}&channel={channel}"
+        if job_id is not None:
+            params += f"&job_id={job_id}"
         if since_id:
             params = f"since_id={since_id}&{params}"
         req = urllib.request.Request(
@@ -246,8 +248,11 @@ def main():
             return json.loads(resp.read())
 
     # Send message back to chat
-    def send_message(text, channel="general"):
-        body = json.dumps({"text": text, "channel": channel}).encode()
+    def send_message(text, channel="general", job_id=None):
+        payload = {"text": text, "channel": channel}
+        if job_id is not None:
+            payload["job_id"] = job_id
+        body = json.dumps(payload).encode()
         req = urllib.request.Request(
             f"http://127.0.0.1:{server_port}/api/send",
             method="POST",
@@ -322,11 +327,11 @@ def main():
         return messages
 
     # Handle a trigger — read context, call model, respond
-    def handle_trigger(channel="general", review_brief_id=None, prompt='', frozen=False):
+    def handle_trigger(channel="general", review_brief_id=None, prompt='', frozen=False, job_id=None):
         my_name = get_name()
         set_working(True)
         try:
-            chat_msgs = read_messages(channel=channel, limit=context_messages)
+            chat_msgs = read_messages(channel=channel, limit=context_messages, job_id=job_id)
             if frozen:
                 from review_brief import BriefError, brief_messages
                 import re
@@ -341,7 +346,7 @@ def main():
                     raise BriefError('Review brief channel mismatch.')
                 messages = brief_messages(envelope, chat_msgs, my_name, system_prompt)
             elif not chat_msgs and not prompt:
-                return
+                return False
             else:
                 messages = format_messages(chat_msgs)
                 if prompt:
@@ -351,7 +356,7 @@ def main():
             response = call_model(messages)
             response = response.strip()
             if not response:
-                return
+                return False
 
             # Strip self-prefix if the model echoes its own name
             prefixes = [f"{my_name}: ", f"{my_name}:"]
@@ -360,8 +365,9 @@ def main():
                     response = response[len(prefix):]
                     break
 
-            send_message(response, channel=channel)
+            send_message(response, channel=channel, job_id=job_id)
             print(f"  [{channel}] Responded ({len(response)} chars)")
+            return True
         except Exception as exc:
             if receipt:
                 if not isinstance(exc, _ManagedProviderFailure):
@@ -369,13 +375,16 @@ def main():
                 print('  Managed API turn failed; see pre-flight diagnostics.')
             else:
                 print(f"  Error handling trigger: {exc}")
+            return False
         finally:
             set_working(False)
 
-    # Queue watcher — polls queue file for @mentions
-    queue_file = data_dir / f"{name}_queue.jsonl"
-    if queue_file.exists():
-        queue_file.write_text("", "utf-8")
+    # Durable ownership is claimed before a provider call; release is retried
+    # independently so an acknowledgement loss never regenerates the answer.
+    from queue_client import QueueClient
+    queue = QueueClient(server_port, get_token)
+    processed_dispatch = None
+    processed_ok = False
     if receipt:
         receipt.update(state='ready', adapter_connected=True, name=get_name())
 
@@ -389,39 +398,19 @@ def main():
     try:
         while True:
             try:
-                # Update queue file path in case of rename
-                current_name = get_name()
-                qf = data_dir / f"{current_name}_queue.jsonl"
-
-                if qf.exists() and qf.stat().st_size > 0:
-                    with open(qf, "r", encoding="utf-8") as f:
-                        lines = f.readlines()
-                    qf.write_text("", "utf-8")
-
-                    channels_triggered = set()
-                    brief_triggers = []
-                    for line in lines:
-                        line = line.strip()
-                        if not line:
-                            continue
-                        try:
-                            data = json.loads(line)
-                            if isinstance(data, dict) and 'review_brief_id' in data:
-                                brief_triggers.append(data)
-                                continue
-                            ch = data.get("channel", "general") if isinstance(data, dict) else "general"
-                            channels_triggered.add(ch)
-                        except json.JSONDecodeError:
-                            channels_triggered.add("general")
-
-                    for ch in channels_triggered:
-                        handle_trigger(channel=ch)
-                    for entry in brief_triggers:
-                        handle_trigger(channel=entry.get('channel', 'general'),
-                                       review_brief_id=entry['review_brief_id'], frozen=True,
-                                       prompt=entry.get('prompt', ''))
-            except Exception:
-                pass
+                record = queue.claim()
+                if record:
+                    entry = record['envelope']
+                    dispatch_id = entry['dispatch_id']
+                    if dispatch_id != processed_dispatch:
+                        queue.acknowledge(dispatch_id)
+                        processed_ok = handle_trigger(channel=entry.get('channel', 'general'),
+                            review_brief_id=entry.get('review_brief_id'),
+                            frozen='review_brief_id' in entry, prompt=entry.get('prompt', ''), job_id=entry.get('job_id') or None)
+                        processed_dispatch = dispatch_id
+                    queue.release(dispatch_id, failed=not processed_ok)
+            except Exception as exc:
+                print(f'  Queue delivery held ({type(exc).__name__}); dispatch retained without model replay.')
 
             time.sleep(1)
     except KeyboardInterrupt:

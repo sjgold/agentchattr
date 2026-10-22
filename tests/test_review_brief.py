@@ -248,8 +248,7 @@ class FrozenSessionTests(unittest.TestCase):
         cast = {'reviewer': 'codex', 'editor': 'claude'}
         session = engine.start_session('custom-review', 'general', cast, 'human',
                                        goal=GOAL, input_text=SOURCE)
-        queue = self.root / 'codex_queue.jsonl'
-        entry = json.loads(queue.read_text('utf-8').splitlines()[0])
+        entry = trigger.queue.claim(owner, 'review-fixture')['envelope']
         self.assertIn('review_brief_id', entry)
         for i in range(30):
             messages.add('system', f'Later unrelated chat {i}')
@@ -265,7 +264,7 @@ class FrozenSessionTests(unittest.TestCase):
         engine._trigger_current(advanced)
         self.assertEqual(engine.get_active('general')['phase_name'], 'Decision')
         self.assertEqual(engine.get_allowed_agent('general'), 'claude')
-        second_entry = json.loads((self.root / 'claude_queue.jsonl').read_text('utf-8').splitlines()[0])
+        second_entry = trigger.queue.claim(registry.get_instance('claude'), 'review-fixture')['envelope']
         second = briefs.BriefStore(self.root).get(second_entry['review_brief_id'], registry.get_instance('claude'))
         self.assertEqual(second['role'], 'editor')
         self.assertIn('Explain the decision.', strings(second))

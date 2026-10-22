@@ -224,11 +224,13 @@ run.main()
 
         # Directly enqueue invalid typed references to the owned API wrapper.
         # Its failure must be observable without any chat-only provider fallback.
-        queue = temporary / 'data' / (names['api'] + '_queue.jsonl')
+        from dispatch_queue import QueueStore
+        queue = QueueStore(temporary / 'data')
+        instance = json.loads((temporary / 'data/registry.json').read_text('utf-8'))['instances'][names['api']]
         for invalid in ('malformed-id', 'f' * 32):
-            with queue.open('a', encoding='utf-8') as output:
-                output.write(json.dumps({'review_brief_id': invalid, 'channel': 'general'}) + '\n')
-            wait_for(lambda: queue.exists() and queue.stat().st_size == 0, 'invalid brief queue consumed')
+            dispatch = queue.enqueue(instance, {'review_brief_id': invalid, 'channel': 'general'})
+            dispatch_id = dispatch['envelope']['dispatch_id']
+            wait_for(lambda: queue.owned(instance, dispatch_id)['state'] == 'failed', 'invalid brief dispatch failed')
             wait_for(lambda: api('/api/preflight/seats')['runtime']['brief-team/api']['state'] == 'failed',
                      'invalid brief visible failure')
             time.sleep(1.2)

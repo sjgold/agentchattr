@@ -1851,8 +1851,35 @@ const _ROLE_EMOJI = {
 };
 
 function updateStatus(data) {
+    const queue = data._queue;
+    if (queue) {
+        const rows = document.getElementById('dispatch-queue-rows');
+        const summary = document.getElementById('dispatch-queue-summary');
+        if (rows && summary) {
+            rows.replaceChildren();
+            const addRow = text => {
+                const row = document.createElement('p');
+                row.textContent = text;
+                rows.appendChild(row);
+            };
+            let pending = 0, failed = 0;
+            for (const seat of Object.values(queue.seats || {})) {
+                pending += seat.queued + (seat.active ? 1 : 0);
+                failed += seat.failed || 0;
+                if (seat.active || seat.queued || seat.failed) {
+                    const label = document.getElementById(`status-${seat.name}`)?.textContent.trim() || seat.name;
+                    addRow(`${label}: ${seat.queued} queued${seat.failed ? `; ${seat.failed} failed dispatches` : ''}${seat.active ? `; ${seat.active.state}, awaiting explicit release (${seat.active.dispatch_id})` : ''}${seat.contention ? '; waiting for this seat' : ''}`);
+                }
+            }
+            const legacy = queue.legacy_unmigrated_files || [];
+            if (legacy.length) addRow(`Legacy queue files preserved, awaiting operator resolution: ${legacy.join(', ')}`);
+            if (queue.error) addRow(queue.error);
+            if (!pending && !failed && !legacy.length && !queue.error) addRow('No pending dispatches. Ready for the next idea.');
+            summary.textContent = `Dispatch queue${queue.error ? ': storage unavailable' : `: ${pending} pending`}${failed ? `, ${failed} failed` : ''}${legacy.length ? `, ${legacy.length} legacy ${legacy.length === 1 ? 'file' : 'files'}` : ''}`;
+        }
+    }
     for (const [name, info] of Object.entries(data)) {
-        if (name === 'paused') continue;
+        if (name === 'paused' || name === '_queue') continue;
         const pill = document.getElementById(`status-${name}`);
         if (!pill) continue;
 

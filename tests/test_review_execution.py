@@ -33,7 +33,8 @@ class CoordinatorDesignExecutionTests(unittest.TestCase):
                 registry.seed({name: {} for name in names})
                 for name in names:
                     registry.register(name)
-                engine = SessionEngine(sessions, messages, AgentTrigger(registry, directory), registry)
+                trigger = AgentTrigger(registry, directory)
+                engine = SessionEngine(sessions, messages, trigger, registry)
                 pending = []
                 def timer(delay, callback, args):
                     result = Mock()
@@ -48,11 +49,15 @@ class CoordinatorDesignExecutionTests(unittest.TestCase):
                     for phase_name, role in expected:
                         current = sessions.get(session['id'])
                         agent = engine._get_expected_agent(current)
-                        queue = root / (agent + '_queue.jsonl')
-                        entry = json.loads(queue.read_text(encoding='utf-8').splitlines()[-1])
+                        instance = registry.get_instance(agent)
+                        entry = trigger.queue.claim(instance, 'design-fixture')['envelope']
                         brief = sessions.briefs.get(entry['review_brief_id'], registry.get_instance(agent))
+                        for key in ('run_id', 'turn_id', 'attempt_id', 'input_revision'):
+                            self.assertEqual(entry[key], brief[key])
                         observed.append((brief['phase']['name'], brief['role']))
                         self.assertEqual(brief['source'], 'Exact original source')
+                        trigger.queue.acknowledge(instance, entry['dispatch_id'], 'design-fixture')
+                        trigger.queue.release(instance, entry['dispatch_id'], 'design-fixture')
                         messages.add(agent, f'Fake result for {role}', channel='general')
                         callback, args = pending.pop(0)
                         callback(*args)

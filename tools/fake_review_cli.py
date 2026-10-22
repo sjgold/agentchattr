@@ -50,6 +50,8 @@ def main():
                     headers=settings['mcpServers']['agentchattr']['headers'])
                 with urllib.request.urlopen(request, timeout=10) as response:
                     record['http_envelope'] = json.load(response)
+                from queue_fixture import release_dispatch
+                asyncio.run(release_dispatch(settings, prompt))
             except Exception as exc:
                 record['error'] = type(exc).__name__ + ': ' + str(exc)
         save()

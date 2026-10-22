@@ -1,3 +1,16 @@
+.dispatch-queue {
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+    max-height: 200px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+.dispatch-queue summary { cursor: pointer; }
+.dispatch-queue p { margin: 8px 0; }
+
 /* agentchattr — dark theme / design tokens */
 
 :root {

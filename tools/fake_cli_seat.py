@@ -60,6 +60,10 @@ def main():
         save()
         if len(record["prompts"]) >= 2:
             sys.exit(23)
+        if settings:
+            import asyncio
+            from queue_fixture import release_dispatch
+            asyncio.run(release_dispatch(settings, line))
 
 
 if __name__ == "__main__":

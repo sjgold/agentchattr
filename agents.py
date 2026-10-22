@@ -1,8 +1,7 @@
-"""Agent trigger — writes to queue files picked up by visible worker terminals."""
+"""Agent trigger: persist each envelope before a wrapper can claim ownership."""
 
-import json
 import logging
-from pathlib import Path
+from dispatch_queue import QueueStore
 
 log = logging.getLogger(__name__)
 
@@ -10,7 +9,7 @@ log = logging.getLogger(__name__)
 class AgentTrigger:
     def __init__(self, registry, data_dir: str = "./data"):
         self._registry = registry
-        self._data_dir = Path(data_dir)
+        self.queue = QueueStore(data_dir)
 
     def is_available(self, name: str) -> bool:
         return self._registry.is_registered(name)
@@ -18,7 +17,7 @@ class AgentTrigger:
     def get_status(self) -> dict:
         from mcp_bridge import is_online, is_active, get_role
         instances = self._registry.get_all()
-        return {
+        status = {
             name: {
                 "available": is_online(name),
                 "busy": is_active(name),
@@ -28,55 +27,32 @@ class AgentTrigger:
             }
             for name, info in instances.items()
         }
+        try:
+            status['_queue'] = self.queue.status()
+        except (OSError, ValueError):
+            status['_queue'] = {'error': 'Queue storage unavailable. Pending work is held.'}
+        return status
 
     async def trigger(self, agent_name: str, message: str = "", channel: str = "general",
                       job_id: int | None = None, **kwargs):
-        """Write to the agent's queue file. The worker terminal picks it up."""
-        queue_file = self._data_dir / f"{agent_name}_queue.jsonl"
-        self._data_dir.mkdir(parents=True, exist_ok=True)
-
-        import time
-        entry = {
-            "sender": message.split(":")[0].strip() if ":" in message else "?",
-            "text": message,
-            "time": time.strftime("%H:%M:%S"),
-            "channel": channel,
-        }
-        custom_prompt = kwargs.get("prompt", "")
-        if isinstance(custom_prompt, str) and custom_prompt.strip():
-            entry["prompt"] = custom_prompt.strip()
-        if job_id is not None:
-            entry["job_id"] = job_id
-        if kwargs.get('review_brief_id'):
-            entry['review_brief_id'] = kwargs['review_brief_id']
-
-        with open(queue_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + "\n")
-
-        log.info("Queued @%s trigger (ch=%s, job=%s): %s", agent_name, channel, job_id, message[:80])
+        return self.trigger_sync(agent_name, message, channel, job_id, **kwargs)
 
     def trigger_sync(self, agent_name: str, message: str = "", channel: str = "general",
                      job_id: int | None = None, **kwargs):
-        """Synchronous version of trigger — writes to queue file without async."""
-        queue_file = self._data_dir / f"{agent_name}_queue.jsonl"
-        self._data_dir.mkdir(parents=True, exist_ok=True)
-
-        import time
-        entry = {
-            "sender": message.split(":")[0].strip() if ":" in message else "?",
-            "text": message,
-            "time": time.strftime("%H:%M:%S"),
-            "channel": channel,
-        }
-        custom_prompt = kwargs.get("prompt", "")
-        if isinstance(custom_prompt, str) and custom_prompt.strip():
-            entry["prompt"] = custom_prompt.strip()
+        instance = self._registry.get_instance(agent_name)
+        if not instance:
+            raise ValueError('The target seat is not registered; no future identity was assigned this work.')
+        entry = {'sender': message.split(':')[0].strip() if ':' in message else '?',
+                 'text': message, 'channel': channel}
+        prompt = kwargs.get('prompt', '')
+        if isinstance(prompt, str) and prompt.strip():
+            entry['prompt'] = prompt
         if job_id is not None:
-            entry["job_id"] = job_id
-        if kwargs.get('review_brief_id'):
-            entry['review_brief_id'] = kwargs['review_brief_id']
-
-        with open(queue_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + "\n")
-
-        log.info("Queued @%s trigger (ch=%s, job=%s): %s", agent_name, channel, job_id, message[:80])
+            entry['job_id'] = job_id
+        for key in ('dispatch_id', 'review_brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision'):
+            if key in kwargs:
+                entry[key] = kwargs[key]
+        record = self.queue.enqueue(instance, entry)
+        log.info('Persisted dispatch %s for %s (channel=%s)',
+                 record['envelope']['dispatch_id'], agent_name, channel)
+        return record

@@ -244,7 +244,7 @@ def _install_security_middleware(token: str, cfg: dict):
             # Allow registered agents to authenticate via Bearer token
             # for /api/messages and /api/send (no browser session needed).
             auth_header = request.headers.get("authorization", "")
-            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send") or path.startswith(("/api/rules/", "/api/review-briefs/"))):
+            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send", "/api/queue/claim", "/api/queue/ack", "/api/queue/release", "/api/queue/uncertain") or path.startswith(("/api/rules/", "/api/review-briefs/"))):
                 bearer = auth_header[7:].strip()
                 if _self.registry and _self.registry.resolve_token(bearer):
                     return await call_next(request)
@@ -1729,7 +1729,10 @@ async def import_history(file: UploadFile = File(...)):
 
 
 @app.get("/api/messages")
-async def get_messages(since_id: int = 0, limit: int = 50, channel: str = ""):
+async def get_messages(since_id: int = 0, limit: int = 50, channel: str = "", job_id: int = 0):
+    if job_id:
+        messages = jobs.get_messages(job_id)
+        return messages if messages is not None else JSONResponse({'error': 'job not found'}, status_code=404)
     ch = channel if channel else None
     if since_id:
         return store.get_since(since_id, channel=ch)
@@ -1758,6 +1761,12 @@ async def api_send(request: Request):
         return JSONResponse({"error": "text is required"}, status_code=400)
     channel = body.get("channel", "general")
 
+    job_id = body.get('job_id')
+    if job_id is not None:
+        if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id <= 0:
+            return JSONResponse({'error': 'job_id must be a positive integer'}, status_code=400)
+        msg = jobs.add_message(job_id, sender, text)
+        return JSONResponse(msg) if msg is not None else JSONResponse({'error': 'job not found'}, status_code=404)
     msg = store.add(sender, text, channel=channel)
     return JSONResponse(msg)
 
@@ -1767,6 +1776,46 @@ async def get_status():
     status = agents.get_status()
     status["paused"] = any(router.is_paused(ch) for ch in room_settings.get("channels", ["general"]))
     return status
+
+
+@app.post('/api/queue/{operation}')
+async def dispatch_operation(operation: str, request: Request):
+    from dispatch_queue import QueueAccessError, QueueConflict
+    instance = _resolve_authenticated_agent(request)
+    if not instance:
+        return JSONResponse({'error': 'Registered seat bearer required.'}, status_code=403)
+    try:
+        raw = await request.body()
+        if len(raw) > 4096:
+            raise ValueError('Transport receipt is too large.')
+        body = json.loads(raw)
+        fields = {'consumer_id'} if operation == 'claim' else {'consumer_id', 'dispatch_id'}
+        allowed = fields | ({'failed'} if operation == 'release' else set())
+        if (operation not in {'claim', 'ack', 'release', 'uncertain'}
+                or not isinstance(body, dict) or not fields <= body.keys()
+                or body.keys() - allowed or not isinstance(body.get('failed', False), bool)):
+            raise ValueError('Invalid transport receipt fields; session results are not accepted here.')
+        queue = agents.queue
+        if operation == 'claim':
+            result = queue.claim(instance, body['consumer_id'])
+        else:
+            method = {'ack': queue.acknowledge, 'release': queue.release, 'uncertain': queue.uncertain}[operation]
+            extra = {'failed': body.get('failed', False)} if operation == 'release' else {}
+            result = method(instance, body['dispatch_id'], body['consumer_id'], **extra)
+        return JSONResponse({'dispatch': result})
+    except QueueAccessError:
+        return JSONResponse({'error': 'Dispatch owner does not match this seat and consumer.'}, status_code=403)
+    except QueueConflict as exc:
+        return JSONResponse({'error': str(exc)}, status_code=409)
+    except (ValueError, TypeError):
+        return JSONResponse({'error': 'Invalid or unavailable dispatch receipt. Queue retained.'}, status_code=400)
+    except OSError:
+        return JSONResponse({'error': 'Dispatch storage unavailable. Queue retained.'}, status_code=503)
+
+
+@app.get('/api/queue/status')
+async def dispatch_status():
+    return agents.queue.status()
 
 
 @app.get("/api/settings")

@@ -957,9 +957,27 @@ def chat_review_brief(brief_id: str, ctx: Context | None = None) -> str:
         return 'Error: review brief unavailable for this seat; do not fall back to chat-only context.'
 
 
+def chat_queue_release(dispatch_id: str, ctx: Context | None = None) -> str:
+    """Release this dispatch's transport ownership after finishing its work.
+
+    Carries no result content and never advances a session. Ordinary chat or
+    idle status cannot release ownership. Use the exact ID from the injection.
+    """
+    from dispatch_queue import QueueAccessError, QueueConflict
+    instance = _authenticated_instance(ctx)
+    if not instance or agents is None:
+        return 'Error: authenticated seat required.'
+    try:
+        record = agents.queue.owned(instance, dispatch_id)
+        result = agents.queue.release(instance, dispatch_id, record['consumer_id'])
+        return json.dumps({'dispatch_id': dispatch_id, 'status': result['state']})
+    except (QueueAccessError, QueueConflict, ValueError, OSError):
+        return 'Error: transport ownership unavailable; dispatch retained.'
+
+
 _ALL_TOOLS = [
     chat_send, chat_read, chat_resync, chat_join, chat_who, chat_rules, chat_decision,
-    chat_channels, chat_set_hat, chat_claim, chat_summary, chat_propose_job, chat_review_brief,
+    chat_channels, chat_set_hat, chat_claim, chat_summary, chat_propose_job, chat_review_brief, chat_queue_release,
 ]
 
 
