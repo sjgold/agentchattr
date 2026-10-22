@@ -322,15 +322,30 @@ def main():
         return messages
 
     # Handle a trigger — read context, call model, respond
-    def handle_trigger(channel="general"):
+    def handle_trigger(channel="general", review_brief_id=None, prompt='', frozen=False):
         my_name = get_name()
         set_working(True)
         try:
             chat_msgs = read_messages(channel=channel, limit=context_messages)
-            if not chat_msgs:
+            if frozen:
+                from review_brief import BriefError, brief_messages
+                import re
+                if not isinstance(review_brief_id, str) or not re.fullmatch(r'[0-9a-f]{32}', review_brief_id):
+                    raise BriefError('Invalid frozen review brief reference.')
+                req = urllib.request.Request(
+                    f'http://127.0.0.1:{server_port}/api/review-briefs/{review_brief_id}',
+                    headers=_auth_headers(get_token()))
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    envelope = json.loads(resp.read())
+                if envelope.get('channel') != channel:
+                    raise BriefError('Review brief channel mismatch.')
+                messages = brief_messages(envelope, chat_msgs, my_name, system_prompt)
+            elif not chat_msgs and not prompt:
                 return
-
-            messages = format_messages(chat_msgs)
+            else:
+                messages = format_messages(chat_msgs)
+                if prompt:
+                    messages.insert(1, {'role': 'system', 'content': prompt})
             print(f"  [{channel}] Calling model with {len(messages)} messages...")
 
             response = call_model(messages)
@@ -384,12 +399,16 @@ def main():
                     qf.write_text("", "utf-8")
 
                     channels_triggered = set()
+                    brief_triggers = []
                     for line in lines:
                         line = line.strip()
                         if not line:
                             continue
                         try:
                             data = json.loads(line)
+                            if isinstance(data, dict) and 'review_brief_id' in data:
+                                brief_triggers.append(data)
+                                continue
                             ch = data.get("channel", "general") if isinstance(data, dict) else "general"
                             channels_triggered.add(ch)
                         except json.JSONDecodeError:
@@ -397,6 +416,10 @@ def main():
 
                     for ch in channels_triggered:
                         handle_trigger(channel=ch)
+                    for entry in brief_triggers:
+                        handle_trigger(channel=entry.get('channel', 'general'),
+                                       review_brief_id=entry['review_brief_id'], frozen=True,
+                                       prompt=entry.get('prompt', ''))
             except Exception:
                 pass
 

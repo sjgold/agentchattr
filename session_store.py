@@ -4,7 +4,10 @@ import json
 import time
 import threading
 import logging
+from copy import deepcopy
 from pathlib import Path
+
+from api_seats import atomic_json
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +21,8 @@ class SessionStore:
         self._lock = threading.Lock()
         self._callbacks: list = []
         self._templates: dict[str, dict] = {}
+        from review_brief import BriefStore
+        self.briefs = BriefStore(self._path.parent)
         self._load()
 
         # Warn about legacy file
@@ -57,10 +62,7 @@ class SessionStore:
             self._sessions = []
 
     def _save(self):
-        self._path.write_text(
-            json.dumps(self._sessions, indent=2, ensure_ascii=False) + "\n",
-            "utf-8",
-        )
+        atomic_json(self._path, self._sessions)
 
     # --- Templates ---
 
@@ -132,18 +134,23 @@ class SessionStore:
     def _fire(self, action: str, session: dict):
         for cb in self._callbacks:
             try:
-                cb(action, session)
+                cb(action, deepcopy(session))
             except Exception:
                 pass
 
     # --- Session lifecycle ---
 
     def create(self, template_id: str, channel: str, cast: dict,
-               started_by: str, goal: str = "") -> dict | None:
+               started_by: str, goal: str = "", input_text: str = "", rules_snapshot=None) -> dict | None:
         """Create and persist a new session run."""
         tmpl = self._templates.get(template_id)
         if not tmpl:
             return None
+        from review_brief import BriefError, freeze_inputs
+        frozen = freeze_inputs(tmpl, goal, input_text, rules_snapshot)
+        if (not isinstance(cast, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not v for k, v in cast.items())
+                or set(cast) != set(tmpl['roles'])):
+            raise BriefError('Assign every design role to a named participant before Start.')
 
         with self._lock:
             # One active session per channel
@@ -156,7 +163,8 @@ class SessionStore:
                 "template_id": template_id,
                 "template_name": tmpl.get("name", template_id),
                 "channel": channel,
-                "cast": cast,
+                "cast": deepcopy(cast),
+                "cast_snapshot": deepcopy(cast),
                 "state": "active",
                 "current_phase": 0,
                 "current_turn": 0,
@@ -165,20 +173,26 @@ class SessionStore:
                 "updated_at": time.time(),
                 "last_message_id": None,
                 "output_message_id": None,
-                "goal": goal.strip()[:500],
+                **frozen,
+                "result_message_ids": [],
             }
             self._next_id += 1
             self._sessions.append(session)
-            self._save()
+            try:
+                self._save()
+            except OSError:
+                self._sessions.pop()
+                self._next_id -= 1
+                raise
 
         self._fire("create", session)
-        return session
+        return deepcopy(session)
 
     def get(self, session_id: int) -> dict | None:
         with self._lock:
             for s in self._sessions:
                 if s["id"] == session_id:
-                    return dict(s)
+                    return deepcopy(s)
             return None
 
     def get_active(self, channel: str) -> dict | None:
@@ -186,12 +200,12 @@ class SessionStore:
         with self._lock:
             for s in self._sessions:
                 if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused"):
-                    return dict(s)
+                    return deepcopy(s)
             return None
 
     def list_all(self, channel: str | None = None) -> list[dict]:
         with self._lock:
-            result = list(self._sessions)
+            result = deepcopy(self._sessions)
         if channel:
             result = [s for s in result if s.get("channel") == channel]
         return result
@@ -207,8 +221,9 @@ class SessionStore:
             session["updated_at"] = time.time()
             if message_id is not None:
                 session["last_message_id"] = message_id
+                session.setdefault('result_message_ids', []).append(message_id)
             self._save()
-            result = dict(session)
+            result = deepcopy(session)
         self._fire("update", result)
         return result
 
@@ -224,8 +239,9 @@ class SessionStore:
             session["updated_at"] = time.time()
             if message_id is not None:
                 session["last_message_id"] = message_id
+                session.setdefault('result_message_ids', []).append(message_id)
             self._save()
-            result = dict(session)
+            result = deepcopy(session)
         self._fire("update", result)
         return result
 
@@ -239,7 +255,7 @@ class SessionStore:
             session["waiting_on"] = agent
             session["updated_at"] = time.time()
             self._save()
-            result = dict(session)
+            result = deepcopy(session)
         self._fire("update", result)
         return result
 
@@ -254,7 +270,7 @@ class SessionStore:
                 session["last_choice_message_id"] = message_id
             session["updated_at"] = time.time()
             self._save()
-            result = dict(session)
+            result = deepcopy(session)
         self._fire("update", result)
         return result
 
@@ -267,7 +283,7 @@ class SessionStore:
             session["state"] = "paused"
             session["updated_at"] = time.time()
             self._save()
-            result = dict(session)
+            result = deepcopy(session)
         self._fire("update", result)
         return result
 
@@ -280,7 +296,7 @@ class SessionStore:
             session["state"] = "active"
             session["updated_at"] = time.time()
             self._save()
-            result = dict(session)
+            result = deepcopy(session)
         self._fire("update", result)
         return result
 
@@ -295,7 +311,7 @@ class SessionStore:
             if output_message_id is not None:
                 session["output_message_id"] = output_message_id
             self._save()
-            result = dict(session)
+            result = deepcopy(session)
         self._fire("complete", result)
         return result
 
@@ -309,7 +325,7 @@ class SessionStore:
             session["interrupt_reason"] = reason
             session["updated_at"] = time.time()
             self._save()
-            result = dict(session)
+            result = deepcopy(session)
         self._fire("interrupt", result)
         return result
 
@@ -336,6 +352,10 @@ def validate_session_template(tmpl: dict) -> list[str]:
         errors.append("'roles' must be a non-empty array")
     elif len(roles) > 6:
         errors.append(f"Too many roles ({len(roles)}, max 6)")
+    if isinstance(roles, list) and any(not isinstance(role, str) or not role.strip() for role in roles):
+        errors.append('Each role must be a nonempty string')
+    if isinstance(roles, list) and all(isinstance(role, str) for role in roles) and len(set(roles)) != len(roles):
+        errors.append('Roles must be unique')
 
     phases = tmpl.get("phases", [])
     if not isinstance(phases, list) or len(phases) == 0:
@@ -343,14 +363,14 @@ def validate_session_template(tmpl: dict) -> list[str]:
     elif len(phases) > 6:
         errors.append(f"Too many phases ({len(phases)}, max 6)")
 
-    roles_set = set(roles) if isinstance(roles, list) else set()
+    roles_set = {role for role in roles if isinstance(role, str)} if isinstance(roles, list) else set()
     output_count = 0
 
     for i, phase in enumerate(phases if isinstance(phases, list) else []):
         if not isinstance(phase, dict):
             errors.append(f"Phase {i + 1}: must be an object")
             continue
-        if not phase.get("name"):
+        if not isinstance(phase.get("name"), str) or not phase['name'].strip():
             errors.append(f"Phase {i + 1}: missing 'name'")
         participants = phase.get("participants", [])
         if not isinstance(participants, list) or len(participants) == 0:
@@ -358,10 +378,12 @@ def validate_session_template(tmpl: dict) -> list[str]:
         elif len(participants) > 4:
             errors.append(f"Phase {i + 1}: too many participants ({len(participants)}, max 4)")
         for p in (participants if isinstance(participants, list) else []):
-            if p not in roles_set:
+            if not isinstance(p, str) or p not in roles_set:
                 errors.append(f"Phase {i + 1}: participant '{p}' not in roles list")
         prompt = phase.get("prompt", "")
-        if isinstance(prompt, str) and len(prompt) > 200:
+        if not isinstance(prompt, str):
+            errors.append(f'Phase {i + 1}: prompt must be text')
+        elif len(prompt) > 200:
             errors.append(f"Phase {i + 1}: prompt too long ({len(prompt)} chars, max 200)")
         if phase.get("is_output"):
             output_count += 1

@@ -422,6 +422,11 @@ function showSessionLauncher() {
             <div class="session-launcher-goal">
                 <input id="session-goal-input" type="text" placeholder="Goal (optional) -- what should this session achieve?" />
             </div>
+            <div class="session-source-editor">
+                <label for="session-source-input">Pasted review source (optional)</label>
+                <textarea id="session-source-input" rows="6" placeholder="Paste the text every participant should review."></textarea>
+                <p>Start freezes this source, the task brief, design and rules. Source is data, not tool instructions. Oversized input is rejected and stays here for editing.</p>
+            </div>
             <div id="session-step-templates">
                 <div class="session-launcher-templates">${templateOptions}${designCard}</div>
             </div>
@@ -489,6 +494,7 @@ function sessionCastBack() {
 async function launchSessionWithCast(templateId) {
     const goalInput = document.getElementById('session-goal-input');
     const goal = goalInput ? goalInput.value.trim() : '';
+    const inputText = document.getElementById('session-source-input')?.value || '';
 
     // Read cast from dropdowns
     const cast = {};
@@ -497,7 +503,6 @@ async function launchSessionWithCast(templateId) {
     });
 
     const modal = document.getElementById('session-launcher-modal');
-    if (modal) modal.remove();
 
     try {
         const res = await fetch('/api/sessions/start', {
@@ -508,12 +513,15 @@ async function launchSessionWithCast(templateId) {
                 channel: window.activeChannel,
                 cast: cast,
                 goal: goal,
+                input_text: inputText,
                 started_by: window.username,
             }),
         });
         if (!res.ok) {
             const data = await res.json();
             alert(data.error || 'Failed to start session');
+        } else if (modal) {
+            modal.remove();
         }
     } catch (e) {
         alert('Error starting session: ' + e.message);
@@ -653,6 +661,11 @@ function showDraftCastPreview(tmpl, draftMsgId) {
             <div class="session-launcher-goal">
                 <input id="session-goal-input" type="text" placeholder="Goal (optional)" />
             </div>
+            <div class="session-source-editor">
+                <label for="session-source-input">Pasted review source (optional)</label>
+                <textarea id="session-source-input" rows="6" placeholder="Paste the text every participant should review."></textarea>
+                <p>Start freezes source, task, design and rules. Oversized input stays here for editing.</p>
+            </div>
             <div id="session-step-cast">
                 <div class="session-cast-list">${roleRows}</div>
                 <button class="session-start-btn" onclick="launchDraftSession(${draftMsgId})">Start Session</button>
@@ -665,6 +678,7 @@ function showDraftCastPreview(tmpl, draftMsgId) {
 async function launchDraftSession(draftMsgId) {
     const goalInput = document.getElementById('session-goal-input');
     const goal = goalInput ? goalInput.value.trim() : '';
+    const inputText = document.getElementById('session-source-input')?.value || '';
 
     const cast = {};
     document.querySelectorAll('#session-step-cast .session-cast-select').forEach(sel => {
@@ -672,7 +686,6 @@ async function launchDraftSession(draftMsgId) {
     });
 
     const modal = document.getElementById('session-launcher-modal');
-    if (modal) modal.remove();
 
     try {
         const res = await fetch('/api/sessions/start', {
@@ -683,12 +696,15 @@ async function launchDraftSession(draftMsgId) {
                 channel: window.activeChannel,
                 cast: cast,
                 goal: goal,
+                input_text: inputText,
                 started_by: window.username,
             }),
         });
         if (!res.ok) {
             const data = await res.json();
             alert(data.error || 'Failed to start session from draft');
+        } else if (modal) {
+            modal.remove();
         }
     } catch (e) {
         alert('Error: ' + e.message);

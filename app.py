@@ -244,7 +244,7 @@ def _install_security_middleware(token: str, cfg: dict):
             # Allow registered agents to authenticate via Bearer token
             # for /api/messages and /api/send (no browser session needed).
             auth_header = request.headers.get("authorization", "")
-            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send") or path.startswith("/api/rules/")):
+            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send") or path.startswith(("/api/rules/", "/api/review-briefs/"))):
                 bearer = auth_header[7:].strip()
                 if _self.registry and _self.registry.resolve_token(bearer):
                     return await call_next(request)
@@ -487,7 +487,7 @@ def configure(cfg: dict, session_token: str = ""):
         str(Path(data_dir) / "session_runs.json"),
         templates_dir=str(ROOT / "session_templates"),
     )
-    session_engine = SessionEngine(session_store, store, agents, registry)
+    session_engine = SessionEngine(session_store, store, agents, registry, rules_store=rules)
     session_store.on_change(_on_session_change)
 
     # Bridge: when ANY message is added to store (including via MCP),
@@ -2584,24 +2584,43 @@ async def get_all_active_sessions():
 async def start_session(request: Request):
     if not session_engine or not session_store:
         return JSONResponse({"error": "sessions not configured"}, status_code=500)
-    body = await request.json()
+    from review_brief import BriefError
+    raw = await request.body()
+    if len(raw) > 4 * 1024 * 1024:
+        return JSONResponse({'error': 'Session request exceeds the 4 MiB request limit; nothing was started.'}, status_code=413)
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        return JSONResponse({'error': 'Session Start requires valid JSON.'}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({'error': 'Session Start requires a JSON object.'}, status_code=400)
+    if (not isinstance(body.get('template_id', ''), str) or
+            not isinstance(body.get('channel', 'general'), str) or
+            not _CHANNEL_NAME_RE.fullmatch(body.get('channel', 'general')) or
+            not isinstance(body.get('cast', {}), dict) or
+            not isinstance(body.get('started_by', 'user'), str)):
+        return JSONResponse({'error': 'Invalid session template, channel, cast or participant fields.'}, status_code=400)
     template_id = body.get("template_id", "")
     draft_message_id = body.get("draft_message_id")
     channel = body.get("channel", "general")
     cast = body.get("cast", {})
     goal = body.get("goal", "")
+    input_text = body.get('input_text', '')
     started_by = body.get("started_by", "user")
 
     # If running from a draft, load the inline template from message metadata
     tmpl = None
     if draft_message_id:
-        draft_msg = store.get_by_id(int(draft_message_id))
+        if isinstance(draft_message_id, bool) or not isinstance(draft_message_id, int):
+            return JSONResponse({'error': 'Draft message ID must be an integer.'}, status_code=400)
+        draft_msg = store.get_by_id(draft_message_id)
         if not draft_msg:
             return JSONResponse({"error": "draft message not found"}, status_code=404)
         meta = draft_msg.get("metadata", {})
         if not meta.get("valid"):
             return JSONResponse({"error": "draft is not valid"}, status_code=400)
-        tmpl = meta.get("template")
+        from copy import deepcopy
+        tmpl = deepcopy(meta.get("template"))
         if not tmpl:
             return JSONResponse({"error": "draft has no template"}, status_code=400)
         # Register as a temporary template
@@ -2627,7 +2646,12 @@ async def start_session(request: Request):
                 status_code=400,
             )
 
-    session = session_engine.start_session(template_id, channel, cast, started_by, goal)
+    try:
+        session = session_engine.start_session(template_id, channel, cast, started_by, goal, input_text=input_text)
+    except BriefError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+    except OSError:
+        return JSONResponse({'error': 'Frozen session input could not be saved; no successful Start is claimed.'}, status_code=503)
     if not session:
         return JSONResponse({"error": "could not start session (one may already be active)"}, status_code=409)
 
@@ -2642,6 +2666,22 @@ async def start_session(request: Request):
     session_engine.emit_current_phase_banner(session)
 
     return JSONResponse(session)
+
+
+@app.get('/api/review-briefs/{brief_id}')
+async def get_review_brief(brief_id: str, request: Request):
+    from review_brief import BriefError, BriefAccessError
+    if not session_store:
+        return JSONResponse({'error': 'Review context is unavailable.'}, status_code=503)
+    instance = _resolve_authenticated_agent(request)
+    operator = bool(session_token and request.headers.get('x-session-token') == session_token)
+    try:
+        value = await asyncio.to_thread(session_store.briefs.get, brief_id, instance, operator=operator and instance is None)
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except BriefAccessError:
+        return JSONResponse({'error': 'Review brief is scoped to another authenticated seat.'}, status_code=403)
+    except BriefError:
+        return JSONResponse({'error': 'Review brief is unavailable.'}, status_code=404)
 
 
 @app.post("/api/sessions/{session_id}/end")

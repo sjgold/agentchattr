@@ -15,7 +15,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-5 | Published and closed | Latest #5 publication `7575c68`, independent AGY PASS |
-| #6 frozen brief | Scope/code reconnaissance | Codex builds, same AGY independent review follows |
+| #6 frozen brief | Builder verified; preparing review | Same AGY independently checks frozen source delivery and evidence |
 | #7-8, #10-12, #16 | Pending, first milestone | Follow dependencies after #5 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
