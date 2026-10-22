@@ -20,13 +20,15 @@ class SessionEngine:
     agents via the AgentTrigger system.
     """
 
-    def __init__(self, session_store, message_store, agent_trigger, registry=None, rules_store=None, seat_manager=None):
+    def __init__(self, session_store, message_store, agent_trigger, registry=None, rules_store=None, seat_manager=None, recovery_policy=None):
         self._store = session_store
         self._messages = message_store
         self._trigger = agent_trigger
         self._registry = registry
         self._rules = rules_store
         self._seat_manager = seat_manager
+        from turn_recovery import recovery_policy as validate_policy
+        self._recovery_policy = validate_policy(recovery_policy)
         self._lock = threading.RLock()
         if agent_trigger is not None and hasattr(agent_trigger, 'queue'):
             from queue_coordinator import CoordinatedQueue
@@ -38,13 +40,18 @@ class SessionEngine:
     # --- Public API ---
 
     def start_session(self, template_id: str, channel: str, cast: dict,
-                      started_by: str, goal: str = "", input_text: str = "") -> dict | None:
+                      started_by: str, goal: str = "", input_text: str = "", recovery_policy=None) -> dict | None:
         with self._lock:
-            return self._start_session(template_id, channel, cast, started_by, goal, input_text)
+            return self._start_session(template_id, channel, cast, started_by, goal, input_text, recovery_policy)
 
-    def _start_session(self, template_id, channel, cast, started_by, goal, input_text):
+    def _start_session(self, template_id, channel, cast, started_by, goal, input_text, recovery_policy=None):
         """Start a new session. Returns the session dict or None on failure."""
         bindings = {}
+        from turn_recovery import recovery_policy as validate_policy
+        policy = dict(self._recovery_policy)
+        if recovery_policy is not None:
+            validate_policy(recovery_policy)
+            policy.update(recovery_policy)
         if isinstance(cast, dict):
             for role, name in cast.items():
                 if not isinstance(role, str) or not isinstance(name, str) or not name:
@@ -64,6 +71,7 @@ class SessionEngine:
             input_text=input_text,
             rules_snapshot=self._rules.active_list() if self._rules is not None else None,
             participant_bindings=bindings,
+            recovery_policy=policy,
         )
         if not session:
             return None
@@ -130,6 +138,185 @@ class SessionEngine:
             bindings[role] = {'kind': 'agent', 'identity_id': identity,
                              'launch_provenance': provenance, 'operator_selected': True}
         return bindings
+
+    def monitor_turns(self, now=None):
+        """Observe durable delivery independently of process heartbeats."""
+        from copy import deepcopy
+        from turn_recovery import FAILURE_CATEGORIES, recovery_policy
+        import uuid
+        now = time.time() if now is None else now
+        with self._lock:
+            for session in self._store.list_all():
+                if session.get('stop_id') or session.get('completion_protocol') != 1:
+                    continue
+                if session['state'] == 'retrying' and session.get('pending_retry', {}).get('status') == 'awaiting_local_end':
+                    self._finish_retry(session, now)
+                    continue
+                if session['state'] not in ('waiting', 'stalled'):
+                    continue
+                invocation = session.get('active_invocation')
+                if not invocation or invocation.get('human') or invocation.get('consumed'):
+                    continue
+                policy = recovery_policy(session.get('recovery_policy'))
+                monitoring = deepcopy(invocation.get('monitoring'))
+                if not monitoring:  # Older runs are not silently re-dispatched.
+                    continue
+                instance = {'name': invocation['expected_agent'], 'identity_id': invocation['expected_identity_id']}
+                records = self._trigger.queue.for_identity(instance)
+                record = next((r for r in records if r['envelope']['dispatch_id'] == invocation['dispatch_id']), None)
+                events = record['events'] if record else []
+                ack = next((e for e in events if e['state'] == 'acknowledged'), None)
+                if ack and monitoring.get('acknowledged_at') is None:
+                    monitoring.update(acknowledged_at=ack['at'], response_deadline=ack['at'] + policy['response_timeout'])
+                if events:
+                    monitoring['last_event'] = {key: events[-1][key] for key in ('state', 'at')}
+                live = (not self._registry or any(item['identity_id'] == instance['identity_id']
+                                                for item in self._registry.get_all().values()))
+                reason = None
+                if record and record['state'] == 'failed':
+                    category = events[-1].get('error', '')
+                    reason = category if category in FAILURE_CATEGORIES else 'transport_closed'
+                elif not live:
+                    reason = 'disconnected'
+                elif record and record['state'] == 'uncertain':
+                    reason = 'transport_closed'
+                elif monitoring.get('acknowledged_at') is None and now >= monitoring['ack_deadline']:
+                    reason = 'missing_ack'
+                elif monitoring.get('response_deadline') is not None and now >= monitoring['response_deadline']:
+                    reason = 'response_timeout'
+                recovery = deepcopy(session.get('turn_recovery'))
+                if recovery and recovery.get('deferred_until', 0) > now:
+                    reason = None
+                if reason:
+                    if not recovery or recovery['attempt_id'] != invocation['attempt_id']:
+                        recovery = {'checkpoint_id': uuid.uuid4().hex, 'attempt_id': invocation['attempt_id'],
+                                    'turn_id': invocation['turn_id'], 'dispatch_id': invocation['dispatch_id'],
+                                    'first_at': now, 'actions': [], 'recoverable_result': False}
+                    recovery.update(reason=reason, last_event=monitoring['last_event'], status='stalled')
+                    if record and record['state'] == 'failed' and type(events[-1].get('http_status')) is int:
+                        recovery['http_status'] = events[-1]['http_status']
+                if monitoring == invocation.get('monitoring') and recovery == session.get('turn_recovery'):
+                    continue
+                def observe(value):
+                    value['active_invocation']['monitoring'] = monitoring
+                    value['turn_recovery'] = recovery
+                    if reason:
+                        value['state'] = 'stalled'
+                self._store._event_update(session['id'], observe)
+            return self.list_active()
+
+    @staticmethod
+    def _current_checkpoint(session, checkpoint_id, attempt_id):
+        from turn_events import EventConflict
+        invocation = session.get('active_invocation') if session else None
+        checkpoint = session.get('turn_recovery') if session else None
+        if (not session or session.get('stop_id') or session['state'] != 'stalled'
+                or not invocation or invocation.get('consumed') or invocation.get('human')
+                or invocation['attempt_id'] != attempt_id or not checkpoint
+                or checkpoint['checkpoint_id'] != checkpoint_id or checkpoint['attempt_id'] != attempt_id):
+            raise EventConflict('Recovery choices belong to a different, completed or stopped turn. Refresh this review.')
+        return invocation, checkpoint
+
+    def wait_turn(self, session_id, checkpoint_id, attempt_id, extend_seconds, *, now=None):
+        from turn_recovery import positive_seconds
+        positive_seconds(extend_seconds, 'Wait extension')
+        now = time.time() if now is None else now
+        with self._lock:
+            self._current_checkpoint(self._store.get(session_id), checkpoint_id, attempt_id)
+            def extend(session):
+                invocation, checkpoint = self._current_checkpoint(session, checkpoint_id, attempt_id)
+                monitoring = invocation['monitoring']
+                deadline = 'response_deadline' if monitoring.get('acknowledged_at') is not None else 'ack_deadline'
+                monitoring[deadline] = max(now, monitoring.get(deadline) or now) + extend_seconds
+                checkpoint.update(status='waiting', deferred_until=monitoring[deadline])
+                checkpoint['actions'].append({'action': 'wait', 'at': now, 'seconds': extend_seconds})
+                session['state'] = 'waiting'
+            return self._enrich(self._store._event_update(session_id, extend))
+
+    def retry_turn(self, session_id, checkpoint_id, attempt_id, request_id, *, confirmation=None, now=None):
+        from copy import deepcopy
+        from dispatch_queue import _identifier
+        from review_brief import _revision
+        from turn_events import EventConflict, EventValidationError
+        import uuid
+        try:
+            _identifier(request_id, 'Retry request ID')
+        except ValueError as exc:
+            raise EventValidationError(str(exc)) from None
+        if confirmation is not None:
+            # Managed CLI confirmation/relaunch is a separately tested tranche.
+            raise EventConflict('Owned CLI retry preparation is not available yet.')
+        now = time.time() if now is None else now
+        intent = _revision({'checkpoint_id': checkpoint_id, 'attempt_id': attempt_id, 'confirmation': confirmation})
+        with self._lock:
+            session = self._store.get(session_id)
+            if not session or session.get('stop_id') or session['state'] == 'prepared':
+                raise EventConflict('A stopped or prepared run cannot retry a turn.')
+            prior = session.get('retry_requests', {}).get(request_id)
+            if prior:
+                if prior['fingerprint'] != intent:
+                    raise EventConflict('Retry request ID belongs to different recovery choices.')
+                if session.get('pending_retry', {}).get('request_id') == request_id:
+                    return self._finish_retry(session, now)
+                return self._enrich(session)
+            invocation, checkpoint = self._current_checkpoint(session, checkpoint_id, attempt_id)
+            provenance = session['participant_bindings'][invocation['role']].get('launch_provenance')
+            if provenance and provenance['effective']['seat']['adapter'] == 'cli':
+                raise EventConflict('This CLI needs explicit owned termination before retry preparation.')
+            pending = {'request_id': request_id, 'checkpoint_id': checkpoint_id,
+                       'old_invocation': deepcopy(invocation), 'new_attempt_id': uuid.uuid4().hex,
+                       'new_brief_id': uuid.uuid4().hex, 'new_dispatch_id': uuid.uuid4().hex,
+                       'status': 'awaiting_local_end', 'requested_at': now}
+            def fence(value):
+                current, recovery = self._current_checkpoint(value, checkpoint_id, attempt_id)
+                value.setdefault('superseded_attempts', []).append({
+                    **{key: current[key] for key in ('attempt_id', 'turn_id', 'dispatch_id', 'expected_identity_id')},
+                    'run_id': value['run_id'], 'input_revision': value['input_revision'],
+                    'superseded_at': now, 'reason': 'operator_retry', 'request_id': request_id})
+                value.setdefault('retry_requests', {})[request_id] = {'fingerprint': intent,
+                    'new_attempt_id': pending['new_attempt_id'], 'at': now}
+                value['pending_retry'] = deepcopy(pending)
+                recovery.update(status='retrying')
+                recovery['actions'].append({'action': 'retry', 'at': now, 'request_id': request_id})
+                value['state'] = 'retrying'
+            # The attempt fence commits before touching queue ownership.
+            session = self._store._event_update(session_id, fence)
+            return self._finish_retry(session, now)
+
+    def _finish_retry(self, session, now):
+        """Finish only the persisted operator intent, never a speculative replay."""
+        from turn_events import EventConflict
+        pending = session.get('pending_retry')
+        if not pending or session.get('stop_id'):
+            return self._enrich(session)
+        if any(e['attempt_id'] == pending['new_attempt_id'] for e in session.get('admitted_events', [])):
+            return self._enrich(self._store._event_update(session['id'], lambda s: s.pop('pending_retry', None)))
+        old = pending['old_invocation']
+        record = self._trigger.queue.cancel_dispatch(old['dispatch_id'], pending['request_id'])
+        if record and record['state'] == 'cancelling':
+            return self._enrich(session)
+        instance = next((item for item in self._registry.get_all().values()
+                         if item['identity_id'] == old['expected_identity_id']), None) if self._registry else None
+        if instance is None:
+            return self._enrich(session)  # No identity guess or replacement model.
+        invocation = session.get('active_invocation')
+        if invocation and invocation['attempt_id'] == old['attempt_id']:
+            def prepare(value):
+                value['active_invocation'] = None
+                value['state'] = 'active'
+            session = self._store._event_update(session['id'], prepare)
+        elif invocation and invocation['attempt_id'] != pending['new_attempt_id']:
+            raise EventConflict('The retry intent no longer owns this turn.')
+        try:
+            if self._trigger_current(session, retry=pending, now=now) is False:
+                def blocked(value):
+                    value['state'] = 'retrying'
+                    value['pending_retry']['status'] = 'preparation_failed'
+                return self._enrich(self._store._event_update(session['id'], blocked))
+        except OSError:
+            # Already-fenced work stays safe; the same explicit request repairs.
+            raise
+        return self._enrich(self._store._event_update(session['id'], lambda s: s.pop('pending_retry', None)))
 
     def _guard_restart_seats(self, record, bindings, allowed_runs, confirmations):
         from turn_events import EventConflict
@@ -350,7 +537,9 @@ class SessionEngine:
         from dispatch_queue import QueueAccessError
         with self._lock:
             instance = self._live_instance(instance)
-            stopped = {s['run_id']: s for s in self._store.list_all() if s.get('stop_id')}
+            runs = self._store.list_all()
+            stopped = {s['run_id']: s for s in runs if s.get('stop_id')}
+            superseded = {a['dispatch_id']: s for s in runs for a in s.get('superseded_attempts', [])}
             if dispatch_id is not None:
                 if not isinstance(dispatch_id, str) or not dispatch_id:
                     raise QueueAccessError('Chat needs a valid owned dispatch ID.')
@@ -359,13 +548,15 @@ class SessionEngine:
                 metadata = {key: envelope[key] for key in ('dispatch_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision') if key in envelope}
                 metadata['seat_identity_id'] = instance['identity_id']
                 metadata['provenance'] = 'authenticated_dispatch'
-                run = stopped.get(envelope.get('run_id'))
+                run = stopped.get(envelope.get('run_id')) or superseded.get(dispatch_id)
                 if run:
-                    metadata.update(routing_suppressed=True, quarantine_session_id=run['id'])
+                    metadata.update(routing_suppressed=True, quarantine_session_id=run['id'],
+                                    quarantine_reason='stopped_run' if run.get('stop_id') else 'attempt_superseded')
                 return metadata
             records = self._trigger.queue.for_identity(instance)
-            run = next((stopped[r['envelope']['run_id']] for r in reversed(records)
-                        if r['envelope'].get('run_id') in stopped), None)
+            run = next((stopped.get(r['envelope'].get('run_id')) or superseded.get(r['envelope']['dispatch_id'])
+                        for r in reversed(records) if r['envelope'].get('run_id') in stopped
+                        or r['envelope']['dispatch_id'] in superseded), None)
             return ({'routing_suppressed': True, 'provenance': 'unverified_scope',
                      'seat_identity_id': instance['identity_id'], 'quarantine_session_id': run['id']}
                     if run else {'seat_identity_id': instance['identity_id']})
@@ -418,11 +609,12 @@ class SessionEngine:
             if metadata.get('routing_suppressed'):
                 validate_content('final', text)
                 event = dict(metadata, content=text, kind='chat')
-                self._store.quarantine_event(metadata['quarantine_session_id'], event, instance)
+                self._store.quarantine_event(metadata['quarantine_session_id'], event, instance,
+                                             reason=metadata.get('quarantine_reason', 'stopped_run'))
                 if metadata.get('provenance') == 'unverified_scope':
                     # Seat provenance is known; old/new invocation attribution
                     # cannot be inferred from a persistent bearer alone.
-                    text = '[quarantine-warning] Unscoped output from a stopped seat: ' + text
+                    text = '[quarantine-warning] Unscoped output from a stopped or superseded invocation: ' + text
             if publish is not None:
                 return publish(text, metadata)
             merged = dict(fields.pop('metadata', None) or {}, **metadata)
@@ -512,10 +704,10 @@ class SessionEngine:
                 if not owned_run:
                     return []  # Known fresh launch never falls back to old history.
                 if ((owned_run['state'] == 'prepared' and not owned_run.get('stop_id'))
-                        or (owned_run.get('dispatch_eligible') and owned_run['state'] in ('active', 'waiting', 'paused', 'awaiting_input'))):
+                        or (owned_run.get('dispatch_eligible') and owned_run['state'] in ('active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'retrying'))):
                     return self._review_context_messages(owned_run, since_id, limit)
             runs = [s for s in self._store.list_all() if s.get('parent_run_id')
-                    and s.get('dispatch_eligible') and s['state'] in ('active', 'waiting', 'paused', 'awaiting_input')
+                    and s.get('dispatch_eligible') and s['state'] in ('active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'retrying')
                     and any(b.get('identity_id') == instance['identity_id']
                             for b in s.get('participant_bindings', {}).values())]
             if not runs:
@@ -559,7 +751,9 @@ class SessionEngine:
             event['submitted_by'] = submitted_by
         with self._lock:
             session = self._store.get(envelope['session_id'])
-            if session and session.get('dispatch_eligible') is False:
+            superseded = bool(session and any(item['attempt_id'] == event['attempt_id']
+                                               for item in session.get('superseded_attempts', [])))
+            if session and (session.get('dispatch_eligible') is False or superseded):
                 from turn_events import EventConflict
                 # Immutable references and live bearer ownership were checked
                 # before this path. Forged identity overrides are not preserved.
@@ -567,8 +761,9 @@ class SessionEngine:
                     raise EventConflict('Event references do not match its immutable brief.')
                 accepted = session.get('admitted_events', [])
                 if not human and not any(e['attempt_id'] == event['attempt_id'] or e['event_id'] == event['event_id'] for e in accepted):
-                    self._store.quarantine_event(session['id'], event, instance)
-                raise EventConflict('Run was stopped; late output was not admitted.')
+                    self._store.quarantine_event(session['id'], event, instance,
+                                                 reason='attempt_superseded' if superseded else 'stopped_run')
+                raise EventConflict('Attempt was stopped or superseded; late output was not admitted.')
             self._store.admit_event(envelope['session_id'], event, instance, human=human)
             self._project_session(envelope['session_id'])
             return {'status': 'admitted', 'event_id': event['event_id'], 'kind': kind,
@@ -638,7 +833,7 @@ class SessionEngine:
                 if session.get('completion_protocol') == 1:
                     self._project_session(session['id'])
 
-    def _trigger_current(self, session: dict):
+    def _trigger_current(self, session: dict, *, retry=None, now=None):
         """Trigger the agent whose turn it is."""
         if session.get('completion_protocol') != 1:
             return False
@@ -687,6 +882,8 @@ class SessionEngine:
                 prior = [{k: msg.get(k) for k in ('id', 'sender', 'text', 'channel')}
                          for msg in prior if msg is not None]
                 envelope = build_brief(session, phase_idx, turn_idx, agent, identity_id, prior)
+                if retry:
+                    envelope.update(brief_id=retry['new_brief_id'], attempt_id=retry['new_attempt_id'])
                 envelope['completion_protocol'] = 1
                 envelope['role_instructions'] = _DISSENT_LINE if role.lower() in _DISSENT_ROLES else ''
                 brief_id = self._store.briefs.put(envelope)
@@ -697,13 +894,16 @@ class SessionEngine:
                           f"chat_session_event(brief_id='{brief_id}', kind='final', content='<your result>'). "
                           "Ordinary chat and queue release do not complete this turn.")
             except (BriefError, OSError, ValueError):
+                if retry:
+                    return False
                 self._store.interrupt(session['id'], 'Frozen context could not be persisted or exceeded its limit; no turn was queued.')
                 self._messages.add('system', 'Review context could not be prepared. Check input limits and local storage before starting again.',
                                    msg_type='session_error', channel=session.get('channel', 'general'))
                 return False
         import uuid
-        dispatch_id = uuid.uuid4().hex
-        self._store.bind_invocation(session['id'], envelope, dispatch_id, human=human)
+        dispatch_id = retry['new_dispatch_id'] if retry else uuid.uuid4().hex
+        if not retry or not session.get('active_invocation'):
+            self._store.bind_invocation(session['id'], envelope, dispatch_id, human=human, now=now)
         if human:
             return
 
@@ -718,6 +918,8 @@ class SessionEngine:
                 extra.update({key: envelope[key] for key in ('run_id', 'turn_id', 'attempt_id', 'input_revision')})
             self._trigger.trigger_sync(agent, channel=channel, prompt=prompt, **extra)
         except Exception as exc:
+            if retry:
+                return False
             log.error("Session %d: failed to persist dispatch for %s (%s)",
                       session["id"], agent, type(exc).__name__)
             self._store.interrupt(session['id'], 'Dispatch could not be persisted; no turn was delivered.')

@@ -1,6 +1,6 @@
 # Ticket #12: expose stalled turns and allow retry
 
-**State:** Proposed bounded contract for same-AGY critique. No production edits or implementation tests yet. Open choices below are proposals, not settled decisions.
+**State:** Core contract ratified by same AGY (contract review Sections2/6). Core checkpoint/policy/queue/monitor and managed launch units implemented. Managed CLI engine orchestration, operator routes/UI and real #12 acceptance remain unfinished. No publication or independent implementation PASS.
 
 **Authority:** Approved issue #12, specification v1.7 SC-5 and AT-21a/d/22, with Seth's standing autonomous execution amendment. #8 and #11 are published/closed. Base main `0d247d5a19631dd2b70c20d2861d76af9144da8d`. Codex implements; the same AGY critiques the contract and independently reviews the frozen implementation.
 
@@ -19,7 +19,7 @@ Keep the existing stores, queue transaction ledger, coordinator lock, immutable 
 - API request cancellation can end one owned invocation while retaining its seat supervisor. Generic CLI turns have no verified interrupt, so a live stalled CLI cannot safely receive another injected prompt merely because a timer expired.
 - Startup projects accepted results and reconciles Stop without blindly redispatching. The browser currently shows waiting/paused/questions and Stop, with no turn failure checkpoint or wait/retry controls.
 
-## Proposed shape
+## Agreed shape
 
 ### Checkpoints and deadlines
 
@@ -35,7 +35,8 @@ Reuse the authenticated queue failed-release event as the failure transport if i
 
 Wait/extend names the current checkpoint and attempt, records an operator decision and extends its actual deadline without another model call or queue injection. It cannot clear a stopped/superseded fence. Paused runs resume explicitly; questions continue through their existing answer action.
 
-**Open admission choice:** Recommended: an overdue checkpoint leaves the current unfenced attempt authoritative, so a valid explicit final/question that arrives before Retry or Stop can resolve it. No dependent turn starts from a timer, receipt or ordinary chat. If final admission wins the coordinator lock, a stale retry checkpoint conflicts; if Retry wins, the old event is rejected/quarantined. Alternative: hold late finals for operator acceptance, which would overlap saved-answer recovery. Same AGY should challenge this boundary before implementation.
+An overdue checkpoint leaves the current unfenced attempt authoritative: a valid explicit final/question arriving before Retry or Stop resolves it normally. If admission wins the coordinator lock, stale Retry conflicts; if Retry wins, a durable superseded-attempt fence rejects/quarantines the old event. Timers, receipts and ordinary chat never advance a phase. No operator-held saved-answer recovery is added in #12.
+
 
 ### Retry and local ownership
 
@@ -45,7 +46,8 @@ Maintain the existing coordinator order: engine RLock spans sequential SessionSt
 
 Cancel only the old dispatch, never all pending work for the run or peer seat. API cancellation uses actual observed local child exit and IPC cleanup, with remote compute unverified. Queue ownership remains held until its verified release/end; elapsed time cannot transfer it. New attempt preparation/dispatch must be idempotent across failed writes, enqueue failure and lost HTTP responses.
 
-**Open CLI retry choice:** A generic live CLI remains blocked/unsupported until its owned execution has verifiably ended. Proposed bounded flow offers explicit exact-launch termination, then starts an app-owned replacement from the frozen launch profile and binds its new identity before retry. Same-source retry does not automatically require or claim #11's clean-context assurance; stale brief admission is fenced by old identity/attempt. Alternatively require the #11 verified fresh-context contract, accepting that unsupported adapters remain blocked until later replacement work. Settle this choice with AGY, including how to preserve unrelated queued work and avoid accidental #15 seat/model replacement scope.
+Generic live CLI retry requires explicit exact-launch termination and proven client/worker exit before an owned relaunch from the same frozen profile. The new process/identity is labeled same_turn_retry_relaunch. Generic native context is not claimed clean; verified fresh-context arguments are used only when that contract is present. Model/seat reconfiguration remains #15. Unrelated queued/active work on the old seat blocks termination before any retry fence or control write.
+
 
 Old typed results, scoped chat and delayed routing from superseded attempts lose admission/routing authority permanently. A fresh correctly tagged attempt and unrelated human/peer discussion remain usable. Unknown untagged output cannot be treated as a verified retry result.
 
@@ -73,6 +75,16 @@ Offer Wait/extend, Retry current turn and existing Stop. Preserve completed resu
 - Actual Windows fake CLI proves no second injection while old work is live; explicit supported end/owned termination and new identity precede any retry where required. Preserve peer seat/work, process ownership and remote-compute truthfulness.
 - Desktop/mobile/keyboard UI checks, full discovery, all eight earlier integrations, static/diff checks and same-AGY frozen independent review/recheck. No live provider/native AI/global credential/Omarchy changes.
 
+## Frozen interfaces and current checkpoint
+
+Same AGY ratified engine policy/start overrides; monitor_turns(now=None); wait_turn(session_id,checkpoint_id,attempt_id,extend_seconds,now=...); retry_turn(session_id,checkpoint_id,attempt_id,request_id,confirmation=...,now=...). Positive finite policy values reject booleans. Defaults30/900/1 seconds are accepted builder defaults, not user-selected numbers. The coordinator RLock spans sequential store transactions, with each store lock fully released before acquiring the other.
+
+Failure categories are provider_timeout, http_error, transport_closed, process_crash, malformed_session_response, provider_failure, local_delivery_failure and empty_completion. Optional HTTP status is an integer100-599; no raw error/payload/credential text. Failed release exposes a checkpoint without admitting a result. API empty/HTTP failure classification and sanitized transport fields are implemented; actual failure integration remains pending.
+
+Core18 tests and managed launch12 tests pass after observed red. Additional root tests cover exact single-dispatch cancellation, policy validation, pause allowance, superseded routing, corrected-run read scope, cold claim after failed cleanup and background monitor wake/join. Latest complete suite checkpoint445 tests/four expected skips (21.319s); later new orchestration tests are currently red. Existing API-seat and typed-event integrations pass on this backend checkpoint. Process-double managed proofs are not native acceptance.
+
+Manager retry_context_offer(provenance) is read-only; prepare_retry_context(provenance,context_key,confirmation=...,binding=...) requires owned exit proof and preserves frozen launch settings. API provider-failure status does not falsely imply its still-live supervisor died. Generic CLI readiness stays clean_context=False, with pre-spawn run/role read scope and idempotent launch key. Engine managed retry orchestration is still deliberately blocked until its new red tranche is implemented.
+
 ## Next owner
 
-Codex submits this bounded proposal to the same AGY for pressure-testing of deadline/admission semantics, per-attempt cancellation, CLI retry capability, idempotency and the #13-15 boundary. Once settled, the test-only helper captures red cases against frozen interfaces and Codex implements. #12 production work has not started.
+Codex wires managed engine retry against the helper's observed-red orchestration tests, then adds operator routes/policy controls and real isolated API/CLI acceptance. Same AGY remains final frozen reviewer. No #12 push, native/client execution or independent implementation verdict is claimed.

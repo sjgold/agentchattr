@@ -40,6 +40,10 @@ agents: AgentTrigger | None = None
 registry: RuntimeRegistry | None = None
 session_store: SessionStore | None = None
 session_engine: SessionEngine | None = None
+_turn_monitor_task = None
+_turn_monitor_stop = None
+_turn_monitor_wake = None
+_turn_monitor_loop = None
 config: dict = {}
 ws_clients: set[WebSocket] = set()
 
@@ -407,6 +411,44 @@ async def continue_saved_package(package_id: str, request: Request):
         return JSONResponse({'error': 'This team selection is not ready. Refresh and resolve its seats before entering chat.'}, status_code=409)
 
 
+@app.on_event('startup')
+async def start_turn_monitor():
+    global _turn_monitor_task, _turn_monitor_stop, _turn_monitor_wake, _turn_monitor_loop
+    if _turn_monitor_task is not None and not _turn_monitor_task.done():
+        return
+    _turn_monitor_stop, _turn_monitor_wake = asyncio.Event(), asyncio.Event()
+    _turn_monitor_loop = asyncio.get_running_loop()
+    async def observe():
+        while not _turn_monitor_stop.is_set():
+            _turn_monitor_wake.clear()
+            interval = 1
+            if session_engine:
+                interval = session_engine._recovery_policy['monitor_interval']
+                try:
+                    sessions = await asyncio.to_thread(session_engine.monitor_turns)
+                    interval = min([interval] + [(s.get('recovery_policy') or {}).get('monitor_interval', interval)
+                                                  for s in sessions])
+                except Exception as exc:
+                    log.warning('Turn monitor retained work after %s; no speculative replay.', type(exc).__name__)
+            try:
+                await asyncio.wait_for(_turn_monitor_wake.wait(), timeout=interval)
+            except asyncio.TimeoutError:
+                pass
+    _turn_monitor_task = asyncio.create_task(observe())
+
+
+@app.on_event('shutdown')
+async def stop_turn_monitor():
+    global _turn_monitor_task, _turn_monitor_stop, _turn_monitor_wake, _turn_monitor_loop
+    if _turn_monitor_task is not None:
+        _turn_monitor_stop.set()
+        _turn_monitor_wake.set()
+        # Join the current observation before owned runtimes are torn down.
+        await _turn_monitor_task
+        _turn_monitor_task = None
+        _turn_monitor_stop = _turn_monitor_wake = _turn_monitor_loop = None
+
+
 @app.on_event('shutdown')
 async def release_api_seats():
     if api_seat_manager is not None:
@@ -771,6 +813,9 @@ def _on_schedule_change(action: str, schedule: dict):
 
 def _on_session_change(action: str, session: dict):
     """Called from any thread when a session changes."""
+    monitor_loop, wake = _turn_monitor_loop, _turn_monitor_wake
+    if monitor_loop is not None and wake is not None:
+        monitor_loop.call_soon_threadsafe(wake.set)
     if _event_loop is None:
         return
     # Enrich with computed fields so the frontend gets phase_name, current_agent, etc.
@@ -1816,6 +1861,7 @@ async def get_status():
 @app.post('/api/queue/{operation}')
 async def dispatch_operation(operation: str, request: Request):
     from dispatch_queue import QueueAccessError, QueueConflict
+    from turn_recovery import FAILURE_CATEGORIES
     instance = _resolve_authenticated_agent(request)
     if not instance:
         return JSONResponse({'error': 'Registered seat bearer required.'}, status_code=403)
@@ -1825,15 +1871,20 @@ async def dispatch_operation(operation: str, request: Request):
             raise ValueError('Transport receipt is too large.')
         body = json.loads(raw)
         fields = {'consumer_id'} if operation == 'claim' else {'consumer_id', 'dispatch_id'}
-        allowed = fields | ({'failed', 'error_category'} if operation == 'release' else
+        allowed = fields | ({'failed', 'error_category', 'http_status'} if operation == 'release' else
                             {'status'} if operation == 'cancel' else set())
         if (operation not in {'claim', 'ack', 'release', 'uncertain', 'cancel'}
                 or not isinstance(body, dict) or not fields <= body.keys()
                 or body.keys() - allowed or not isinstance(body.get('failed', False), bool)):
             raise ValueError('Invalid transport receipt fields; session results are not accepted here.')
         category = body.get('error_category', '')
-        if category not in ('', 'malformed_session_response', 'provider_failure', 'local_delivery_failure'):
+        if not isinstance(category, str) or (category and category not in FAILURE_CATEGORIES):
             raise ValueError('Invalid transport failure category.')
+        if category and not body.get('failed'):
+            raise ValueError('Failure categories require a failed release.')
+        status = body.get('http_status')
+        if 'http_status' in body and (not body.get('failed') or type(status) is not int or not 100 <= status <= 599):
+            raise ValueError('Invalid failure HTTP status.')
         queue = agents.queue
         if operation == 'claim':
             result = queue.claim(instance, body['consumer_id'])
@@ -1841,8 +1892,10 @@ async def dispatch_operation(operation: str, request: Request):
             result = queue.cancellation_receipt(instance, body['dispatch_id'], body['consumer_id'], body.get('status'))
         else:
             method = {'ack': queue.acknowledge, 'release': queue.release, 'uncertain': queue.uncertain}[operation]
-            extra = {'failed': body.get('failed', False), 'error': category} if operation == 'release' else {}
+            extra = {'failed': body.get('failed', False), 'error': category, 'http_status': status} if operation == 'release' else {}
             result = method(instance, body['dispatch_id'], body['consumer_id'], **extra)
+        if operation == 'release' and body.get('failed') and session_engine:
+            session_engine.monitor_turns()
         return JSONResponse({'dispatch': result})
     except QueueAccessError:
         return JSONResponse({'error': 'Dispatch owner does not match this seat and consumer.'}, status_code=403)

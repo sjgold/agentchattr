@@ -15,7 +15,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-8, #10-11 | Published and closed | Latest #11 publication `f403b59`, same AGY PASS |
-| #12 stalled turns/retry | Contract critique | Same AGY critiques TICKET-12-PLAN.md; Codex settles test interfaces next |
+| #12 stalled turns/retry | Implementing | Codex managed engine wiring/UI; helper red tests; same AGY final review |
 | #16 | Pending, first milestone | Follow #12 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
@@ -31,4 +31,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 #1-8 and #10-11 are published and closed. Latest source publication `f403b590a0256a7db601aa48144c05f121c13ed1`, #11 frozen implementation `78b418df887596c5f173c0126a3e52d6d144670b`. Same AGY independently passed401 tests/four expected platform skips and all eight integrations; post-merge401 tests/four skips pass (19.547s). Receipt metadata/scope corrections are confirmed. Receipt REVIEW-GEMINI-TICKET-11.md; usage CORRECTING-REVIEWS.md. Next: Codex plans #12, same AGY critiques its retry/ownership/deadline contract, then observed-red tests and implementation. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.
 
-Current branch codex/ticket-12-stalled-turns, base0d247d5. TICKET-12-PLAN.md contains a proposed bounded contract with explicit open choices. Same AGY critique is next; no #12 production edits or implementation tests yet.
+Current branch codex/ticket-12-stalled-turns, base0d247d5. Contract ratified by same AGY. Core18 and managed launch12 tests pass; latest full checkpoint445 tests/four skips plus API-seat/session-event integrations pass. New managed orchestration tranche is red against the deliberate CLI gate. Codex must finish wiring, operator routes/UI, actual recovery integration/regressions and frozen independent review before publication. No #12 push or implementation review PASS.

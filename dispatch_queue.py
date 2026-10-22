@@ -148,7 +148,7 @@ class QueueStore:
                     return deepcopy(record)
             return None
 
-    def _update(self, instance, dispatch_id, consumer_id, state, error=''):
+    def _update(self, instance, dispatch_id, consumer_id, state, error='', http_status=None):
         identity = _seat(instance)
         _identifier(dispatch_id, 'Dispatch ID')
         _identifier(consumer_id, 'Consumer ID')
@@ -173,15 +173,19 @@ class QueueStore:
             if state == 'released' and record['state'] == 'dispatched':
                 self._event(record, 'acknowledged')
             self._event(record, state, error)
+            if http_status is not None:
+                record['events'][-1]['http_status'] = http_status
             self._write(ledger)
             return deepcopy(record)
 
     def acknowledge(self, instance, dispatch_id, consumer_id):
         return self._update(instance, dispatch_id, consumer_id, 'acknowledged')
 
-    def release(self, instance, dispatch_id, consumer_id, *, failed=False, error=''):
+    def release(self, instance, dispatch_id, consumer_id, *, failed=False, error='', http_status=None):
         # Deliberately no result content, engine callback or phase transition.
-        return self._update(instance, dispatch_id, consumer_id, 'failed' if failed else 'released', error)
+        if http_status is not None and (not failed or type(http_status) is not int or not 100 <= http_status <= 599):
+            raise ValueError('Failure status must be an integer HTTP status code.')
+        return self._update(instance, dispatch_id, consumer_id, 'failed' if failed else 'released', error, http_status)
 
     def uncertain(self, instance, dispatch_id, consumer_id):
         return self._update(instance, dispatch_id, consumer_id, 'uncertain',
@@ -220,6 +224,25 @@ class QueueStore:
             if changed:
                 self._write(ledger)
             return records
+
+    def cancel_dispatch(self, dispatch_id, cancellation_id):
+        """Fence one retried transport without touching its peers or successors."""
+        _identifier(dispatch_id, 'Dispatch ID')
+        _identifier(cancellation_id, 'Cancellation ID')
+        with self._transaction() as ledger:
+            record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
+            if record is None:
+                return None
+            if record['state'] == 'queued':
+                record['cancellation_id'] = cancellation_id
+                self._event(record, 'cancelled')
+                self._write(ledger)
+            elif record['state'] in ACTIVE and record['state'] != 'cancelling':
+                record['cancellation_id'] = cancellation_id
+                record['cancellation'] = {'status': 'requested', 'at': time.time(), 'remote_compute': 'unverified'}
+                self._event(record, 'cancelling')
+                self._write(ledger)
+            return deepcopy(record)
 
     def for_identity(self, instance):
         identity = _seat(instance)

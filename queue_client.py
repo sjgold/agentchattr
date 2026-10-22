@@ -25,8 +25,9 @@ class QueueClient:
     def acknowledge(self, dispatch_id):
         return self._request('ack', dispatch_id=dispatch_id)
 
-    def release(self, dispatch_id, *, failed=False, error_category=''):
-        return self._request('release', dispatch_id=dispatch_id, failed=failed, error_category=error_category)
+    def release(self, dispatch_id, *, failed=False, error_category='', http_status=None):
+        extra = {'http_status': http_status} if http_status is not None else {}
+        return self._request('release', dispatch_id=dispatch_id, failed=failed, error_category=error_category, **extra)
 
     def uncertain(self, dispatch_id):
         return self._request('uncertain', dispatch_id=dispatch_id)

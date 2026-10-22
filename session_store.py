@@ -142,12 +142,14 @@ class SessionStore:
 
     def create(self, template_id: str, channel: str, cast: dict,
                started_by: str, goal: str = "", input_text: str = "", rules_snapshot=None,
-               participant_bindings=None) -> dict | None:
+               participant_bindings=None, recovery_policy=None) -> dict | None:
         """Create and persist a new session run."""
         tmpl = self._templates.get(template_id)
         if not tmpl:
             return None
         from review_brief import BriefError, freeze_inputs
+        from turn_recovery import recovery_policy as validate_policy
+        policy = validate_policy(recovery_policy)
         frozen = freeze_inputs(tmpl, goal, input_text, rules_snapshot)
         if (not isinstance(cast, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not v for k, v in cast.items())
                 or set(cast) != set(tmpl['roles'])):
@@ -156,7 +158,7 @@ class SessionStore:
         with self._lock:
             # One active session per channel
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "prepared"):
+                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "prepared", "stalled", "retrying"):
                     return None
 
             session = {
@@ -183,6 +185,10 @@ class SessionStore:
                 "continuation_context": [],
                 "dispatch_eligible": True,
                 "quarantined_events": [],
+                "recovery_policy": policy,
+                "turn_recovery": None,
+                "superseded_attempts": [],
+                "retry_requests": {},
             }
             self._next_id += 1
             self._sessions.append(session)
@@ -207,7 +213,7 @@ class SessionStore:
         """Get the active/waiting/paused session for a channel."""
         with self._lock:
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input"):
+                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "stalled", "retrying"):
                     return deepcopy(s)
             return None
 
@@ -254,7 +260,7 @@ class SessionStore:
         self._fire(action, result)
         return result
 
-    def bind_invocation(self, session_id, envelope, dispatch_id, *, human=False):
+    def bind_invocation(self, session_id, envelope, dispatch_id, *, human=False, now=None):
         from turn_events import EventConflict
         def bind(session):
             if session['state'] != 'active' or session.get('active_invocation'):
@@ -263,6 +269,14 @@ class SessionStore:
                 'brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision',
                 'expected_agent', 'expected_identity_id', 'phase_index', 'turn_index', 'role')}
             session['active_invocation'].update(dispatch_id=dispatch_id, consumed=False, human=human)
+            if not human:
+                created = time.time() if now is None else now
+                from turn_recovery import recovery_policy
+                policy = recovery_policy(session.get('recovery_policy'))
+                session['active_invocation']['monitoring'] = {
+                    'created_at': created, 'ack_deadline': created + policy['ack_timeout'],
+                    'acknowledged_at': None, 'response_deadline': None,
+                    'last_event': {'state': 'bound', 'at': created}}
             session['state'] = 'waiting'
             session['waiting_on'] = envelope['expected_agent']
         return self._event_update(session_id, bind)
@@ -315,7 +329,9 @@ class SessionStore:
                 intent_fingerprint=intent_fingerprint,
                 started_by=parent['started_by'], started_at=time.time(), updated_at=time.time(),
                 result_message_ids=[], admitted_events=[], quarantined_events=[], continuation_context=[],
-                active_invocation=None, last_message_id=None, output_message_id=None)
+                active_invocation=None, last_message_id=None, output_message_id=None,
+                recovery_policy=deepcopy(parent.get('recovery_policy')), turn_recovery=None,
+                superseded_attempts=[], retry_requests={})
             before, before_id = deepcopy(self._sessions), self._next_id
             try:
                 parent['replaced_by_run_id'] = child['run_id']
@@ -372,11 +388,11 @@ class SessionStore:
             session.update(state=state, cancellation_receipts=deepcopy(receipts))
         return self._event_update(session_id, update)
 
-    def quarantine_event(self, session_id, event, instance):
+    def quarantine_event(self, session_id, event, instance, *, reason='stopped_run'):
         def quarantine(session):
             record = deepcopy(event)
             record.update(quarantined_at=time.time(), provenance=event.get('provenance', 'authenticated_seat'),
-                          expected_identity_id=instance['identity_id'], reason='stopped_run')
+                          expected_identity_id=instance['identity_id'], reason=reason)
             records = session.setdefault('quarantined_events', [])
             records.append(record)
             while len(records) > 64 or sum(len(e['content'].encode('utf-8')) for e in records) > 8 * 1024 * 1024:
@@ -391,7 +407,7 @@ class SessionStore:
             invocation = session.get('active_invocation')
             if not invocation:
                 raise EventConflict('No current invocation can accept this event.')
-            if (session['state'] not in ('active', 'waiting') or invocation['consumed']
+            if (session['state'] not in ('active', 'waiting', 'stalled') or invocation['consumed']
                     or any(event.get(key) != invocation.get(key) for key in IDENTITY_FIELDS)
                     or event['input_revision'] != session['input_revision']
                     or any(prior['event_id'] == event['event_id'] for run in self._sessions for prior in run.get('admitted_events', []))):
@@ -403,6 +419,8 @@ class SessionStore:
                     or instance.get('identity_id') != invocation['expected_identity_id']):
                 raise EventAccessError('This event belongs to another seat identity.')
             invocation['consumed'] = True
+            if session.get('turn_recovery'):
+                session['turn_recovery'].update(status='resolved', resolved_by=event['event_id'])
             record = deepcopy(event)
             record.update(projected_message_id=None, accepted_at=time.time(),
                           sender=invocation['expected_agent'],
@@ -475,6 +493,12 @@ class SessionStore:
             if session['state'] != 'paused' or not session.get('active_invocation'):
                 raise EventConflict('No paused invocation can be resumed.')
             session['state'] = 'waiting'
+            monitoring = session['active_invocation'].get('monitoring')
+            if monitoring and monitoring.get('paused_at') is not None:
+                elapsed = max(0, time.time() - monitoring.pop('paused_at'))
+                for key in ('ack_deadline', 'response_deadline'):
+                    if monitoring.get(key) is not None:
+                        monitoring[key] += elapsed
         return self._event_update(session_id, resume)
 
     def advance_phase(self, session_id: int, message_id: int | None = None) -> dict | None:
@@ -531,6 +555,9 @@ class SessionStore:
             if not session or session["state"] not in ("active", "waiting"):
                 return None
             session["state"] = "paused"
+            monitoring = (session.get('active_invocation') or {}).get('monitoring')
+            if monitoring:
+                monitoring['paused_at'] = time.time()
             session["updated_at"] = time.time()
             self._save()
             result = deepcopy(session)

@@ -33,6 +33,9 @@ ROOT = Path(__file__).parent
 
 class _ManagedProviderFailure(Exception):
     """Provider diagnostic already recorded without exposing response bodies."""
+    def __init__(self, http_status=None):
+        super().__init__('Provider invocation failed.')
+        self.http_status = http_status
 
 
 def _auth_headers(token: str, *, include_json: bool = False) -> dict[str, str]:
@@ -285,7 +288,7 @@ def main():
                 receipt.update(state='action_required' if auth_failure else 'failed',
                                authentication='failed' if auth_failure else receipt.value['authentication'],
                                error='Provider rejected authentication. Check the credential reference and retry.' if auth_failure else diagnostic)
-                raise _ManagedProviderFailure() from None
+                raise _ManagedProviderFailure(exc.http_status) from None
             receipt.update(confirmed_model=result['confirmed_model'], authentication='verified',
                            state='ready', error=None)
             return result['content']
@@ -325,6 +328,7 @@ def main():
         return messages
 
     last_failure_category = ['']
+    last_failure_http_status = [None]
     last_cancelled = [False]
     unresolved_dispatches = set()
 
@@ -333,6 +337,7 @@ def main():
         from turn_events import EventValidationError
         from api_invocation import InvocationCancelled
         last_failure_category[0] = ''
+        last_failure_http_status[0] = None
         last_cancelled[0] = False
         my_name = get_name()
         set_working(True)
@@ -362,6 +367,9 @@ def main():
             response = call_model(messages, dispatch_id)
             response = response.strip()
             if not response:
+                last_failure_category[0] = 'empty_completion'
+                if receipt:
+                    receipt.update(state='failed', error='Provider returned no result. No answer was admitted or saved for recovery.')
                 return False
 
             if frozen:
@@ -422,6 +430,10 @@ def main():
             malformed = isinstance(exc, EventValidationError)
             last_failure_category[0] = ('malformed_session_response' if malformed else
                 'provider_failure' if isinstance(exc, _ManagedProviderFailure) else 'local_delivery_failure')
+            status = getattr(exc, 'http_status', None)
+            if isinstance(exc, _ManagedProviderFailure) and type(status) is int and 100 <= status <= 599:
+                last_failure_category[0] = 'http_error'
+                last_failure_http_status[0] = status
             if receipt:
                 if not isinstance(exc, _ManagedProviderFailure):
                     receipt.update(state='failed', error=(
@@ -474,7 +486,8 @@ def main():
                             frozen='review_brief_id' in entry, prompt=entry.get('prompt', ''), job_id=entry.get('job_id') or None, dispatch_id=dispatch_id)
                         processed_dispatch = dispatch_id
                     if not last_cancelled[0]:
-                        queue.release(dispatch_id, failed=not processed_ok, error_category=last_failure_category[0])
+                        queue.release(dispatch_id, failed=not processed_ok, error_category=last_failure_category[0],
+                                      http_status=last_failure_http_status[0])
             except Exception as exc:
                 print(f'  Queue delivery held ({type(exc).__name__}); dispatch retained without model replay.')
 
