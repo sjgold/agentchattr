@@ -138,7 +138,7 @@
 ## Next step
 
 **Action:** Settle the #11 corrected-document clean-restart contract in `TICKET-11-PLAN.md`, with same AGY pressure-test before red tests/implementation. Key questions: reliable fresh CLI context, retained launch provenance, old-chat exclusion and idempotent preparation/lineage. #10 is published/closed; #9 remains deferred.
-**Who:** Same AGY returns the requested contract critique; its response resumes Codex to settle bounded choices and start red tests. No routine human approval is pending.
+**Who:** Same AGY returned PROCEED WITH AMENDMENTS and now resolves follow-up questions about prepared versus permanent Stop fences, effective launch provenance and default CLI history reads. Its response resumes Codex to fix interfaces and start red tests. No routine human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
@@ -151,7 +151,7 @@
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #11 contract pressure-test; proposed plan `TICKET-11-PLAN.md`, no production edits or implementation tests yet. #1-8 and #10 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #11 contract refinement after same-AGY PROCEED WITH AMENDMENTS. No warning-only bypass of clean-context assurance; prepared eligibility must stay distinct from permanent Stop fences. No production edits or implementation tests yet. #1-8 and #10 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 

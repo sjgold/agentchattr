@@ -1,8 +1,8 @@
 # Ticket #11: correct the document and restart cleanly
 
-**State:** Proposed contract for same-AGY pressure-test. No #11 production changes or implementation tests yet.
+**State:** Same AGY returned PROCEED WITH AMENDMENTS; follow-up safety/eligibility/provenance resolutions pending. No #11 production changes or implementation tests yet.
 
-**Authority:** Approved issue #11, spec v1.7 SC-3 and AT-07, October22 autonomous execution amendment. Its only blocker #10 is published/closed. Base main `83aa04a`. Full runtime restart adoption (#9), failure/retry/outbox recovery (#12) and file intake (#18) remain separate scope.
+**Authority:** Approved issue #11, spec v1.7 SC-3 and AT-07, October22 autonomous execution amendment. Its only blocker #10 is published/closed. Base main `83aa04a`. Full runtime restart adoption (#9), stalled-turn deadlines/retry (#12), worker outbox recovery in later backlog and file intake (#18) remain separate scope.
 
 ## Verified baseline
 
@@ -59,3 +59,18 @@
 - [ ] Freeze, same-AGY independent review/recheck, reviewed publication and issue closure.
 
 Next owner: same AGY returns a contract critique. Codex settles bounded choices, records rulings and begins red tests. No #11 implementation or native/live-provider usage is claimed. Routine human plan/completion gates remain removed by the standing authorization.
+
+## Contract critique and follow-up
+
+Same AGY returned PROCEED WITH AMENDMENTS in `ticket-11-contract-review/index.md`. Root accepted atomic linked preparation, immutable retained launch provenance, same-source400, shared-seat409 and explicit unsupported CLI state. These are pending concrete interface freeze, not implementation evidence.
+
+Rulings and issues sent back for resolution:
+
+- **Accepted:** omit supplementary shared chat for all completion_protocol1 frozen API turns; ordinary API chat stays unchanged. New run phase results remain available through its frozen briefs.
+- **Rejected:** a warning acknowledgment cannot turn unverified reused CLI context into clean context. With unresolved old work, drafting/preparation may proceed, but dispatch needs proven old local end or an explicitly selected independently clean replacement identity/context. No native flags are assumed from a generic example.
+- **Required distinction:** prepared ineligibility is temporary; a stop_id-bearing fence is permanent. Current #10 code uses dispatch_eligible=False as shorthand for Stop in reconciliation/chat-scope/control paths, so those paths must distinguish preparation before adding prepared records. Stop during preparation must permanently prevent activation.
+- **Required provenance:** retain effective allowlisted configuration or immutable launch references plus fingerprint, not only model/reasoning/package IDs. Edited cwd/args/MCP mapping/provider parameters cannot silently enter corrected work. Never persist credential or bearer values. Older missing provenance needs explicit replacement-settings selection/confirmation.
+- **Open:** default CLI MCP chat_read/resync/job reads must not silently reintroduce old-channel history. Keep old history readable to the operator; do not imply a filesystem sandbox or forbid unrelated discussion globally. Settle the bounded default-read policy with same AGY.
+- **Proposed idempotency:** one prepared child per parent, stable request ID, same-request repair of that child without duplicate launches/runs. Source changes require an explicit replacement lineage rather than mutating an existing source snapshot. AGY is checking exact crash/activation boundaries.
+
+Next owner: same AGY resolves the follow-up contract questions; Codex then fixes interfaces for independent red tests. No routine human gate, production changes or implementation-test pass is claimed.
