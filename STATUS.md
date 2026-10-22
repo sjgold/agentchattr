@@ -105,14 +105,14 @@
 ## Next step
 
 **Action:** Implement #7 durable individual turn delivery after same AGY pressure-tests the ownership contract in `TICKET-7-PLAN.md`. Codex owns implementation; same AGY independently verifies the frozen result before publication. No human completion gate; unapproved live usage/native Omarchy remain deferred.
-**Who:** Codex builder/coordinator. Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8`; test author `fcc36344-f0ca-4514-9288-74753be75947` completed tests after configured Codex gpt-6-sol/medium failover from rate-limited Sonnet.
+**Who:** Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` owns the next move: return #7 contract critique (requested with expectReply:true). Its reply resumes Codex implementation. Test author `fcc36344-f0ca-4514-9288-74753be75947` remains test-only on configured Codex gpt-6-sol/medium after Sonnet quota failover.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** main publication checkpoint `53a1b9b`; #1-6 published and closed. Next branch: codex/ticket-7-durable-queue.
+- **Branch:** codex/ticket-7-durable-queue, base main `d16780b`. #1-6 published and closed; #7 proposed contract only, no production edits.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-6 including frozen review context implementation, builder-verified with 266 tests OK (4 platform skips), real fake-API-to-fake-CLI/MCP delivery and package regression integration. Exact source survives30messages/live template-rule edits; wrong-seat/invalid context rejected and source not executed. Rendered input/error/Start dialog verified; inherited background chat header remains a mobile limitation. Same AGY review PASS; published and closed. No live providers/native Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
