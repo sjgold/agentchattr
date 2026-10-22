@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #5 published/closed; #6 implemented and builder-verified, preparing AGY review)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #5 published/closed; #6 frozen at e69442d; same AGY review pending)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -76,7 +76,7 @@
 - Chat normal/draft Start dialogs accept pasted text and retain drafts on validation error. UTF-8 limits: task32KiB/source512KiB/rules32KiB/prior-results256KiB; reject without slicing. Existing role/phase count limits remain until #16. Source is data, never evaluated or routed as mentions by Start. Legacy sessions are not automatically migrated.
 - Builder full suite **266 tests OK, 4 Unix/tmux skips**. Real isolated fake-API/actual fake-CLI integration passed: one local provider request, matching exact Unicode/CRLF/code/mentions source and revisions across distinct frozen phases after30messages/live template/rule edits; CLI retrieves via actual MCP HTTP transport; wrong-seat403, invalid brief404/no extra API call, oversized Start400/no run, source sentinel absent. Existing package regression integration and static checks pass.
 - Rendered human-only Start verified source field, rejected oversized input retained in modal, successful source persisted, corrected scoped step visibility, and inspected390px dialog screenshot. Dialog width351 fits; inherited background chat header overflows to479px, so no whole-chat mobile pass is claimed. Fixture session/browser/server stopped. No live clients/providers or native Linux/Omarchy checks.
-- Same AGY reviewer receives frozen implementation; review/publication not yet claimed. Test author remained test-only on configured Codex after Sonnet quota failover. Plan `TICKET-6-PLAN.md`, usage `FROZEN-REVIEWS.md`. Queue durability/outbox, completion admission, server-restart reconciliation and cancellation remain #7-10.
+- Same AGY reviewer receives frozen implementation; review/publication not yet claimed. Test author remained test-only on configured Codex after Sonnet quota failover. Frozen target `e69442dac1da3e464c64e25413037c5ae41219ec`; plan `TICKET-6-PLAN.md`, review guide `TICKET-6-REVIEW.md`, usage `FROZEN-REVIEWS.md`. Queue durability/outbox, completion admission, server-restart reconciliation and cancellation remain #7-10.
 
 ## Latest reviewer additions
 
@@ -103,7 +103,7 @@
 
 ## Next step
 
-**Action:** Freeze and obtain same AGY independent review/recheck of #6 frozen source/design delivery using `TICKET-6-REVIEW.md`. On PASS merge/push/close under standing authorization and continue #7. No human completion gate; unapproved live usage/native Omarchy remain deferred.
+**Action:** Obtain same AGY independent review/recheck of frozen #6 `e69442dac1da3e464c64e25413037c5ae41219ec` using `TICKET-6-REVIEW.md`. On PASS merge/push/close under standing authorization and continue #7. No human completion gate; unapproved live usage/native Omarchy remain deferred.
 **Who:** Codex builder/coordinator. Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8`; test author `fcc36344-f0ca-4514-9288-74753be75947` completed tests after configured Codex gpt-6-sol/medium failover from rate-limited Sonnet.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
