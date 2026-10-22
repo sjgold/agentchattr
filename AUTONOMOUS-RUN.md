@@ -15,7 +15,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-8, #10 | Published and closed | Latest #10 publication `10f75e3`, independent AGY PASS |
-| #11 corrected-document clean restart | Next eligible | Codex bounded plan, same AGY contract critique |
+| #11 corrected-document clean restart | Contract planning | Same AGY critique of TICKET-11-PLAN.md, then Codex red tests |
 | #12, #16 | Pending, first milestone | Follow dependencies after #11 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#1-8 and #10 are published and closed. #10 publication10f75e3, frozen sourceeeb9026, same AGY independent PASS on350 tests/four skips and all seven integrations. Post-merge350 tests/four skips/static checks pass. Receipt REVIEW-GEMINI-TICKET-10.md; usage STOPPING-REVIEWS.md. Next is #11 corrected-document clean restart (blocker #10 closed), starting with a bounded Codex plan and same AGY contract critique. No #11 production changes yet. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.
+#1-8 and #10 are published and closed. #10 publication10f75e3, frozen sourceeeb9026, same AGY independent PASS on350 tests/four skips and all seven integrations. Post-merge350 tests/four skips/static checks pass. Receipt REVIEW-GEMINI-TICKET-10.md; usage STOPPING-REVIEWS.md. Current branch codex/ticket-11-clean-restart, base83aa04a. Codex wrote TICKET-11-PLAN.md; same AGY owns contract critique on context assurance, managed launch provenance, history exclusion and durable idempotent preparation. Its response resumes Codex. No #11 production changes yet. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.

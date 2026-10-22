@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 and #10 published/closed; #11 next)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 and #10 published/closed; #11 contract planning)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -13,7 +13,7 @@
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
 - Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
 - Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
-- Durable run tracking: `AUTONOMOUS-RUN.md`. Next eligible ticket: #11 corrected-document clean restart, after published #10. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
+- Durable run tracking: `AUTONOMOUS-RUN.md`. Active planning: #11 corrected-document clean restart, `TICKET-11-PLAN.md`, after published #10. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
 
@@ -137,21 +137,21 @@
 
 ## Next step
 
-**Action:** Begin #11 corrected-document clean-restart contract planning with the same AGY. Its blocker #10 is published/closed. Preserve retained team/design, new run/input identities, fresh reviewer context and separation from old results; pressure-test before implementation. #9 full runtime restart reconciliation remains deferred by milestone order.
-**Who:** Codex owns the bounded #11 plan; same AGY independently critiques and later reviews its frozen implementation. No routine human approval is pending.
+**Action:** Settle the #11 corrected-document clean-restart contract in `TICKET-11-PLAN.md`, with same AGY pressure-test before red tests/implementation. Key questions: reliable fresh CLI context, retained launch provenance, old-chat exclusion and idempotent preparation/lineage. #10 is published/closed; #9 remains deferred.
+**Who:** Same AGY returns the requested contract critique; its response resumes Codex to settle bounded choices and start red tests. No routine human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** main; #10 publication `10f75e3`, frozen source `eeb9026` independently passed. #1-8 and #10 published/closed; #11 next.
+- **Branch:** codex/ticket-11-clean-restart, base main `83aa04a`. #10 publication `10f75e3`, frozen source `eeb9026` independently passed. #11 proposed contract only, no production changes.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8 and #10, including explicit results/questions, durable Stop/cancellation evidence and scoped quarantine/termination. Same AGY PASS, post-merge350 tests OK/four skips, all seven integrations independently pass. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #11 contract planning next; no #11 production edits yet. #1-8 and #10 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #11 contract pressure-test; proposed plan `TICKET-11-PLAN.md`, no production edits or implementation tests yet. #1-8 and #10 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
