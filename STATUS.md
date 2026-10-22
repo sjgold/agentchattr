@@ -137,7 +137,7 @@
 - Operator routes now support source preparation, child-only context repair, safe managed-seat choices, status and activation. UI code distinguishes prepared from stopped, retains correction drafts during polling, shows frozen source/role settings, and binds explicit CLI replacement confirmations to exact launches. JavaScript syntax and diff checks pass. Desktop/mobile screenshots were inspected; scoped panel390/scroll390, text14px/contrast9.3:1. Native keyboard activation and role-change preparation gating pass.
 - Real corrected integration and two --serve runs **PASS**. Actual old question/Continue/result and held CLI become a linked corrected review, with new PID/nonce/identity, observed old client exit, empty boot MCP reads before an injected backlink503, same-request repair without duplicate spawn, frozen launch settings despite live edits, exact new-source-only results and independent peer completion. Old audit is preserved. First failure was a fixture empty-string MCP parser assumption, corrected without weakening isolation. Final scratch: `.audit-tmp/corrected restart integration ys4sg5te`; all four workers stopped and browser markers removed.
 - All seven prior integrations pass again. Separate human-only browser check verified unchanged-source rejection/draft preservation, source editing/preparation, permanent Stop during preparation and reload, with no invocation/results. Original source/result/continuation remain readable in the prepared panel. Scoped UI refinement moved Start above collapsed settings; inherited whole-chat overflow/design findings remain standing, with no new suppression or whole-chat mobile pass. Browsers/servers stopped.
-- **Remaining:** freeze and obtain same AGY independent implementation review/recheck, then publish and close. Review pack `TICKET-11-REVIEW.md`, usage `CORRECTING-REVIEWS.md`. No #11 push or independent implementation PASS yet. No live providers, native AI clients, login/history wipes, Desktop changes or #9 runtime adoption.
+- **Remaining:** freeze and obtain same AGY independent implementation review/recheck, then publish and close. Frozen implementation `78b418df887596c5f173c0126a3e52d6d144670b`; review pack `TICKET-11-REVIEW.md`, usage `CORRECTING-REVIEWS.md`. No #11 push or independent implementation PASS yet. No live providers, native AI clients, login/history wipes, Desktop changes or #9 runtime adoption.
 
 
 ## Ticket execution and review
@@ -149,7 +149,7 @@
 ## Next step
 
 **Action:** Obtain same AGY independent implementation review/recheck of the frozen #11 target, then publish and close if it passes. #10 remains published/closed; #9 deferred.
-**Who:** Codex freezes and briefs the same AGY reviewer. Builder verification is complete; same AGY owns independent review, then Codex owns findings and reviewed publication. No human approval is pending.
+**Who:** Same AGY is receiving the frozen implementation briefing this turn. Builder verification is complete; same AGY owns independent review, then Codex owns findings and reviewed publication. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
