@@ -117,14 +117,14 @@
 ## Next step
 
 **Action:** Settle #8 explicit result admission and awaiting-input continuation contract in `TICKET-8-PLAN.md`, with same AGY pressure-test before implementation. Preserve #7 transport ownership; no ordinary-chat completion. Continue to frozen implementation review/publication after checks, without routine human gate.
-**Who:** Codex builder/coordinator drafts the contract; same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` pressure-tests it. Test-only author remains `fcc36344-f0ca-4514-9288-74753be75947` on configured Codex gpt-6-sol/medium. Native client/live usage remains outside scope.
+**Who:** Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` owns the next move: return #8 contract critique (requested with expectReply:true); that reply resumes Codex implementation. Test-only author remains `fcc36344-f0ca-4514-9288-74753be75947` on configured Codex gpt-6-sol/medium. Native client/live usage remains outside scope.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** main publication checkpoint `98f2722`; #1-7 published and closed. Next branch codex/ticket-8-explicit-completion.
+- **Branch:** codex/ticket-8-explicit-completion, base main `0029971`. #1-7 published and closed; #8 proposed contract only, no production edits.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-7, including durable individual dispatches and identity-bound single-seat transport ownership. Same AGY PASS, post-merge293 tests OK (four skips), all five isolated integration checks passed. Current completion still uses baseline chat advancement until #8. Inherited chat mobile/design limitations remain; no live providers, native Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.

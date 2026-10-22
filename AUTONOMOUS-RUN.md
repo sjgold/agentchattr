@@ -15,7 +15,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-7 | Published and closed | Latest #7 publication `98f2722`, independent AGY PASS |
-| #8 explicit completion | Contract planning | Codex drafts; same AGY pressure-tests result/continuation admission |
+| #8 explicit completion | Contract planning | Same AGY owns contract critique; reply resumes Codex implementation |
 | #10-12, #16 | Pending, first milestone | Follow dependencies after #7 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#1-7 are published and closed. #7 independently passed on frozen3b3a80f, publication98f2722, post-merge293 tests OK (four skips), all five isolated integration scripts passed. Codex is planning #8 explicit completion, question/awaiting-input and continuation behavior; same AGY will pressure-test the contract and remain final reviewer. No human approval is pending. Current ordinary-chat advancement is baseline behavior being replaced in #8. No live provider, Desktop or native Omarchy work is authorized by this transition.
+#1-7 are published and closed. #7 independently passed on frozen3b3a80f, publication98f2722, post-merge293 tests OK (four skips), all five isolated integration scripts passed. Codex wrote `TICKET-8-PLAN.md`; same AGY owns the requested contract critique (expectReply:true). Its reply resumes implementation. Open points are atomic accepted-result projection, typed question/final admission, human continuation and legacy provenance; no #8 production edits yet. Same AGY remains final reviewer. No human approval is pending. Current ordinary-chat advancement is baseline behavior being replaced in #8. No live provider, Desktop or native Omarchy work is authorized by this transition.
