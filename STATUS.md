@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 published/closed; #10 builder verification passed; independent review pending)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 published/closed; #10 independently passed; publication in progress)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -127,7 +127,7 @@
 - Actual mixed Stop integration passed on helper and root. Final root `session stop integration b_g7l1hb`: API local end175.646ms before delayed provider progress, prior accepted result1/source retained, CLI unsupported then actual ten-second unresolved with one injection, quarantine/no cascades, fresh tagged discussion, peer completion, stale termination409, confirmed owned termination and reloaded fences. All six earlier integration scripts also passed; final runner changes were rerun through Stop, API-seat and explicit-session checks. Syntax/compile/whitespace pass. No external provider/native client/Omarchy or installation acceptance.
 - Browser verified actual unresolved CLI evidence/quarantine and opened/cancelled the separate termination confirmation. Human-only session4 exercised keyboard Stop plus confirmation, reached stopped/ineligible and retained that state through reload. Inspected desktop and390px screenshots; scoped panel390/scroll390, font14, text contrast9.33:1. Whole-chat body width713 is inherited overflow, so no whole-chat mobile pass. Actual confirmed CLI termination was exercised by HTTP integration, not by the browser. Browser/server fixtures stopped; markers cleaned.
 - Design triage: scoped panel uses existing product styles with readable spacing/focus. No new suppressions. Inherited shared-page low contrast, small text, padding and glow findings remain standing; index.html changes only the Stop label and static/style.css is unchanged. Guide overlay was dismissed before screenshots.
-- **Independent implementation review pending**, same AGY only. Frozen source `eeb90269e92d89d294550d029e1861617caf07bb` on `codex/ticket-10-stop` (base main `3bb435713f0a8dae2ffa85171d85ac20923c79a1`). Review pack `TICKET-10-REVIEW.md`, user guide `STOPPING-REVIEWS.md`. #10 is not published or closed. #9 full restart reconciliation remains deferred.
+- **Independent implementation review PASS**, same AGY. Independently reran350 tests (four skips,20.122s), all seven integration scripts and JS/diff checks. Source-accuracy receipt wording corrected without application changes; receipt `REVIEW-GEMINI-TICKET-10.md`. Locally fast-forward merged to main; post-merge350 tests OK/four skips (17.013s). Push/issue closure are in progress. Frozen source `eeb90269e92d89d294550d029e1861617caf07bb` on `codex/ticket-10-stop` (base main `3bb435713f0a8dae2ffa85171d85ac20923c79a1`). Review pack `TICKET-10-REVIEW.md`, user guide `STOPPING-REVIEWS.md`. #10 publication and issue closure are the next step. #9 full restart reconciliation remains deferred.
 
 ## Ticket execution and review
 
@@ -137,21 +137,21 @@
 
 ## Next step
 
-**Action:** Same AGY independently reviews the frozen #10 implementation and reproduces Stop plus regressions using `TICKET-10-REVIEW.md`. Codex addresses findings and requests substantive recheck, then publishes/closes only after PASS. #9 remains deferred by first-milestone order.
-**Who:** Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` owns the next review; its response resumes Codex. Test-only helper `fcc36344-f0ca-4514-9288-74753be75947` completed store/integration evidence and remains separate from final review. No routine human approval is pending.
+**Action:** Publish the independently reviewed #10 merge and close issue #10, then begin #11 corrected-document clean-restart contract planning with the same AGY. #9 full runtime restart reconciliation remains deferred by milestone order.
+**Who:** Codex owns publication and the next bounded plan. Same AGY has passed frozen #10 source and remains the independent reviewer for #11. No routine human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-10-stop, base main `3bb4357`. #1-8 published and closed; #10 builder verified, independent implementation review pending; not published.
+- **Branch:** main, locally fast-forward merged through `06872cf`; independently reviewed #10 source `eeb9026`, publication in progress.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8 including explicit result/question admission, durable projection and operator continuation/human controls. Same AGY PASS, post-merge315 tests OK (four skips), all six isolated integrations passed. Actual invocation cancellation remains #10. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #10 frozen review preparation. Builder350 tests/four skips, mixed Stop integration, regressions and scoped browser checks pass; same AGY implementation review remains pending. #1-8 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #10 publication. Same AGY PASS, post-merge350 tests/four skips and static checks pass; push/issue closure next. #1-8 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 

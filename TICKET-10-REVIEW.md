@@ -43,3 +43,7 @@ Try Stop versus final/claim/late callback races, cleanup failure followed by col
 Inspect UI reload visibility, error states, quarantine attribution and exact confirmed termination impact. Check that the published source contains no credentials or runtime histories. Independent PASS/recheck is required before merge, push and issue closure.
 
 Final root Stop rerun after cleanup/Start-race fixes: PASS (`session stop integration b_g7l1hb`), local end175.646ms before provider progress. Final API-seat and session-event regressions PASS; earlier frozen-brief, queue, package and CLI checks PASS. JS syntax, Python compile and whitespace checks PASS. Helper --serve final PASS after browser sentinel, both markers removed and all3 worker receipts stopped.
+
+## Independent outcome
+
+Same AGY returned PASS, independently running350 tests/four skips, all seven integrations and static checks. Receipt REVIEW-GEMINI-TICKET-10.md. Report wording corrections changed no application code. Main was locally fast-forward merged; post-merge350 tests/four skips pass. Publication/closure follows under standing authorization.
