@@ -1,6 +1,6 @@
 # Ticket #8 independent review briefing
 
-Builder verification is complete; frozen target will be recorded after the final local commit. Base main: `0029971`. Scope: issue #8, spec v1.7 SD-3 / AT-05 and the autonomous execution amendment. Same Antigravity reviewer independently verifies the implementation and substantive fixes. No routine human completion gate.
+Frozen implementation: `d75852a6e76541b8ca3fa3958843864a168687a5`. Builder checks pass; same AGY independent review requested. Base main: `002997199f433c206d2685aa617bcd6bd2289f6c`. Scope: issue #8, spec v1.7 SD-3 / AT-05 and the autonomous execution amendment. Same Antigravity reviewer independently verifies the implementation and substantive fixes. No routine human completion gate.
 
 ## Important behavior and boundaries
 
