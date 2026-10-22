@@ -1,6 +1,6 @@
 # Ticket #10 independent review briefing
 
-Builder-verified implementation, prepared for frozen same-AGY review. Exact target is supplied in the review request. Base main `3bb435713f0a8dae2ffa85171d85ac20923c79a1`. Scope: issue #10, spec v1.7 SC-1/2 and AT-06. Same Antigravity reviewer owns final independent review and substantive rechecks. Routine human completion gates remain removed under Seth's standing authorization.
+Builder-verified implementation, prepared for frozen same-AGY review. Frozen target `eeb90269e92d89d294550d029e1861617caf07bb`. Base main `3bb435713f0a8dae2ffa85171d85ac20923c79a1`. Scope: issue #10, spec v1.7 SC-1/2 and AT-06. Same Antigravity reviewer owns final independent review and substantive rechecks. Routine human completion gates remain removed under Seth's standing authorization.
 
 ## Contract and boundaries
 
