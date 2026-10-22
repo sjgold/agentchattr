@@ -39,10 +39,10 @@
 - [x] Test-only helper writes meaningful red regressions against agreed interfaces.
 - [x] Implement durable store, scoped endpoints/tools, trigger producer and serial wrappers.
 - [x] Show queue state/uncertainty and exercise real fake-client failure windows.
-- [ ] Freeze, independent same-AGY review/recheck, reviewed publication and closure.
+- [x] Freeze, independent same-AGY review/recheck, reviewed publication and closure.
 
 Next owner: same AGY independently verifies the frozen implementation; Codex addresses substantive findings and obtains recheck before reviewed publication.
 
 ## Builder evidence
 
-Final suite293 OK (four Unix/tmux skips), all dispatch/store/auth/producer/consumer regressions pass. Normal and serve-mode real mixed-seat integration passed after an observed early cooperative-release race was reproduced and fixed; original receipt-history assertion remains. Exactly2 API fake calls and2 CLI/MCP turns; held release blocks overlap; manager-owned worker stop retains uncertain+queued work, not a SIGKILL test. Frozen-brief, package, API-seat and CLI-seat integrations pass. Queue panel rendered/keyboard checked with desktop/mobile screenshots; scope and inherited UI limits are recorded in STATUS.md. Final independent implementation review remains outstanding.
+Final suite293 OK (four Unix/tmux skips), all dispatch/store/auth/producer/consumer regressions pass. Normal and serve-mode real mixed-seat integration passed after an observed early cooperative-release race was reproduced and fixed; original receipt-history assertion remains. Exactly2 API fake calls and2 CLI/MCP turns; held release blocks overlap; manager-owned worker stop retains uncertain+queued work, not a SIGKILL test. Frozen-brief, package, API-seat and CLI-seat integrations pass. Queue panel rendered/keyboard checked with desktop/mobile screenshots; scope and inherited UI limits are recorded in STATUS.md. Same AGY independently returned PASS. Published at `98f2722`, issue #7 confirmed closed, post-merge293 tests OK (four skips). Next: #8 explicit completion.

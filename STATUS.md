@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-6 published/closed; #7 durable queue implemented; builder checks pass; same AGY PASS; publication in progress)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-7 published/closed; #8 explicit completion planning)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -13,7 +13,7 @@
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
 - Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
 - Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
-- Durable run tracking: `AUTONOMOUS-RUN.md`. Active implementation: #7 durable queue implemented; builder checks pass; same AGY PASS; publication in progress, `TICKET-7-PLAN.md`. Historical receipts keep their original approval language as dated evidence.
+- Durable run tracking: `AUTONOMOUS-RUN.md`. Active implementation: #8 explicit completion planning, `TICKET-8-PLAN.md`. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
 
@@ -89,7 +89,7 @@
 - Frozen-brief/MCP, package, API-seat and CLI-seat regression integrations pass; CLI real exit23 still propagates. Fixtures now cooperate with the release contract and old context/order tests use actual durable claims without weakening their assertions. JavaScript syntax and diff whitespace pass. No live external providers, Desktop changes or native Omarchy pass.
 - Operator queue panel shows held/pending/failed work and unmigrated legacy files without source/credentials. Inspected 1280x900 and390x844 screenshots; new panel fits390px with no internal horizontal overflow, text contrast9.74:1. Keyboard Enter toggles disclosure. Pointer automation did not establish native click entry, so only rendered/keyboard behavior is claimed. Existing background chat header/composer overflow remains outside this scoped panel change.
 - Design-hook triage: new panel uses unchanged inherited product colors with compliant text contrast. Detector findings elsewhere in chat use pre-existing colors/sizes; verified original stylesheet remains byte-identical after the scoped queue rules. Left inherited small-text/padding/contrast findings standing without broadening this queue ticket. Stop-hook follow-up confirmed the two style.css accent matches are semantic reply-preview/blockquote markers and Inter is the existing selectable product font; persisted file-scoped exceptions only for these intentional markers and Inter in static/index.html/static/style.css. No UI code changed. Existing #6 semantic output-marker exception remains unchanged.
-- Plan `TICKET-7-PLAN.md`, usage `QUEUED-TURNS.md`, reproduction briefing `TICKET-7-REVIEW.md`. Frozen target `3b3a80f4b4d2660ec68e5e5bed55887b8bae3c5a` has been handed to the same AGY reviewer with expectReply:true; its reply resumes Codex for findings/recheck or publication. Same AGY independently returned PASS, rerunning 293 tests (four skips), all five integration scripts and static checks. Receipt: `REVIEW-GEMINI-TICKET-7.md`. Publication is in progress; #7 is not yet published or closed. Explicit session completion admission remains #8, full restart reconciliation #9, cancellation #10, and deadlines/operator result recovery/outbox remain later scope.
+- Plan `TICKET-7-PLAN.md`, usage `QUEUED-TURNS.md`, reproduction briefing `TICKET-7-REVIEW.md`. Frozen target `3b3a80f4b4d2660ec68e5e5bed55887b8bae3c5a` has been handed to the same AGY reviewer with expectReply:true; its reply resumes Codex for findings/recheck or publication. Same AGY independently returned PASS, rerunning 293 tests (four skips), all five integration scripts and static checks. Receipt: `REVIEW-GEMINI-TICKET-7.md`. Published on origin/main at `98f272225d80a1325a54392195bc59734f7c10ea`; issue #7 confirmed closed as completed. Post-merge full suite293 OK (four skips), both JS syntax checks and whitespace checks pass. Explicit session completion admission remains #8, full restart reconciliation #9, cancellation #10, and deadlines/operator result recovery/outbox remain later scope.
 
 ## Latest reviewer additions
 
@@ -116,21 +116,21 @@
 
 ## Next step
 
-**Action:** Obtain same AGY independent implementation verification of frozen `3b3a80f4b4d2660ec68e5e5bed55887b8bae3c5a` using `TICKET-7-REVIEW.md`; fix/recheck substantive findings, then merge/push/close and continue #8 on PASS. No human completion gate; unapproved live usage/native Omarchy remain deferred.
-**Who:** Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` owns independent frozen #7 review now (requested with expectReply:true). Its reply resumes Codex fixes or reviewed publication. Test author `fcc36344-f0ca-4514-9288-74753be75947` remains test-only on configured Codex gpt-6-sol/medium after Sonnet quota failover.
+**Action:** Settle #8 explicit result admission and awaiting-input continuation contract in `TICKET-8-PLAN.md`, with same AGY pressure-test before implementation. Preserve #7 transport ownership; no ordinary-chat completion. Continue to frozen implementation review/publication after checks, without routine human gate.
+**Who:** Codex builder/coordinator drafts the contract; same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` pressure-tests it. Test-only author remains `fcc36344-f0ca-4514-9288-74753be75947` on configured Codex gpt-6-sol/medium. Native client/live usage remains outside scope.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-7-durable-queue, base main `d16780b`. #1-6 published and closed; #7 implemented and builder-verified locally; independent frozen review next.
+- **Branch:** main publication checkpoint `98f2722`; #1-7 published and closed. Next branch codex/ticket-8-explicit-completion.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
-- **Current build:** published #1-6 plus local #7 durable queue implementation. Builder suite293 OK (four skips); real dispatch/failure, frozen-brief/MCP, package, API-seat and CLI-seat integrations pass. Same AGY independent frozen #7 review is next. Inherited chat mobile/contrast limitations remain; no live providers, native Omarchy or Desktop changes.
+- **Current build:** published #1-7, including durable individual dispatches and identity-bound single-seat transport ownership. Same AGY PASS, post-merge293 tests OK (four skips), all five isolated integration checks passed. Current completion still uses baseline chat advancement until #8. Inherited chat mobile/design limitations remain; no live providers, native Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #7 durable queue implemented; builder checks pass; same AGY PASS; publication in progress. #1-6 completed, independently reviewed, published and closed. Autonomous pipeline remains active; no human sign-off gate.
+- **In flight:** #8 explicit completion contract planning. #1-7 independently reviewed, published and closed. Autonomous pipeline remains active; no human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
