@@ -22,7 +22,7 @@
 - [x] 4. Wire API/CLI delivery to the same brief; test beyond 20 messages, wrong identity, malformed/missing brief and no silent fallback.
 - [x] 5. Chat Start input/error handling plus strict request validation; preserve Ask/Design and editable drafts.
 - [x] 6. Full tests, fake API/CLI delivery integration, rendered Start/rejection checks and static checks. No live providers or native Omarchy.
-- [ ] 7. Freeze and same AGY independent review/recheck; publish/close on PASS, continue #7.
+- [x] 7. Freeze and same AGY independent review/recheck; publish/close on PASS, continue #7.
 
 ## Review focus
 
@@ -36,6 +36,6 @@ Mutable template/cast/rule changes after Start; exact Unicode source preservatio
 - Isolated human-only chat browser verified pasted-source field, Ask/Design retained, source rejection400 with 524289 bytes retained in modal, then valid source200 and exact Unicode persisted; no agents/providers configured. Scoped hidden styling fixed inherited template/cast step visibility. At viewport390 dialog width351 fits with no internal overflow; screenshot saved/inspected. Existing background chat header extends document width479, outside this dialog change; no whole-chat mobile pass claimed. Test session ended, browser/server stopped.
 - New UI source is plain text; no source code execution or mention routing occurs merely by Start. Legacy sessions retain old behavior, and #7-10 durability/completion/cancellation guarantees remain explicitly deferred.
 
-Next baton: freeze, same AGY independent review/recheck, publish and close on PASS, continue #7 without routine human gate.
+Published on main at `53a1b9b`; issue #6 confirmed closed after AGY PASS and post-merge 266-test suite (4 skips). Next baton: #7 durable queue, without routine human gate.
 
 Final follow-up checks: two different coordinator designs execute their frozen phase/role orders through actual engine message/timer callbacks. A malformed saved-brief regression failed on list/missing/invalid source shapes; brief reads now validate schema and source revision before returning context. Final suite 266 OK (four skips), real API-to-CLI/MCP integration PASS again, static checks PASS.

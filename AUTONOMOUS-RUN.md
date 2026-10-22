@@ -14,9 +14,9 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 | Work | State | Next owner/action |
 | --- | --- | --- |
-| #1-5 | Published and closed | Latest #5 publication `7575c68`, independent AGY PASS |
-| #6 frozen brief | Frozen, independent review in progress | Same AGY reviewer owns the next move on e69442d |
-| #7-8, #10-12, #16 | Pending, first milestone | Follow dependencies after #5 |
+| #1-6 | Published and closed | Latest #6 publication `53a1b9b`, independent AGY PASS |
+| #7 durable queue | Planning | Codex contract; same AGY pressure-test before implementation |
+| #8, #10-12, #16 | Pending, first milestone | Follow dependencies after #7 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
 
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-Codex completed #6 implementation and builder checks; #5 independently passed, published and closed. Same AGY reviewer now holds the review baton for frozen `e69442dac1da3e464c64e25413037c5ae41219ec`, requested with expectReply:true; its reply resumes the parent. Antigravity agent `ec1fbcd1-4a02-410e-9029-e498f67918c8` is the continuing independent reviewer/tester. Test-only author `fcc36344-f0ca-4514-9288-74753be75947` wrote regressions/integration; Claude rate-limit failover changed it to Codex gpt-6-sol/medium. This does not replace independent Antigravity review. After AGY PASS the next action is parent publication and #7 implementation; no user approval is pending.
+#6 passed independent AGY review on frozen `e69442d`, was merged and pushed at `53a1b9b`, and issue #6 is confirmed closed. Post-merge 266 tests OK (4 platform skips), syntax and whitespace checks pass. Codex is preparing #7's queue ownership contract for the same AGY to pressure-test before production changes. The test-only helper remains separate from the AGY reviewer; no human approval is pending. No live provider, Desktop or native Omarchy work is authorized by this transition.
