@@ -187,9 +187,10 @@ run.main()
         assert instructions['phase']['prompt'] == TEMPLATE['phases'][0]['prompt']
         assert instructions['goal'] == GOAL and instructions['rules']['rules'] == [RULE]
         assert 'untrusted' in system.lower()
-        supplementary = next(message for message in source_messages if message.get('kind') == 'supplementary_chat')
-        assert len(supplementary['messages']) == 20
-        assert any('Later irrelevant' in message['text'] for message in supplementary['messages'])
+        # Frozen review packets are now self-contained, including normal runs.
+        # Keep the rollover/source checks while explicitly excluding raw chat.
+        assert not any(message.get('kind') == 'supplementary_chat' for message in source_messages)
+        assert 'Later irrelevant' not in json.dumps(payload)
 
         envelope = receipt['envelope']
         assert envelope == receipt['http_envelope'], 'MCP and scoped HTTP disagree'
@@ -239,6 +240,7 @@ run.main()
         print(json.dumps({'result': 'PASS', 'url': base + '/preflight', 'provider_calls': len(captures),
                           'cli_transport': receipt['transport'], 'exact_source': True,
                           'chat_rollover_messages': 30, 'frozen_two_phase_design': True,
+                          'shared_chat_excluded': True,
                           'wrong_seat_http': 403, 'invalid_brief_no_provider_fallback': True,
                           'oversized_start_rejected': True, 'source_executed': False,
                           'scratch': str(temporary)}), flush=True)

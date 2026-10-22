@@ -1,6 +1,6 @@
 # Ticket #11: correct the document and restart cleanly
 
-**State:** Same AGY returned PROCEED WITH AMENDMENTS; follow-up safety/eligibility/provenance resolutions pending. No #11 production changes or implementation tests yet.
+**State:** Same AGY ratified the follow-up contract (critique Section 7). Core preparation/read isolation and managed provenance/API reuse implemented with focused red/green tests; fresh CLI/agent orchestration and UI remain unfinished.
 
 **Authority:** Approved issue #11, spec v1.7 SC-3 and AT-07, October22 autonomous execution amendment. Its only blocker #10 is published/closed. Base main `83aa04a`. Full runtime restart adoption (#9), stalled-turn deadlines/retry (#12), worker outbox recovery in later backlog and file intake (#18) remain separate scope.
 
@@ -52,7 +52,7 @@
 
 ## Work sequence
 
-- [ ] Same AGY pressure-tests and resolves the clean-context/provenance/preparation contract.
+- [x] Same AGY ratified the core clean-context/provenance/preparation contract; prepared-role repair and pre-activation read amendments are now under follow-up.
 - [ ] Test-only helper captures real red lineage/isolation/race regressions against agreed interfaces.
 - [ ] Codex implements linked preparation, new-run input isolation and bounded context preparation.
 - [ ] Implement operator source preview/impact/blocked/restart controls and real fake-client verification.
@@ -74,3 +74,33 @@ Rulings and issues sent back for resolution:
 - **Proposed idempotency:** one prepared child per parent, stable request ID, same-request repair of that child without duplicate launches/runs. Source changes require an explicit replacement lineage rather than mutating an existing source snapshot. AGY is checking exact crash/activation boundaries.
 
 Next owner: same AGY resolves the follow-up contract questions; Codex then fixes interfaces for independent red tests. No routine human gate, production changes or implementation-test pass is claimed.
+
+## Agreed execution shape and interface freeze
+
+Same AGY accepted all six follow-up points. Preparation is a distinct temporary state; only a nonempty stop_id marks a permanent Stop fence. Warning acknowledgment cannot certify a reused context. Effective allowlisted launch configuration and its fingerprint must be retained; fresh CLI capability defaults to unsupported.
+
+The operator flow has two actions: prepare the replacement packet/contexts, then start the corrected review after all contexts are ready and clean. Preparing never dispatches. Stop remains available during preparation and permanently prevents activation. Context changes that end a persistent owned launch need exact launch confirmation; selecting an independent replacement remains explicit.
+
+- `SessionStore.prepare_restart(parent_id, input_text, request_id, *, participant_bindings=None)` atomically links one prepared child, with new run/input identities and retained frozen design/goal/rules/cast. Same request and payload returns that child. Different payload or sibling request conflicts. Results/questions/continuations/quarantine/current invocation start empty.
+- `SessionStore.activate_restart(child_id, participant_bindings=None)` accepts only an un-stopped prepared child. Eligibility becomes true only after the engine verifies readiness and context assurances.
+- `SessionEngine.correct_and_restart(parent_id, input_text, request_id, *, replacements=None, confirmations=None)` prepares the linked replacement and app-owned contexts. `activate_restart(child_id)` validates all roles and dispatches the first new turn.
+- New operator routes are `POST /api/sessions/{id}/correct-and-restart` and `POST /api/sessions/{child_id}/activate-restart`, plus a status read. Repeated preparation/status must not cause repeated automatic client launches.
+- `cli_fresh_context_args` is a strict argv placeholder contract, with a fresh context nonce. A separate explicit verified-contract capability defaults false; ordinary/native templates are never automatically marked verified. Fake fixtures alone can establish the test adapter's fresh-context behavior. Declaring an arbitrary flag cannot silently create native verification.
+- During an activated corrected review, default API/MCP history reads for its bound participants expose only that new run's accepted results/continuation context. `chat_read`, `chat_resync`, job reads and summary defaults must not reintroduce old channel content. Operator history reads and unrelated seats stay unchanged. This is an application context boundary, not a native filesystem sandbox.
+
+Test helper owns `tests/test_corrected_restart.py` for real-store lineage/preparation/fence regressions. Codex owns additional ingress/read-scope and managed launch tests. Each implementation follows observed red evidence; same AGY remains the final independent reviewer.
+
+## Implementation checkpoint
+
+Core suite366 tests OK/four skips at17.822s. Helper14 lineage/preparation tests and root2 read-scope tests pass after observed red. Managed launch10 focused tests pass after identity-replacement provenance failure was fixed. Stop integration PASS155.124ms and migrated brief integration PASS with supplementary chat explicitly excluded (one fake call, actual MCP, exact source/rollover checks preserved). Fresh verified CLI process launch, engine agent-role orchestration, operator endpoints/UI and corrected mixed-team acceptance remain unfinished. No independent implementation review or publication yet.
+
+## Runtime checkpoint and remaining contract follow-up
+
+- Full suite386 tests OK/four skips (17.931s); real normal API-seat and CLI-seat integrations pass after factoring launch-from-effective-settings. No new native/client/provider acceptance.
+- Fifteen manager/CLI contract tests and five managed agent tests pass after observed red. Per-run original provenance is captured; managed API correction/activation retains the exact supervisor/model and blocks unrelated queued work. Fresh verified CLI unit tests establish exact confirmation, matching child-exit proof, new nonce/identity/readiness and idempotent prepared attempt. They use process doubles and real receipt files, not live native clients.
+- A successive-context regression caught duplicate prior context selectors. Provenance now retains actual effective settings plus a fingerprinted nonce-free context base for later corrected launches; no guessing/removing arbitrary native argv. All launch15 and agent5 tests pass.
+- API/human corrected engine paths work in unit tests; CLI engine orchestration remains explicitly gated. No operator corrected-run endpoints/UI or mixed corrected-run integration exists yet.
+- Same AGY is pressure-testing a separate child-only, idempotent prepared-context repair action: explicit role changes/retries with audit history, no source/design mutation or sibling runs, original parent request returns current child without reverting changes, final bindings frozen on activation. Do not kill unused owned prepared contexts automatically.
+- Same AGY is also checking launch-time child/role metadata so a fresh CLI cannot default-read abandoned chat before activation or after a launch-before-backlink failure. Retained API supervisors must not be globally restricted just because a draft is prepared. This is application read scoping, not a filesystem sandbox.
+
+Next move belongs to same AGY's contract follow-up; its response resumes Codex. The local checkpoint is incomplete and must not be published or called an implementation PASS.

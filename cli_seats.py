@@ -56,6 +56,27 @@ def build_cli_args(seat, template):
         result.extend(_setting_args(template, setting, value))
     return result
 
+def build_fresh_context_args(template, context_id):
+    """Expand an explicitly verified adapter contract, never inferred flags."""
+    if template.get('cli_fresh_context_verified') is not True or not template.get('cli_fresh_context_args'):
+        raise SeatError('unsupported_clean_context: this adapter has no verified fresh-context launch contract.')
+    if not isinstance(context_id, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,128}', context_id):
+        raise SeatError('Fresh context ID must be a bounded plain identifier.')
+    mapping = _arguments(template['cli_fresh_context_args'], 'cli_fresh_context_args')
+    fields = []
+    try:
+        for argument in mapping:
+            for _, name, spec, conversion in string.Formatter().parse(argument):
+                if name is not None:
+                    if name != 'context_id' or spec or conversion:
+                        raise ValueError('Unsupported placeholder')
+                    fields.append(name)
+    except ValueError:
+        raise SeatError('Fresh-context arguments require exactly one {context_id} placeholder.') from None
+    if fields != ['context_id']:
+        raise SeatError('Fresh-context arguments require exactly one {context_id} placeholder.')
+    return [argument.format(context_id=context_id) for argument in mapping]
+
 
 def validate_cli_seat(seat, template):
     if template.get('type') == 'api' or not isinstance(template.get('command'), str) or not template['command'].strip():

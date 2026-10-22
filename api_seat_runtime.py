@@ -45,7 +45,8 @@ class SeatManager:
             validate_cli_seat(seat, original)
             client = {k: deepcopy(v) for k, v in original.items() if k in
                       ('command', 'cwd', 'cli_args', 'cli_model_args', 'cli_reasoning_args',
-                       'cli_version_args', 'reasoning_efforts', 'strip_env', 'inject_delay', 'enter_backend')
+                       'cli_version_args', 'reasoning_efforts', 'strip_env', 'inject_delay', 'enter_backend',
+                       'cli_fresh_context_args', 'cli_fresh_context_verified')
                       or k.startswith('mcp_')}
             client['cwd'] = str((self.root / client.get('cwd', '.')).resolve())
             if not Path(client['cwd']).is_dir():
@@ -96,63 +97,70 @@ class SeatManager:
                 raise SeatError('Server is shutting down; no new seats can launch.')
             seat = self.store.seat(package_id, seat_id)
             effective = self._effective(seat)
-            fingerprint = hashlib.sha256(json.dumps(effective, sort_keys=True).encode()).hexdigest()
             key = package_id + '/' + seat_id
-            previous = self.attempts.get(key)
-            if previous:
-                current = self._inspect(key)
-                alive = previous.get('process') and previous['process'].poll() is None
-                if alive and not restart:
-                    if previous['fingerprint'] == fingerprint and current['state'] in ('starting', 'ready'):
-                        return current
-                    raise SeatError('This seat is already running with changed or failed settings; choose explicit restart.')
-                self._release(previous)
-            resource = effective.get('config_resource')
-            if resource:
-                for other in self.attempts.values():
-                    if (not other.get('released') and other.get('process') and other['process'].poll() is None
-                            and other['effective'].get('config_resource') == resource):
-                        raise SeatError('This client uses a shared settings file already owned by another seat. Stop it first or configure an isolated client profile.')
-            attempt_id = uuid.uuid4().hex
-            directory = self.store.path.parent / 'api_seat_runtime' / attempt_id
-            attempt = {'id': attempt_id, 'fingerprint': fingerprint, 'process': None,
-                       'snapshot': directory / 'config.json', 'receipt': directory / 'receipt.json',
-                       'started': time.monotonic(), 'seat': deepcopy(seat), 'effective': effective,
-                       'last_receipt_at': None,
-                       'state': 'starting', 'error': None, 'name': None,
-                       'confirmed_model': None, 'authentication': 'unknown', 'adapter_connected': False}
-            self.attempts[key] = attempt
-            if seat['secret_ref'] and not os.environ.get(seat['secret_ref']):
-                attempt.update(state='action_required', error='Required credential is unavailable in the server environment. Set its reference and restart the server.')
-                return self._view(attempt)
-            cli = seat['adapter'] == 'cli'
-            if cli and not shutil.which(effective['provider']['command']):
-                attempt.update(state='action_required', error='CLI executable not found. Install or configure it, then retry.',
-                               executable=None, startup_checked=False)
-                return self._view(attempt)
-            base = ('cli-' if cli else 'api-') + hashlib.sha256(key.encode()).hexdigest()[:8] + '-' + attempt_id[:12]
-            self.registry.seed({base: {'type': 'cli' if cli else 'api', 'label': seat['name'], 'color': '#60a5fa'}})
-            attempt['base'] = base
-            snapshot = {**effective, 'attempt': attempt_id, 'base': base}
-            try:
-                atomic_json(attempt['snapshot'], snapshot)
-                # No secret values in arguments, snapshot or managed diagnostics.
-                command = [sys.executable, '-u', str(self.root / ('cli_worker.py' if cli else 'wrapper_api.py')), base,
-                           '--seat-file', str(attempt['snapshot'])]
-                options = {'cwd': str(self.root), 'stdin': subprocess.DEVNULL,
-                           'stdout': subprocess.DEVNULL, 'stderr': subprocess.DEVNULL,
-                           'close_fds': True}
-                if sys.platform == 'win32':
-                    options['creationflags'] = subprocess.CREATE_NEW_CONSOLE if cli else subprocess.CREATE_NO_WINDOW
-                    if cli:
-                        for field in ('stdin', 'stdout', 'stderr'):
-                            options.pop(field)
-                else:
-                    options['start_new_session'] = True
-                attempt['process'] = subprocess.Popen(command, **options)
-            except OSError:
-                attempt.update(state='failed', error='Could not start this owned wrapper. Check the application Python environment and retry.')
+            return self._launch_effective(key, effective, restart)
+
+    def _launch_effective(self, key, effective, restart=False, launch_metadata=None):
+        # Caller holds manager.lock. Both normal and corrected launches use the
+        # same ownership, resource checks and immutable snapshot writer.
+        seat = effective['seat']
+        fingerprint = hashlib.sha256(json.dumps(effective, sort_keys=True).encode()).hexdigest()
+        previous = self.attempts.get(key)
+        if previous:
+            current = self._inspect(key)
+            alive = previous.get('process') and previous['process'].poll() is None
+            if alive and not restart:
+                if previous['fingerprint'] == fingerprint and current['state'] in ('starting', 'ready'):
+                    return current
+                raise SeatError('This seat is already running with changed or failed settings; choose explicit restart.')
+            self._release(previous)
+        resource = effective.get('config_resource')
+        if resource:
+            for other in self.attempts.values():
+                if (not other.get('released') and other.get('process') and other['process'].poll() is None
+                        and other['effective'].get('config_resource') == resource):
+                    raise SeatError('This client uses a shared settings file already owned by another seat. Stop it first or configure an isolated client profile.')
+        attempt_id = uuid.uuid4().hex
+        directory = self.store.path.parent / 'api_seat_runtime' / attempt_id
+        attempt = {'id': attempt_id, 'fingerprint': fingerprint, 'process': None,
+                   'snapshot': directory / 'config.json', 'receipt': directory / 'receipt.json',
+                   'started': time.monotonic(), 'seat': deepcopy(seat), 'effective': effective,
+                   'last_receipt_at': None,
+                   'state': 'starting', 'error': None, 'name': None,
+                   'confirmed_model': None, 'authentication': 'unknown', 'adapter_connected': False}
+        attempt.update(launch_metadata or {})
+        self.attempts[key] = attempt
+        if seat['secret_ref'] and not os.environ.get(seat['secret_ref']):
+            attempt.update(state='action_required', error='Required credential is unavailable in the server environment. Set its reference and restart the server.')
             return self._view(attempt)
+        cli = seat['adapter'] == 'cli'
+        if cli and not shutil.which(effective['provider']['command']):
+            attempt.update(state='action_required', error='CLI executable not found. Install or configure it, then retry.',
+                           executable=None, startup_checked=False)
+            return self._view(attempt)
+        base = ('cli-' if cli else 'api-') + hashlib.sha256(key.encode()).hexdigest()[:8] + '-' + attempt_id[:12]
+        self.registry.seed({base: {'type': 'cli' if cli else 'api', 'label': seat['name'], 'color': '#60a5fa'}})
+        attempt['base'] = base
+        snapshot = {**effective, 'attempt': attempt_id, 'base': base, **(launch_metadata or {})}
+        try:
+            atomic_json(attempt['snapshot'], snapshot)
+            # No secret values in arguments, snapshot or managed diagnostics.
+            command = [sys.executable, '-u', str(self.root / ('cli_worker.py' if cli else 'wrapper_api.py')), base,
+                       '--seat-file', str(attempt['snapshot'])]
+            options = {'cwd': str(self.root), 'stdin': subprocess.DEVNULL,
+                       'stdout': subprocess.DEVNULL, 'stderr': subprocess.DEVNULL,
+                       'close_fds': True}
+            if sys.platform == 'win32':
+                options['creationflags'] = subprocess.CREATE_NEW_CONSOLE if cli else subprocess.CREATE_NO_WINDOW
+                if cli:
+                    for field in ('stdin', 'stdout', 'stderr'):
+                        options.pop(field)
+            else:
+                options['start_new_session'] = True
+            attempt['process'] = subprocess.Popen(command, **options)
+        except OSError:
+            attempt.update(state='failed', error='Could not start this owned wrapper. Check the application Python environment and retry.')
+        return self._view(attempt)
 
     def _view(self, attempt):
         result = {'attempt': attempt['id'], 'state': attempt['state'], 'error': attempt['error'],
@@ -211,6 +219,10 @@ class SeatManager:
             for field in ('state', 'name', 'error', 'authentication', 'adapter_connected', 'confirmed_model'):
                 if field in receipt:
                     attempt[field] = receipt[field]
+            if receipt.get('name'):
+                instance = self.registry.get_instance(receipt['name'])
+                if instance and instance.get('base') == attempt.get('base'):
+                    attempt.setdefault('identity_id', instance['identity_id'])
             if attempt['seat']['adapter'] == 'cli':
                 for field in ('startup_checked', 'version', 'child_exit_code'):
                     if field in receipt:
@@ -278,6 +290,149 @@ class SeatManager:
                         and attempt['process'].poll() is None):
                     return attempt
         return None
+
+    @staticmethod
+    def _provenance_effective(effective):
+        # Explicit launch fields only. Never snapshot registry tokens, resolved
+        # credentials, arbitrary environment variables or unknown config keys.
+        provider_fields = ('base_url', 'reasoning_efforts', 'temperature', 'api_key_env', 'system_prompt',
+            'context_messages', 'command', 'cwd', 'cli_args', 'cli_model_args', 'cli_reasoning_args',
+            'cli_version_args', 'strip_env', 'inject_delay', 'enter_backend', 'cli_fresh_context_args',
+            'cli_fresh_context_verified', 'mcp_inject', 'mcp_flag', 'mcp_transport', 'mcp_merge_project',
+            'mcp_env_var', 'mcp_proxy_flag_template', 'mcp_settings_path', 'mcp_http_key')
+        result = {'seat': deepcopy(effective['seat']),
+                  'provider': {key: deepcopy(value) for key, value in effective['provider'].items() if key in provider_fields},
+                  'server': {key: deepcopy(value) for key, value in effective['server'].items() if key in ('host', 'port', 'data_dir')}}
+        if 'mcp' in effective:
+            result['mcp'] = {key: deepcopy(value) for key, value in effective['mcp'].items() if key in ('http_port', 'sse_port')}
+        if 'config_resource' in effective:
+            result['config_resource'] = effective['config_resource']
+        return result
+
+    def launch_provenance(self, instance):
+        with self.lock:
+            if not isinstance(instance, dict):
+                return None
+            live = next((item for item in self.registry.get_all().values()
+                         if item['identity_id'] == instance.get('identity_id')), None)
+            if not live:
+                return None
+            for key, attempt in self.attempts.items():
+                if (attempt.get('base') == live.get('base') and not attempt.get('released')
+                        and attempt.get('identity_id') == live['identity_id']
+                        and attempt.get('process') and attempt['process'].poll() is None):
+                    effective = self._provenance_effective(attempt['effective'])
+                    result = {'key': key, 'launch_attempt': attempt['id'], 'identity_id': live['identity_id'],
+                              'effective': effective}
+                    payload = effective
+                    if attempt.get('context_base_effective'):
+                        result['fresh_base_effective'] = self._provenance_effective(attempt['context_base_effective'])
+                        payload = {'effective': effective, 'fresh_base_effective': result['fresh_base_effective']}
+                    result['fingerprint'] = hashlib.sha256(json.dumps(payload, sort_keys=True).encode('utf-8')).hexdigest()
+                    return result
+            return None
+
+    def prepare_clean_context(self, provenance, context_key, *, confirmation=None, retry_attempt=None):
+        with self.lock:
+            if self.closed.is_set():
+                raise SeatError('Server is shutting down; no corrected context can launch.')
+            effective = provenance['effective']
+            payload = ({'effective': effective, 'fresh_base_effective': provenance['fresh_base_effective']}
+                       if provenance.get('fresh_base_effective') else effective)
+            fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True).encode('utf-8')).hexdigest()
+            if fingerprint != provenance.get('fingerprint'):
+                raise SeatError('Retained launch provenance does not match its fingerprint.')
+            if effective['seat']['adapter'] == 'cli':
+                from cli_seats import build_fresh_context_args
+                try:
+                    build_fresh_context_args(effective['provider'], context_key)
+                except SeatError:
+                    return {'state': 'blocked', 'reason': 'unsupported_clean_context', 'clean_context': False}
+                key = 'review-' + hashlib.sha256(context_key.encode('utf-8')).hexdigest()[:24] + '/' + effective['seat']['id']
+                existing = self.attempts.get(key)
+                if existing:
+                    if existing.get('context_source_fingerprint') != fingerprint:
+                        raise SeatError('Prepared context key belongs to different frozen settings.')
+                    if retry_attempt is None or existing.get('retried_from') == retry_attempt:
+                        return self._context_view(key)
+                    if existing['id'] != retry_attempt:
+                        raise SeatError('Context retry confirmation is stale; refresh its status.')
+                    if existing.get('process') and existing['process'].poll() is None:
+                        return {'state': 'blocked', 'reason': 'context_retry_needs_termination', 'clean_context': False}
+                original = self.attempts.get(provenance['key'])
+                if not original or original['id'] != provenance['launch_attempt']:
+                    return {'state': 'blocked', 'reason': 'stale_launch_provenance', 'clean_context': False}
+                process = original.get('process')
+                if process and process.poll() is None:
+                    if confirmation is None:
+                        return {'state': 'blocked', 'reason': 'confirmation_required', 'clean_context': False,
+                                'launch_attempt': original['id']}
+                    if (not isinstance(confirmation, dict) or confirmation.get('confirm') is not True
+                            or confirmation.get('launch_attempt') != original['id']):
+                        raise SeatError('Owned launch confirmation is stale or incomplete.')
+                    ended = self.terminate_owned(provenance['identity_id'], original['id'])
+                    if not ended['local_ended']:
+                        return {'state': 'blocked', 'reason': 'unresolved_child_exit', 'clean_context': False}
+                elif not self._cli_exit_proven(original):
+                    return {'state': 'blocked', 'reason': 'unresolved_child_exit', 'clean_context': False}
+                self._release(original)
+                # A distinct nonce is required for every actual fresh launch,
+                # including an explicitly retried failed context preparation.
+                context_id = uuid.uuid4().hex
+                base = deepcopy(provenance.get('fresh_base_effective', effective))
+                fresh = deepcopy(base)
+                fresh['provider']['cli_args'] = list(fresh['provider'].get('cli_args', [])) + build_fresh_context_args(fresh['provider'], context_id)
+                self._launch_effective(key, fresh, launch_metadata={
+                    'context_id': context_id, 'context_source_fingerprint': fingerprint,
+                    'context_base_effective': base,
+                    'retried_from': retry_attempt})
+                return self._context_view(key)
+            attempt = self.attempts.get(provenance['key'])
+            if attempt and attempt['id'] == provenance['launch_attempt']:
+                view = self._inspect(provenance['key'])
+                instance = next((item for item in self.registry.get_all().values()
+                    if item['identity_id'] == provenance['identity_id'] and item.get('base') == attempt.get('base')), None)
+                if instance and view['state'] == 'ready':
+                    return {'state': 'ready', 'identity_id': instance['identity_id'],
+                            'key': provenance['key'], 'launch_attempt': attempt['id'], 'name': instance['name'], 'clean_context': True,
+                            'verification_basis': 'isolated_request_packet'}
+            return {'state': 'blocked', 'reason': 'context_unavailable', 'clean_context': False}
+
+    def context_status(self, context):
+        """Observe a prepared owned attempt; never launch or adopt a replacement."""
+        with self.lock:
+            key = context.get('key')
+            attempt = self.attempts.get(key)
+            if not attempt or attempt['id'] != context.get('launch_attempt'):
+                return {'state': 'blocked', 'reason': 'prepared_context_changed', 'clean_context': False}
+            result = self._context_view(key)
+            if attempt['seat']['adapter'] != 'cli':
+                result['verification_basis'] = 'isolated_request_packet'
+            return result
+
+    @staticmethod
+    def _cli_exit_proven(attempt):
+        process = attempt.get('process')
+        if not process or process.poll() is None:
+            return False
+        try:
+            receipt = json.loads(attempt['receipt'].read_text(encoding='utf-8'))
+            return (receipt.get('attempt') == attempt['id'] and receipt.get('state') == 'stopped'
+                    and type(receipt.get('child_exit_code')) is int)
+        except (OSError, ValueError):
+            return False
+
+    def _context_view(self, key):
+        view = self._inspect(key)
+        attempt = self.attempts[key]
+        instance = next((item for item in self.registry.get_all().values()
+                        if item['identity_id'] == attempt.get('identity_id') and item.get('base') == attempt.get('base')), None)
+        return {'key': key, 'state': view['state'], 'reason': view['error'],
+                'launch_attempt': attempt['id'], 'context_id': attempt.get('context_id'),
+                'identity_id': instance['identity_id'] if instance else None,
+                'name': instance['name'] if instance else None,
+                'clean_context': view['state'] == 'ready' and instance is not None,
+                'verification_basis': 'verified_fresh_launch_contract'}
 
     def termination_offer(self, identity_id):
         with self.lock:

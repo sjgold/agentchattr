@@ -156,7 +156,7 @@ class SessionStore:
         with self._lock:
             # One active session per channel
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input"):
+                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "prepared"):
                     return None
 
             session = {
@@ -270,16 +270,83 @@ class SessionStore:
     def stop_run(self, session_id, reason):
         import uuid
         def stop(session):
-            if session.get('dispatch_eligible') is False:
+            if session.get('stop_id'):
                 return
             session.update(dispatch_eligible=False, stop_id=uuid.uuid4().hex,
                            stopped_at=time.time(), stop_reason=reason, state='stopping')
         return self._event_update(session_id, stop)
 
+    def prepare_restart(self, parent_id, input_text, request_id, *, participant_bindings=None):
+        """Atomically link a single immutable prepared replacement to its parent."""
+        import re
+        from review_brief import BriefError, freeze_inputs, _revision
+        from turn_events import EventConflict
+        if not isinstance(request_id, str) or not re.fullmatch(r'[a-zA-Z0-9_.-]{1,128}', request_id):
+            raise BriefError('Corrected restart requires a stable request ID.')
+        with self._lock:
+            parent = self._find(parent_id)
+            if (not parent or parent.get('completion_protocol') != 1 or not parent.get('stop_id')
+                    or parent['state'] not in ('stopped', 'unresolved')):
+                raise EventConflict('Stop the original run and resolve its stopping state before preparing a replacement.')
+            frozen = freeze_inputs(parent['design_snapshot'], parent['goal'], input_text, parent['rules_snapshot'])
+            if frozen['input_revision'] == parent['input_revision']:
+                raise BriefError('The source is unchanged. Use turn Retry for the same document; correct the source before restarting.')
+            bindings = deepcopy(parent['participant_bindings'] if participant_bindings is None else participant_bindings)
+            if not isinstance(bindings, dict) or set(bindings) != set(parent['cast']):
+                raise BriefError('Retain or explicitly replace every role assignment.')
+            fingerprint = _revision({'input_revision': frozen['input_revision'], 'bindings': bindings})
+            if parent.get('replaced_by_run_id'):
+                child = next((s for s in self._sessions if s['run_id'] == parent['replaced_by_run_id']), None)
+                if (child and child.get('request_id') == request_id
+                        and child.get('preparation_fingerprint') == fingerprint):
+                    return deepcopy(child)
+                raise EventConflict('This run already has a replacement; continue or stop that replacement before correcting again.')
+            if any(s.get('request_id') == request_id for s in self._sessions):
+                raise EventConflict('This request ID belongs to a different replacement.')
+            child = dict(frozen, id=self._next_id, template_id=parent['template_id'],
+                template_name=parent['template_name'], channel=parent['channel'],
+                cast=deepcopy(parent['cast']), cast_snapshot=deepcopy(parent['cast_snapshot']),
+                participant_bindings=bindings, state='prepared', prepared=True, dispatch_eligible=False,
+                stop_id=None, parent_run_id=parent['run_id'], parent_session_id=parent_id,
+                lineage_root_id=parent.get('lineage_root_id', parent['run_id']), request_id=request_id,
+                preparation_fingerprint=fingerprint, completion_protocol=1, current_phase=0, current_turn=0,
+                started_by=parent['started_by'], started_at=time.time(), updated_at=time.time(),
+                result_message_ids=[], admitted_events=[], quarantined_events=[], continuation_context=[],
+                active_invocation=None, last_message_id=None, output_message_id=None)
+            before, before_id = deepcopy(self._sessions), self._next_id
+            try:
+                parent['replaced_by_run_id'] = child['run_id']
+                parent['replaced_by_session_id'] = child['id']
+                self._sessions.append(child)
+                self._next_id += 1
+                self._save()
+            except Exception:
+                self._sessions, self._next_id = before, before_id
+                raise
+            result = deepcopy(child)
+        self._fire('update', result)
+        return result
+
+    def activate_restart(self, child_id, participant_bindings=None):
+        from turn_events import EventConflict
+        def activate(session):
+            if session.get('state') != 'prepared' or session.get('stop_id') or not session.get('parent_run_id'):
+                raise EventConflict('Only an un-stopped prepared replacement can start.')
+            if participant_bindings is not None:
+                if not isinstance(participant_bindings, dict) or set(participant_bindings) != set(session['cast']):
+                    raise EventConflict('Every corrected role needs a prepared participant binding.')
+                session['participant_bindings'] = deepcopy(participant_bindings)
+                for role, binding in participant_bindings.items():
+                    if binding.get('name'):
+                        session['cast'][role] = binding['name']
+                session['cast_snapshot'] = deepcopy(session['cast'])
+            session.update(state='active', dispatch_eligible=True, prepared=False)
+        return self._event_update(child_id, activate)
+
     def stop_outcome(self, session_id, state, receipts):
         from turn_events import EventConflict
         def update(session):
-            if session.get('dispatch_eligible') is not False:
+            if not session.get('stop_id'):
                 raise EventConflict('This run has no Stop fence.')
             session.update(state=state, cancellation_receipts=deepcopy(receipts))
         return self._event_update(session_id, update)

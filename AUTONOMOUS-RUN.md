@@ -15,7 +15,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-8, #10 | Published and closed | Latest #10 publication `10f75e3`, independent AGY PASS |
-| #11 corrected-document clean restart | Contract planning | Same AGY follow-up resolves preparation/provenance/read boundaries, then Codex red tests |
+| #11 corrected-document clean restart | Implementing | Same AGY prepared-repair/read-boundary follow-up, then Codex CLI/UI/integration |
 | #12, #16 | Pending, first milestone | Follow dependencies after #11 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#1-8 and #10 are published and closed. #10 publication10f75e3, frozen sourceeeb9026, same AGY independent PASS on350 tests/four skips and all seven integrations. Post-merge350 tests/four skips/static checks pass. Receipt REVIEW-GEMINI-TICKET-10.md; usage STOPPING-REVIEWS.md. Current branch codex/ticket-11-clean-restart, base83aa04a. Codex wrote TICKET-11-PLAN.md; same AGY owns contract critique on context assurance, managed launch provenance, history exclusion and durable idempotent preparation. Initial critique PROCEED WITH AMENDMENTS; follow-up now resolves prepared-versus-Stop eligibility, effective retained settings and CLI default history reads. Its response resumes Codex. No #11 production changes yet. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.
+#1-8 and #10 are published and closed. #10 publication10f75e3, frozen sourceeeb9026, same AGY independent PASS on350 tests/four skips and all seven integrations. Post-merge350 tests/four skips/static checks pass. Receipt REVIEW-GEMINI-TICKET-10.md; usage STOPPING-REVIEWS.md. Current branch codex/ticket-11-clean-restart, base83aa04a. Codex wrote TICKET-11-PLAN.md; same AGY owns contract critique on context assurance, managed launch provenance, history exclusion and durable idempotent preparation. Contract ratified. Local incomplete checkpoint:386 tests/four skips pass, normal API/CLI and Stop/brief regressions pass. Human/managed API corrected unit flow and fresh CLI launch unit proofs work; CLI run wiring, prepared repair/pre-activation read fencing, UI and real corrected-run integration remain unfinished. Same AGY owes a bounded contract follow-up, then Codex resumes; test helper completed current tranches. No independent implementation review/publication yet. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.

@@ -9,7 +9,7 @@ class CoordinatedQueue:
     def _reconcile(self):
         # list_all releases the SessionStore lock before the queue transaction.
         for run in self._sessions.list_all():
-            if run.get('dispatch_eligible') is False:
+            if run.get('stop_id'):
                 self._queue.cancel_run(run['run_id'], run['stop_id'])
 
     def enqueue(self, instance, envelope):

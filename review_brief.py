@@ -103,7 +103,7 @@ def brief_messages(envelope, recent_messages, agent_name, system_prompt=''):
                     'input_revision': envelope['input_revision'], 'text': envelope['source']}, ensure_ascii=False)},
                 {'role': 'user', 'content': json.dumps({'kind': 'prior_review_results',
                     'results': envelope['prior_results']}, ensure_ascii=False)}]
-    if recent_messages:
+    if recent_messages and envelope.get('completion_protocol') != 1:
         messages.append({'role': 'user', 'content': json.dumps({'kind': 'supplementary_chat',
             'messages': [{'id': msg.get('id'), 'sender': msg.get('sender'), 'text': msg.get('text', '')}
                          for msg in recent_messages]}, ensure_ascii=False)})

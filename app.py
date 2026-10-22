@@ -487,7 +487,7 @@ def configure(cfg: dict, session_token: str = ""):
         str(Path(data_dir) / "session_runs.json"),
         templates_dir=str(ROOT / "session_templates"),
     )
-    session_engine = SessionEngine(session_store, store, agents, registry, rules_store=rules)
+    session_engine = SessionEngine(session_store, store, agents, registry, rules_store=rules, seat_manager=api_seat_manager)
     session_store.on_change(_on_session_change)
 
     # Bridge: when ANY message is added to store (including via MCP),
@@ -1745,7 +1745,12 @@ async def import_history(file: UploadFile = File(...)):
 
 
 @app.get("/api/messages")
-async def get_messages(since_id: int = 0, limit: int = 50, channel: str = "", job_id: int = 0):
+async def get_messages(request: Request, since_id: int = 0, limit: int = 50, channel: str = "", job_id: int = 0):
+    instance = _resolve_authenticated_agent(request)
+    if session_engine and instance:
+        scoped = session_engine.review_messages(instance, since_id=since_id, limit=limit)
+        if scoped is not None:
+            return scoped
     if job_id:
         messages = jobs.get_messages(job_id)
         return messages if messages is not None else JSONResponse({'error': 'job not found'}, status_code=404)

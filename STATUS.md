@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 and #10 published/closed; #11 contract planning)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 and #10 published/closed; #11 implementation in progress)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -13,7 +13,7 @@
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
 - Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
 - Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
-- Durable run tracking: `AUTONOMOUS-RUN.md`. Active planning: #11 corrected-document clean restart, `TICKET-11-PLAN.md`, after published #10. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
+- Durable run tracking: `AUTONOMOUS-RUN.md`. Active implementation: #11 corrected-document clean restart, `TICKET-11-PLAN.md`, after published #10. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
 
@@ -129,6 +129,15 @@
 - Design triage: scoped panel uses existing product styles with readable spacing/focus. No new suppressions. Inherited shared-page low contrast, small text, padding and glow findings remain standing; index.html changes only the Stop label and static/style.css is unchanged. Guide overlay was dismissed before screenshots.
 - **Independent implementation review PASS**, same AGY. Independently reran350 tests (four skips,20.122s), all seven integration scripts and JS/diff checks. Source-accuracy receipt wording corrected without application changes; receipt `REVIEW-GEMINI-TICKET-10.md`. Fast-forward merged and published on origin/main at `10f75e360bcf6f6b2426b4b2c8a9f71d5477d7f3`; issue #10 confirmed closed as completed. Post-merge350 tests OK/four skips (17.013s), JS/diff checks pass. Frozen source `eeb90269e92d89d294550d029e1861617caf07bb` on `codex/ticket-10-stop` (base main `3bb435713f0a8dae2ffa85171d85ac20923c79a1`). Review pack `TICKET-10-REVIEW.md`, user guide `STOPPING-REVIEWS.md`. #10 is published and closed; next eligible ticket is #11 corrected-document clean restart. #9 full restart reconciliation remains deferred.
 
+## Ticket #11 implementation checkpoint
+
+- Same AGY ratified all follow-up contract points (critique Section7). Temporary prepared ineligibility is distinct from a permanent stop_id-bearing fence; unverified warning acknowledgment cannot certify clean context. Defaults exclude old chat; effective launch settings/provenance must remain frozen.
+- Implemented atomic linked preparation, stable request idempotency/conflict handling, new source/run lineage, explicit human-role activation, channel reservation and permanent Stop during preparation. Helper14 real-store tests observed red then pass. New API/MCP default-read boundaries observed old-source leakage red, then two tests pass, preserving operator history access. All completion_protocol1 API packets now omit supplementary chat.
+- Full suite at the core checkpoint:366 tests OK/four skips (17.822s). Stop integration PASS (local end155.124ms, one retained result, no cascade, truthful CLI unresolved, exact owned termination). Existing brief integration initially failed its old supplementary-chat expectation; migrated only that assertion to require exclusion, preserving source/rollover/MCP checks, then PASS with shared_chat_excluded:true and one fake-provider call.
+- Managed launch tranche: ten focused tests observed red then pass for strict verified CLI argument contracts, secret-free effective launch snapshots, package/template drift preservation, matching API supervisor reuse and unsupported CLI refusal without side effects. A test caught same-base replacement identity inheriting old provenance; fixed by binding the receipt-observed owned identity. Latest full suite:386 tests OK/four skips (17.931s). Normal real fake-API and fake-CLI integrations pass after launch extraction; no live providers or native clients.
+- **Implemented next tranche:** per-run managed provenance capture, explicit managed API selection/preparation/activation and strict fresh CLI launch from frozen settings. Fifteen launch tests and five agent/provenance tests pass after observed red. A second-generation test caught retained context nonce accumulation; preserved a fingerprinted nonce-free base snapshot for subsequent launches. These CLI launch proofs use real receipts with process doubles, not native acceptance.
+- **Unfinished:** prepared-context repair/role changes, pre-activation fresh CLI read fencing, wiring CLI roles into corrected runs, unresolved-parent independent-replacement activation, operator endpoints/UI and real corrected mixed-team integration. Engine CLI corrected-role orchestration stays explicitly gated pending those boundaries; human and managed API unit flows work. No #11 publication or independent implementation PASS is claimed. Same AGY remains final reviewer.
+
 ## Ticket execution and review
 
 - [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1) is closed after Meta source/plan review, documentation corrections and Seth's final sign-off. Ticket #2 passed independent review and received Seth's final sign-off; reviewed branch is fast-forward merged and published on origin/main; GitHub issue #2 is confirmed closed as completed.
@@ -137,21 +146,21 @@
 
 ## Next step
 
-**Action:** Settle the #11 corrected-document clean-restart contract in `TICKET-11-PLAN.md`, with same AGY pressure-test before red tests/implementation. Key questions: reliable fresh CLI context, retained launch provenance, old-chat exclusion and idempotent preparation/lineage. #10 is published/closed; #9 remains deferred.
-**Who:** Same AGY returned PROCEED WITH AMENDMENTS and now resolves follow-up questions about prepared versus permanent Stop fences, effective launch provenance and default CLI history reads. Its response resumes Codex to fix interfaces and start red tests. No routine human approval is pending.
+**Action:** Settle explicit prepared-role repair and pre-activation fresh CLI read fencing with same AGY, then finish CLI corrected-run orchestration, operator endpoints/UI and real corrected mixed-team acceptance. #10 remains published/closed; #9 deferred.
+**Who:** Same AGY owes the requested bounded contract follow-up (prepared repair without source mutation; fresh CLI reads before activation). Its reply resumes Codex implementation. Test helper completed current lineage/launch tranches. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-11-clean-restart, base main `83aa04a`. #10 publication `10f75e3`, frozen source `eeb9026` independently passed. #11 proposed contract only, no production changes.
+- **Branch:** codex/ticket-11-clean-restart, base main `83aa04a`. #10 publication `10f75e3`, frozen source `eeb9026` independently passed. #11 locally checkpointed in progress;386 tests/four skips pass, full corrected-run/CLI orchestration and UI unfinished, no independent implementation review or publication.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8 and #10, including explicit results/questions, durable Stop/cancellation evidence and scoped quarantine/termination. Same AGY PASS, post-merge350 tests OK/four skips, all seven integrations independently pass. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #11 contract refinement after same-AGY PROCEED WITH AMENDMENTS. No warning-only bypass of clean-context assurance; prepared eligibility must stay distinct from permanent Stop fences. No production edits or implementation tests yet. #1-8 and #10 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #11 implementation. Core lineage/read isolation, managed API flow and fresh CLI launch unit tests pass; AGY follow-up governs prepared-role repair and pre-activation reads before remaining CLI orchestration/UI/acceptance. #1-8 and #10 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 

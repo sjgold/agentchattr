@@ -624,6 +624,12 @@ def chat_read(
     if err:
         return err
 
+    instance = _authenticated_instance(ctx)
+    if session_engine and instance:
+        scoped = session_engine.review_messages(instance, since_id=since_id, limit=limit)
+        if scoped is not None:
+            return _serialize_messages(scoped)
+
     # Job-scoped read: return job metadata plus the thread messages
     if job_id and jobs:
         job = jobs.get(job_id)
@@ -734,6 +740,11 @@ def chat_resync(
     sender, err = _resolve_tool_identity(sender, ctx, field_name="sender", required=True)
     if err:
         return err
+    instance = _authenticated_instance(ctx)
+    if session_engine and instance:
+        scoped = session_engine.review_messages(instance, limit=limit)
+        if scoped is not None:
+            return _serialize_messages(scoped)
     ch = channel if channel else None
     msgs = store.get_recent(limit, channel=ch)
     _update_cursor(sender, msgs, ch)
@@ -941,6 +952,12 @@ def chat_summary(
         return err
     action = action.strip().lower()
     channel = (channel or "general").strip()
+
+    instance = _authenticated_instance(ctx)
+    if action == 'read' and session_engine and instance:
+        scoped = session_engine.review_messages(instance)
+        if scoped is not None:
+            return _serialize_messages(scoped)
 
     if action == "read":
         entry = summaries.get(channel)
