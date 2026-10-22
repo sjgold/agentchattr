@@ -14,9 +14,9 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 | Work | State | Next owner/action |
 | --- | --- | --- |
-| #1-7 | Published and closed | Latest #7 publication `98f2722`, independent AGY PASS |
-| #8 explicit completion | Implemented; builder suite315 OK | Same AGY reviewing frozen d75852a; reply resumes parent |
-| #10-12, #16 | Pending, first milestone | Follow dependencies after #7 |
+| #1-8 | Published and closed | Latest #8 publication `aee0414`, independent AGY PASS |
+| #10 reliable Stop | Contract planning | Codex drafts; same AGY pressure-tests cancellation and quarantine |
+| #11-12, #16 | Pending, first milestone | Follow dependencies after #7 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
 
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#1-7 are published/closed. #8 is implemented locally on codex/ticket-8-explicit-completion, base main0029971:315 tests OK (four skips), all six isolated integration scripts PASS. Explicit final/question admission and stable-UID projection are separate from transport release; operator Continue/human result/Resume were exercised. Same AGY reviews frozen `d75852a6e76541b8ca3fa3958843864a168687a5` now (expectReply:true); its reply resumes Codex fixes/recheck or publication, then the next eligible first-milestone ticket. No human approval, native-client or live-provider gate is silently assumed passed.
+#1-8 are published and closed. #8 independently passed on frozen d75852a, publication aee0414; post-merge315 tests OK (four skips), all six isolated integrations passed. Next is #10 reliable Stop, whose only blocker #8 is closed. Codex is settling run-scoped cancellation, durable dispatch fences and late-output quarantine with the same AGY reviewer. #9 full restart reconciliation remains deferred by milestone order. Existing seat stop can terminate the whole worker, so it must not be mistaken for invocation-scoped graceful cancellation. Native/live acceptance stays outside routine scope.

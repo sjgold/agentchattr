@@ -42,9 +42,9 @@ Ticket #7 provides immutable dispatch metadata, scoped brief retrieval, one acti
 - [x] Test-only helper captures red identity/idempotence/question regressions.
 - [x] Implement store transaction, engine admission and scoped HTTP/MCP events.
 - [x] Wire typed API result and CLI instructions; operator question/Continue and human result UI.
-- [ ] Real isolated verification, frozen same-AGY review/recheck, reviewed publication and closure.
+- [x] Real isolated verification, frozen same-AGY review/recheck, reviewed publication and closure.
 
-Next owner: Codex finishes adapter/UI wiring and isolated verification; same AGY independently reviews the frozen implementation. No routine human approval is requested. Restart reconciliation, actual cancellation, provider result outbox/recovery and broader capacity remain their later tickets.
+Published at `aee0414`; issue #8 confirmed closed after independent AGY PASS and post-merge315-test suite (four skips). Next owner: Codex starts #10 Stop by milestone dependency order; #9 remains deferred. No routine human approval is requested. Restart reconciliation, actual cancellation, provider result outbox/recovery and broader capacity remain their later tickets.
 
 ## Builder evidence
 
