@@ -5,6 +5,7 @@ import os
 import time
 import threading
 import uuid
+from copy import deepcopy
 from pathlib import Path
 
 
@@ -91,6 +92,44 @@ class MessageStore:
                     pass
 
         return msg
+
+    def add_once(self, uid: str, sender: str, text: str, msg_type='session_result',
+                 channel='general', metadata=None):
+        """Atomically project a journal event, including after a missing backlink.
+
+        Only this explicit path uses an atomic full-log replacement. Ordinary
+        chat keeps its append behavior. No in-memory commit precedes persistence.
+        """
+        fields = {'sender': sender, 'text': text, 'type': msg_type,
+                  'channel': channel, 'metadata': deepcopy(metadata or {})}
+        with self._lock:
+            for existing in self._messages:
+                if existing.get('uid') == uid:
+                    if any(existing.get(key) != value for key, value in fields.items()):
+                        raise ValueError('Projected event UID conflicts with existing chat content.')
+                    return deepcopy(existing)
+            stamp = time.time()
+            msg = {'id': self._next_id, 'uid': uid, 'timestamp': stamp,
+                   'time': time.strftime('%H:%M:%S'), 'attachments': [], **fields}
+            temporary = self._path.with_name(self._path.name + '.' + uuid.uuid4().hex + '.tmp')
+            try:
+                with temporary.open('x', encoding='utf-8') as output:
+                    for item in (*self._messages, msg):
+                        output.write(json.dumps(item, ensure_ascii=False) + '\n')
+                    output.flush()
+                    os.fsync(output.fileno())
+                os.replace(temporary, self._path)
+            finally:
+                if temporary.exists():
+                    temporary.unlink()
+            self._messages.append(msg)
+            self._next_id += 1
+        for callback in self._callbacks:
+            try:
+                callback(deepcopy(msg))
+            except Exception:
+                pass
+        return deepcopy(msg)
 
     def flush_bulk(self):
         """Write all in-memory messages to disk. Call after bulk add operations."""

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-7 published/closed; #8 explicit completion planning)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-7 published/closed; #8 explicit completion implementation in progress)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -13,7 +13,7 @@
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
 - Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
 - Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
-- Durable run tracking: `AUTONOMOUS-RUN.md`. Active implementation: #8 explicit completion planning, `TICKET-8-PLAN.md`. Historical receipts keep their original approval language as dated evidence.
+- Durable run tracking: `AUTONOMOUS-RUN.md`. Active implementation: #8 explicit completion implementation in progress, `TICKET-8-PLAN.md`. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
 
@@ -91,6 +91,13 @@
 - Design-hook triage: new panel uses unchanged inherited product colors with compliant text contrast. Detector findings elsewhere in chat use pre-existing colors/sizes; verified original stylesheet remains byte-identical after the scoped queue rules. Left inherited small-text/padding/contrast findings standing without broadening this queue ticket. Stop-hook follow-up confirmed the two style.css accent matches are semantic reply-preview/blockquote markers and Inter is the existing selectable product font; persisted file-scoped exceptions only for these intentional markers and Inter in static/index.html/static/style.css. No UI code changed. Existing #6 semantic output-marker exception remains unchanged.
 - Plan `TICKET-7-PLAN.md`, usage `QUEUED-TURNS.md`, reproduction briefing `TICKET-7-REVIEW.md`. Frozen target `3b3a80f4b4d2660ec68e5e5bed55887b8bae3c5a` has been handed to the same AGY reviewer with expectReply:true; its reply resumes Codex for findings/recheck or publication. Same AGY independently returned PASS, rerunning 293 tests (four skips), all five integration scripts and static checks. Receipt: `REVIEW-GEMINI-TICKET-7.md`. Published on origin/main at `98f272225d80a1325a54392195bc59734f7c10ea`; issue #7 confirmed closed as completed. Post-merge full suite293 OK (four skips), both JS syntax checks and whitespace checks pass. Explicit session completion admission remains #8, full restart reconciliation #9, cancellation #10, and deadlines/operator result recovery/outbox remain later scope.
 
+## Ticket #8 work in progress
+
+- Same AGY contract critique accepted in-session admitted-event journaling, compact authenticated brief-reference tool, strict API final/question JSON discriminator, explicit awaiting-input/Continue with fresh attempt fencing, and distinct operator provenance for human roles. Legacy records remain read-only; no inferred completion.
+- Implemented core persisted invocation, atomic accepted-event plus phase disposition, rollback of in-memory state on failed save, exact-once/identity fencing, awaiting-input and continuation context. Ordinary chat/decision/transport release cannot complete a turn. New MessageStore.add_once atomically projects by stable event UID, preserving history across projection-before-backlink crashes. Accepted content is retained before projection; successor dispatch waits for projection recovery.
+- Focused results: test-only helper14 core tests plus root2 projection tests pass. Root HTTP auth/continuation and strict parser tests pass (2 cases). Actual red evidence predates implementation: ordinary status advanced phase and admission/protocol interfaces were absent; root projection and HTTP regressions were also observed red. Full application suite and integrations have not yet been run against #8.
+- HTTP event, operator Continue/human-result/resume routes are implemented with separate authority. MCP tool, typed API/CLI adapter delivery, and operator controls remain in progress. Test-only helper wrote isolated mixed-session integration drafts but is waiting for adapter readiness before execution. No #8 completion/review/publication claim.
+
 ## Latest reviewer additions
 
 - v1.7 adds a small JSON findings contract with separate parse-failure flags, individual source-file intake as plain text, and a narrow Git exception for the spec.
@@ -116,15 +123,15 @@
 
 ## Next step
 
-**Action:** Settle #8 explicit result admission and awaiting-input continuation contract in `TICKET-8-PLAN.md`, with same AGY pressure-test before implementation. Preserve #7 transport ownership; no ordinary-chat completion. Continue to frozen implementation review/publication after checks, without routine human gate.
-**Who:** Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` owns the next move: return #8 contract critique (requested with expectReply:true); that reply resumes Codex implementation. Test-only author remains `fcc36344-f0ca-4514-9288-74753be75947` on configured Codex gpt-6-sol/medium. Native client/live usage remains outside scope.
+**Action:** Finish #8 MCP/API wrapper and operator UI wiring, run isolated typed-event integrations and full regressions, then same AGY independently reviews the frozen implementation. Core admission/projection and scoped HTTP tests pass; broader verification remains pending.
+**Who:** Codex owns the next move: complete #8 implementation/verification. Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` completed contract critique and remains final reviewer. Test-only author remains `fcc36344-f0ca-4514-9288-74753be75947` on configured Codex gpt-6-sol/medium. Native client/live usage remains outside scope.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-8-explicit-completion, base main `0029971`. #1-7 published and closed; #8 proposed contract only, no production edits.
+- **Branch:** codex/ticket-8-explicit-completion, base main `0029971`. #1-7 published and closed; #8 core admission/projection and HTTP routes implemented locally; adapter/UI wiring in progress, unreviewed.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-7, including durable individual dispatches and identity-bound single-seat transport ownership. Same AGY PASS, post-merge293 tests OK (four skips), all five isolated integration checks passed. Current completion still uses baseline chat advancement until #8. Inherited chat mobile/design limitations remain; no live providers, native Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.

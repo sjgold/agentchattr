@@ -1,6 +1,6 @@
 # Ticket #8: accept explicit turn completion exactly once
 
-**State:** Proposed contract for same-AGY pressure-test. No #8 production changes yet.
+**State:** Same-AGY contract critique complete; core implementation and focused tests pass. Adapter/UI integration in progress, final independent implementation review pending.
 
 **Authority:** Approved issue #8, spec v1.7 SD-3 / AT-05 and the autonomous execution amendment. #7 is independently reviewed, published and closed. Base main `0029971`. Codex implements; same Antigravity independently reviews the frozen implementation and substantive fixes.
 
@@ -10,7 +10,7 @@
 
 Ticket #7 provides immutable dispatch metadata, scoped brief retrieval, one active owner per seat and transport-only release. That release must continue to have zero result-admission or phase-advance behavior.
 
-## Proposed behavior
+## Settled behavior
 
 1. Ordinary chat, status, typing, heartbeat and `chat_queue_release` never complete an agent turn. Remove ordinary-message timer advancement for new and existing sessions. Preserve chat as discussion. Legacy sessions lacking a bound invocation must not acquire invented identities or silently accept legacy chat as completion; surface that they need explicit restart/migration rather than guessing ownership.
 2. Before enqueue, persist a bound invocation containing brief/dispatch reference, run ID, turn ID, attempt ID, input revision and expected stable seat identity. The current immutable brief and queued envelope must agree. Each turn or continued attempt gets fresh attempt/brief identity. Frozen design/source/rules remain authoritative.
@@ -22,13 +22,11 @@ Ticket #7 provides immutable dispatch metadata, scoped brief retrieval, one acti
 8. Show awaiting-input, the exact question and an operator **Continue** action. Freeform chat or an answer to an unrelated/old choice does not continue the turn. Continue checks the current question/attempt and operator authority, persists the supplied answer as authenticated continuation context and creates a new attempt for the same phase/participant. Old-attempt results are fenced. Preserve original source/design/input revision; answers become separately identified context, not a replacement source packet. Do not discard earlier accepted results.
 9. Human participants need an explicit operator-authenticated result action rather than implicit chat completion. Preserve the existing ability to design casts with human roles. Never allow the operator event endpoint to impersonate an expected agent identity merely by providing its name. Use a distinct human-principal contract when the expected cast member is human.
 
-## Questions for independent contract pressure-test
+## Contract resolutions
 
-- **Atomic acceptance versus projection:** Recommend the smallest reliable operation that commits acceptance, consumed attempt and phase position once, preserves accepted content after a chat-write failure, and avoids dispatching a successor twice. Current SessionStore and MessageStore have separate files/locks. Would an accepted-event projection record in the same SessionStore transaction suffice without importing the deferred API-worker outbox ticket? Inspect callbacks and write-failure behavior, not just happy-path ordering.
-- **Typed API response:** Is a mandatory final/question discriminator for session turns sufficient and appropriately bounded? Plain API text outside sessions stays compatible. No question/status text classifier or silent final fallback. Specify malformed/empty response behavior so it is visible and cannot complete a turn.
-- **Human interruption and continuation:** How should the current automatic pause on unrelated human chat interact with the explicit question/Continue path? Recommend a clear bounded behavior that never auto-resumes on an agent status message or dispatches a second invocation into an occupied seat. Do not silently change Stop semantics reserved for #10.
-- **CLI reference contract:** Can the MCP tool take an immutable brief ID and load the full canonical identity fields server-side, while validating all IDs, or should every field be supplied explicitly? Either path must reject stale briefs/attempts and bind actual authenticated seat provenance. Simpler tool invocation must not mean weaker admission.
-- **Human roles and legacy runs:** Define a safe minimal human result path and visible treatment of legacy sessions without bound invocation IDs. Preserve records; no inferred machine-verified provenance and no automatic history completion.
+- Accepted events, exact content, consumed attempt and phase disposition share one SessionStore atomic transaction. Each event carries projected_message_id=None until chat projection is back-linked. Projection uses stable UID and an atomic idempotent MessageStore path, including recovery after chat saved but backlink failed. Pending accepted projections are repaired before successor dispatch. This does not recover an API answer lost before server admission; worker outbox remains later scope.
+- CLI tool takes brief_id/kind/content, loads immutable canonical IDs server-side and validates every field against persisted invocation and actual bearer identity. API uses the same contract with strict typed JSON and no plain-text final fallback.
+- Awaiting-input ignores background chat. Operator Continue validates the current question and creates a fresh attempt; paused runs require explicit operator Resume first. Resume restores the held invocation without dispatching a second one. Human roles use a distinct operator result endpoint; agents cannot use it. Legacy runs remain readable without auto-completion or invented provenance.
 
 ## Verification contract
 
@@ -40,10 +38,10 @@ Ticket #7 provides immutable dispatch metadata, scoped brief retrieval, one acti
 
 ## Tasks
 
-- [ ] Same AGY pressure-tests and resolves the admission/projection/question contract.
-- [ ] Test-only helper captures red identity/idempotence/question regressions.
+- [x] Same AGY pressure-tests and resolves the admission/projection/question contract.
+- [x] Test-only helper captures red identity/idempotence/question regressions.
 - [ ] Implement store transaction, engine admission and scoped HTTP/MCP events.
 - [ ] Wire typed API result and CLI instructions; operator question/Continue and human result UI.
 - [ ] Real isolated verification, frozen same-AGY review/recheck, reviewed publication and closure.
 
-Next owner: same AGY returns a contract critique. Codex resolves it within approved scope, then implements. No routine human approval is requested. Restart reconciliation, actual cancellation, provider result outbox/recovery and broader capacity remain their later tickets.
+Next owner: Codex finishes adapter/UI wiring and isolated verification; same AGY independently reviews the frozen implementation. No routine human approval is requested. Restart reconciliation, actual cancellation, provider result outbox/recovery and broader capacity remain their later tickets.

@@ -244,7 +244,7 @@ def _install_security_middleware(token: str, cfg: dict):
             # Allow registered agents to authenticate via Bearer token
             # for /api/messages and /api/send (no browser session needed).
             auth_header = request.headers.get("authorization", "")
-            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send", "/api/queue/claim", "/api/queue/ack", "/api/queue/release", "/api/queue/uncertain") or path.startswith(("/api/rules/", "/api/review-briefs/"))):
+            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send", "/api/queue/claim", "/api/queue/ack", "/api/queue/release", "/api/queue/uncertain") or path.startswith(("/api/rules/", "/api/review-briefs/")) or _re.fullmatch(r'/api/sessions/[0-9]+/event', path)):
                 bearer = auth_header[7:].strip()
                 if _self.registry and _self.registry.resolve_token(bearer):
                     return await call_next(request)
@@ -2731,6 +2731,100 @@ async def get_review_brief(brief_id: str, request: Request):
         return JSONResponse({'error': 'Review brief is scoped to another authenticated seat.'}, status_code=403)
     except BriefError:
         return JSONResponse({'error': 'Review brief is unavailable.'}, status_code=404)
+
+
+async def _session_event_body(request, required, optional=()):
+    from turn_events import EventValidationError
+    raw = await request.body()
+    if len(raw) > 4 * 1024 * 1024:
+        raise EventValidationError('Session event exceeds the 4 MiB request limit.')
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        raise EventValidationError('Session event requires valid JSON.') from None
+    if (not isinstance(body, dict) or not set(required) <= body.keys()
+            or body.keys() - set(required) - set(optional)
+            or any(not isinstance(value, str) for value in body.values())):
+        raise EventValidationError('Invalid session event fields; named text fields are required.')
+    return body
+
+
+def _session_event_error(error):
+    from turn_events import EventAccessError, EventConflict, EventValidationError
+    status = (403 if isinstance(error, EventAccessError) else
+              409 if isinstance(error, EventConflict) else
+              400 if isinstance(error, EventValidationError) else 503)
+    message = str(error) if status != 503 else 'Event storage or projection unavailable. Accepted work is retained; no blind retry.'
+    return JSONResponse({'error': message}, status_code=status)
+
+
+@app.post('/api/sessions/{session_id}/event')
+async def session_event(session_id: int, request: Request):
+    from turn_events import EventAccessError, EventConflict, EventValidationError, IDENTITY_FIELDS
+    from review_brief import BriefAccessError, BriefError
+    instance = _resolve_authenticated_agent(request)
+    if not instance:
+        return JSONResponse({'error': 'Agent events require a registered seat bearer.'}, status_code=403)
+    body = {}
+    try:
+        body = await _session_event_body(request, ('brief_id', 'kind', 'content'),
+                                        ('event_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision'))
+        try:
+            envelope = await asyncio.to_thread(session_store.briefs.get, body['brief_id'], instance)
+        except BriefAccessError:
+            raise EventAccessError('The brief belongs to another authenticated seat.') from None
+        except BriefError:
+            raise EventConflict('No current brief matches this event.') from None
+        if envelope['session_id'] != session_id:
+            raise EventConflict('Brief does not match the requested session.')
+        result = await asyncio.to_thread(session_engine.admit_event, body['brief_id'], body['kind'],
+            body['content'], instance, event_id=body.get('event_id'),
+            identities={key: body[key] for key in IDENTITY_FIELDS if key in body})
+        return JSONResponse(result)
+    except EventConflict as exc:
+        # A lost acknowledgement may retry the same accepted API event. Report
+        # it as duplicate, never admit it a second time or regenerate its text.
+        session = session_store.get(session_id) or {}
+        prior = next((event for event in session.get('admitted_events', [])
+                      if event['event_id'] == body.get('event_id')), None)
+        if (prior and prior.get('expected_identity_id') == instance['identity_id']
+                and prior['content'] == body.get('content') and prior['kind'] == body.get('kind')
+                and all(body.get(key, prior[key]) == prior[key] for key in IDENTITY_FIELDS)):
+            return JSONResponse({'error': 'duplicate', 'accepted_event_id': prior['event_id']}, status_code=409)
+        return _session_event_error(exc)
+    except (EventAccessError, EventValidationError, OSError) as exc:
+        return _session_event_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/continue')
+async def continue_session_event(session_id: int, request: Request):
+    from turn_events import EventAccessError, EventConflict, EventValidationError
+    try:
+        body = await _session_event_body(request, ('question_event_id', 'answer'))
+        return JSONResponse(await asyncio.to_thread(session_engine.continue_session, session_id,
+                                                     body['question_event_id'], body['answer']))
+    except (EventAccessError, EventConflict, EventValidationError, OSError) as exc:
+        return _session_event_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/human-result')
+async def human_session_result(session_id: int, request: Request):
+    from turn_events import EventAccessError, EventConflict, EventValidationError
+    try:
+        body = await _session_event_body(request, ('brief_id', 'content'), ('submitted_by',))
+        return JSONResponse(await asyncio.to_thread(session_engine.human_result, session_id,
+            body['brief_id'], body['content'], submitted_by=body.get('submitted_by', 'user')))
+    except (EventAccessError, EventConflict, EventValidationError, OSError) as exc:
+        return _session_event_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/resume')
+async def resume_session_event(session_id: int):
+    from turn_events import EventConflict
+    try:
+        return JSONResponse(await asyncio.to_thread(session_engine.resume_session, session_id))
+    except (EventConflict, OSError) as exc:
+        return _session_event_error(exc)
 
 
 @app.post("/api/sessions/{session_id}/end")

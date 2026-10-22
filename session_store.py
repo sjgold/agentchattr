@@ -155,7 +155,7 @@ class SessionStore:
         with self._lock:
             # One active session per channel
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused"):
+                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input"):
                     return None
 
             session = {
@@ -175,6 +175,10 @@ class SessionStore:
                 "output_message_id": None,
                 **frozen,
                 "result_message_ids": [],
+                "completion_protocol": 1,
+                "active_invocation": None,
+                "admitted_events": [],
+                "continuation_context": [],
             }
             self._next_id += 1
             self._sessions.append(session)
@@ -199,7 +203,7 @@ class SessionStore:
         """Get the active/waiting/paused session for a channel."""
         with self._lock:
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused"):
+                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input"):
                     return deepcopy(s)
             return None
 
@@ -226,6 +230,121 @@ class SessionStore:
             result = deepcopy(session)
         self._fire("update", result)
         return result
+
+    def _event_update(self, session_id, change, action='update'):
+        """Commit one admission transaction, rolling back memory on any failure."""
+        from turn_events import EventConflict
+        with self._lock:
+            session = self._find(session_id)
+            if not session or session.get('completion_protocol') != 1:
+                raise EventConflict('Session has no explicit completion protocol; legacy history is read-only.')
+            before = deepcopy(self._sessions)
+            try:
+                change(session)
+                session['updated_at'] = time.time()
+                self._save()
+                result = deepcopy(session)
+            except Exception:
+                self._sessions = before
+                raise
+        self._fire(action, result)
+        return result
+
+    def bind_invocation(self, session_id, envelope, dispatch_id, *, human=False):
+        from turn_events import EventConflict
+        def bind(session):
+            if session['state'] != 'active' or session.get('active_invocation'):
+                raise EventConflict('A current invocation is already bound or this session is not active.')
+            session['active_invocation'] = {key: deepcopy(envelope[key]) for key in (
+                'brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision',
+                'expected_agent', 'expected_identity_id', 'phase_index', 'turn_index', 'role')}
+            session['active_invocation'].update(dispatch_id=dispatch_id, consumed=False, human=human)
+            session['state'] = 'waiting'
+            session['waiting_on'] = envelope['expected_agent']
+        return self._event_update(session_id, bind)
+
+    def admit_event(self, session_id, event, instance, *, human=False):
+        from turn_events import EventConflict, EventAccessError, IDENTITY_FIELDS, validate_content
+        validate_content(event['kind'], event['content'])
+        def admit(session):
+            invocation = session.get('active_invocation')
+            if not invocation:
+                raise EventConflict('No current invocation can accept this event.')
+            if (session['state'] not in ('active', 'waiting') or invocation['consumed']
+                    or any(event.get(key) != invocation.get(key) for key in IDENTITY_FIELDS)
+                    or event['input_revision'] != session['input_revision']
+                    or any(prior['event_id'] == event['event_id'] for run in self._sessions for prior in run.get('admitted_events', []))):
+                raise EventConflict('Event is stale, duplicated, superseded or this session is not accepting results.')
+            if human:
+                if not invocation.get('human'):
+                    raise EventAccessError('Operator results cannot impersonate an agent seat.')
+            elif (invocation.get('human') or not isinstance(instance, dict)
+                    or instance.get('identity_id') != invocation['expected_identity_id']):
+                raise EventAccessError('This event belongs to another seat identity.')
+            invocation['consumed'] = True
+            record = deepcopy(event)
+            record.update(projected_message_id=None, accepted_at=time.time(),
+                          sender=invocation['expected_agent'],
+                          provenance='human_operator' if human else 'authenticated_seat',
+                          expected_identity_id=invocation['expected_identity_id'])
+            phases = session['design_snapshot']['phases']
+            phase = phases[session['current_phase']]
+            record['is_output'] = bool(phase.get('is_output'))
+            session['admitted_events'].append(record)
+            if event['kind'] == 'question':
+                session['state'] = 'awaiting_input'
+                session['current_question'] = {'event_id': event['event_id'], 'text': event['content'],
+                    'asked_by': invocation['expected_agent'], 'attempt_id': invocation['attempt_id']}
+                return
+            session['active_invocation'] = None
+            session.pop('current_question', None)
+            if session['current_turn'] + 1 < len(phase['participants']):
+                session['current_turn'] += 1
+                session['state'] = 'active'
+            elif session['current_phase'] + 1 < len(phases):
+                session['current_phase'] += 1
+                session['current_turn'] = 0
+                session['state'] = 'active'
+            else:
+                session['state'] = 'complete'
+        return self._event_update(session_id, admit)
+
+    def link_event_projection(self, session_id, event_id, message_id):
+        from turn_events import EventConflict
+        def link(session):
+            record = next((e for e in session['admitted_events'] if e['event_id'] == event_id), None)
+            if record is None or record['projected_message_id'] not in (None, message_id):
+                raise EventConflict('Accepted event projection does not match.')
+            record['projected_message_id'] = message_id
+            if record['kind'] == 'final':
+                if message_id not in session['result_message_ids']:
+                    session['result_message_ids'].append(message_id)
+                session['last_message_id'] = message_id
+                if record['is_output'] and session['state'] == 'complete':
+                    session['output_message_id'] = message_id
+        return self._event_update(session_id, link)
+
+    def continue_question(self, session_id, question_event_id, answer):
+        from turn_events import EventConflict, validate_content
+        validate_content('final', answer)
+        def resume(session):
+            question = session.get('current_question')
+            if session['state'] != 'awaiting_input' or not question or question['event_id'] != question_event_id:
+                raise EventConflict('Only the current awaiting-input question can be continued.')
+            session['continuation_context'].append({'question_event_id': question_event_id,
+                'question': question['text'], 'answer': answer})
+            session['active_invocation'] = None
+            session.pop('current_question', None)
+            session['state'] = 'active'
+        return self._event_update(session_id, resume)
+
+    def resume_explicit(self, session_id):
+        from turn_events import EventConflict
+        def resume(session):
+            if session['state'] != 'paused' or not session.get('active_invocation'):
+                raise EventConflict('No paused invocation can be resumed.')
+            session['state'] = 'waiting'
+        return self._event_update(session_id, resume)
 
     def advance_phase(self, session_id: int, message_id: int | None = None) -> dict | None:
         """Advance to the next phase, resetting turn to 0."""
@@ -263,7 +382,7 @@ class SessionStore:
         """Keep the current turn while its participant asks the human a question."""
         with self._lock:
             session = self._find(session_id)
-            if not session or session["state"] not in ("active", "waiting", "paused"):
+            if not session or session["state"] not in ("active", "waiting", "paused", "awaiting_input"):
                 return None
             session["choice_message_id"] = message_id
             if message_id is not None:
