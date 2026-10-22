@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 and #10-11 published/closed; #12 planning next)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 and #10-11 published/closed; #12 contract critique pending)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -140,6 +140,13 @@
 - **Independent review PASS:** same AGY independently ran401 tests/four skips (19.282s), all eight integrations and JS/diff checks. No blockers. Receipt REVIEW-GEMINI-TICKET-11.md; reviewer metadata/scope wording corrections are confirmed, with no source changes or verdict change. Fast-forward merged locally; post-merge401 tests OK/four skips (19.547s), JS/diff clean. **Published and closed:** origin/main `f403b590a0256a7db601aa48144c05f121c13ed1`; issue #11 confirmed closed as completed. Frozen implementation `78b418df887596c5f173c0126a3e52d6d144670b`; review pack `TICKET-11-REVIEW.md`, usage `CORRECTING-REVIEWS.md`. Reviewed #11 source is pushed; independent implementation PASS and closure confirmed. No live providers, native AI clients, login/history wipes, Desktop changes or #9 runtime adoption.
 
 
+## Ticket #12 planning checkpoint
+
+- Approved next scope is stalled-turn visibility and explicit wait/extend/retry, after published #11. Plan: TICKET-12-PLAN.md, base main0d247d5. Current branch codex/ticket-12-stalled-turns. No #12 production edits or implementation tests yet.
+- Recon confirmed immutable turn/attempt/brief identity and durable timestamped queue receipts are reusable, while engine failure checkpoints, separate ack/response deadlines and per-attempt retry fencing are absent. Heartbeat cannot stand in for delivery or completion. API failed releases already carry a bounded category; the engine currently does not turn it into recoverable turn status.
+- Same AGY is being asked to critique the proposed deadline/admission semantics, exact per-attempt cancellation and idempotency, plus the safe CLI retry path. Live CLI work must not get a second injection from a timeout. Proposed policy defaults are builder proposals, not user-selected values or implemented behavior.
+- Saved API answer recovery (#13), inspected CLI answer recovery (#14), replacement/skip (#15), full runtime adoption (#9) and six-seat capacity (#16) remain separate. Same AGY contract settlement precedes helper red tests and Codex implementation. No human gate is pending.
+
 ## Ticket execution and review
 
 - [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1) is closed after Meta source/plan review, documentation corrections and Seth's final sign-off. Ticket #2 passed independent review and received Seth's final sign-off; reviewed branch is fast-forward merged and published on origin/main; GitHub issue #2 is confirmed closed as completed.
@@ -148,21 +155,21 @@
 
 ## Next step
 
-**Action:** Plan #12 stalled-turn visibility/retry, pressure-test its ownership/deadline contract with the same AGY, then write observed-red regressions. #11 is published/closed; #9 remains deferred.
-**Who:** Codex owns #12 planning and implementation. Same AGY remains the independent contract critic/final reviewer; the existing test helper owns assigned regression work. No human approval is pending.
+**Action:** Settle #12 deadline/admission and safe per-attempt retry choices with same AGY, then freeze test interfaces and capture observed-red regressions. #11 is published/closed; #9 remains deferred.
+**Who:** Same AGY owns the requested #12 contract critique; its reply resumes Codex contract settlement. Existing test helper waits for frozen test interfaces. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** main, published #11 at `f403b59` (frozen implementation `78b418d`, base `83aa04a`). Same AGY independent PASS and post-merge401 tests/four skips pass; next branch will cover #12.
+- **Branch:** codex/ticket-12-stalled-turns, base main `0d247d5`. Published #11 source `f403b59` (frozen implementation `78b418d`, base `83aa04a`), closure/status published. Same AGY PASS and post-merge401 tests/four skips pass.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8 and #10-11, including corrected source/lineage and fresh context preparation. Same AGY PASS, post-merge401 tests OK/four skips, all eight integrations independently pass. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #12 planning next. #1-8 and #10-11 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #12 bounded contract critique, TICKET-12-PLAN.md; no production/test edits yet. #1-8 and #10-11 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
