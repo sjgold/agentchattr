@@ -27,6 +27,7 @@ config = None         # set by run.py — full config.toml dict
 router = None         # set by run.py — Router instance
 agents = None         # set by run.py — AgentManager instance
 review_briefs = None  # set by run.py — immutable seat-scoped review inputs
+session_engine = None  # set by run.py — explicit identity-checked event admission
 _presence: dict[str, float] = {}
 _activity: dict[str, bool] = {}   # True = screen changed on last poll
 _activity_ts: dict[str, float] = {}  # timestamp of last active=True heartbeat
@@ -975,9 +976,28 @@ def chat_queue_release(dispatch_id: str, ctx: Context | None = None) -> str:
         return 'Error: transport ownership unavailable; dispatch retained.'
 
 
+def chat_session_event(brief_id: str, kind: str, content: str, ctx: Context | None = None) -> str:
+    """Submit a final result or question for the exact immutable review brief.
+
+    Ordinary chat does not complete a turn. A question waits for explicit human
+    continuation. This tool does not release transport ownership; call the
+    separately instructed chat_queue_release after finishing the dispatch.
+    """
+    from turn_events import EventAccessError, EventConflict, EventValidationError
+    instance = _authenticated_instance(ctx)
+    if not instance or session_engine is None:
+        return json.dumps({'status': 'rejected', 'error': 'Authenticated seat and session engine required.'})
+    try:
+        return json.dumps(session_engine.admit_event(brief_id, kind, content, instance))
+    except (EventAccessError, EventConflict, EventValidationError) as exc:
+        return json.dumps({'status': 'rejected', 'error': str(exc)})
+    except OSError:
+        return json.dumps({'status': 'error', 'error': 'Event persistence or projection unavailable; no blind resubmission.'})
+
+
 _ALL_TOOLS = [
     chat_send, chat_read, chat_resync, chat_join, chat_who, chat_rules, chat_decision,
-    chat_channels, chat_set_hat, chat_claim, chat_summary, chat_propose_job, chat_review_brief, chat_queue_release,
+    chat_channels, chat_set_hat, chat_claim, chat_summary, chat_propose_job, chat_review_brief, chat_queue_release, chat_session_event,
 ]
 
 

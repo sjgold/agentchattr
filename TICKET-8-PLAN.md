@@ -1,6 +1,6 @@
 # Ticket #8: accept explicit turn completion exactly once
 
-**State:** Same-AGY contract critique complete; core implementation and focused tests pass. Adapter/UI integration in progress, final independent implementation review pending.
+**State:** Same-AGY contract critique complete; core implementation and focused tests pass. Adapter/UI verification complete; final independent implementation review pending.
 
 **Authority:** Approved issue #8, spec v1.7 SD-3 / AT-05 and the autonomous execution amendment. #7 is independently reviewed, published and closed. Base main `0029971`. Codex implements; same Antigravity independently reviews the frozen implementation and substantive fixes.
 
@@ -40,8 +40,12 @@ Ticket #7 provides immutable dispatch metadata, scoped brief retrieval, one acti
 
 - [x] Same AGY pressure-tests and resolves the admission/projection/question contract.
 - [x] Test-only helper captures red identity/idempotence/question regressions.
-- [ ] Implement store transaction, engine admission and scoped HTTP/MCP events.
-- [ ] Wire typed API result and CLI instructions; operator question/Continue and human result UI.
+- [x] Implement store transaction, engine admission and scoped HTTP/MCP events.
+- [x] Wire typed API result and CLI instructions; operator question/Continue and human result UI.
 - [ ] Real isolated verification, frozen same-AGY review/recheck, reviewed publication and closure.
 
 Next owner: Codex finishes adapter/UI wiring and isolated verification; same AGY independently reviews the frozen implementation. No routine human approval is requested. Restart reconciliation, actual cancellation, provider result outbox/recovery and broader capacity remain their later tickets.
+
+## Builder evidence
+
+Final suite315 OK/four Unix skips, all six isolated integration scripts PASS, static checks PASS. The helper captured genuine missing-interface/status-advance red before implementation. Root projection/auth/parser/identity/rename regressions were also observed red then fixed. Native fill/keyboard Continue and human-role result flow exercised actual endpoints; oversized answer400 preserved524289 bytes. New panel fits390px and scoped strip wrap has measured no overlap. Initial screenshot inspected; final confirmation image obscured by Guide overlay, so final strip visual confirmation remains limited. Native Linux/real clients/live providers remain unverified. See TICKET-8-REVIEW.md for exact commands and boundaries.

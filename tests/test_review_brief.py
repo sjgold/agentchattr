@@ -260,8 +260,7 @@ class FrozenSessionTests(unittest.TestCase):
         rules.active_list.return_value = {'epoch': 2, 'rules': ['Changed rule']}
         self.sessions.get_template('custom-review')['phases'] = [
             {'name': 'Changed', 'participants': ['reviewer'], 'prompt': 'Changed', 'is_output': True}]
-        advanced = self.sessions.advance_phase(session['id'])
-        engine._trigger_current(advanced)
+        engine.admit_event(entry['review_brief_id'], 'final', 'Accepted first-phase result', owner)
         self.assertEqual(engine.get_active('general')['phase_name'], 'Decision')
         self.assertEqual(engine.get_allowed_agent('general'), 'claude')
         second_entry = trigger.queue.claim(registry.get_instance('claude'), 'review-fixture')['envelope']

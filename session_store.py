@@ -141,7 +141,8 @@ class SessionStore:
     # --- Session lifecycle ---
 
     def create(self, template_id: str, channel: str, cast: dict,
-               started_by: str, goal: str = "", input_text: str = "", rules_snapshot=None) -> dict | None:
+               started_by: str, goal: str = "", input_text: str = "", rules_snapshot=None,
+               participant_bindings=None) -> dict | None:
         """Create and persist a new session run."""
         tmpl = self._templates.get(template_id)
         if not tmpl:
@@ -165,6 +166,7 @@ class SessionStore:
                 "channel": channel,
                 "cast": deepcopy(cast),
                 "cast_snapshot": deepcopy(cast),
+                "participant_bindings": deepcopy(participant_bindings or {}),
                 "state": "active",
                 "current_phase": 0,
                 "current_turn": 0,
@@ -332,11 +334,21 @@ class SessionStore:
             if session['state'] != 'awaiting_input' or not question or question['event_id'] != question_event_id:
                 raise EventConflict('Only the current awaiting-input question can be continued.')
             session['continuation_context'].append({'question_event_id': question_event_id,
-                'question': question['text'], 'answer': answer})
+                'question': question['text'], 'answer': answer, 'projected_message_id': None})
             session['active_invocation'] = None
             session.pop('current_question', None)
             session['state'] = 'active'
         return self._event_update(session_id, resume)
+
+    def link_continuation_projection(self, session_id, question_event_id, message_id):
+        from turn_events import EventConflict
+        def link(session):
+            context = next((item for item in session['continuation_context']
+                            if item['question_event_id'] == question_event_id), None)
+            if context is None or context.get('projected_message_id') not in (None, message_id):
+                raise EventConflict('Continuation projection does not match the saved answer.')
+            context['projected_message_id'] = message_id
+        return self._event_update(session_id, link)
 
     def resume_explicit(self, session_id):
         from turn_events import EventConflict

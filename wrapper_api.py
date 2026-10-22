@@ -326,8 +326,12 @@ def main():
             messages.append({"role": role, "content": f"{sender}: {text}"})
         return messages
 
+    last_failure_category = ['']
+
     # Handle a trigger — read context, call model, respond
-    def handle_trigger(channel="general", review_brief_id=None, prompt='', frozen=False, job_id=None):
+    def handle_trigger(channel="general", review_brief_id=None, prompt='', frozen=False, job_id=None, dispatch_id=None):
+        from turn_events import EventValidationError
+        last_failure_category[0] = ''
         my_name = get_name()
         set_working(True)
         try:
@@ -358,6 +362,36 @@ def main():
             if not response:
                 return False
 
+            if frozen:
+                from turn_events import parse_session_response
+                event = parse_session_response(response)
+                event.update(brief_id=review_brief_id, event_id=dispatch_id,
+                             **{key: envelope[key] for key in ('run_id', 'turn_id', 'attempt_id', 'input_revision')})
+                # Only submission retries, never another provider call. Durable
+                # pre-submission worker outbox recovery remains a later ticket.
+                for delivery_attempt in range(3):
+                    request = urllib.request.Request(
+                        f"http://127.0.0.1:{server_port}/api/sessions/{envelope['session_id']}/event",
+                        data=json.dumps(event).encode('utf-8'),
+                        headers=_auth_headers(get_token(), include_json=True))
+                    try:
+                        with urllib.request.urlopen(request, timeout=10) as delivered:
+                            accepted = json.load(delivered)
+                        if accepted.get('status') != 'admitted':
+                            raise ValueError('Session event was not admitted.')
+                        return True
+                    except urllib.error.HTTPError as exc:
+                        if exc.code == 409:
+                            prior = json.loads(exc.read())
+                            if prior.get('accepted_event_id') == dispatch_id:
+                                return True
+                        if exc.code < 500 or delivery_attempt == 2:
+                            raise
+                    except OSError:
+                        if delivery_attempt == 2:
+                            raise
+                    time.sleep(.2)
+
             # Strip self-prefix if the model echoes its own name
             prefixes = [f"{my_name}: ", f"{my_name}:"]
             for prefix in prefixes:
@@ -369,12 +403,17 @@ def main():
             print(f"  [{channel}] Responded ({len(response)} chars)")
             return True
         except Exception as exc:
+            malformed = isinstance(exc, EventValidationError)
+            last_failure_category[0] = ('malformed_session_response' if malformed else
+                'provider_failure' if isinstance(exc, _ManagedProviderFailure) else 'local_delivery_failure')
             if receipt:
                 if not isinstance(exc, _ManagedProviderFailure):
-                    receipt.update(state='failed', error='Local chat dispatch or delivery failed. Check server connectivity and retry this seat.')
+                    receipt.update(state='failed', error=(
+                        'Session response was not valid final/question JSON; no event was admitted.' if malformed else
+                        'Local event or chat delivery needs attention. Check the queue and session before retrying.'))
                 print('  Managed API turn failed; see pre-flight diagnostics.')
             else:
-                print(f"  Error handling trigger: {exc}")
+                print(f'  API turn failed ({last_failure_category[0]}); no successful delivery was claimed.')
             return False
         finally:
             set_working(False)
@@ -406,9 +445,9 @@ def main():
                         queue.acknowledge(dispatch_id)
                         processed_ok = handle_trigger(channel=entry.get('channel', 'general'),
                             review_brief_id=entry.get('review_brief_id'),
-                            frozen='review_brief_id' in entry, prompt=entry.get('prompt', ''), job_id=entry.get('job_id') or None)
+                            frozen='review_brief_id' in entry, prompt=entry.get('prompt', ''), job_id=entry.get('job_id') or None, dispatch_id=dispatch_id)
                         processed_dispatch = dispatch_id
-                    queue.release(dispatch_id, failed=not processed_ok)
+                    queue.release(dispatch_id, failed=not processed_ok, error_category=last_failure_category[0])
             except Exception as exc:
                 print(f'  Queue delivery held ({type(exc).__name__}); dispatch retained without model replay.')
 

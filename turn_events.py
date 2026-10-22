@@ -46,8 +46,15 @@ def parse_session_response(response):
         if len(lines) < 3 or lines[0] not in ('```', '```json') or lines[-1] != '```':
             raise EventValidationError('Malformed session response fence.')
         text = '\n'.join(lines[1:-1])
+    def unique_keys(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise EventValidationError('Session response contains duplicate JSON keys.')
+            value[key] = item
+        return value
     try:
-        result = json.loads(text)
+        result = json.loads(text, object_pairs_hook=unique_keys)
     except ValueError:
         raise EventValidationError('Session response must declare final or question in a JSON object.') from None
     if not isinstance(result, dict) or set(result) != {'kind', 'content'}:

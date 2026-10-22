@@ -1869,6 +1869,9 @@ function updateStatus(data) {
                 if (seat.active || seat.queued || seat.failed) {
                     const label = document.getElementById(`status-${seat.name}`)?.textContent.trim() || seat.name;
                     addRow(`${label}: ${seat.queued} queued${seat.failed ? `; ${seat.failed} failed dispatches` : ''}${seat.active ? `; ${seat.active.state}, awaiting explicit release (${seat.active.dispatch_id})` : ''}${seat.contention ? '; waiting for this seat' : ''}`);
+                    if (seat.last_failure?.category === 'malformed_session_response') {
+                        addRow('The session response was not a valid final result or question. No result was admitted.');
+                    }
                 }
             }
             const legacy = queue.legacy_unmigrated_files || [];

@@ -24,6 +24,9 @@ class EventProjectionTests(unittest.TestCase):
                                        metadata={'event_id': 'a'})
             self.assertEqual(result['id'], results[0]['id'])
             self.assertEqual(len(reloaded.get_recent(50)), 1)
+            reloaded.update_message(result['id'], {'metadata': {'event_id': 'a', 'reactions': ['reviewed']}})
+            retried = reloaded.add_once('session-event:a', 'seat', 'Exact accepted result', metadata={'event_id': 'a'})
+            self.assertEqual(retried['id'], result['id'])
             with self.assertRaises(ValueError):
                 reloaded.add_once('session-event:a', 'impostor', 'Changed result')
 

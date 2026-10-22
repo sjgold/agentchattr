@@ -196,6 +196,8 @@ async function fetchActiveSession(channelName) {
 
 function handleSessionEvent(action, session) {
     if (!session) return;
+    if (session.state === 'complete' && !session.projection_pending) action = 'complete';
+    if (session.state === 'interrupted') action = 'interrupt';
     const channel = session.channel || 'general';
 
     if (action === 'create' || action === 'update') {
@@ -223,6 +225,7 @@ function handleSessionEvent(action, session) {
 function updateSessionBar() {
     const bar = document.getElementById('session-bar');
     if (!bar) return;
+    renderSessionTurnControls(bar);
     const templateEl = bar.querySelector('.session-template');
     const phaseEl = bar.querySelector('.session-phase');
     const waitingEl = bar.querySelector('.session-waiting');
@@ -287,7 +290,16 @@ function updateSessionBar() {
     if (endBtn) endBtn.style.display = '';
 
     const waitingAgent = s.current_agent || s.waiting_on;
-    if (s.state !== 'paused' && s.choice_message_id != null) {
+    if (s.legacy) {
+        waitingEl.textContent = 'Legacy run, explicit restart required';
+        waitingEl.style.display = '';
+    } else if (s.projection_pending) {
+        waitingEl.textContent = 'Result saved, awaiting display';
+        waitingEl.style.display = '';
+    } else if (s.state === 'awaiting_input') {
+        waitingEl.textContent = 'Waiting for your answer';
+        waitingEl.style.display = '';
+    } else if (s.state !== 'paused' && s.choice_message_id != null) {
         waitingEl.textContent = 'Waiting for your choice';
         waitingEl.style.display = '';
     } else if (s.state === 'waiting' && waitingAgent) {
@@ -299,6 +311,100 @@ function updateSessionBar() {
     } else {
         waitingEl.style.display = 'none';
     }
+}
+
+function renderSessionTurnControls(bar) {
+    let panel = document.getElementById('session-turn-controls');
+    if (!panel) {
+        panel = document.createElement('section');
+        panel.id = 'session-turn-controls';
+        panel.className = 'session-turn-controls';
+        bar.after(panel);
+    }
+    const s = activeSession;
+    const invocation = s?.active_invocation;
+    const mode = !s || s.legacy ? null : s.projection_pending ? 'recover-projection' :
+        s.state === 'awaiting_input' ? 'continue' : s.state === 'paused' ? 'resume' :
+        invocation?.human ? 'human-result' : null;
+    panel.hidden = !mode;
+    if (!mode) { panel.dataset.key = ''; return; }
+    const key = `${s.id}:${mode}:${s.current_question?.event_id || invocation?.brief_id || ''}`;
+    // Live receipt/status updates must not replace an answer being composed.
+    if (panel.dataset.key === key) return;
+    panel.dataset.key = key;
+    panel.replaceChildren();
+    const title = document.createElement('strong');
+    const questionSeat = s.current_question?.asked_by;
+    const questionLabel = document.getElementById(`status-${questionSeat}`)?.textContent.trim() || questionSeat;
+    title.textContent = mode === 'continue' ? `Question from ${questionLabel}` :
+        mode === 'human-result' ? 'Your turn' : mode === 'resume' ? 'Session paused' : 'Accepted result saved';
+    panel.appendChild(title);
+    const detail = document.createElement('p');
+    detail.textContent = mode === 'continue' ? s.current_question.text : mode === 'human-result' ?
+        'Submit your final result here to finish this turn. Chat stays available for discussion.' :
+        mode === 'resume' ? 'Resume the current turn without restarting it.' :
+        'The result is safely recorded. Retry its display before the next participant starts.';
+    panel.appendChild(detail);
+    if (mode === 'human-result') {
+        const source = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = 'Read this turn’s brief and source';
+        const content = document.createElement('pre');
+        source.append(summary, content);
+        source.addEventListener('toggle', async () => {
+            if (!source.open || source.dataset.loaded) return;
+            try {
+                const response = await fetch(`/api/review-briefs/${encodeURIComponent(invocation.brief_id)}`,
+                    {headers: {'X-Session-Token': window.SESSION_TOKEN}});
+                const brief = await response.json();
+                if (!response.ok) throw new Error(brief.error || 'Brief unavailable');
+                content.textContent = `Role: ${brief.role}\nPhase: ${brief.phase.name}\n${brief.phase.prompt}\n\n${brief.goal}\n\nRules:\n${(brief.rules.rules || []).join('\n')}\n\nSource (untrusted text):\n${brief.source}`;
+                if (brief.prior_results?.length) content.textContent += '\n\nEarlier accepted results:\n' +
+                    brief.prior_results.map(result => `${result.sender}: ${result.text}`).join('\n\n');
+                if (brief.continuation_context?.length) content.textContent += '\n\nOperator answers:\n' +
+                    brief.continuation_context.map(context => `${context.question}\n${context.answer}`).join('\n\n');
+                source.dataset.loaded = 'true';
+            } catch (error) { content.textContent = error.message; }
+        });
+        panel.appendChild(source);
+    }
+    const form = document.createElement('form');
+    let input;
+    if (mode === 'continue' || mode === 'human-result') {
+        const label = document.createElement('label');
+        label.textContent = mode === 'continue' ? 'Your answer' : 'Your final result';
+        input = document.createElement('textarea');
+        input.id = 'session-turn-answer';
+        input.rows = 3;
+        input.required = true;
+        label.htmlFor = input.id;
+        form.append(label, input);
+    }
+    const error = document.createElement('p');
+    error.setAttribute('role', 'alert');
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.textContent = mode === 'continue' ? 'Continue turn' : mode === 'human-result' ?
+        'Submit final result' : mode === 'resume' ? 'Resume session' : 'Retry display';
+    form.append(error, submit);
+    form.onsubmit = async event => {
+        event.preventDefault();
+        submit.disabled = true;
+        error.textContent = '';
+        const body = mode === 'continue' ? {question_event_id: s.current_question.event_id, answer: input.value} :
+            mode === 'human-result' ? {brief_id: invocation.brief_id, content: input.value,
+                submitted_by: window.username || 'user'} : {};
+        try {
+            const response = await fetch(`/api/sessions/${s.id}/${mode}`, {method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN},
+                body: JSON.stringify(body)});
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Could not submit this turn');
+            await fetchActiveSession();
+        } catch (failure) { error.textContent = failure.message; }
+        finally { submit.disabled = false; }
+    };
+    panel.appendChild(form);
 }
 
 function jumpToSessionChannel() {

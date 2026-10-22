@@ -1790,17 +1790,20 @@ async def dispatch_operation(operation: str, request: Request):
             raise ValueError('Transport receipt is too large.')
         body = json.loads(raw)
         fields = {'consumer_id'} if operation == 'claim' else {'consumer_id', 'dispatch_id'}
-        allowed = fields | ({'failed'} if operation == 'release' else set())
+        allowed = fields | ({'failed', 'error_category'} if operation == 'release' else set())
         if (operation not in {'claim', 'ack', 'release', 'uncertain'}
                 or not isinstance(body, dict) or not fields <= body.keys()
                 or body.keys() - allowed or not isinstance(body.get('failed', False), bool)):
             raise ValueError('Invalid transport receipt fields; session results are not accepted here.')
+        category = body.get('error_category', '')
+        if category not in ('', 'malformed_session_response', 'provider_failure', 'local_delivery_failure'):
+            raise ValueError('Invalid transport failure category.')
         queue = agents.queue
         if operation == 'claim':
             result = queue.claim(instance, body['consumer_id'])
         else:
             method = {'ack': queue.acknowledge, 'release': queue.release, 'uncertain': queue.uncertain}[operation]
-            extra = {'failed': body.get('failed', False)} if operation == 'release' else {}
+            extra = {'failed': body.get('failed', False), 'error': category} if operation == 'release' else {}
             result = method(instance, body['dispatch_id'], body['consumer_id'], **extra)
         return JSONResponse({'dispatch': result})
     except QueueAccessError:
@@ -2823,6 +2826,19 @@ async def resume_session_event(session_id: int):
     from turn_events import EventConflict
     try:
         return JSONResponse(await asyncio.to_thread(session_engine.resume_session, session_id))
+    except (EventConflict, OSError) as exc:
+        return _session_event_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/recover-projection')
+async def recover_session_projection(session_id: int):
+    from turn_events import EventConflict
+    try:
+        session = session_store.get(session_id)
+        if not session or session.get('completion_protocol') != 1:
+            raise EventConflict('No explicit session journal can be repaired.')
+        await asyncio.to_thread(session_engine.recover_projections)
+        return JSONResponse(session_store.get(session_id))
     except (EventConflict, OSError) as exc:
         return _session_event_error(exc)
 

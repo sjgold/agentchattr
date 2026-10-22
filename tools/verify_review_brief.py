@@ -40,7 +40,7 @@ def main():
             self.send_response(200)
             self.end_headers()
             self.wfile.write(json.dumps({'model': 'fake-confirmed', 'choices': [
-                {'message': {'content': 'A normal fake review result for the editor.'}}]}).encode())
+                {'message': {'content': json.dumps({'kind': 'final', 'content': 'A normal fake review result for the editor.'})}}]}).encode())
 
         def log_message(self, *args):
             pass
@@ -181,7 +181,7 @@ run.main()
         assert source_message['text'] == source
         system = payload['messages'][0]['content']
         assert payload['messages'][0]['role'] == 'system' and source not in system
-        instructions = json.loads(system.rsplit('\n', 1)[1])
+        instructions = next(json.loads(line) for line in system.splitlines() if line.startswith('{"run_id"'))
         assert instructions['role'] == 'reviewer'
         assert instructions['phase']['name'] == TEMPLATE['phases'][0]['name']
         assert instructions['phase']['prompt'] == TEMPLATE['phases'][0]['prompt']

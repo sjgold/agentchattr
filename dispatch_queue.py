@@ -207,6 +207,8 @@ class QueueStore:
                     seat['queued'] += 1
                 if record['state'] == 'failed':
                     seat['failed'] += 1
+                    seat['last_failure'] = {'dispatch_id': envelope['dispatch_id'],
+                                            'category': record['events'][-1].get('error') or 'transport_failure'}
                 if record['state'] in ACTIVE:
                     seat['active'] = {'dispatch_id': envelope['dispatch_id'],
                                       'state': record['state'], 'awaiting_release': True}

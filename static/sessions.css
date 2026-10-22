@@ -1,4 +1,47 @@
 /* --- Sessions --- */
+.session-turn-controls {
+    padding: 12px 20px;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+    max-height: 42vh;
+    overflow: auto;
+    flex-shrink: 0;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+.session-turn-controls[hidden] { display: none; }
+.session-turn-controls p { margin: 8px 0; }
+.session-turn-controls label { display: block; margin: 10px 0 6px; }
+.session-turn-controls textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 10px;
+    background: var(--bg-input);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    resize: vertical;
+}
+.session-turn-controls button {
+    padding: 9px 14px;
+    background: var(--accent);
+    color: var(--text-on-accent);
+    border: 0;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    cursor: pointer;
+}
+.session-turn-controls button:disabled { opacity: 0.6; cursor: wait; }
+.session-turn-controls summary { cursor: pointer; margin: 8px 0; }
+.session-turn-controls pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; max-height: 240px; overflow: auto; }
+
+@media (max-width: 600px) {
+    #session-bar { flex-wrap: wrap; align-items: flex-start; }
+    #session-bar .session-info { flex: 1 1 220px; flex-wrap: wrap; gap: 4px 10px; }
+    #session-bar .session-info span { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+    #session-bar .session-end-controls { margin-left: 0; }
+}
 
 #session-bar {
     display: flex;

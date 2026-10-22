@@ -105,7 +105,11 @@ class MessageStore:
         with self._lock:
             for existing in self._messages:
                 if existing.get('uid') == uid:
-                    if any(existing.get(key) != value for key, value in fields.items()):
+                    # Preserve additive UI metadata such as reactions. The
+                    # immutable event identity/content fields must still match.
+                    if (any(existing.get(key) != value for key, value in fields.items() if key != 'metadata')
+                            or any((existing.get('metadata') or {}).get(key) != value
+                                   for key, value in fields['metadata'].items())):
                         raise ValueError('Projected event UID conflicts with existing chat content.')
                     return deepcopy(existing)
             stamp = time.time()

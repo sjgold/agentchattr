@@ -36,6 +36,15 @@ class SessionEngine:
     def start_session(self, template_id: str, channel: str, cast: dict,
                       started_by: str, goal: str = "", input_text: str = "") -> dict | None:
         """Start a new session. Returns the session dict or None on failure."""
+        bindings = {}
+        if isinstance(cast, dict):
+            for role, name in cast.items():
+                if not isinstance(role, str) or not isinstance(name, str) or not name:
+                    continue  # SessionStore rejects malformed casts before persistence.
+                instance = self._registry.get_instance(name) if self._registry else None
+                agent = bool(instance) or bool(self._registry and self._registry.is_agent_family(name))
+                bindings[role] = {'kind': 'agent' if agent else 'human',
+                                  'identity_id': instance.get('identity_id') if isinstance(instance, dict) else None}
         session = self._store.create(
             template_id=template_id,
             channel=channel,
@@ -44,6 +53,7 @@ class SessionEngine:
             goal=goal,
             input_text=input_text,
             rules_snapshot=self._rules.active_list() if self._rules is not None else None,
+            participant_bindings=bindings,
         )
         if not session:
             return None
@@ -133,6 +143,9 @@ class SessionEngine:
             session = self._store.get_active(msg.get('channel', 'general'))
             if not session or session.get('completion_protocol') != 1 or session['state'] == 'awaiting_input':
                 return
+            invocation = session.get('active_invocation')
+            if not invocation or invocation.get('human'):
+                return
             expected = self._get_expected_agent(session)
             sender = msg.get('sender', '')
             if expected and self._is_agent(expected) and not self._is_agent(sender) and sender != expected:
@@ -172,7 +185,7 @@ class SessionEngine:
             if not isinstance(identities, dict) or set(identities) - set(IDENTITY_FIELDS):
                 raise EventValidationError('Unknown event identity fields.')
             event.update(identities)
-        event.update(event_id=validate_id(event_id or uuid.uuid4().hex), kind=kind, content=content,
+        event.update(event_id=validate_id(uuid.uuid4().hex if event_id is None else event_id), kind=kind, content=content,
                      session_id=envelope['session_id'])
         if human:
             event['submitted_by'] = submitted_by
@@ -198,7 +211,7 @@ class SessionEngine:
     def continue_session(self, session_id, question_event_id, answer):
         with self._lock:
             session = self._store.continue_question(session_id, question_event_id, answer)
-            if self._trigger_current(session) is False:
+            if self._project_session(session_id) is False:
                 from turn_events import EventConflict
                 raise EventConflict('Continuation was retained, but dispatch could not be persisted.')
             return self._store.get(session_id)
@@ -210,12 +223,22 @@ class SessionEngine:
     def _project_session(self, session_id):
         from turn_events import IDENTITY_FIELDS
         session = self._store.get(session_id)
+        for context in session.get('continuation_context', []):
+            if context.get('projected_message_id') is not None:
+                continue
+            message = self._messages.add_once('session-input:' + context['question_event_id'],
+                'operator', context['answer'], msg_type='session_input', channel=session['channel'],
+                metadata={'session_id': session_id, 'question_event_id': context['question_event_id'],
+                          'provenance': 'human_operator'})
+            self._store.link_continuation_projection(session_id, context['question_event_id'], message['id'])
         for event in session.get('admitted_events', []):
             if event['projected_message_id'] is not None:
                 continue
             metadata = {key: event[key] for key in (*IDENTITY_FIELDS, 'event_id', 'kind', 'session_id', 'provenance')}
             if event.get('submitted_by'):
                 metadata['submitted_by'] = event['submitted_by']
+            if event.get('is_output') and session['state'] == 'complete':
+                metadata['session_output'] = True
             message = self._messages.add_once('session-event:' + event['event_id'], event['sender'],
                 event['content'], msg_type='session_result' if event['kind'] == 'final' else 'session_question',
                 channel=session['channel'], metadata=metadata)
@@ -227,7 +250,7 @@ class SessionEngine:
                 metadata={'session_id': session_id, 'output_message_id': session.get('output_message_id')})
         elif session['state'] == 'active' and not session.get('active_invocation'):
             self.emit_current_phase_banner(session)
-            self._trigger_current(session)
+            return self._trigger_current(session)
 
     def recover_projections(self):
         """Repair accepted-event projection before dispatch; never re-admit it."""
@@ -272,11 +295,15 @@ class SessionEngine:
         if session.get('design_snapshot'):
             from review_brief import BriefError, build_brief
             try:
-                instance = self._registry.get_instance(agent) if self._registry else None
-                human = not self._is_agent(agent)
-                if instance is None and not human:
+                principal = session.get('participant_bindings', {}).get(role, {})
+                human = principal.get('kind') == 'human'
+                instance = next((item for item in self._registry.get_all().values()
+                    if item['identity_id'] == principal.get('identity_id')), None) if self._registry and not human else None
+                if not human and instance is None:
                     raise BriefError('The intended seat identity disappeared before dispatch.')
-                identity_id = instance.get('identity_id', '') if isinstance(instance, dict) else ''
+                if not human:
+                    agent = instance['name']
+                identity_id = instance.get('identity_id', '') if not human and isinstance(instance, dict) else ''
                 prior = [self._messages.get_by_id(mid) for mid in session.get('result_message_ids', [])]
                 prior = [{k: msg.get(k) for k in ('id', 'sender', 'text', 'channel')}
                          for msg in prior if msg is not None]
@@ -352,6 +379,8 @@ class SessionEngine:
 
     def _get_expected_agent(self, session: dict) -> str | None:
         """Get the agent name expected to respond next."""
+        if session.get('active_invocation'):
+            return session['active_invocation']['expected_agent']
         tmpl = self._template(session)
         if not tmpl:
             return None
@@ -377,6 +406,9 @@ class SessionEngine:
         """Add computed fields to a session dict for the frontend."""
         session["legacy"] = session.get("completion_protocol") != 1
         session["participant_kind"] = "human" if (session.get("active_invocation") or {}).get("human") else "agent"
+        session['projection_pending'] = any(event.get('projected_message_id') is None
+                                             for event in session.get('admitted_events', [])) or any(
+            context.get('projected_message_id') is None for context in session.get('continuation_context', []))
         tmpl = self._template(session)
         if tmpl:
             phases = tmpl.get("phases", [])
@@ -390,5 +422,5 @@ class SessionEngine:
                 if turn_idx < len(participants):
                     role = participants[turn_idx]
                     session["current_role"] = role
-                    session["current_agent"] = session.get("cast", {}).get(role)
+                    session["current_agent"] = self._get_expected_agent(session)
         return session

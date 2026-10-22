@@ -75,7 +75,14 @@ class DispatchEndpointTests(unittest.TestCase):
                 self.assertEqual(client.post('/api/queue/release', json={**body, 'result': 'must not admit output'}, headers=owner).status_code, 400)
                 self.assertEqual(client.post('/api/queue/release', json=body, headers=owner).status_code, 200)
                 self.assertIsNone(client.post('/api/queue/claim', json={'consumer_id': 'worker'}, headers=owner).json()['dispatch'])
+                agents.trigger_sync('one', dispatch_id='b' * 32)
+                client.post('/api/queue/claim', json={'consumer_id': 'worker'}, headers=owner)
+                failure = {'dispatch_id': 'b' * 32, 'consumer_id': 'worker', 'failed': True,
+                           'error_category': 'malformed_session_response'}
+                self.assertEqual(client.post('/api/queue/release', json=failure, headers=owner).status_code, 200)
                 self.assertEqual(client.get('/api/queue/status', headers=peer).status_code, 403)
                 status = client.get('/api/queue/status', headers={'x-session-token': 'operator-test'})
                 self.assertEqual(status.status_code, 200)
                 self.assertNotIn(one['token'], status.text)
+                self.assertEqual(status.json()['seats'][one['identity_id']]['last_failure']['category'],
+                                 'malformed_session_response')
