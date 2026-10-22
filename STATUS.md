@@ -137,7 +137,7 @@
 - Operator routes now support source preparation, child-only context repair, safe managed-seat choices, status and activation. UI code distinguishes prepared from stopped, retains correction drafts during polling, shows frozen source/role settings, and binds explicit CLI replacement confirmations to exact launches. JavaScript syntax and diff checks pass. Desktop/mobile screenshots were inspected; scoped panel390/scroll390, text14px/contrast9.3:1. Native keyboard activation and role-change preparation gating pass.
 - Real corrected integration and two --serve runs **PASS**. Actual old question/Continue/result and held CLI become a linked corrected review, with new PID/nonce/identity, observed old client exit, empty boot MCP reads before an injected backlink503, same-request repair without duplicate spawn, frozen launch settings despite live edits, exact new-source-only results and independent peer completion. Old audit is preserved. First failure was a fixture empty-string MCP parser assumption, corrected without weakening isolation. Final scratch: `.audit-tmp/corrected restart integration ys4sg5te`; all four workers stopped and browser markers removed.
 - All seven prior integrations pass again. Separate human-only browser check verified unchanged-source rejection/draft preservation, source editing/preparation, permanent Stop during preparation and reload, with no invocation/results. Original source/result/continuation remain readable in the prepared panel. Scoped UI refinement moved Start above collapsed settings; inherited whole-chat overflow/design findings remain standing, with no new suppression or whole-chat mobile pass. Browsers/servers stopped.
-- **Independent review PASS:** same AGY independently ran401 tests/four skips (19.282s), all eight integrations and JS/diff checks. No blockers. Receipt REVIEW-GEMINI-TICKET-11.md; reviewer metadata/scope wording corrections are pending, with no source changes or verdict change. **Remaining:** merged verification, publication and closure. Frozen implementation `78b418df887596c5f173c0126a3e52d6d144670b`; review pack `TICKET-11-REVIEW.md`, usage `CORRECTING-REVIEWS.md`. No #11 push yet; independent implementation PASS received. No live providers, native AI clients, login/history wipes, Desktop changes or #9 runtime adoption.
+- **Independent review PASS:** same AGY independently ran401 tests/four skips (19.282s), all eight integrations and JS/diff checks. No blockers. Receipt REVIEW-GEMINI-TICKET-11.md; reviewer metadata/scope wording corrections are confirmed, with no source changes or verdict change. Fast-forward merged locally; post-merge401 tests OK/four skips (19.547s), JS/diff clean. **Remaining:** publication and closure. Frozen implementation `78b418df887596c5f173c0126a3e52d6d144670b`; review pack `TICKET-11-REVIEW.md`, usage `CORRECTING-REVIEWS.md`. No #11 push yet; independent implementation PASS received. No live providers, native AI clients, login/history wipes, Desktop changes or #9 runtime adoption.
 
 
 ## Ticket execution and review
@@ -148,7 +148,7 @@
 
 ## Next step
 
-**Action:** Complete review-receipt corrections and merged verification, publish and close #11, then plan #12 stalled-turn visibility/retry. #10 remains published/closed; #9 deferred.
+**Action:** Publish and close independently reviewed #11, then plan #12 stalled-turn visibility/retry. #10 remains published/closed; #9 deferred.
 **Who:** Codex owns reviewed publication and #12 planning. Same AGY owns receipt wording corrections and subsequent independent critique/review. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
@@ -156,7 +156,7 @@
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-11-clean-restart, base main `83aa04a`. #10 publication `10f75e3`, frozen source `eeb9026` independently passed. #11 in progress;401 tests/four skips pass, corrected integration/browser checks and same AGY independent review pass; publication pending.
+- **Branch:** main after local fast-forward merge of codex/ticket-11-clean-restart, base `83aa04a`. #10 publication `10f75e3`, frozen source `eeb9026` independently passed. #11 in progress;401 tests/four skips pass, corrected integration/browser checks and same AGY independent review pass; publication pending.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8 and #10, including explicit results/questions, durable Stop/cancellation evidence and scoped quarantine/termination. Same AGY PASS, post-merge350 tests OK/four skips, all seven integrations independently pass. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.

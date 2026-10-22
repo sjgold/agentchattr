@@ -20,6 +20,6 @@ The reviewed HEAD differs from the frozen implementation only in documentation p
 
 No blocking findings were reported. Native AI clients, external providers, Linux/Omarchy and full server restart adoption remain outside this verification. The browser evidence in the builder pack is attributed separately from the reviewer's executed tests.
 
-Durable reviewer artifact: `epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-11-independent-review/index.md`. Root verified Python3.14.6 and per-file test counts14/15/2/9/1; the reviewer is correcting receipt metadata and scope wording before publication. These corrections change no application code or verdict.
+Durable reviewer artifact: `epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-11-independent-review/index.md`. Root verified Python3.14.6 and per-file test counts14/15/2/9/1; the reviewer verified and corrected receipt metadata, unresolved-parent exception wording, prepared fresh CLI versus retained API read scope, and browser attribution before publication. These corrections change no application code or verdict.
 
-Publication and issue closure follow under standing authorization after the receipt corrections and merged verification.
+Receipt corrections are confirmed. Fast-forward merged locally; post-merge401 tests pass with four expected skips (19.547s), plus JS/diff checks. Publication and issue closure follow under standing authorization.
