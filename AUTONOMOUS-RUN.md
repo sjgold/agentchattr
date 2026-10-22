@@ -15,8 +15,8 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-8 | Published and closed | Latest #8 publication `aee0414`, independent AGY PASS |
-| #10 reliable Stop | Contract planning | Codex drafts; same AGY pressure-tests cancellation and quarantine |
-| #11-12, #16 | Pending, first milestone | Follow dependencies after #7 |
+| #10 reliable Stop | Contract planning | Same AGY owns contract critique; reply resumes Codex implementation |
+| #11-12, #16 | Pending, first milestone | Follow dependencies after #10 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
 
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#1-8 are published and closed. #8 independently passed on frozen d75852a, publication aee0414; post-merge315 tests OK (four skips), all six isolated integrations passed. Next is #10 reliable Stop, whose only blocker #8 is closed. Codex is settling run-scoped cancellation, durable dispatch fences and late-output quarantine with the same AGY reviewer. #9 full restart reconciliation remains deferred by milestone order. Existing seat stop can terminate the whole worker, so it must not be mistaken for invocation-scoped graceful cancellation. Native/live acceptance stays outside routine scope.
+#1-8 are published and closed. #8 independently passed on frozen d75852a, publication aee0414; post-merge315 tests OK (four skips), all six isolated integrations passed. Next is #10 reliable Stop, whose only blocker #8 is closed. Codex wrote `TICKET-10-PLAN.md`; same AGY owns the requested contract critique (expectReply:true). Its reply resumes implementation. No #10 production edits yet. Open points are Stop linearization, invocation-scoped API cancellation, unsupported CLI evidence/termination and routing provenance/quarantine. #9 full restart reconciliation remains deferred by milestone order. Existing seat stop can terminate the whole worker, so it must not be mistaken for invocation-scoped graceful cancellation. Native/live acceptance stays outside routine scope.

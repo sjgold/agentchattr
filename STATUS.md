@@ -128,14 +128,14 @@
 ## Next step
 
 **Action:** Settle #10 run-scoped Stop, cancellation evidence, routing fences and late-output quarantine contract in `TICKET-10-PLAN.md`, with same AGY pressure-test before implementation. #10's only blocker #8 is closed. #9 full restart reconciliation remains deferred by milestone order.
-**Who:** Codex drafts the bounded contract; same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` pressure-tests it and remains final reviewer. Test-only helper remains `fcc36344-f0ca-4514-9288-74753be75947` on Codex gpt-6-sol/medium. No routine human approval is pending.
+**Who:** Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` owns the next move: return #10 contract critique (requested with expectReply:true); that reply resumes Codex implementation. It remains the final reviewer. Test-only helper remains `fcc36344-f0ca-4514-9288-74753be75947` on Codex gpt-6-sol/medium. No routine human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-8-explicit-completion, base main `0029971`. #1-7 published and closed; #8 implemented and builder-verified locally; frozen same AGY PASS; publication in progress.
+- **Branch:** codex/ticket-10-stop, base main `3bb4357`. #1-8 published and closed; #10 proposed contract only, no production edits.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8 including explicit result/question admission, durable projection and operator continuation/human controls. Same AGY PASS, post-merge315 tests OK (four skips), all six isolated integrations passed. Actual invocation cancellation remains #10. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.

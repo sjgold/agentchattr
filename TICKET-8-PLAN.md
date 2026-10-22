@@ -1,6 +1,6 @@
 # Ticket #8: accept explicit turn completion exactly once
 
-**State:** Same-AGY contract critique complete; core implementation and focused tests pass. Adapter/UI verification complete; final independent implementation review pending.
+**State:** Published and closed at `aee0414` after independent same-AGY PASS. Post-merge315 tests OK (four platform skips).
 
 **Authority:** Approved issue #8, spec v1.7 SD-3 / AT-05 and the autonomous execution amendment. #7 is independently reviewed, published and closed. Base main `0029971`. Codex implements; same Antigravity independently reviews the frozen implementation and substantive fixes.
 
