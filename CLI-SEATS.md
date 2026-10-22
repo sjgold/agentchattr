@@ -2,6 +2,8 @@
 
 Open pre-flight, create or select a saved package, add an agent seat and choose **Interactive CLI**. Pick a configured client template, save the package, then launch that seat. A package can mix CLI and API seats.
 
+Use **Launch / reuse selected team** to check the saved team together, then enter chat when its included seats are ready. [Saved teams](PACKAGES.md) covers exclusions for one launch and stale-setting checks.
+
 Launch opens an interactive Windows console or an owned tmux session on Unix. It writes the seat's MCP identity settings. Clients with isolated config flags or environment variables get private files; clients with a fixed settings path get a lifetime lock and backups before intentional edits. A second seat using that fixed path is rejected. Existing login files stay in place.
 
 The runtime shows the resolved executable, whether its process started, a version when the template declares a version probe, requested model and child exit code. **Mention injection ready** means the wrapper can deliver console input. Login, actual MCP tool use and provider-confirmed model remain unknown. A CLI can still be waiting for login or folder trust; use its terminal to complete that step. API readiness keeps its existing meaning.

@@ -284,14 +284,16 @@ api_seat_manager = None
 
 @app.get('/api/preflight/seats')
 async def get_api_seats():
-    from api_seats import SeatError
+    from api_seats import SeatError, package_revision
     if api_seat_store is None:
         return JSONResponse({'error': 'API-seat storage unavailable.'}, status_code=503)
     try:
         packages = await asyncio.to_thread(api_seat_store.list)
         runtime = await asyncio.to_thread(api_seat_manager.snapshot)
+        selections = await asyncio.to_thread(lambda: {pkg['id']: api_seat_manager.package_status(pkg['id']) for pkg in packages})
         return JSONResponse({'providers': api_seat_store.describe_providers(), 'packages': packages,
-                             'runtime': runtime}, headers={'Cache-Control': 'no-store'})
+                             'runtime': runtime, 'package_launches': selections,
+                             'package_revisions': {pkg['id']: package_revision(pkg) for pkg in packages}}, headers={'Cache-Control': 'no-store'})
     except (SeatError, OSError):
         return JSONResponse({'error': 'Saved packages cannot be read. They were preserved; repair or restore before retrying.'}, status_code=409)
 
@@ -350,6 +352,59 @@ async def stop_api_seat(package_id: str, seat_id: str):
         return JSONResponse(result)
     except SeatError as exc:
         return JSONResponse({'error': str(exc)}, status_code=409)
+
+
+@app.post('/api/preflight/packages/{package_id}/launch')
+async def launch_saved_package(package_id: str, request: Request):
+    from api_seats import SeatError
+    if api_seat_manager is None:
+        return JSONResponse({'error': 'Team runtime unavailable.'}, status_code=503)
+    try:
+        body = await _seat_body(request)
+        if (set(body) - {'revision', 'restart_seats', 'omitted_seats'} or
+                not isinstance(body.get('revision'), str) or
+                not _re.fullmatch(r'[0-9a-f]{64}', body['revision'])):
+            raise SeatError('Team launch requires its saved revision and optional restart/omission seat lists.')
+    except SeatError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+    try:
+        value = await asyncio.to_thread(api_seat_manager.launch_package, package_id, body['revision'],
+                                       body.get('restart_seats'), body.get('omitted_seats'))
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except SeatError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=409)
+    except OSError:
+        return JSONResponse({'error': 'Team launch receipt could not be saved. Check data-directory permissions.'}, status_code=503)
+
+
+@app.get('/api/preflight/packages/{package_id}/status')
+async def get_package_status(package_id: str):
+    from api_seats import SeatError
+    if api_seat_manager is None:
+        return JSONResponse({'error': 'Team runtime unavailable.'}, status_code=503)
+    try:
+        return JSONResponse(await asyncio.to_thread(api_seat_manager.package_status, package_id),
+                            headers={'Cache-Control': 'no-store'})
+    except (SeatError, OSError):
+        return JSONResponse({'error': 'Saved team could not be checked. Refresh its saved settings.'}, status_code=409)
+
+
+@app.post('/api/preflight/packages/{package_id}/chat')
+async def continue_saved_package(package_id: str, request: Request):
+    from api_seats import SeatError
+    if api_seat_manager is None:
+        return JSONResponse({'error': 'Team runtime unavailable.'}, status_code=503)
+    try:
+        body = await _seat_body(request)
+        if set(body) != {'selection_id'} or not isinstance(body['selection_id'], str):
+            raise SeatError('Chat handoff requires the current team selection ID.')
+    except SeatError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+    try:
+        return JSONResponse(await asyncio.to_thread(api_seat_manager.continue_package, package_id, body['selection_id']),
+                            headers={'Cache-Control': 'no-store'})
+    except (SeatError, OSError):
+        return JSONResponse({'error': 'This team selection is not ready. Refresh and resolve its seats before entering chat.'}, status_code=409)
 
 
 @app.on_event('shutdown')

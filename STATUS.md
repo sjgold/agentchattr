@@ -1,12 +1,19 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-18 (session handoff recorded; #1-4 approved/published/closed; #5 remains unstarted)
+**Updated:** 2026-10-22 (autonomous continuation authorized; human ticket gate removed; #5 builder-verified, preparing AgY review)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
 - Update actual results and next steps, not intended features presented as shipped.
 - Root `AGENTS.md` requires agents to read this file before work and maintain current status, verification, blockers, and the next action before handing off.
 - Latest resume note: [2026-10-18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md). The October 12 handoff describes an earlier checkpoint; use this status and the latest handoff on resume.
+
+## Autonomous execution policy (2026-10-22)
+
+- Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
+- Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
+- Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
+- Durable run tracking: `AUTONOMOUS-RUN.md`. Active implementation: #5, `TICKET-5-PLAN.md`. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
 
@@ -55,6 +62,13 @@
 - Independent Antigravity review of `f933f59` returned **PASS WITH NONBLOCKING NOTES**, independently reporting 228 tests OK (4 skips), real fake-CLI and fake-API integrations PASS, JS/diff checks PASS. Notes: Windows batch delimiters, orphaned Unix exit receipts after SIGKILL, and existing deferred `detail()` helper coupling. Native Linux/live-client limits remain.
 - Codex reproduced the delimiter note using a disposable `.cmd`: each of `alpha,beta`, `alpha;beta`, `alpha=beta` arrived as two batch parameters. A new regression failed for all three before extending the existing batch-only rejection guard. Now these fail before client spawn; native executables are unaffected. Full suite **229 tests OK (4 skips)**, real fake-CLI integration PASS (including exact exit 23 / failed), JS/diff checks PASS. The same reviewer independently passed substantive recheck of `c7ffb3b18e70c71de76df9d85ef218dca9d5b2d2`: focused regression (6 tests), full suite 229 OK (4 skips), fake-CLI and fake-API integrations, JS and whitespace checks. Final receipt: `REVIEW-GEMINI-TICKET-4.md`. Remaining nonblocking notes concern Unix receipt files after SIGKILL and existing deferred UI helper coupling. Report hash/persistence wording was corrected. MCP bearer tokens intentionally reside in private identity files; package/snapshot secret boundaries remain distinct.
 
+## Ticket #5 implementation and verification
+
+- Reuses #3/#4 mixed-package schema and owned seat runtime. Adds canonical saved revisions, frozen team selection receipts, whole-team launch/reuse with per-seat failures and explicit launch-only omissions, freshly checked chat handoff, remembered package ID and draft/stale-setting guards. No session, rounds or model requests are created by the handoff.
+- Builder full Windows suite: **248 tests OK, 4 Unix/tmux skips**. Test-author runtime regressions and root endpoint regressions were observed failing before implementation; receipt fault/immutability checks also pass. Codex reran actual mixed fake-API/CLI integration: 3 saved seats, matching reuse, partial credential failure without stopping peers, omission-only selection ready, stale selection/revision rejection and targeted restart. **Provider calls: 0; sessions created: 0**, message/session snapshots unchanged. Existing real-wrapper/fake-API integration, JS syntax and whitespace checks pass.
+- Isolated browser verified save/reload, new-tab remembered selection, missing-credential block, explicit exclusion to 2-of-2 ready, draft-edit disabling and actual checked chat navigation. 390px DOM check has no overflow; saved 390x844 PNG independently confirmed and inspected. Browser-harness required a user Chrome permission prompt, so verification used an isolated cached chrome-devtools-axi runtime without installs. Test fixtures/browser/server stopped. No live models or native Linux/Omarchy pass claimed.
+- Same AgY reviewer remains mandatory; no human per-ticket approval gate. Test author failed over from rate-limited Sonnet to Codex gpt-6-sol/medium; it did not act as final reviewer. Plan: `TICKET-5-PLAN.md`; user guide: `PACKAGES.md`. Independent review and publication not yet claimed.
+
 ## Latest reviewer additions
 
 - v1.7 adds a small JSON findings contract with separate parse-failure flags, individual source-file intake as plain text, and a narrow Git exception for the spec.
@@ -80,21 +94,21 @@
 
 ## Next step
 
-**Action:** Await Seth's explicit instruction before beginning #5. #4 is approved, fast-forward merged, published and closed. No implementation task is active. Live acceptance and native Omarchy testing remain deferred.
-**Who:** Next implementation task unassigned. Codex completed #4; same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` passed independent review and substantive recheck of `c7ffb3b`. Receipt: `REVIEW-GEMINI-TICKET-4.md`.
-**Done when:** Any next task has explicit authorization, owner and completion criteria before implementation starts. #4 completion gates are satisfied. Real client/provider compatibility and native Linux/Omarchy remain unverified.
+**Action:** Freeze builder-verified #5 and obtain same Antigravity independent review/recheck, then merge/push/close under standing authorization and continue to #6. No per-ticket human sign-off required.
+**Who:** Codex builder/coordinator. Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8`; test author `fcc36344-f0ca-4514-9288-74753be75947` completed tests after configured Codex gpt-6-sol/medium failover from rate-limited Sonnet.
+**Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** main; #4 fast-forward merged from `codex/ticket-4-cli-seat`, published at `612c9f6`; publication/closure status checkpoint `c97943f`. Feature branch retained. #1-4 are approved and closed.
+- **Branch:** codex/ticket-5-packages, base published main `69fdf43`. #1-4 are approved and closed.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published and approved #1-4 including the CLI-seat implementation reviewed through frozen target `c7ffb3b`. Latest Windows suite: 229 tests OK (4 platform skips) after the batch-delimiter follow-up; real fake-CLI console integration passed again. Fake-API integration also passed on independent recheck. Exact CLI exit 23, targeted stop acknowledgement and distinct identities verified. Browser save/launch/stop and inspected 390px screenshot pass. Independent #4 review and delimiter-fix recheck passed with nonblocking notes; human completion sign-off received; merged and published; no live external model calls or native Linux/Omarchy pass. Test browser/server stopped. Existing ignored platform environment reused; working Desktop installation unchanged.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** None. #1-4 complete and closed. #4 reviewed/rechecked application target `c7ffb3b` is included in published main `612c9f6`. #5 remains unstarted at Seth's explicit instruction. Plan: `TICKET-4-PLAN.md`; usage: `CLI-SEATS.md`; receipt: `REVIEW-GEMINI-TICKET-4.md`.
+- **In flight:** #5 saved-package team launch/readiness/handoff implemented and builder-verified; independent AgY review pending. Work authorized 2026-10-22. #1-4 complete and closed; #6 follows reviewed #5 publication under standing authorization.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
@@ -126,7 +140,7 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 
 ## Waiting on Seth
 
-- No approval remains pending for #4; authorized publication is complete and issue #4 is closed. #5 remains unstarted. Live acceptance remains unselected; native Linux/Omarchy testing and troubleshooting remain deferred at Seth's request.
+- Routine ticket approval gates removed by Seth on 2026-10-22. Only unresolved scope/authorization or independent-verification blockers need user input. Live acceptance and native Omarchy testing remain deferred.
 - Later: select the live-test agent/model package and authorize usage-consuming acceptance when ready.
 - No Tribunal code reuse or release-terms decision is needed for the agreed behavioral implementation.
 

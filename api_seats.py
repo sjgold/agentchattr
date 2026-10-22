@@ -1,5 +1,6 @@
 """Validated API-seat packages and OpenAI-compatible request settings."""
 from copy import deepcopy
+import hashlib
 import json
 import math
 import os
@@ -15,6 +16,11 @@ from launcher import startup_lock
 
 class SeatError(ValueError):
     pass
+
+
+def package_revision(package):
+    return hashlib.sha256(json.dumps(package, sort_keys=True, ensure_ascii=True,
+                                     separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
 
 
 def identifier(value):
@@ -154,12 +160,17 @@ class SeatStore:
             atomic_json(self.path, {'version': 1, 'packages': updated})
         return package
 
-    def seat(self, package_id, seat_id):
+    def package(self, package_id):
+        identifier(package_id)
         for package in self.list():
             if package['id'] == package_id:
-                for seat in package['seats']:
-                    if seat['id'] == seat_id:
-                        return seat
+                return deepcopy(package)
+        raise SeatError('Saved package not found.')
+
+    def seat(self, package_id, seat_id):
+        for seat in self.package(package_id)['seats']:
+            if seat['id'] == seat_id:
+                return seat
         raise SeatError('Saved seat not found.')
 
     def describe_providers(self):

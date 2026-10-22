@@ -22,6 +22,7 @@ class SeatManager:
         self.store, self.registry = store, registry
         self.timeout = startup_timeout
         self.attempts = {}
+        self.package_selections = {}
         self.lock = threading.RLock()
         self.closed = threading.Event()
         if monitor:
@@ -76,6 +77,18 @@ class SeatManager:
                     if not attempt.get('released') and attempt.get('process') and attempt['process'].poll() is None:
                         raise SeatError('Stop this owned seat before removing it from the package.')
             return self.store.save(package)
+
+    def launch_package(self, package_id, revision, restart_seats=None, omitted_seats=None):
+        from package_launch import launch_package
+        return launch_package(self, package_id, revision, restart_seats, omitted_seats)
+
+    def package_status(self, package_id):
+        from package_launch import package_status
+        return package_status(self, package_id)
+
+    def continue_package(self, package_id, selection_id):
+        from package_launch import continue_package
+        return continue_package(self, package_id, selection_id)
 
     def launch(self, package_id, seat_id, restart=False):
         with self.lock:

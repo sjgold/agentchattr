@@ -24,4 +24,6 @@
 .preflight-page fieldset { min-width:0; margin:20px 0; padding:16px; border:1px solid var(--border); border-radius:var(--radius-lg); }
 .preflight-page legend { color:var(--text-muted); padding:0 8px; }
 .preflight-page button:disabled { opacity:.5; cursor:wait; }
+.preflight-page .seat-omission { flex-direction:row; align-items:center; margin-top:16px; }
+.preflight-page .seat-omission input { width:auto; }
 @media (max-width:500px) { .preflight-page main { padding:24px 16px; } .preflight-page section { padding:18px; } }

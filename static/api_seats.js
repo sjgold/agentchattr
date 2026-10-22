@@ -7,10 +7,52 @@
     const editors = document.getElementById('api-seat-editors');
     const runtime = document.getElementById('api-seat-runtime');
     const form = document.getElementById('api-package-form');
+    const teamLaunch = document.getElementById('team-launch');
+    const teamChat = document.getElementById('team-chat');
+    const teamStatus = document.getElementById('team-launch-status');
+    const reloadTeam = document.getElementById('api-package-reload');
     let snapshot = {providers: [], packages: [], runtime: {}};
+    let draftDirty = false;
+    let selectionDirty = false;
+    let teamPending = false;
+    let rememberedLoaded = false;
+    let checksAvailable = false;
+    let loadedRevision = null;
+    const omitted = new Set();
     let pollsLeft = 0;
     let timer;
     const pending = new Set();
+
+    function remember(id) {
+        try {
+            if (id) localStorage.setItem('agentchattr.lastPackage', id);
+            else localStorage.removeItem('agentchattr.lastPackage');
+        } catch (_) { /* Browser storage can be disabled; server packages remain available. */ }
+    }
+    function renderTeam() {
+        const id = packageSelect.value;
+        const saved = snapshot.packages.find(p => p.id === id);
+        const state = snapshot.package_launches?.[id];
+        const stale = !!saved && loadedRevision !== snapshot.package_revisions?.[id];
+        const exclusionsChanged = !!state?.selection_id && (omitted.size !== state.omitted_seats.length ||
+            state.omitted_seats.some(seat => !omitted.has(seat)));
+        teamLaunch.disabled = !checksAvailable || !saved || draftDirty || stale || teamPending;
+        teamChat.disabled = !checksAvailable || !saved || draftDirty || stale || selectionDirty || exclusionsChanged || teamPending || !state?.ready;
+        reloadTeam.disabled = !saved || teamPending;
+        if (!saved) teamStatus.textContent = 'Save or select your team to launch it.';
+        else if (stale) teamStatus.textContent = 'This saved team changed. Reload saved team to review its current settings.';
+        else if (draftDirty) teamStatus.textContent = 'Save your edits before launching or continuing to chat.';
+        else if (selectionDirty || exclusionsChanged) teamStatus.textContent = 'Launch the team to apply these seat choices.';
+        else if (state?.error) teamStatus.textContent = state.error;
+        else if (!state?.selection_id) teamStatus.textContent = 'Your team is saved. Launch it when you are ready.';
+        else {
+            const seats = Object.values(state.seats);
+            const count = seats.filter(seat => seat.state === 'ready').length;
+            teamStatus.textContent = state.ready ? `${count} of ${seats.length} selected seats ready for chat. Provider/client authentication remains separate.` :
+                `${count} of ${seats.length} selected seats ready. Retry, explicitly restart, or leave out a seat for this launch.`;
+        }
+    }
+    function markDraft() { draftDirty = true; renderTeam(); }
 
     function message(text, error = false) {
         status.textContent = text;
@@ -113,7 +155,7 @@
         provider.addEventListener('change', () => capabilities(true));
         capabilities(false);
         editor.append(legend, fields);
-        button(editor, 'Remove from package', () => editor.remove());
+        button(editor, 'Remove from package', () => { editor.remove(); markDraft(); });
         editor.readSeat = () => ({id: id.value, name: name.value, provider: provider.value,
             model: model.value || null, reasoning: reasoning.value || null,
             secret_ref: secret.value, adapter: adapter.value, launch_profile: 'standard'});
@@ -121,17 +163,26 @@
     }
     function editPackage(id) {
         const selected = snapshot.packages.find(p => p.id === id);
+        packageSelect.value = selected?.id || '';
+        loadedRevision = snapshot.package_revisions?.[id] || null;
+        draftDirty = false;
+        selectionDirty = false;
+        omitted.clear();
+        (snapshot.package_launches?.[id]?.omitted_seats || []).forEach(seat => omitted.add(seat));
+        remember(selected?.id || '');
         packageId.value = selected?.id || '';
         packageName.value = selected?.name || '';
         editors.replaceChildren();
         if (selected) selected.seats.forEach(addEditor);
         else addEditor();
+        renderRuntime();
+        renderTeam();
     }
     function renderRuntime() {
         runtime.replaceChildren();
-        for (const pkg of snapshot.packages) for (const seat of pkg.seats) {
+        for (const pkg of snapshot.packages.filter(p => p.id === packageSelect.value)) for (const seat of pkg.seats) {
             const key = `${pkg.id}/${seat.id}`;
-            const state = snapshot.runtime[key] || {state: 'not_started'};
+            const state = snapshot.package_launches?.[pkg.id]?.seats[seat.id] || snapshot.runtime[key] || {state: 'not_started'};
             const card = document.createElement('article');
             const title = document.createElement('h3');
             title.textContent = `${pkg.name} · ${seat.name}`;
@@ -155,6 +206,20 @@
                 'Chat dispatch ready; provider verified only after a successful response') : 'Not ready');
             if (state.error) detail(list, 'Action needed', state.error);
             card.append(title, list);
+            const exclusion = document.createElement('label');
+            exclusion.className = 'seat-omission';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = omitted.has(seat.id);
+            checkbox.disabled = teamPending;
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) omitted.add(seat.id);
+                else omitted.delete(seat.id);
+                selectionDirty = true;
+                renderTeam();
+            });
+            exclusion.append(checkbox, document.createTextNode('Leave out of this launch'));
+            card.append(exclusion);
             const actions = document.createElement('div');
             actions.className = 'actions';
             for (const [label, action, body] of [['Launch / reuse', 'launch', {}],
@@ -182,6 +247,7 @@
         clearTimeout(timer);
         try {
             snapshot = await request('/api/preflight/seats');
+            checksAvailable = true;
             if (packages) {
                 const selected = packageSelect.value;
                 packageSelect.replaceChildren();
@@ -189,11 +255,22 @@
                 snapshot.packages.forEach(p => option(packageSelect, p.id, p.name));
                 packageSelect.value = selected;
             }
+            if (!rememberedLoaded) {
+                rememberedLoaded = true;
+                let remembered;
+                try { remembered = localStorage.getItem('agentchattr.lastPackage'); } catch (_) { remembered = null; }
+                if (snapshot.packages.some(pkg => pkg.id === remembered)) editPackage(remembered);
+            }
             renderRuntime();
+            renderTeam();
             if (!editors.children.length) addEditor();
             if (!snapshot.providers.some(p => !p.error)) message('No usable agent templates. Configure an API provider or CLI client first.', true);
             if (pollsLeft-- > 0) timer = setTimeout(() => refresh(false), 1000);
-        } catch (error) { message(`Agent seats unavailable. ${error.message}`, true); }
+        } catch (error) {
+            checksAvailable = false;
+            renderTeam();
+            message(`Agent seats unavailable. ${error.message}`, true);
+        }
     }
     form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -204,12 +281,49 @@
             await request('/api/preflight/packages', packageData);
             message('Package saved. Running seats keep their settings until explicitly restarted.');
             await refresh();
-            packageSelect.value = packageData.id;
+            editPackage(packageData.id);
         } catch (error) { message(error.message, true); }
     });
     packageSelect.addEventListener('change', () => editPackage(packageSelect.value));
     document.getElementById('api-package-new').addEventListener('click', () => { packageSelect.value = ''; editPackage(''); });
-    document.getElementById('api-seat-add').addEventListener('click', () => addEditor());
+    document.getElementById('api-seat-add').addEventListener('click', () => { addEditor(); markDraft(); });
+    form.addEventListener('input', markDraft);
+    form.addEventListener('change', markDraft);
+    reloadTeam.addEventListener('click', async () => {
+        const id = packageSelect.value;
+        await refresh(false);
+        editPackage(id);
+    });
+    teamLaunch.addEventListener('click', async () => {
+        if (teamLaunch.disabled) return;
+        const id = packageSelect.value;
+        teamPending = true;
+        renderTeam();
+        try {
+            const result = await request(`/api/preflight/packages/${encodeURIComponent(id)}/launch`, {
+                revision: loadedRevision, omitted_seats: [...omitted]});
+            snapshot.package_launches[id] = result;
+            selectionDirty = false;
+            message('Team launch recorded. Your saved package has not changed.');
+        } catch (error) { message(error.message, true); }
+        finally {
+            teamPending = false;
+            pollsLeft = 30;
+            await refresh(false);
+        }
+    });
+    teamChat.addEventListener('click', async () => {
+        if (teamChat.disabled) return;
+        const id = packageSelect.value;
+        const state = snapshot.package_launches[id];
+        teamPending = true;
+        renderTeam();
+        try {
+            const result = await request(`/api/preflight/packages/${encodeURIComponent(id)}/chat`, {selection_id: state.selection_id});
+            window.location.assign(result.url);
+        } catch (error) { message(error.message, true); }
+        finally { teamPending = false; await refresh(false); }
+    });
     document.getElementById('refresh').addEventListener('click', () => refresh());
     refresh();
 })();

@@ -1,6 +1,8 @@
 # Configure and launch API seats
 
-Open pre-flight through the shared launcher. The **API seats** section saves named packages containing multiple seats, including multiple models using one provider. Enter stable lowercase IDs, display names, provider template, requested model/reasoning and a credential **environment-variable name**. Never enter a key value. Save package before launching.
+Open pre-flight through the shared launcher. The **Your agent team** section saves named packages containing multiple seats, including multiple models using one provider. Enter stable lowercase IDs, display names, provider template, requested model/reasoning and a credential **environment-variable name**. Never enter a key value. Save package before launching.
+
+Use whole-team launch/reuse and the checked chat handoff when the included seats are ready. See [Saved teams](PACKAGES.md) for exclusions that apply to one launch and reopening a saved mixed package.
 
 Provider templates come from configured `[agents.NAME]` entries with `type = "api"`. Existing `config.local.toml` merge rules still apply: use a new name rather than overriding a built-in agent. Example template structure:
 
