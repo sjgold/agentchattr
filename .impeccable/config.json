@@ -29,6 +29,25 @@
         ],
         "createdAt": "2026-10-22T17:58:10.883Z",
         "reason": "Agent decision: this is the existing semantic final-session-output highlight, documented by the Output highlighting comment and session output marking/scrolling functions. Git blame attributes it to upstream abea05f4; ticket 6 adds frozen-input dialog styling and preserves this output locator."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          "static/index.html",
+          "static/style.css"
+        ],
+        "createdAt": "2026-10-22T18:42:30.739Z",
+        "reason": "Agent decision: chat explicitly supports selectable sans/mono typography and inherits the established Inter product theme. Ticket 7 adds a scoped queue panel using that theme; changing shared typography would broaden its approved scope."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "static/style.css"
+        ],
+        "createdAt": "2026-10-22T18:42:30.772Z",
+        "reason": "Agent decision: both existing matches are semantic reply/quotation markers, in reply-preview and msg-text blockquote. They identify quoted material rather than decorate cards; preserve these domain-appropriate markers."
       }
     ]
   }
