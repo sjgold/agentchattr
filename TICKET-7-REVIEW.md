@@ -1,8 +1,8 @@
 # Ticket #7 independent review briefing
 
-**State:** Builder checks pass; preparing frozen implementation handoff. Final suite293 OK (four platform skips).
+**State:** Builder checks pass; same AGY independent review requested. Final suite293 OK (four platform skips).
 
-Base: main `d16780b`. Approved scope: spec v1.7 SD-3 / SC-5 / AT-21b with autonomous execution amendment. Same Antigravity reviewer independently verifies frozen implementation before reviewed publication; no routine human approval gate.
+Frozen target: `3b3a80f4b4d2660ec68e5e5bed55887b8bae3c5a`. Base: main `d16780b`. Approved scope: spec v1.7 SD-3 / SC-5 / AT-21b with autonomous execution amendment. Same Antigravity reviewer independently verifies frozen implementation before reviewed publication; no routine human approval gate.
 
 ## Changes and review boundaries
 
