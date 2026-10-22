@@ -20,6 +20,15 @@
         ],
         "createdAt": "2026-10-15T14:30:38.900Z",
         "reason": "Agent decision: pre-flight inherits Inter from the existing product stylesheet at static/style.css:126. Ticket 3 preserves that product theme; changing shared typography would broaden the API-seat task."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "static/sessions.css"
+        ],
+        "createdAt": "2026-10-22T17:58:10.883Z",
+        "reason": "Agent decision: this is the existing semantic final-session-output highlight, documented by the Output highlighting comment and session output marking/scrolling functions. Git blame attributes it to upstream abea05f4; ticket 6 adds frozen-input dialog styling and preserves this output locator."
       }
     ]
   }
