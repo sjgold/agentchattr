@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #5 passed independent AgY review, publication in progress)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #5 merged/published/closed; continuing to #6)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -67,7 +67,7 @@
 - Reuses #3/#4 mixed-package schema and owned seat runtime. Adds canonical saved revisions, frozen team selection receipts, whole-team launch/reuse with per-seat failures and explicit launch-only omissions, freshly checked chat handoff, remembered package ID and draft/stale-setting guards. No session, rounds or model requests are created by the handoff.
 - Builder full Windows suite: **248 tests OK, 4 Unix/tmux skips**. Test-author runtime regressions and root endpoint regressions were observed failing before implementation; receipt fault/immutability checks also pass. Codex reran actual mixed fake-API/CLI integration: 3 saved seats, matching reuse, partial credential failure without stopping peers, omission-only selection ready, stale selection/revision rejection and targeted restart. **Provider calls: 0; sessions created: 0**, message/session snapshots unchanged. Existing real-wrapper/fake-API integration, JS syntax and whitespace checks pass.
 - Isolated browser verified save/reload, new-tab remembered selection, missing-credential block, explicit exclusion to 2-of-2 ready, draft-edit disabling and actual checked chat navigation. 390px DOM check has no overflow; saved 390x844 PNG independently confirmed and inspected. Browser-harness required a user Chrome permission prompt, so verification used an isolated cached chrome-devtools-axi runtime without installs. Test fixtures/browser/server stopped. No live models or native Linux/Omarchy pass claimed.
-- Same AgY reviewer remains mandatory; no human per-ticket approval gate. Test author failed over from rate-limited Sonnet to Codex gpt-6-sol/medium; it did not act as final reviewer. Plan: `TICKET-5-PLAN.md`; user guide: `PACKAGES.md`. Frozen implementation: `8474bb25690cc8e43d40e8b1a4ad605e4933e04e`; review guide: `TICKET-5-REVIEW.md`. Same Antigravity reviewer independently returned PASS on `8474bb25690cc8e43d40e8b1a4ad605e4933e04e`, with 248 tests OK (4 skips), actual package/fake-API integrations and static checks. Receipt: `REVIEW-GEMINI-TICKET-5.md`. No findings requiring fixes. Publication proceeds under the 2026-10-22 standing authorization; no human completion gate is pending.
+- Same AgY reviewer remains mandatory; no human per-ticket approval gate. Test author failed over from rate-limited Sonnet to Codex gpt-6-sol/medium; it did not act as final reviewer. Plan: `TICKET-5-PLAN.md`; user guide: `PACKAGES.md`. Frozen implementation: `8474bb25690cc8e43d40e8b1a4ad605e4933e04e`; review guide: `TICKET-5-REVIEW.md`. Same Antigravity reviewer independently returned PASS on `8474bb25690cc8e43d40e8b1a4ad605e4933e04e`, with 248 tests OK (4 skips), actual package/fake-API integrations and static checks. Receipt: `REVIEW-GEMINI-TICKET-5.md`. No findings requiring fixes. Published on origin/main at `7575c68` and GitHub issue #5 confirmed closed as completed under standing authorization. Post-merge full suite: 248 tests OK (4 skips), JS/diff checks PASS. No human completion gate is pending.
 
 ## Latest reviewer additions
 
@@ -94,7 +94,7 @@
 
 ## Next step
 
-**Action:** Merge reviewed #5 into main, verify merged tree, push and close #5 under standing authorization, then implement #6. AgY independent PASS is recorded in `REVIEW-GEMINI-TICKET-5.md`; no human gate is pending. No per-ticket human sign-off required.
+**Action:** Implement #6 frozen review brief/input delivery per SD-1/2 and AT-04/10. Preserve editable Ask/Design in chat, freeze approved design/source at Start, deliver equivalent durable context to CLI/API beyond recent messages. Obtain same AgY review/recheck, publish on PASS and continue by dependency order under standing authorization.
 **Who:** Codex builder/coordinator. Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8`; test author `fcc36344-f0ca-4514-9288-74753be75947` completed tests after configured Codex gpt-6-sol/medium failover from rate-limited Sonnet.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
@@ -102,13 +102,13 @@
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-5-packages, base published main `69fdf43`. #1-4 are approved and closed.
+- **Branch:** main; #5 fast-forward merged from `codex/ticket-5-packages`, published at `7575c68`. #1-5 are published and closed; #6 is next.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
-- **Current build:** published and approved #1-4 including the CLI-seat implementation reviewed through frozen target `c7ffb3b`. Latest Windows suite: 229 tests OK (4 platform skips) after the batch-delimiter follow-up; real fake-CLI console integration passed again. Fake-API integration also passed on independent recheck. Exact CLI exit 23, targeted stop acknowledgement and distinct identities verified. Browser save/launch/stop and inspected 390px screenshot pass. Independent #4 review and delimiter-fix recheck passed with nonblocking notes; human completion sign-off received; merged and published; no live external model calls or native Linux/Omarchy pass. Test browser/server stopped. Existing ignored platform environment reused; working Desktop installation unchanged.
+- **Current build:** published #1-5, latest reviewed package implementation `8474bb2`. Full Windows suite 248 OK (4 platform skips); actual mixed-package and fake-API integrations passed independently and by builder; merged-tree suite and static checks passed. Package handoff creates no sessions/model calls. Browser save/reopen/exclusion/chat flow and inspected 390px PNG verified. No live providers/native Linux or Omarchy pass; working Desktop untouched.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #5 saved-package team launch/readiness/handoff implemented, builder-verified and independently passed by AgY; publication in progress. Work authorized 2026-10-22. #1-4 complete and closed; #6 follows reviewed #5 publication under standing authorization.
+- **In flight:** #6 scope/code reconnaissance, then frozen brief delivery implementation. #5 completed, independently PASS, merged/published/closed. No #6 implementation/test/review pass claimed yet. Autonomous pipeline remains active; no human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 

@@ -23,7 +23,7 @@
 - [x] 4. `app.py`: authenticated package launch/status/chat routes. Strict request schemas and stale-revision errors; no credentials in response or diagnostics.
 - [x] 5. `static/api_seats.js`, `static/preflight.html`: remembered selection, launch team/exclude-for-launch controls and checked chat navigation. Preserve draft edits while polling and show actionable per-seat status.
 - [x] 6. Verification: full suite, fake mixed-client integration, API/CLI regressions as appropriate, rendered save/reopen/team launch/failure/handoff and 390px layout, JS/diff checks. No live providers or native Omarchy work.
-- [ ] 7. Freeze, same Antigravity independent review, fix/recheck as needed, then authorized publication/closure and advance to #6 without human gate.
+- [x] 7. Freeze, same Antigravity independent review, fix/recheck as needed, then authorized publication/closure and advance to #6 without human gate.
 
 ## Review focus
 
@@ -38,3 +38,5 @@ Store revision versus frozen attempts; concurrency during save/launch; invalid o
 - Test-author rate-limit failover: existing Sonnet assignment hit Claude quota before completion, so it was reconfigured to Codex gpt-6-sol/medium per the agent-selection guide. AgY was never replaced as independent reviewer. Seth paused to confirm that distinction, then explicitly resumed.
 
 Next baton: same Antigravity independent review of frozen implementation; fix/recheck substantive findings. On PASS, merge/push/close and proceed to #6 under standing authorization.
+
+Completion 2026-10-22: same AGY reviewer independently PASS at `8474bb2`; receipt `REVIEW-GEMINI-TICKET-5.md`. Published by fast-forward merge at `7575c68`, issue #5 closed. Merged-tree suite 248 OK (4 skips), syntax/whitespace checks PASS. Continue #6 under standing authorization; no human gate.

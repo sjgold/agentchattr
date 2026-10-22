@@ -14,9 +14,9 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 | Work | State | Next owner/action |
 | --- | --- | --- |
-| #1-4 | Published and closed | Completed historical baseline |
-| #5 saved packages | Builder verified; preparing frozen review | Same Antigravity independently checks package readiness/handoff and evidence |
-| #6-8, #10-12, #16 | Pending, first milestone | Follow dependencies after #5 |
+| #1-5 | Published and closed | Latest #5 publication `7575c68`, independent AGY PASS |
+| #6 frozen brief | Scope/code reconnaissance | Codex builds, same AGY independent review follows |
+| #7-8, #10-12, #16 | Pending, first milestone | Follow dependencies after #5 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
 
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-Codex owns #5 implementation. Antigravity agent `ec1fbcd1-4a02-410e-9029-e498f67918c8` is the continuing independent reviewer/tester. Test-only author `fcc36344-f0ca-4514-9288-74753be75947` wrote regressions/integration; Claude rate-limit failover changed it to Codex gpt-6-sol/medium. This does not replace independent Antigravity review. Next baton transfer is the frozen #5 review request; no user approval is pending.
+Codex owns #6 frozen brief implementation; #5 independently passed, published and closed. Antigravity agent `ec1fbcd1-4a02-410e-9029-e498f67918c8` is the continuing independent reviewer/tester. Test-only author `fcc36344-f0ca-4514-9288-74753be75947` wrote regressions/integration; Claude rate-limit failover changed it to Codex gpt-6-sol/medium. This does not replace independent Antigravity review. Next baton transfer is the frozen #6 review request; no user approval is pending.
