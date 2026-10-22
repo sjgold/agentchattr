@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import shutil
 from pathlib import Path
 import subprocess
@@ -332,7 +333,7 @@ class SeatManager:
                     return result
             return None
 
-    def prepare_clean_context(self, provenance, context_key, *, confirmation=None, retry_attempt=None):
+    def prepare_clean_context(self, provenance, context_key, *, confirmation=None, retry_attempt=None, binding=None):
         with self.lock:
             if self.closed.is_set():
                 raise SeatError('Server is shutting down; no corrected context can launch.')
@@ -342,6 +343,10 @@ class SeatManager:
             fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True).encode('utf-8')).hexdigest()
             if fingerprint != provenance.get('fingerprint'):
                 raise SeatError('Retained launch provenance does not match its fingerprint.')
+            if binding is not None and (not isinstance(binding, dict) or set(binding) != {'child_run_id', 'role'}
+                    or not isinstance(binding['child_run_id'], str) or not re.fullmatch(r'[0-9a-f]{32}', binding['child_run_id'])
+                    or not isinstance(binding['role'], str) or not binding['role']):
+                raise SeatError('Fresh context binding requires its exact child run and role.')
             if effective['seat']['adapter'] == 'cli':
                 from cli_seats import build_fresh_context_args
                 try:
@@ -353,6 +358,8 @@ class SeatManager:
                 if existing:
                     if existing.get('context_source_fingerprint') != fingerprint:
                         raise SeatError('Prepared context key belongs to different frozen settings.')
+                    if binding is not None and any(existing.get(k) != v for k, v in binding.items()):
+                        raise SeatError('Prepared context was not bound to this child and role before launch.')
                     if retry_attempt is None or existing.get('retried_from') == retry_attempt:
                         return self._context_view(key)
                     if existing['id'] != retry_attempt:
@@ -385,6 +392,7 @@ class SeatManager:
                 self._launch_effective(key, fresh, launch_metadata={
                     'context_id': context_id, 'context_source_fingerprint': fingerprint,
                     'context_base_effective': base,
+                    'context_key': context_key, **(binding or {}),
                     'retried_from': retry_attempt})
                 return self._context_view(key)
             attempt = self.attempts.get(provenance['key'])
@@ -398,6 +406,33 @@ class SeatManager:
                             'verification_basis': 'isolated_request_packet'}
             return {'state': 'blocked', 'reason': 'context_unavailable', 'clean_context': False}
 
+    def fresh_context_owner(self, instance):
+        """Resolve read scope before readiness/backlink, without adopting work."""
+        if not isinstance(instance, dict):
+            return None
+        with self.lock:
+            live = next((item for item in self.registry.get_all().values()
+                         if item['identity_id'] == instance.get('identity_id')), None)
+            if not live:
+                return None
+            for attempt in self.attempts.values():
+                if attempt.get('base') == live.get('base'):
+                    if attempt.get('child_run_id'):
+                        return {key: attempt.get(key) for key in ('child_run_id', 'role', 'context_key')}
+                    return None
+            # Read-only cold-start fencing is not runtime adoption: no process
+            # handle, readiness, retry or dispatch is reconstructed here.
+            suffix = live.get('base', '').rsplit('-', 1)[-1]
+            if re.fullmatch(r'[0-9a-f]{12}', suffix):
+                for path in (self.store.path.parent / 'api_seat_runtime').glob(suffix + '*/config.json'):
+                    try:
+                        snapshot = json.loads(path.read_text(encoding='utf-8'))
+                    except (OSError, ValueError):
+                        return {'child_run_id': None, 'role': None, 'context_key': None}
+                    if snapshot.get('base') == live['base'] and snapshot.get('child_run_id'):
+                        return {key: snapshot.get(key) for key in ('child_run_id', 'role', 'context_key')}
+            return None
+
     def context_status(self, context):
         """Observe a prepared owned attempt; never launch or adopt a replacement."""
         with self.lock:
@@ -409,6 +444,15 @@ class SeatManager:
             if attempt['seat']['adapter'] != 'cli':
                 result['verification_basis'] = 'isolated_request_packet'
             return result
+
+    def validate_context_confirmation(self, provenance, confirmation):
+        with self.lock:
+            original = self.attempts.get(provenance['key'])
+            if (not isinstance(confirmation, dict) or set(confirmation) != {'launch_attempt', 'confirm'}
+                    or confirmation['confirm'] is not True
+                    or confirmation['launch_attempt'] != provenance['launch_attempt']
+                    or not original or original['id'] != provenance['launch_attempt']):
+                raise SeatError('Owned launch confirmation is stale or incomplete; refresh before confirming.')
 
     @staticmethod
     def _cli_exit_proven(attempt):

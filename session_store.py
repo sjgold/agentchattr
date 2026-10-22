@@ -276,7 +276,7 @@ class SessionStore:
                            stopped_at=time.time(), stop_reason=reason, state='stopping')
         return self._event_update(session_id, stop)
 
-    def prepare_restart(self, parent_id, input_text, request_id, *, participant_bindings=None):
+    def prepare_restart(self, parent_id, input_text, request_id, *, participant_bindings=None, intent_fingerprint=None):
         """Atomically link a single immutable prepared replacement to its parent."""
         import re
         from review_brief import BriefError, freeze_inputs, _revision
@@ -297,8 +297,10 @@ class SessionStore:
             fingerprint = _revision({'input_revision': frozen['input_revision'], 'bindings': bindings})
             if parent.get('replaced_by_run_id'):
                 child = next((s for s in self._sessions if s['run_id'] == parent['replaced_by_run_id']), None)
-                if (child and child.get('request_id') == request_id
-                        and child.get('preparation_fingerprint') == fingerprint):
+                matches = (child and (child.get('intent_fingerprint') == intent_fingerprint
+                           if intent_fingerprint and child.get('intent_fingerprint') else
+                           child.get('preparation_fingerprint') == fingerprint))
+                if child and child.get('request_id') == request_id and matches:
                     return deepcopy(child)
                 raise EventConflict('This run already has a replacement; continue or stop that replacement before correcting again.')
             if any(s.get('request_id') == request_id for s in self._sessions):
@@ -310,6 +312,7 @@ class SessionStore:
                 stop_id=None, parent_run_id=parent['run_id'], parent_session_id=parent_id,
                 lineage_root_id=parent.get('lineage_root_id', parent['run_id']), request_id=request_id,
                 preparation_fingerprint=fingerprint, completion_protocol=1, current_phase=0, current_turn=0,
+                intent_fingerprint=intent_fingerprint,
                 started_by=parent['started_by'], started_at=time.time(), updated_at=time.time(),
                 result_message_ids=[], admitted_events=[], quarantined_events=[], continuation_context=[],
                 active_invocation=None, last_message_id=None, output_message_id=None)
@@ -326,6 +329,24 @@ class SessionStore:
             result = deepcopy(child)
         self._fire('update', result)
         return result
+
+    def stage_contexts(self, child_id, context_request_id, fingerprint, bindings):
+        from turn_events import EventConflict
+        def stage(session):
+            if session['state'] != 'prepared' or session.get('stop_id') or not session.get('parent_run_id'):
+                raise EventConflict('Only an un-stopped prepared child can repair contexts.')
+            requests = session.setdefault('context_requests', {})
+            if context_request_id in requests:
+                raise EventConflict('Context request was already staged; inspect its current status.')
+            session.setdefault('reassigned_contexts_history', []).append({
+                'context_request_id': context_request_id, 'at': time.time(),
+                'participant_bindings': deepcopy(session['participant_bindings']),
+                'preparation_contexts': deepcopy(session.get('preparation_contexts', {}))})
+            requests[context_request_id] = {'fingerprint': fingerprint, 'at': time.time()}
+            session['current_context_request_id'] = context_request_id
+            session['participant_bindings'] = deepcopy(bindings)
+            session['preparation_contexts'] = {}
+        return self._event_update(child_id, stage)
 
     def activate_restart(self, child_id, participant_bindings=None):
         from turn_events import EventConflict

@@ -209,6 +209,8 @@ function handleSessionEvent(action, session) {
     if (session.state === 'complete' && !session.projection_pending) action = 'complete';
     if (session.state === 'interrupted') action = 'interrupt';
     const channel = session.channel || 'general';
+    // A delayed parent Stop update must not replace its newer prepared child.
+    if (activeSessionsByChannel[channel]?.id > session.id) return;
 
     if (action === 'create' || action === 'update') {
         activeSessionsByChannel[channel] = session;
@@ -236,6 +238,7 @@ function updateSessionBar() {
     const bar = document.getElementById('session-bar');
     if (!bar) return;
     renderSessionTurnControls(bar);
+    renderRestartControls(bar);
     const templateEl = bar.querySelector('.session-template');
     const phaseEl = bar.querySelector('.session-phase');
     const waitingEl = bar.querySelector('.session-waiting');
@@ -297,10 +300,13 @@ function updateSessionBar() {
         jumpBtn.classList.add('hidden');
         jumpBtn.style.display = 'none';
     }
-    if (endBtn) endBtn.style.display = s.dispatch_eligible === false ? 'none' : '';
+    if (endBtn) endBtn.style.display = s.stop_id ? 'none' : '';
 
     const waitingAgent = s.current_agent || s.waiting_on;
-    if (s.dispatch_eligible === false) {
+    if (s.state === 'prepared' && !s.stop_id) {
+        waitingEl.textContent = 'Corrected source saved, not started';
+        waitingEl.style.display = '';
+    } else if (s.stop_id) {
         waitingEl.textContent = s.state === 'stopped' ? 'Stopped locally' : s.state === 'unresolved' ? 'Cancellation unresolved' : 'Stopping';
         waitingEl.style.display = '';
     } else if (s.legacy) {
@@ -328,17 +334,17 @@ function updateSessionBar() {
 
 async function refreshStopStatus() {
     const s = activeSession;
-    if (!s || s.dispatch_eligible !== false || stopStatusBusy) return;
+    if (!s || (!s.stop_id && s.state !== 'prepared') || stopStatusBusy) return;
     stopStatusBusy = true;
     try {
-        const response = await fetch(`/api/sessions/${s.id}/stop-status`,
+        const response = await fetch(`/api/sessions/${s.id}/${s.stop_id ? 'stop-status' : 'restart-status'}`,
             {headers: {'X-Session-Token': window.SESSION_TOKEN}});
         const value = await response.json();
         if (!response.ok) throw new Error(value.error || 'Cancellation status unavailable');
         handleSessionEvent('update', value);
     } catch (error) {
         const note = document.querySelector('.session-stop-status-note');
-        if (note) note.textContent = `${error.message}. The saved Stop fence remains in effect. Retrying status.`;
+        if (note) note.textContent = `${error.message}. Retrying status; no new review is dispatched.`;
     } finally {
         stopStatusBusy = false;
     }
@@ -437,7 +443,7 @@ function renderSessionTurnControls(bar) {
         bar.after(panel);
     }
     const s = activeSession;
-    if (s?.dispatch_eligible === false) {
+    if (s?.stop_id) {
         renderStopControls(panel, s);
         return;
     }
@@ -529,6 +535,248 @@ function renderSessionTurnControls(bar) {
 function jumpToSessionChannel() {
     if (!sessionIndicatorTargetChannel || sessionIndicatorTargetChannel === window.activeChannel) return;
     window.switchChannel(sessionIndicatorTargetChannel);
+}
+
+// Correction drafts and request IDs survive receipt polling and channel switches.
+const restartDrafts = new Map();
+const restartLabels = {
+    confirmation_required: 'Confirm replacement of this exact CLI launch below.',
+    unsupported_clean_context: 'This adapter has no verified fresh-context contract. Select a supported managed seat.',
+    unresolved_child_exit: 'The old client has not proved local exit. Resolve its Stop or select an independent seat.',
+    context_unavailable: 'The retained seat is unavailable. Select a current managed replacement.',
+    stale_launch_provenance: 'The original launch changed. Select a current managed replacement.',
+    context_preparation_failed: 'Context preparation failed. Refresh or select a replacement; source is retained.',
+    prepared_context_changed: 'The prepared launch changed. Select a replacement.',
+    context_retry_needs_termination: 'The failed context is still running. Resolve its owned process before retrying.'
+};
+
+async function restartRequest(id, action, body) {
+    const response = await fetch(`/api/sessions/${id}/${action}`, {
+        method: body === undefined ? 'GET' : 'POST',
+        headers: {'X-Session-Token': window.SESSION_TOKEN, 'Content-Type': 'application/json'},
+        ...(body === undefined ? {} : {body: JSON.stringify(body)})});
+    const value = await response.json();
+    if (!response.ok) throw new Error(value.error || 'Corrected review could not be updated');
+    return value;
+}
+
+function renderRestartControls(bar) {
+    let panel = document.getElementById('session-restart-controls');
+    if (!panel) {
+        panel = document.createElement('section');
+        panel.id = 'session-restart-controls';
+        panel.className = 'session-turn-controls session-restart-controls';
+        document.getElementById('session-turn-controls').after(panel);
+    }
+    const s = activeSession;
+    const prepared = s?.state === 'prepared' && !s.stop_id;
+    panel.hidden = !s || (!s.stop_id && !prepared) || !!s.legacy;
+    if (panel.hidden) { panel.dataset.key = ''; return; }
+    const key = `${s.id}:${prepared ? 'prepared' : 'stopped'}`;
+    if (panel.dataset.key !== key) {
+        panel.dataset.key = key;
+        delete panel.dataset.dirty;
+        panel.replaceChildren();
+        buildRestartControls(panel, s, prepared);
+    }
+    if (!prepared) return;
+    for (const row of panel.querySelectorAll('[data-context-role]')) {
+        const context = s.preparation_contexts?.[row.dataset.contextRole];
+        const status = row.querySelector('.session-context-status');
+        status.textContent = !context ? 'Not prepared yet.' :
+            context.state === 'ready' && context.clean_context ? `Ready, clean context confirmed${context.name ? ': ' + context.name : ''}.` :
+            context.state === 'starting' ? 'Launching a fresh context. No review has started.' :
+            restartLabels[context.reason] || `Context ${context.state}. Review remains held.`;
+        const retry = row.querySelector('.session-context-retry');
+        retry.hidden = !context?.launch_attempt || !context?.key || !['failed', 'stopped', 'action_required'].includes(context.state);
+        const confirmation = row.querySelector('.session-context-confirm:not(.session-context-retry)');
+        if (confirmation && !row.querySelector('select').value && context?.state === 'ready') confirmation.hidden = true;
+    }
+    const ready = Object.keys(s.participant_bindings || {}).every(role =>
+        s.preparation_contexts?.[role]?.state === 'ready' && s.preparation_contexts[role].clean_context);
+    const start = panel.querySelector('.session-restart-start');
+    if (start && !start.dataset.busy) start.disabled = !ready || panel.dataset.dirty === 'true';
+}
+
+function buildRestartControls(panel, s, prepared) {
+    const draft = restartDrafts.get(s.id) || {text: s.input_snapshot?.text || '', operations: new Map()};
+    restartDrafts.set(s.id, draft);
+    const section = document.createElement(prepared ? 'div' : 'details');
+    const heading = document.createElement(prepared ? 'strong' : 'summary');
+    heading.textContent = prepared ? 'Corrected source saved. Prepare, then start.' : 'Correct source and restart';
+    section.appendChild(heading);
+    const explanation = document.createElement('p');
+    explanation.textContent = prepared ?
+        `Replacement of review ${s.parent_session_id}. Its source, goal, design and rules are frozen. Old answers and continuation text are excluded.` :
+        'Edit the source for a linked review. Goal, design, rules and roles are retained. Old source and answers stay readable in history.';
+    section.appendChild(explanation);
+    const source = document.createElement('details');
+    const sourceHeading = document.createElement('summary');
+    sourceHeading.textContent = prepared ? 'Preview frozen replacement source' : 'Read original source';
+    const original = document.createElement('pre');
+    original.textContent = s.input_snapshot?.text || '(No pasted source)';
+    source.append(sourceHeading, original);
+    section.appendChild(source);
+    if (prepared) {
+        const history = document.createElement('details');
+        const historyTitle = document.createElement('summary');
+        historyTitle.textContent = 'Read preserved original review';
+        const content = document.createElement('pre');
+        history.append(historyTitle, content);
+        history.ontoggle = async () => {
+            if (!history.open || history.dataset.loaded) return;
+            try {
+                const parent = await restartRequest(s.parent_session_id, 'restart-status');
+                content.textContent = `Original source:\n${parent.input_snapshot?.text || ''}\n\nAccepted results:\n${(parent.admitted_events || []).filter(e => e.kind === 'final').map(e => e.content).join('\n\n')}\n\nOperator answers:\n${(parent.continuation_context || []).map(e => e.answer).join('\n\n')}`;
+                history.dataset.loaded = 'true';
+            } catch (failure) { content.textContent = failure.message; }
+        };
+        section.appendChild(history);
+    }
+    const form = document.createElement('form');
+    form.onchange = () => {
+        if (prepared) { panel.dataset.dirty = 'true'; renderRestartControls(document.getElementById('session-bar')); }
+    };
+    let input;
+    if (!prepared) {
+        const label = document.createElement('label');
+        label.textContent = 'Corrected source';
+        input = document.createElement('textarea');
+        input.id = 'session-corrected-source';
+        input.rows = 6;
+        input.required = true;
+        input.value = draft.text;
+        input.oninput = () => { draft.text = input.value; };
+        label.htmlFor = input.id;
+        const hint = document.createElement('p');
+        hint.textContent = 'Paste or edit the full replacement, up to 512 KiB of UTF-8 text. Preparing saves it without starting a review.';
+        form.append(label, input, hint);
+    }
+    const roles = document.createElement('div');
+    roles.textContent = 'Loading frozen role settings and available managed seats…';
+    const error = document.createElement('p');
+    error.setAttribute('role', 'alert');
+    const submit = document.createElement('button');
+    submit.type = 'submit';
+    submit.textContent = prepared ? 'Prepare selected contexts' : 'Save corrected source and prepare';
+    submit.disabled = true;
+    form.append(roles, submit);
+    section.appendChild(error);
+    if (prepared) {
+        const choices = document.createElement('details');
+        const choicesTitle = document.createElement('summary');
+        choicesTitle.textContent = 'Review or change role contexts';
+        choices.open = !Object.keys(s.participant_bindings || {}).every(role =>
+            s.preparation_contexts?.[role]?.state === 'ready' && s.preparation_contexts[role].clean_context);
+        choices.append(choicesTitle, form);
+        section.appendChild(choices);
+    } else section.appendChild(form);
+    panel.appendChild(section);
+    const current = () => panel.dataset.key === `${s.id}:${prepared ? 'prepared' : 'stopped'}`;
+    restartRequest(s.id, 'restart-options').then(options => {
+        if (!current()) return;
+        roles.replaceChildren();
+        for (const role of options.roles) {
+            const row = document.createElement('fieldset');
+            row.dataset.contextRole = role.role;
+            const legend = document.createElement('legend');
+            legend.textContent = `${role.role}: ${role.name}`;
+            const settings = document.createElement('p');
+            settings.textContent = role.kind === 'human' ? 'Operator role, no client restart.' : !role.adapter ?
+                'Original launch settings are unavailable. Explicitly select a current managed replacement.' :
+                `${role.adapter || 'Unknown launch'} · ${role.model || 'Provider default'}${role.reasoning ? ' · ' + role.reasoning : ''}. Frozen launch settings retained.`;
+            row.append(legend, settings);
+            if (role.kind !== 'human') {
+                const label = document.createElement('label');
+                label.textContent = 'Seat for this role';
+                const select = document.createElement('select');
+                select.id = `restart-seat-${s.id}-${roles.children.length}`;
+                label.htmlFor = select.id;
+                select.add(new Option('Retain frozen seat settings', ''));
+                for (const candidate of options.candidates) {
+                    select.add(new Option(`${candidate.name} · ${candidate.adapter} · ${candidate.model || 'Provider default'}${candidate.fresh_context_supported ? '' : ' · fresh context unsupported'}`, candidate.identity_id));
+                }
+                const confirmLabel = document.createElement('label');
+                confirmLabel.className = 'session-context-confirm';
+                const confirm = document.createElement('input');
+                confirm.type = 'checkbox';
+                const impact = document.createElement('span');
+                const updateImpact = () => {
+                    confirm.checked = false;
+                    const chosen = options.candidates.find(c => c.identity_id === select.value) || role;
+                    confirmLabel.hidden = chosen.adapter !== 'cli' || !chosen.launch_attempt;
+                    confirm.dataset.attempt = chosen.launch_attempt || '';
+                    impact.textContent = `Confirm ending ${chosen.name || role.name}'s owned CLI launch ${chosen.launch_attempt?.slice(0, 8) || ''} and replacing its persistent context. Native login and history files are preserved.`;
+                };
+                select.onchange = updateImpact;
+                updateImpact();
+                confirmLabel.append(confirm, impact);
+                row.append(label, select, confirmLabel);
+            }
+            const status = document.createElement('p');
+            status.className = 'session-context-status';
+            const retryLabel = document.createElement('label');
+            retryLabel.className = 'session-context-confirm session-context-retry';
+            retryLabel.hidden = true;
+            const retry = document.createElement('input');
+            retry.type = 'checkbox';
+            retryLabel.append(retry, 'Retry this failed preparation with a new owned context.');
+            row.append(status, retryLabel);
+            roles.appendChild(row);
+        }
+        submit.disabled = false;
+        renderRestartControls(document.getElementById('session-bar'));
+    }).catch(failure => { if (current()) roles.textContent = failure.message + '. Reopen this channel to reload choices.'; });
+    form.onsubmit = async event => {
+        event.preventDefault();
+        error.textContent = '';
+        if (input && new TextEncoder().encode(input.value).length > 512 * 1024) {
+            error.textContent = 'Replacement exceeds 512 KiB. Your draft is retained for editing.';
+            return;
+        }
+        const replacements = {}, confirmations = {}, retry_attempts = {};
+        for (const row of roles.querySelectorAll('[data-context-role]')) {
+            const role = row.dataset.contextRole;
+            const select = row.querySelector('select');
+            if (select?.value) replacements[role] = select.value;
+            const confirm = row.querySelector('.session-context-confirm input');
+            if (confirm?.checked) confirmations[role] = {confirm: true, launch_attempt: confirm.dataset.attempt};
+            const context = activeSession?.id === s.id ? activeSession.preparation_contexts?.[role] : null;
+            if (row.querySelector('.session-context-retry input').checked && context?.launch_attempt) retry_attempts[role] = context.launch_attempt;
+        }
+        const body = prepared ? {replacements, confirmations, retry_attempts} : {input_text: input.value, replacements, confirmations};
+        const fingerprint = JSON.stringify(body);
+        // Repeating a failed HTTP request reuses the exact persisted intent.
+        if (!draft.operations.has(fingerprint)) draft.operations.set(fingerprint, crypto.randomUUID());
+        body[prepared ? 'context_request_id' : 'request_id'] = draft.operations.get(fingerprint);
+        submit.disabled = true;
+        error.textContent = 'Saving preparation. No review is dispatched…';
+        try {
+            const value = await restartRequest(s.id, prepared ? 'prepare-contexts' : 'correct-and-restart', body);
+            error.textContent = '';
+            delete panel.dataset.dirty;
+            handleSessionEvent('update', value);
+        } catch (failure) { error.textContent = failure.message; }
+        finally { submit.disabled = false; }
+    };
+    if (prepared) {
+        const start = document.createElement('button');
+        start.className = 'session-restart-start';
+        start.textContent = 'Start corrected review';
+        start.disabled = true;
+        start.onclick = async () => {
+            if (panel.dataset.dirty === 'true') { error.textContent = 'Prepare the selected role changes before starting.'; return; }
+            start.disabled = true;
+            start.dataset.busy = 'true';
+            try { handleSessionEvent('update', await restartRequest(s.id, 'activate-restart', {})); }
+            catch (failure) { error.textContent = failure.message; }
+            finally { delete start.dataset.busy; renderRestartControls(document.getElementById('session-bar')); }
+        };
+        const note = document.createElement('p');
+        note.textContent = 'Start stays unavailable until every role is ready and clean. The original run keeps its permanent Stop fence.';
+        section.insertBefore(start, source);
+        section.insertBefore(note, start);
+    }
 }
 
 // ---------------------------------------------------------------------------

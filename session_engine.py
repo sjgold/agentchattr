@@ -114,10 +114,46 @@ class SessionEngine:
             self._trigger.queue.cancel_run(session['run_id'], session['stop_id'])
             return session
 
+    def _restart_bindings(self, record, replacements):
+        from copy import deepcopy
+        from turn_events import EventConflict
+        bindings = deepcopy(record['participant_bindings'])
+        if not isinstance(replacements, dict) or set(replacements) - set(bindings):
+            raise EventConflict('Replacement choices must name existing review roles.')
+        for role, identity in replacements.items():
+            if not isinstance(identity, str) or not identity:
+                raise EventConflict('Select a managed seat identity, not raw settings or document fields.')
+            instance = next((item for item in self._registry.get_all().values() if item['identity_id'] == identity), None)
+            provenance = self._seat_manager.launch_provenance(instance) if self._seat_manager and instance else None
+            if not provenance:
+                raise EventConflict('Select a current app-owned replacement with known launch settings.')
+            bindings[role] = {'kind': 'agent', 'identity_id': identity,
+                             'launch_provenance': provenance, 'operator_selected': True}
+        return bindings
+
+    def _guard_restart_seats(self, record, bindings, allowed_runs, confirmations):
+        from turn_events import EventConflict
+        if not isinstance(confirmations, dict) or set(confirmations) - set(bindings):
+            raise EventConflict('Confirmations must name existing review roles.')
+        for role, binding in bindings.items():
+            if binding['kind'] == 'human':
+                if role in confirmations:
+                    raise EventConflict('Human roles have no process termination to confirm.')
+                continue
+            provenance = binding.get('launch_provenance')
+            if not self._seat_manager or not provenance:
+                raise EventConflict('Original launch settings are unknown; explicitly select a current replacement seat.')
+            if role in confirmations:
+                self._seat_manager.validate_context_confirmation(provenance, confirmations[role])
+            records = self._trigger.queue.for_identity({'name': record['cast'][role], 'identity_id': binding['identity_id']})
+            if any(r['state'] in ('queued', 'dispatched', 'acknowledged', 'uncertain', 'cancelling')
+                   and r['envelope'].get('run_id') not in allowed_runs for r in records):
+                raise EventConflict('This seat has unrelated pending or active work; finish it before preparing contexts.')
+
     def correct_and_restart(self, parent_id, input_text, request_id, *, replacements=None, confirmations=None):
         """Prepare a linked corrected packet; activation is a separate action."""
+        from review_brief import _revision
         from turn_events import EventConflict
-        from copy import deepcopy
         with self._lock:
             parent = self._store.get(parent_id)
             if not parent:
@@ -126,44 +162,133 @@ class SessionEngine:
             confirmations = {} if confirmations is None else confirmations
             if (not isinstance(replacements, dict) or not isinstance(confirmations, dict)
                     or set(replacements) - set(parent['cast']) or set(confirmations) - set(parent['cast'])):
-                raise EventConflict('Replacement and confirmation choices must name existing review roles.')
-            bindings = deepcopy(parent['participant_bindings'])
-            for role, identity in replacements.items():
-                instance = next((item for item in self._registry.get_all().values() if item['identity_id'] == identity), None)
-                provenance = self._seat_manager.launch_provenance(instance) if self._seat_manager and instance else None
-                if not provenance:
-                    raise EventConflict('Select a current app-owned replacement with known launch settings.')
-                bindings[role] = {'kind': 'agent', 'identity_id': identity,
-                    'launch_provenance': provenance, 'operator_selected': True}
-            existing = None
+                raise EventConflict('Use explicit replacement/confirmation objects for the existing roles.')
+            intent = _revision({'input_text': input_text, 'replacements': replacements, 'confirmations': confirmations})
             if parent.get('replaced_by_run_id'):
-                existing = self._store.prepare_restart(parent_id, input_text, request_id, participant_bindings=bindings)
-                if existing['state'] != 'prepared':
-                    return existing
-            allowed_runs = {parent['run_id']} | ({existing['run_id']} if existing else set())
-            for role, binding in bindings.items():
-                if binding['kind'] == 'human':
-                    continue
+                child = next(s for s in self._store.list_all() if s['run_id'] == parent['replaced_by_run_id'])
+                bindings = (parent['participant_bindings'] if child.get('intent_fingerprint')
+                            else self._restart_bindings(parent, replacements))
+                current = self._store.prepare_restart(parent_id, input_text, request_id,
+                    participant_bindings=bindings, intent_fingerprint=intent)
+                initial_id = 'initial.' + _revision(request_id)
+                if (current.get('current_context_request_id') == initial_id and current['state'] == 'prepared'
+                        and not current.get('stop_id') and not current.get('preparation_contexts')):
+                    return self.prepare_contexts(current['id'], initial_id, confirmations=confirmations)
+                return self.restart_status(current['id'])
+            bindings = self._restart_bindings(parent, replacements)
+            self._guard_restart_seats(parent, bindings, {parent['run_id']}, confirmations)
+            child = self._store.prepare_restart(parent_id, input_text, request_id,
+                participant_bindings=bindings, intent_fingerprint=intent)
+            return self.prepare_contexts(child['id'], 'initial.' + _revision(request_id), confirmations=confirmations)
+
+    def prepare_contexts(self, child_id, context_request_id, *, replacements=None, confirmations=None, retry_attempts=None):
+        from review_brief import _revision
+        from turn_events import EventConflict, EventValidationError
+        from dispatch_queue import _identifier
+        from api_seats import SeatError
+        with self._lock:
+            child = self._store.get(child_id)
+            if not child or child['state'] != 'prepared' or child.get('stop_id') or not child.get('parent_run_id'):
+                raise EventConflict('Only an un-stopped prepared child can repair contexts.')
+            try:
+                _identifier(context_request_id, 'Context request ID')
+            except ValueError as exc:
+                raise EventValidationError(str(exc)) from None
+            replacements = {} if replacements is None else replacements
+            confirmations = {} if confirmations is None else confirmations
+            retry_attempts = {} if retry_attempts is None else retry_attempts
+            if (not isinstance(replacements, dict) or not isinstance(confirmations, dict) or not isinstance(retry_attempts, dict)
+                    or set(replacements) - set(child['cast']) or set(confirmations) - set(child['cast'])
+                    or set(retry_attempts) - set(child['cast'])
+                    or any(not isinstance(value, str) or not value for value in retry_attempts.values())):
+                raise EventConflict('Context choices must name existing roles and exact managed identities/attempts.')
+            intent = _revision({'replacements': replacements, 'confirmations': confirmations, 'retry_attempts': retry_attempts})
+            prior = child.get('context_requests', {}).get(context_request_id)
+            if prior:
+                if prior['fingerprint'] != intent:
+                    raise EventConflict('Context request ID already belongs to different choices.')
+                if (child.get('current_context_request_id') == context_request_id
+                        and set(child.get('preparation_contexts', {})) != set(child['participant_bindings'])):
+                    return self._finish_preparing_contexts(child, confirmations, retry_attempts)
+                return self.restart_status(child_id)
+            bindings = self._restart_bindings(child, replacements)
+            self._guard_restart_seats(child, bindings, {child['run_id'], child['parent_run_id']}, confirmations)
+            # This durable intent/binding commit precedes every launch or stop.
+            child = self._store.stage_contexts(child_id, context_request_id, intent, bindings)
+            return self._finish_preparing_contexts(child, confirmations, retry_attempts)
+
+    def _finish_preparing_contexts(self, child, confirmations, retry_attempts):
+        from api_seats import SeatError
+        from review_brief import _revision
+        child_id = child['id']
+        bindings = child['participant_bindings']
+        contexts = {}
+        for role, binding in bindings.items():
+            if binding['kind'] == 'human':
+                contexts[role] = {'state': 'ready', 'clean_context': True, 'name': child['cast'][role]}
+                continue
+            provenance = binding['launch_provenance']
+            context_key = _revision({'child_run_id': child['run_id'], 'role': role, 'source': provenance['fingerprint']})
+            try:
+                contexts[role] = self._seat_manager.prepare_clean_context(provenance, context_key,
+                    confirmation=confirmations.get(role), retry_attempt=retry_attempts.get(role),
+                    binding={'child_run_id': child['run_id'], 'role': role})
+            except (SeatError, OSError):
+                contexts[role] = {'state': 'blocked', 'reason': 'context_preparation_failed', 'clean_context': False}
+            if (provenance['effective']['seat']['adapter'] == 'cli' and contexts[role].get('key')
+                    and contexts[role].get('launch_attempt')):
+                old_instance = {'name': child['cast'][role], 'identity_id': provenance['identity_id']}
+                for record in self._trigger.queue.for_identity(old_instance):
+                    if record['state'] == 'cancelling' and record['envelope'].get('run_id') == child['parent_run_id']:
+                        self._trigger.queue.cancellation_receipt(old_instance, record['envelope']['dispatch_id'],
+                                                               record['consumer_id'], 'local_ended')
+        self._store._event_update(child_id, lambda s: s.update(preparation_contexts=contexts))
+        self.reconcile_stops()
+        return self.restart_status(child_id)
+
+    def restart_options(self, session_id):
+        """Read-only operator choices; expose labels and owned attempt IDs only."""
+        from turn_events import EventConflict
+        with self._lock:
+            session = self._store.get(session_id)
+            if not session:
+                raise EventConflict('Review not found.')
+            def choice(provenance):
+                effective = provenance['effective']
+                seat = effective['seat']
+                return {'adapter': seat['adapter'], 'model': seat.get('model'),
+                        'reasoning': seat.get('reasoning'), 'launch_attempt': provenance['launch_attempt'],
+                        'fresh_context_supported': seat['adapter'] != 'cli' or
+                            effective['provider'].get('cli_fresh_context_verified') is True}
+            roles = []
+            for role, binding in session['participant_bindings'].items():
                 provenance = binding.get('launch_provenance')
-                if not self._seat_manager or not provenance:
-                    raise EventConflict('Original launch settings are unknown; explicitly select a current replacement seat.')
-                if provenance['effective']['seat']['adapter'] == 'cli':
-                    raise EventConflict('Verified CLI role orchestration is still awaiting preparation checks.')
-                identity = binding['identity_id']
-                records = self._trigger.queue.for_identity({'name': parent['cast'][role], 'identity_id': identity})
-                if any(r['state'] in ('queued', 'dispatched', 'acknowledged', 'uncertain', 'cancelling')
-                       and r['envelope'].get('run_id') not in allowed_runs for r in records):
-                    raise EventConflict('This seat has unrelated pending or active work; finish it before restarting.')
-            child = existing or self._store.prepare_restart(parent_id, input_text, request_id, participant_bindings=bindings)
-            contexts = {}
-            for role, binding in bindings.items():
-                if binding['kind'] == 'human':
-                    contexts[role] = {'state': 'ready', 'clean_context': True, 'name': child['cast'][role]}
-                else:
-                    context_key = child['run_id'] + '.' + str(list(bindings).index(role))
-                    contexts[role] = self._seat_manager.prepare_clean_context(binding['launch_provenance'], context_key,
-                                                                             confirmation=confirmations.get(role))
-            return self._store._event_update(child['id'], lambda s: s.update(preparation_contexts=contexts))
+                roles.append({'role': role, 'kind': binding['kind'], 'name': session['cast'][role],
+                              'identity_id': binding.get('identity_id'),
+                              **(choice(provenance) if provenance else {})})
+            candidates = []
+            if self._seat_manager and self._registry:
+                for instance in self._registry.get_all().values():
+                    provenance = self._seat_manager.launch_provenance(instance)
+                    if provenance:
+                        candidates.append({'name': instance['name'], 'identity_id': instance['identity_id'],
+                                           **choice(provenance)})
+            return {'roles': roles, 'candidates': candidates}
+
+    def restart_status(self, child_id):
+        from turn_events import EventConflict
+        with self._lock:
+            child = self._store.get(child_id)
+            if not child:
+                raise EventConflict('Corrected review not found.')
+            if child['state'] == 'prepared' and not child.get('stop_id'):
+                contexts = dict(child.get('preparation_contexts', {}))
+                for role, context in list(contexts.items()):
+                    if context.get('key') and self._seat_manager:
+                        contexts[role] = self._seat_manager.context_status(context)
+                if contexts != child.get('preparation_contexts', {}):
+                    child = self._store._event_update(child_id, lambda s: s.update(preparation_contexts=contexts))
+            return self._enrich(child)
 
     def activate_restart(self, child_id):
         from turn_events import EventConflict
@@ -185,12 +310,19 @@ class SessionEngine:
                 if current['state'] != 'ready' or not current['clean_context']:
                     raise EventConflict('Every agent context must be verified clean and ready before activation.')
                 binding.update(identity_id=current['identity_id'], name=current['name'])
+                instance = self._registry.get_instance(current['name'])
+                provenance = self._seat_manager.launch_provenance(instance)
+                if not provenance or provenance['identity_id'] != current['identity_id']:
+                    raise EventConflict('Prepared launch identity changed before activation.')
+                binding['launch_provenance'] = provenance
                 records = self._trigger.queue.for_identity({'name': current['name'], 'identity_id': current['identity_id']})
                 if any(r['state'] in ('queued', 'dispatched', 'acknowledged', 'uncertain', 'cancelling')
                        and r['envelope'].get('run_id') != child['run_id'] for r in records):
                     raise EventConflict('Prepared seat acquired other work; activation is held.')
             parent = self._store.get(child['parent_session_id'])
-            if not parent or parent['state'] != 'stopped':
+            independent = (parent and parent['state'] == 'unresolved'
+                           and any(b.get('operator_selected') for b in bindings.values()))
+            if not parent or (parent['state'] != 'stopped' and not independent):
                 raise EventConflict('Resolve the original local work before activating retained roles.')
             child = self._store.activate_restart(child_id, participant_bindings=bindings)
             self._trigger_current(child)
@@ -205,7 +337,7 @@ class SessionEngine:
                 records = self._trigger.queue.cancel_run(session['run_id'], session['stop_id'])
                 held = [r for r in records if r['state'] == 'cancelling']
                 state = ('stopped' if not held else 'unresolved'
-                         if now >= session['stopped_at'] + 10 else 'stopping')
+                         if session['state'] == 'unresolved' or now >= session['stopped_at'] + 10 else 'stopping')
                 receipts = [{'dispatch_id': r['envelope']['dispatch_id'], 'state': r['state'],
                     'seat_identity_id': r['envelope']['target_identity_id'],
                     'evidence': r.get('cancellation', {'status': r['state'], 'remote_compute': 'unverified'})}
@@ -374,6 +506,14 @@ class SessionEngine:
             return None
         with self._lock:
             instance = self._live_instance(instance)
+            owner = self._seat_manager.fresh_context_owner(instance) if self._seat_manager else None
+            if owner:
+                owned_run = next((s for s in self._store.list_all() if s['run_id'] == owner['child_run_id']), None)
+                if not owned_run:
+                    return []  # Known fresh launch never falls back to old history.
+                if ((owned_run['state'] == 'prepared' and not owned_run.get('stop_id'))
+                        or (owned_run.get('dispatch_eligible') and owned_run['state'] in ('active', 'waiting', 'paused', 'awaiting_input'))):
+                    return self._review_context_messages(owned_run, since_id, limit)
             runs = [s for s in self._store.list_all() if s.get('parent_run_id')
                     and s.get('dispatch_eligible') and s['state'] in ('active', 'waiting', 'paused', 'awaiting_input')
                     and any(b.get('identity_id') == instance['identity_id']
@@ -383,11 +523,13 @@ class SessionEngine:
             from turn_events import EventConflict
             if len(runs) != 1:
                 raise EventConflict('This seat has ambiguous corrected-review context; shared history is unavailable.')
-            session = runs[0]
-            ids = {e['projected_message_id'] for e in session['admitted_events'] if e.get('projected_message_id') is not None}
-            ids.update(c['projected_message_id'] for c in session['continuation_context'] if c.get('projected_message_id') is not None)
-            messages = [self._messages.get_by_id(mid) for mid in sorted(ids) if mid > since_id or since_id == 0]
-            return [message for message in messages if message is not None][-max(1, min(limit, 200)):]
+            return self._review_context_messages(runs[0], since_id, limit)
+
+    def _review_context_messages(self, session, since_id, limit):
+        ids = {e['projected_message_id'] for e in session['admitted_events'] if e.get('projected_message_id') is not None}
+        ids.update(c['projected_message_id'] for c in session['continuation_context'] if c.get('projected_message_id') is not None)
+        messages = [self._messages.get_by_id(mid) for mid in sorted(ids) if mid > since_id or since_id == 0]
+        return [message for message in messages if message is not None][-max(1, min(limit, 200)):]
 
     def admit_event(self, brief_id, kind, content, instance, *, event_id=None, identities=None):
         from review_brief import BriefAccessError, BriefError

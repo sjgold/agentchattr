@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 and #10 published/closed; #11 implementation in progress)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 and #10 published/closed; #11 builder verified, independent review pending)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -131,12 +131,14 @@
 
 ## Ticket #11 implementation checkpoint
 
-- Same AGY ratified all follow-up contract points (critique Section7). Temporary prepared ineligibility is distinct from a permanent stop_id-bearing fence; unverified warning acknowledgment cannot certify clean context. Defaults exclude old chat; effective launch settings/provenance must remain frozen.
-- Implemented atomic linked preparation, stable request idempotency/conflict handling, new source/run lineage, explicit human-role activation, channel reservation and permanent Stop during preparation. Helper14 real-store tests observed red then pass. New API/MCP default-read boundaries observed old-source leakage red, then two tests pass, preserving operator history access. All completion_protocol1 API packets now omit supplementary chat.
-- Full suite at the core checkpoint:366 tests OK/four skips (17.822s). Stop integration PASS (local end155.124ms, one retained result, no cascade, truthful CLI unresolved, exact owned termination). Existing brief integration initially failed its old supplementary-chat expectation; migrated only that assertion to require exclusion, preserving source/rollover/MCP checks, then PASS with shared_chat_excluded:true and one fake-provider call.
-- Managed launch tranche: ten focused tests observed red then pass for strict verified CLI argument contracts, secret-free effective launch snapshots, package/template drift preservation, matching API supervisor reuse and unsupported CLI refusal without side effects. A test caught same-base replacement identity inheriting old provenance; fixed by binding the receipt-observed owned identity. Latest full suite:386 tests OK/four skips (17.931s). Normal real fake-API and fake-CLI integrations pass after launch extraction; no live providers or native clients.
-- **Implemented next tranche:** per-run managed provenance capture, explicit managed API selection/preparation/activation and strict fresh CLI launch from frozen settings. Fifteen launch tests and five agent/provenance tests pass after observed red. A second-generation test caught retained context nonce accumulation; preserved a fingerprinted nonce-free base snapshot for subsequent launches. These CLI launch proofs use real receipts with process doubles, not native acceptance.
-- **Unfinished:** prepared-context repair/role changes, pre-activation fresh CLI read fencing, wiring CLI roles into corrected runs, unresolved-parent independent-replacement activation, operator endpoints/UI and real corrected mixed-team integration. Engine CLI corrected-role orchestration stays explicitly gated pending those boundaries; human and managed API unit flows work. No #11 publication or independent implementation PASS is claimed. Same AGY remains final reviewer.
+- Same AGY settled the core contract and Section8 amendments: child-only context repair, immutable source/lineage, exact launch confirmation, and read isolation from before fresh CLI spawn. Only stop_id marks a permanent fence; prepared ineligibility remains temporary.
+- Implemented linked atomic preparation, role repair/history, stable request idempotency, channel reservation, new run/source identities, frozen launch provenance, and explicit activation. API packets and corrected CLI default reads exclude old source, answers, continuations and shared chat. Missing/unsupported context assurance stays blocked.
+- Latest full suite: **401 tests OK, four expected Unix/tmux skips (20.679s)**. Independent test-author red evidence covers lineage, launch and prepared repair. Additional failures caught replacement identities inheriting provenance, repeated context selectors, missing-backlink duplicate preparation, activation retaining old launch provenance, and unresolved state regression; focused checks now pass. Process-double tests do not establish native client acceptance.
+- Operator routes now support source preparation, child-only context repair, safe managed-seat choices, status and activation. UI code distinguishes prepared from stopped, retains correction drafts during polling, shows frozen source/role settings, and binds explicit CLI replacement confirmations to exact launches. JavaScript syntax and diff checks pass. Desktop/mobile screenshots were inspected; scoped panel390/scroll390, text14px/contrast9.3:1. Native keyboard activation and role-change preparation gating pass.
+- Real corrected integration and two --serve runs **PASS**. Actual old question/Continue/result and held CLI become a linked corrected review, with new PID/nonce/identity, observed old client exit, empty boot MCP reads before an injected backlink503, same-request repair without duplicate spawn, frozen launch settings despite live edits, exact new-source-only results and independent peer completion. Old audit is preserved. First failure was a fixture empty-string MCP parser assumption, corrected without weakening isolation. Final scratch: `.audit-tmp/corrected restart integration ys4sg5te`; all four workers stopped and browser markers removed.
+- All seven prior integrations pass again. Separate human-only browser check verified unchanged-source rejection/draft preservation, source editing/preparation, permanent Stop during preparation and reload, with no invocation/results. Original source/result/continuation remain readable in the prepared panel. Scoped UI refinement moved Start above collapsed settings; inherited whole-chat overflow/design findings remain standing, with no new suppression or whole-chat mobile pass. Browsers/servers stopped.
+- **Remaining:** freeze and obtain same AGY independent implementation review/recheck, then publish and close. Review pack `TICKET-11-REVIEW.md`, usage `CORRECTING-REVIEWS.md`. No #11 push or independent implementation PASS yet. No live providers, native AI clients, login/history wipes, Desktop changes or #9 runtime adoption.
+
 
 ## Ticket execution and review
 
@@ -146,21 +148,21 @@
 
 ## Next step
 
-**Action:** Settle explicit prepared-role repair and pre-activation fresh CLI read fencing with same AGY, then finish CLI corrected-run orchestration, operator endpoints/UI and real corrected mixed-team acceptance. #10 remains published/closed; #9 deferred.
-**Who:** Same AGY owes the requested bounded contract follow-up (prepared repair without source mutation; fresh CLI reads before activation). Its reply resumes Codex implementation. Test helper completed current lineage/launch tranches. No human approval is pending.
+**Action:** Obtain same AGY independent implementation review/recheck of the frozen #11 target, then publish and close if it passes. #10 remains published/closed; #9 deferred.
+**Who:** Codex freezes and briefs the same AGY reviewer. Builder verification is complete; same AGY owns independent review, then Codex owns findings and reviewed publication. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-11-clean-restart, base main `83aa04a`. #10 publication `10f75e3`, frozen source `eeb9026` independently passed. #11 locally checkpointed in progress;386 tests/four skips pass, full corrected-run/CLI orchestration and UI unfinished, no independent implementation review or publication.
+- **Branch:** codex/ticket-11-clean-restart, base main `83aa04a`. #10 publication `10f75e3`, frozen source `eeb9026` independently passed. #11 in progress;401 tests/four skips pass, corrected integration/browser checks pass, independent review pending, no independent implementation review or publication.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8 and #10, including explicit results/questions, durable Stop/cancellation evidence and scoped quarantine/termination. Same AGY PASS, post-merge350 tests OK/four skips, all seven integrations independently pass. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #11 implementation. Core lineage/read isolation, managed API flow and fresh CLI launch unit tests pass; AGY follow-up governs prepared-role repair and pre-activation reads before remaining CLI orchestration/UI/acceptance. #1-8 and #10 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #11 implementation. Lineage, context repair, launch/read isolation and operator routes pass unit checks; real corrected integration and UI acceptance pass, independent review is next. #1-8 and #10 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 

@@ -100,6 +100,60 @@ class CorrectedAgentTests(unittest.TestCase):
         self.assertEqual(arguments.count('--context-id'), 1)
         self.assertIn(second['context_id'], arguments)
 
+    def test_verified_cli_role_waits_for_fresh_ready_identity_and_freezes_actual_new_launch(self):
+        f = self.fixture
+        f.store.providers['fake-cli'].update(cli_fresh_context_args=['--context-id', '{context_id}'],
+                                             cli_fresh_context_verified=True)
+        cli, launch = f.ready('cli')
+        self.sessions.save_custom_template({'id': 'mixed', 'name': 'Mixed review', 'roles': ['reviewer', 'editor'],
+            'phases': [{'name': 'Review', 'participants': ['reviewer'], 'prompt': 'Review.'},
+                       {'name': 'Edit', 'participants': ['editor'], 'prompt': 'Edit.', 'is_output': True}]})
+        parent = self.engine.start_session('mixed', 'mixed', {'reviewer': self.api['name'], 'editor': cli['name']},
+                                           'operator', input_text='OLD MIXED SOURCE')
+        self.engine.stop_session(parent['id'])
+        self.engine.reconcile_stops()
+        original = f.manager.attempts['team/cli']
+        def terminate_client(timeout):
+            atomic_json(original['receipt'], {'attempt': original['id'], 'state': 'stopped', 'child_exit_code': 0})
+            original['process'].poll.return_value = 0
+            original['process'].returncode = 0
+        original['process'].wait.side_effect = terminate_client
+        child = self.engine.correct_and_restart(parent['id'], 'NEW MIXED SOURCE', uuid.uuid4().hex,
+            confirmations={'editor': {'launch_attempt': launch['attempt'], 'confirm': True}})
+        context = child['preparation_contexts']['editor']
+        self.assertEqual(context['state'], 'starting')
+        with self.assertRaises(EventConflict):
+            self.engine.activate_restart(child['id'])
+        self.assertIsNone(self.trigger.queue.claim(self.api, 'no-premature-call'))
+        fresh = f.manager.attempts[context['key']]
+        instance = f.registry.register(fresh['base'])
+        self.assertEqual(self.engine.review_messages(instance), [])
+        atomic_json(fresh['receipt'], {'attempt': fresh['id'], 'state': 'ready', 'name': instance['name'],
+            'adapter_connected': True, 'authentication': 'unknown', 'updated_at': time.time()})
+        active = self.engine.activate_restart(child['id'])
+        binding = active['participant_bindings']['editor']
+        self.assertEqual(binding['identity_id'], instance['identity_id'])
+        self.assertEqual(binding['launch_provenance']['launch_attempt'], fresh['id'])
+        self.assertNotEqual(binding['identity_id'], cli['identity_id'])
+        self.assertEqual(active['active_invocation']['expected_identity_id'], self.api['identity_id'])
+
+    def test_explicit_independent_api_replacement_can_start_while_old_invocation_remains_unresolved(self):
+        f = self.fixture
+        original = self.engine.start_session('one', 'unresolved', {'reviewer': self.api['name']},
+                                             'operator', input_text='OLD UNRESOLVED SOURCE')
+        held = self.trigger.queue.claim(self.api, 'old-worker')
+        self.engine.stop_session(original['id'])
+        self.engine.reconcile_stops(now=time.time() + 11)
+        f.package['seats'].append({**f.package['seats'][0], 'id': 'peer', 'name': 'Independent replacement'})
+        f.store.save(f.package)
+        peer, _ = f.ready('peer')
+        child = self.engine.correct_and_restart(original['id'], 'NEW INDEPENDENT SOURCE', uuid.uuid4().hex,
+                                                replacements={'reviewer': peer['identity_id']})
+        active = self.engine.activate_restart(child['id'])
+        self.assertEqual(active['active_invocation']['expected_identity_id'], peer['identity_id'])
+        self.assertEqual(self.sessions.get(original['id'])['state'], 'unresolved')
+        self.assertEqual(self.trigger.queue.owned(self.api, held['envelope']['dispatch_id'])['state'], 'cancelling')
+
 
 if __name__ == '__main__':
     unittest.main()

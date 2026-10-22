@@ -1,10 +1,10 @@
 # Ticket #11: correct the document and restart cleanly
 
-**State:** Same AGY ratified the follow-up contract (critique Section 7). Core preparation/read isolation and managed provenance/API reuse implemented with focused red/green tests; fresh CLI/agent orchestration and UI remain unfinished.
+**State:** Builder implementation and acceptance complete. Same AGY settled Sections7/8; frozen independent implementation review is next. STATUS.md and TICKET-11-REVIEW.md carry current evidence.
 
 **Authority:** Approved issue #11, spec v1.7 SC-3 and AT-07, October22 autonomous execution amendment. Its only blocker #10 is published/closed. Base main `83aa04a`. Full runtime restart adoption (#9), stalled-turn deadlines/retry (#12), worker outbox recovery in later backlog and file intake (#18) remain separate scope.
 
-## Verified baseline
+## Preimplementation baseline (historical)
 
 - Each run freezes source/hash, design/rules/goal, participant kind and stable identity. New turn briefs are scoped to their own run/attempt. Stop persists ineligibility and quarantines old output, including ordinary untagged output from controlled seats.
 - SessionStore has no corrected-restart operation or parent/replacement linkage. Starting a separate session through the ordinary Start endpoint does not record a corrected lineage or establish clean CLI context.
@@ -52,13 +52,13 @@
 
 ## Work sequence
 
-- [x] Same AGY ratified the core clean-context/provenance/preparation contract; prepared-role repair and pre-activation read amendments are now under follow-up.
-- [ ] Test-only helper captures real red lineage/isolation/race regressions against agreed interfaces.
-- [ ] Codex implements linked preparation, new-run input isolation and bounded context preparation.
-- [ ] Implement operator source preview/impact/blocked/restart controls and real fake-client verification.
+- [x] Same AGY ratified the core clean-context/provenance/preparation contract; prepared-role repair and pre-activation read amendments are settled in Section8.
+- [x] Test-only helper captured real red lineage/launch/repair regressions; current unit checks pass.
+- [x] Codex implemented linked preparation, new-run isolation, bounded context preparation and child-only repair.
+- [x] Implement operator source preview/impact/blocked/restart controls and real fake-client verification.
 - [ ] Freeze, same-AGY independent review/recheck, reviewed publication and issue closure.
 
-Next owner: same AGY returns a contract critique. Codex settles bounded choices, records rulings and begins red tests. No #11 implementation or native/live-provider usage is claimed. Routine human plan/completion gates remain removed by the standing authorization.
+Current owner: Codex finishes scoped UI/regression acceptance; test helper executes the isolated corrected integration. Same AGY owns final frozen implementation review. No native/live-provider usage is authorized by these checks. Routine human plan/completion gates remain removed.
 
 ## Contract critique and follow-up
 
@@ -104,3 +104,7 @@ Core suite366 tests OK/four skips at17.822s. Helper14 lineage/preparation tests 
 - Same AGY is also checking launch-time child/role metadata so a fresh CLI cannot default-read abandoned chat before activation or after a launch-before-backlink failure. Retained API supervisors must not be globally restricted just because a draft is prepared. This is application read scoping, not a filesystem sandbox.
 
 Next move belongs to same AGY's contract follow-up; its response resumes Codex. The local checkpoint is incomplete and must not be published or called an implementation PASS.
+
+## Current verification checkpoint
+
+401 tests pass with four expected Unix/tmux skips. Operator source/context/activation routes and UI are implemented. Actual corrected integration, seven prior integrations and scoped desktop/mobile/keyboard checks pass. Same AGY Section8 contract is settled. No independent implementation PASS or publication yet. STATUS.md carries the current owner and remaining work.

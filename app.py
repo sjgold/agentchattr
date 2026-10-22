@@ -2898,6 +2898,91 @@ async def end_session(session_id: int):
     return JSONResponse(session)
 
 
+async def _restart_body(request, required, optional=()):
+    from turn_events import EventValidationError
+    raw = await request.body()
+    if len(raw) > 4 * 1024 * 1024:
+        raise EventValidationError('Corrected review request exceeds the 4 MiB limit.')
+    try:
+        body = json.loads(raw) if raw else {}
+    except ValueError:
+        raise EventValidationError('Corrected review requires valid JSON.') from None
+    if (not isinstance(body, dict) or not set(required) <= body.keys()
+            or body.keys() - set(required) - set(optional)
+            or any(not isinstance(body[key], str) for key in required)
+            or any(not isinstance(body[key], dict) for key in optional if key in body)):
+        raise EventValidationError('Use the named source/request text fields and explicit role-choice objects.')
+    return body
+
+
+def _restart_error(error):
+    from review_brief import BriefError
+    from api_seats import SeatError
+    if isinstance(error, BriefError):
+        return JSONResponse({'error': str(error)}, status_code=400)
+    if isinstance(error, SeatError):
+        return JSONResponse({'error': str(error)}, status_code=409)
+    return _session_event_error(error)
+
+
+@app.post('/api/sessions/{session_id}/correct-and-restart')
+async def correct_and_restart_session(session_id: int, request: Request):
+    from review_brief import BriefError
+    from turn_events import EventConflict, EventValidationError
+    from api_seats import SeatError
+    try:
+        body = await _restart_body(request, ('input_text', 'request_id'), ('replacements', 'confirmations'))
+        value = await asyncio.to_thread(session_engine.correct_and_restart, session_id,
+            body['input_text'], body['request_id'], replacements=body.get('replacements'), confirmations=body.get('confirmations'))
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (BriefError, SeatError, EventConflict, EventValidationError, OSError) as exc:
+        return _restart_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/prepare-contexts')
+async def prepare_restart_contexts(session_id: int, request: Request):
+    from turn_events import EventConflict, EventValidationError
+    from api_seats import SeatError
+    try:
+        body = await _restart_body(request, ('context_request_id',), ('replacements', 'confirmations', 'retry_attempts'))
+        value = await asyncio.to_thread(session_engine.prepare_contexts, session_id, body['context_request_id'],
+            replacements=body.get('replacements'), confirmations=body.get('confirmations'), retry_attempts=body.get('retry_attempts'))
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (SeatError, EventConflict, EventValidationError, OSError) as exc:
+        return _restart_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/activate-restart')
+async def activate_corrected_session(session_id: int, request: Request):
+    from turn_events import EventConflict, EventValidationError
+    from api_seats import SeatError
+    try:
+        await _restart_body(request, ())
+        return JSONResponse(await asyncio.to_thread(session_engine.activate_restart, session_id))
+    except (SeatError, EventConflict, EventValidationError, OSError) as exc:
+        return _restart_error(exc)
+
+
+@app.get('/api/sessions/{session_id}/restart-status')
+async def corrected_session_status(session_id: int):
+    from turn_events import EventConflict
+    try:
+        return JSONResponse(await asyncio.to_thread(session_engine.restart_status, session_id),
+                            headers={'Cache-Control': 'no-store'})
+    except (EventConflict, OSError) as exc:
+        return _restart_error(exc)
+
+
+@app.get('/api/sessions/{session_id}/restart-options')
+async def corrected_session_options(session_id: int):
+    from turn_events import EventConflict
+    try:
+        return JSONResponse(await asyncio.to_thread(session_engine.restart_options, session_id),
+                            headers={'Cache-Control': 'no-store'})
+    except EventConflict as exc:
+        return _restart_error(exc)
+
+
 @app.get('/api/sessions/{session_id}/stop-status')
 async def session_stop_status(session_id: int):
     value = await asyncio.to_thread(session_engine.stop_status, session_id, api_seat_manager)
