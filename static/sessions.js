@@ -19,6 +19,7 @@ let activeSession = null;
 let sessionTemplates = [];
 let activeSessionsByChannel = {};
 let sessionIndicatorTargetChannel = null;
+let stopStatusBusy = false;
 
 // ---------------------------------------------------------------------------
 // Message Renderers
@@ -55,6 +56,15 @@ window._messageRenderers['session_end'] = function (el, msg) {
 window._messageRenderers['session_phase'] = function (el, msg) {
     el.classList.add('system-msg', 'session-banner', 'session-banner-phase');
     el.innerHTML = `<span class="session-banner-icon">&#9656;</span> ${window.escapeHtml(msg.text)}`;
+};
+
+window._messageRenderers['quarantine'] = function (el, msg) {
+    const label = document.createElement('strong');
+    label.textContent = 'Quarantined output, no work triggered';
+    const content = document.createElement('pre');
+    content.className = 'session-quarantine-content';
+    content.textContent = msg.text;
+    el.replaceChildren(label, content);
 };
 
 window._messageRenderers['session_draft'] = function (el, msg) {
@@ -287,10 +297,13 @@ function updateSessionBar() {
         jumpBtn.classList.add('hidden');
         jumpBtn.style.display = 'none';
     }
-    if (endBtn) endBtn.style.display = '';
+    if (endBtn) endBtn.style.display = s.dispatch_eligible === false ? 'none' : '';
 
     const waitingAgent = s.current_agent || s.waiting_on;
-    if (s.legacy) {
+    if (s.dispatch_eligible === false) {
+        waitingEl.textContent = s.state === 'stopped' ? 'Stopped locally' : s.state === 'unresolved' ? 'Cancellation unresolved' : 'Stopping';
+        waitingEl.style.display = '';
+    } else if (s.legacy) {
         waitingEl.textContent = 'Legacy run, explicit restart required';
         waitingEl.style.display = '';
     } else if (s.projection_pending) {
@@ -313,6 +326,108 @@ function updateSessionBar() {
     }
 }
 
+async function refreshStopStatus() {
+    const s = activeSession;
+    if (!s || s.dispatch_eligible !== false || stopStatusBusy) return;
+    stopStatusBusy = true;
+    try {
+        const response = await fetch(`/api/sessions/${s.id}/stop-status`,
+            {headers: {'X-Session-Token': window.SESSION_TOKEN}});
+        const value = await response.json();
+        if (!response.ok) throw new Error(value.error || 'Cancellation status unavailable');
+        handleSessionEvent('update', value);
+    } catch (error) {
+        const note = document.querySelector('.session-stop-status-note');
+        if (note) note.textContent = `${error.message}. The saved Stop fence remains in effect. Retrying status.`;
+    } finally {
+        stopStatusBusy = false;
+    }
+}
+
+setInterval(refreshStopStatus, 2000);
+
+function renderStopControls(panel, s) {
+    panel.hidden = false;
+    const key = JSON.stringify([s.id, s.state, s.cancellation_receipts, s.termination_offers, s.quarantined_events?.length]);
+    if (panel.dataset.key === key) return;
+    panel.dataset.key = key;
+    panel.replaceChildren();
+    const title = document.createElement('strong');
+    title.textContent = s.state === 'stopped' ? 'Review stopped locally' :
+        s.state === 'unresolved' ? 'Stop saved, local work is unresolved' : 'Stop saved, checking local work';
+    const description = document.createElement('p');
+    description.textContent = `No further work can start for this run. ${s.admitted_events?.length || 0} accepted results and the original source are retained.`;
+    const note = document.createElement('p');
+    note.className = 'session-stop-status-note';
+    note.setAttribute('role', 'status');
+    note.textContent = 'Remote provider computation and usage remain unverified. Local termination cannot retract contents already sent.';
+    panel.append(title, description, note);
+    const receipts = document.createElement('ul');
+    for (const receipt of s.cancellation_receipts || []) {
+        const row = document.createElement('li');
+        const status = receipt.evidence?.status || receipt.state;
+        const labels = {requested: 'Cancellation requested', delivered: 'Cancellation delivered',
+            local_ended: 'Local invocation ended', unsupported: 'This CLI has no verified turn interrupt',
+            unresolved: 'Local termination unresolved', cancelled: 'Pending work cancelled'};
+        row.textContent = `${labels[status] || status}. Dispatch ${receipt.dispatch_id.slice(0, 8)}.`;
+        receipts.appendChild(row);
+    }
+    panel.appendChild(receipts);
+    for (const offer of s.termination_offers || []) {
+        const action = document.createElement('div');
+        action.className = 'session-stop-termination';
+        const impact = document.createElement('p');
+        impact.textContent = `${offer.seat_name}: ${offer.impact}`;
+        const button = document.createElement('button');
+        button.textContent = `Terminate ${offer.seat_name} context…`;
+        const confirmation = document.createElement('div');
+        confirmation.hidden = true;
+        const explanation = document.createElement('p');
+        explanation.textContent = 'Confirm ending this owned CLI process and its persistent context. Other seats stay running. This action cannot be undone.';
+        const confirm = document.createElement('button');
+        confirm.textContent = 'Confirm termination';
+        const cancel = document.createElement('button');
+        cancel.textContent = 'Keep seat running';
+        const error = document.createElement('p');
+        error.setAttribute('role', 'alert');
+        button.onclick = () => { confirmation.hidden = false; confirm.focus(); };
+        cancel.onclick = () => { confirmation.hidden = true; button.focus(); };
+        confirm.onclick = async () => {
+            confirm.disabled = true;
+            cancel.disabled = true;
+            error.textContent = 'Waiting for evidence that the owned process ended…';
+            try {
+                const response = await fetch(`/api/sessions/${s.id}/terminate-seat`, {
+                    method: 'POST', headers: {'X-Session-Token': window.SESSION_TOKEN, 'Content-Type': 'application/json'},
+                    body: JSON.stringify({dispatch_id: offer.dispatch_id, launch_attempt: offer.launch_attempt, confirm: true})});
+                const value = await response.json();
+                if (!response.ok) throw new Error(value.error || 'Termination could not be confirmed');
+                handleSessionEvent('update', value);
+            } catch (failure) {
+                error.textContent = failure.message;
+                confirm.disabled = false;
+                cancel.disabled = false;
+            }
+        };
+        confirmation.append(explanation, confirm, cancel, error);
+        action.append(impact, button, confirmation);
+        panel.appendChild(action);
+    }
+    const events = s.quarantined_events || [];
+    if (events.length) {
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = `${events.length} quarantined outputs, excluded from results and routing`;
+        details.appendChild(summary);
+        for (const event of events) {
+            const text = document.createElement('pre');
+            text.textContent = (event.provenance === 'unverified_scope' ? 'Scope unverified. ' : '') + event.content;
+            details.appendChild(text);
+        }
+        panel.appendChild(details);
+    }
+}
+
 function renderSessionTurnControls(bar) {
     let panel = document.getElementById('session-turn-controls');
     if (!panel) {
@@ -322,6 +437,10 @@ function renderSessionTurnControls(bar) {
         bar.after(panel);
     }
     const s = activeSession;
+    if (s?.dispatch_eligible === false) {
+        renderStopControls(panel, s);
+        return;
+    }
     const invocation = s?.active_invocation;
     const mode = !s || s.legacy ? null : s.projection_pending ? 'recover-projection' :
         s.state === 'awaiting_input' ? 'continue' : s.state === 'paused' ? 'resume' :
@@ -643,7 +762,7 @@ function clearEndSessionConfirm() {
     const confirm = document.getElementById('session-end-confirm');
     if (confirm) confirm.remove();
     if (btn) {
-        btn.textContent = 'End Session';
+        btn.textContent = 'Stop review';
         btn.classList.remove('confirming');
     }
 }
@@ -658,14 +777,14 @@ function toggleEndSessionConfirm(event) {
         return;
     }
 
-    btn.textContent = 'End Session?';
+    btn.textContent = 'Stop review?';
     btn.classList.add('confirming');
 
     const confirmWrap = document.createElement('span');
     confirmWrap.id = 'session-end-confirm';
     confirmWrap.className = 'session-inline-confirm';
     confirmWrap.innerHTML = `
-        <button class="session-inline-confirm-yes ch-confirm-yes" title="Confirm end session">
+        <button class="session-inline-confirm-yes ch-confirm-yes" title="Confirm Stop, keep accepted results">
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5 6.5-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <button class="session-inline-confirm-no ch-confirm-no" title="Cancel">
@@ -688,16 +807,19 @@ async function endActiveSession() {
     if (!activeSession) return;
 
     try {
-        const res = await fetch(`/api/sessions/${activeSession.id}/end`, {
+        const res = await fetch(`/api/sessions/${activeSession.id}/stop`, {
             method: 'POST',
             headers: { 'X-Session-Token': window.SESSION_TOKEN },
         });
         if (!res.ok) {
             const data = await res.json();
-            alert(data.error || 'Failed to end session');
+            alert(data.error || 'Stop could not be saved. Check local storage and try again.');
+        } else {
+            handleSessionEvent('update', await res.json());
+            await refreshStopStatus();
         }
     } catch (e) {
-        alert('Error ending session: ' + e.message);
+        alert('Stop could not be confirmed: ' + e.message);
     } finally {
         clearEndSessionConfirm();
     }

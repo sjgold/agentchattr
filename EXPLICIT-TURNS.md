@@ -34,4 +34,4 @@ Accepted content and its turn transition are saved together before display. A st
 
 Event text is bounded to 512 KiB of valid UTF-8 and is never silently truncated. Failed API responses appear in queue/pre-flight diagnostics. Native client cooperation and live provider JSON compliance require separate acceptance; routine checks use local fake clients/providers.
 
-Older runs without explicit invocation identities remain readable and can be ended, but chat cannot give them machine-verified completion. Full restart reconciliation, actual cancellation, per-turn generation retry and worker result-outbox recovery remain later tickets.
+Older runs without explicit invocation identities remain readable, but chat cannot give them machine-verified completion. [Stopping reviews](STOPPING-REVIEWS.md) explains durable Stop, local cancellation evidence and late-output quarantine. Full restart reconciliation, per-turn generation retry and worker result-outbox recovery remain later tickets.

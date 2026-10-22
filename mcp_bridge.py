@@ -201,6 +201,7 @@ def chat_send(
     channel: str = "",
     job_id: int = 0,
     ctx: Context | None = None,
+    dispatch_id: str | None = None,
 ) -> str:
     """Send a message to the agentchattr chat. Use your name as sender (claude/codex/user).
     Optionally attach a local image by providing image_path (absolute path).
@@ -277,15 +278,30 @@ def chat_send(
             filename = f"{uuid.uuid4().hex[:8]}{src.suffix}"
             shutil.copy2(str(src), str(upload_dir / filename))
             job_attachments = [{"name": src.name, "url": f"/uploads/{filename}"}]
-        msg = jobs.add_message(job_id, sender, text, msg_type=msg_type,
-                               attachments=job_attachments)
+        instance = _authenticated_instance(ctx)
+        scope = {}
+        if session_engine and instance:
+            def publish_job(value, metadata):
+                scope.update(metadata)
+                return jobs.add_message(job_id, sender, value,
+                    msg_type='quarantine' if metadata.get('routing_suppressed') else msg_type,
+                    attachments=job_attachments)
+            try:
+                msg = session_engine.send_chat(instance, text, dispatch_id=dispatch_id,
+                                               channel=channel, publish=publish_job)
+            except (ValueError, PermissionError, OSError):
+                return 'Error: chat scope unavailable; no routing was authorized.'
+        else:
+            msg = jobs.add_message(job_id, sender, text, msg_type=msg_type, attachments=job_attachments)
         if msg is None:
             return f"Error: job #{job_id} not found."
         with _presence_lock:
             _presence[sender] = time.time()
 
         # Route @mentions in job messages to trigger other agents
-        if router and agents:
+        if session_engine and instance:
+            scope = session_engine.chat_scope(instance, dispatch_id)
+        if router and agents and not scope.get('routing_suppressed'):
             job = jobs.get(job_id)
             if job:
                 job_channel = job.get("channel", "general")
@@ -304,8 +320,12 @@ def chat_send(
                         if inst and inst.get("state") == "pending":
                             continue
                     if agents.is_available(target):
-                        agents.trigger_sync(target, message=chat_msg,
-                                            channel=job_channel, job_id=job_id)
+                        from dispatch_queue import QueueConflict
+                        try:
+                            agents.trigger_sync(target, message=chat_msg, channel=job_channel, job_id=job_id,
+                                **{key: scope[key] for key in ('run_id', 'turn_id', 'attempt_id', 'input_revision') if key in scope})
+                        except QueueConflict:
+                            pass
 
         return f"Sent to job #{job_id} (msg_id={msg['id']})" + (
             " [suggestion]" if msg_type == "suggestion" else "")
@@ -344,9 +364,17 @@ def chat_send(
         msg_type = "decision"
         metadata = {"choices": clean_choices, "resolved": False}
 
-    msg = store.add(sender, message.strip(), attachments=attachments,
-                    reply_to=reply_id, channel=channel,
-                    msg_type=msg_type, metadata=metadata)
+    instance = _authenticated_instance(ctx)
+    if session_engine and instance:
+        try:
+            msg = session_engine.send_chat(instance, message.strip(), dispatch_id=dispatch_id,
+                channel=channel, attachments=attachments, reply_to=reply_id, msg_type=msg_type, metadata=metadata)
+        except (ValueError, PermissionError, OSError):
+            return 'Error: chat scope unavailable; no routing or completion was authorized.'
+    else:
+        msg = store.add(sender, message.strip(), attachments=attachments,
+                        reply_to=reply_id, channel=channel,
+                        msg_type=msg_type, metadata=metadata)
     _update_cursor(sender, [msg], channel)
     with _presence_lock:
         _presence[sender] = time.time()

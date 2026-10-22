@@ -27,8 +27,8 @@ class QueueAccessError(PermissionError):
     pass
 
 
-ACTIVE = {'dispatched', 'acknowledged', 'uncertain'}
-STATES = ACTIVE | {'queued', 'released', 'failed'}
+ACTIVE = {'dispatched', 'acknowledged', 'uncertain', 'cancelling'}
+STATES = ACTIVE | {'queued', 'released', 'failed', 'cancelled'}
 
 
 def _identifier(value, label):
@@ -166,6 +166,8 @@ class QueueStore:
                 return deepcopy(record)
             if record['state'] not in ACTIVE:
                 raise QueueConflict('Dispatch has no active ownership to update.')
+            if record['state'] == 'cancelling':
+                raise QueueConflict('Cancellation retains ownership until a local-ended receipt.')
             if state == 'acknowledged' and record['state'] != 'dispatched':
                 raise QueueConflict('Uncertain ownership cannot be acknowledged automatically.')
             if state == 'released' and record['state'] == 'dispatched':
@@ -194,6 +196,59 @@ class QueueStore:
                         and record['envelope']['target_identity_id'] == identity):
                     return deepcopy(record)
         raise QueueAccessError('Dispatch does not belong to this seat.')
+
+    def cancel_run(self, run_id, stop_id):
+        _identifier(run_id, 'Run ID')
+        _identifier(stop_id, 'Stop ID')
+        with self._transaction() as ledger:
+            changed = False
+            records = []
+            for record in ledger['records']:
+                if record['envelope'].get('run_id') != run_id:
+                    continue
+                if record['state'] == 'queued':
+                    record['stop_id'] = stop_id
+                    self._event(record, 'cancelled')
+                    changed = True
+                elif record['state'] in ACTIVE and record['state'] != 'cancelling':
+                    record['stop_id'] = stop_id
+                    record['cancellation'] = {'status': 'requested', 'at': time.time(),
+                                              'remote_compute': 'unverified'}
+                    self._event(record, 'cancelling')
+                    changed = True
+                records.append(deepcopy(record))
+            if changed:
+                self._write(ledger)
+            return records
+
+    def for_identity(self, instance):
+        identity = _seat(instance)
+        with self._transaction() as ledger:
+            return deepcopy([r for r in ledger['records'] if r['envelope']['target_identity_id'] == identity])
+
+    def cancellation_receipt(self, instance, dispatch_id, consumer_id, status, *, remote_compute='unverified'):
+        identity = _seat(instance)
+        _identifier(dispatch_id, 'Dispatch ID')
+        _identifier(consumer_id, 'Consumer ID')
+        if status not in ('delivered', 'local_ended', 'unsupported', 'unresolved') or remote_compute != 'unverified':
+            raise ValueError('Unsupported cancellation evidence.')
+        with self._transaction() as ledger:
+            record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
+            if (not record or record['envelope']['target_identity_id'] != identity
+                    or record['consumer_id'] != consumer_id):
+                raise QueueAccessError('Cancellation is not owned by this seat and consumer.')
+            if record['state'] == 'cancelled' and record.get('cancellation', {}).get('status') == status:
+                return deepcopy(record)
+            if record['state'] != 'cancelling':
+                raise QueueConflict('No cancellation is pending for this dispatch.')
+            if record.get('cancellation', {}).get('status') == status:
+                return deepcopy(record)
+            record['cancellation'] = {'status': status, 'at': time.time(), 'remote_compute': remote_compute}
+            record.setdefault('cancellation_receipts', []).append(deepcopy(record['cancellation']))
+            if status == 'local_ended':
+                self._event(record, 'cancelled')
+            self._write(ledger)
+            return deepcopy(record)
 
     def status(self):
         with self._transaction() as ledger:

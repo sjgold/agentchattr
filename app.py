@@ -244,7 +244,7 @@ def _install_security_middleware(token: str, cfg: dict):
             # Allow registered agents to authenticate via Bearer token
             # for /api/messages and /api/send (no browser session needed).
             auth_header = request.headers.get("authorization", "")
-            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send", "/api/queue/claim", "/api/queue/ack", "/api/queue/release", "/api/queue/uncertain") or path.startswith(("/api/rules/", "/api/review-briefs/")) or _re.fullmatch(r'/api/sessions/[0-9]+/event', path)):
+            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send", "/api/queue/claim", "/api/queue/ack", "/api/queue/release", "/api/queue/uncertain", "/api/queue/cancel") or path.startswith(("/api/rules/", "/api/review-briefs/")) or _re.fullmatch(r'/api/sessions/[0-9]+/event', path)):
                 bearer = auth_header[7:].strip()
                 if _self.registry and _self.registry.resolve_token(bearer):
                     return await call_next(request)
@@ -861,6 +861,17 @@ async def _handle_new_message(msg: dict):
     msg_type = msg.get("type", "chat")
     sender = msg.get("sender", "")
     channel = msg.get("channel", "general")
+    routing_scope = {}
+    if session_engine and registry:
+        instance = registry.get_instance(sender)
+        if instance:
+            try:
+                routing_scope = session_engine.chat_scope(instance, (msg.get('metadata') or {}).get('dispatch_id'))
+            except (ValueError, PermissionError, OSError):
+                routing_scope = {'routing_suppressed': True}
+    if (msg.get('metadata') or {}).get('routing_suppressed') or routing_scope.get('routing_suppressed'):
+        await broadcast(msg)
+        return
 
     # Track last active channel for leave/join messages (skip system messages)
     global _last_active_channel
@@ -1058,7 +1069,12 @@ async def _handle_new_message(msg: dict):
         if not mcp_bridge.is_online(target):
             store.add("system", f"{target} appears offline — message queued.", msg_type="system", channel=channel)
         if agents.is_available(target):
-            await agents.trigger(target, message=chat_msg, channel=channel, prompt=custom_prompt)
+            from dispatch_queue import QueueConflict
+            try:
+                await agents.trigger(target, message=chat_msg, channel=channel, prompt=custom_prompt,
+                    **{key: routing_scope[key] for key in ('run_id', 'turn_id', 'attempt_id', 'input_revision') if key in routing_scope})
+            except QueueConflict:
+                pass  # A Stop committed after callback scheduling; retain chat without dispatch.
 
 
 # --- broadcasting ---
@@ -1765,9 +1781,23 @@ async def api_send(request: Request):
     if job_id is not None:
         if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id <= 0:
             return JSONResponse({'error': 'job_id must be a positive integer'}, status_code=400)
-        msg = jobs.add_message(job_id, sender, text)
+        if session_engine:
+            try:
+                msg = session_engine.send_chat(inst, text, dispatch_id=body.get('dispatch_id'), channel=channel,
+                    publish=lambda value, scope: jobs.add_message(job_id, sender, value,
+                        msg_type='quarantine' if scope.get('routing_suppressed') else 'chat'))
+            except (ValueError, PermissionError):
+                return JSONResponse({'error': 'Chat dispatch scope does not belong to this seat.'}, status_code=403)
+        else:
+            msg = jobs.add_message(job_id, sender, text)
         return JSONResponse(msg) if msg is not None else JSONResponse({'error': 'job not found'}, status_code=404)
-    msg = store.add(sender, text, channel=channel)
+    if session_engine:
+        try:
+            msg = session_engine.send_chat(inst, text, dispatch_id=body.get('dispatch_id'), channel=channel)
+        except (ValueError, PermissionError):
+            return JSONResponse({'error': 'Chat dispatch scope does not belong to this seat.'}, status_code=403)
+    else:
+        msg = store.add(sender, text, channel=channel)
     return JSONResponse(msg)
 
 
@@ -1790,8 +1820,9 @@ async def dispatch_operation(operation: str, request: Request):
             raise ValueError('Transport receipt is too large.')
         body = json.loads(raw)
         fields = {'consumer_id'} if operation == 'claim' else {'consumer_id', 'dispatch_id'}
-        allowed = fields | ({'failed', 'error_category'} if operation == 'release' else set())
-        if (operation not in {'claim', 'ack', 'release', 'uncertain'}
+        allowed = fields | ({'failed', 'error_category'} if operation == 'release' else
+                            {'status'} if operation == 'cancel' else set())
+        if (operation not in {'claim', 'ack', 'release', 'uncertain', 'cancel'}
                 or not isinstance(body, dict) or not fields <= body.keys()
                 or body.keys() - allowed or not isinstance(body.get('failed', False), bool)):
             raise ValueError('Invalid transport receipt fields; session results are not accepted here.')
@@ -1801,6 +1832,8 @@ async def dispatch_operation(operation: str, request: Request):
         queue = agents.queue
         if operation == 'claim':
             result = queue.claim(instance, body['consumer_id'])
+        elif operation == 'cancel':
+            result = queue.cancellation_receipt(instance, body['dispatch_id'], body['consumer_id'], body.get('status'))
         else:
             method = {'ack': queue.acknowledge, 'release': queue.release, 'uncertain': queue.uncertain}[operation]
             extra = {'failed': body.get('failed', False), 'error': category} if operation == 'release' else {}
@@ -2843,16 +2876,47 @@ async def recover_session_projection(session_id: int):
         return _session_event_error(exc)
 
 
+@app.post('/api/sessions/{session_id}/stop')
 @app.post("/api/sessions/{session_id}/end")
 async def end_session(session_id: int):
+    from turn_events import EventConflict
     if not session_engine:
         return JSONResponse({"error": "sessions not configured"}, status_code=500)
-    session = session_engine.end_session(session_id)
+    try:
+        session = await asyncio.to_thread(session_engine.end_session, session_id)
+    except (EventConflict, OSError) as exc:
+        return _session_event_error(exc)
     if not session:
         return JSONResponse({"error": "session not found or already ended"}, status_code=404)
 
     # Banner is added by _on_session_change("interrupt", ...) callback
     return JSONResponse(session)
+
+
+@app.get('/api/sessions/{session_id}/stop-status')
+async def session_stop_status(session_id: int):
+    value = await asyncio.to_thread(session_engine.stop_status, session_id, api_seat_manager)
+    return JSONResponse(value) if value else JSONResponse({'error': 'Session not found.'}, status_code=404)
+
+
+@app.post('/api/sessions/{session_id}/terminate-seat')
+async def terminate_session_seat(session_id: int, request: Request):
+    from api_seats import SeatError
+    from turn_events import EventConflict
+    try:
+        body = await _seat_body(request)
+        if (set(body) != {'dispatch_id', 'launch_attempt', 'confirm'} or body['confirm'] is not True
+                or not isinstance(body['dispatch_id'], str) or not isinstance(body['launch_attempt'], str)):
+            return JSONResponse({'error': 'Confirm the exact owned launch and dispatch before terminating its persistent context.'}, status_code=400)
+        if api_seat_manager is None:
+            raise SeatError('Owned CLI runtime unavailable.')
+        result = await asyncio.to_thread(session_engine.terminate_seat, session_id,
+            body['dispatch_id'], body['launch_attempt'], api_seat_manager)
+        return JSONResponse(result)
+    except (SeatError, EventConflict) as exc:
+        return JSONResponse({'error': str(exc)}, status_code=409)
+    except OSError:
+        return JSONResponse({'error': 'Termination evidence could not be persisted. Ownership remains unresolved.'}, status_code=503)
 
 
 @app.post("/api/sessions/request-draft")

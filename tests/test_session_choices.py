@@ -155,7 +155,8 @@ class SessionChoiceTests(unittest.TestCase):
         engine.end_session(1)
         with self.assertRaises(EventConflict):
             self.submit()
-        assert sessions.get(1)['state'] == 'interrupted'
+        assert sessions.get(1)['state'] == 'stopping'
+        assert sessions.get(1)['dispatch_eligible'] is False
         assert trigger.trigger_sync.call_count == 1
 
     def test_fast_choice_answer_never_completes_a_pre_question_status(self):

@@ -181,6 +181,8 @@ class SessionStore:
                 "active_invocation": None,
                 "admitted_events": [],
                 "continuation_context": [],
+                "dispatch_eligible": True,
+                "quarantined_events": [],
             }
             self._next_id += 1
             self._sessions.append(session)
@@ -264,6 +266,35 @@ class SessionStore:
             session['state'] = 'waiting'
             session['waiting_on'] = envelope['expected_agent']
         return self._event_update(session_id, bind)
+
+    def stop_run(self, session_id, reason):
+        import uuid
+        def stop(session):
+            if session.get('dispatch_eligible') is False:
+                return
+            session.update(dispatch_eligible=False, stop_id=uuid.uuid4().hex,
+                           stopped_at=time.time(), stop_reason=reason, state='stopping')
+        return self._event_update(session_id, stop)
+
+    def stop_outcome(self, session_id, state, receipts):
+        from turn_events import EventConflict
+        def update(session):
+            if session.get('dispatch_eligible') is not False:
+                raise EventConflict('This run has no Stop fence.')
+            session.update(state=state, cancellation_receipts=deepcopy(receipts))
+        return self._event_update(session_id, update)
+
+    def quarantine_event(self, session_id, event, instance):
+        def quarantine(session):
+            record = deepcopy(event)
+            record.update(quarantined_at=time.time(), provenance=event.get('provenance', 'authenticated_seat'),
+                          expected_identity_id=instance['identity_id'], reason='stopped_run')
+            records = session.setdefault('quarantined_events', [])
+            records.append(record)
+            while len(records) > 64 or sum(len(e['content'].encode('utf-8')) for e in records) > 8 * 1024 * 1024:
+                records.pop(0)
+                session['quarantine_evicted'] = session.get('quarantine_evicted', 0) + 1
+        return self._event_update(session_id, quarantine)
 
     def admit_event(self, session_id, event, instance, *, human=False):
         from turn_events import EventConflict, EventAccessError, IDENTITY_FIELDS, validate_content

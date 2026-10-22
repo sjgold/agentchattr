@@ -255,13 +255,16 @@ class Receipt:
             self.value['updated_at'] = time.time()
             atomic_json(self.path, self.value)
 
-    def watch_for_stop(self):
+    def watch_for_stop(self, on_stop=None):
         import threading
         def watch():
             while True:
                 try:
                     control = json.loads(self.path.with_name('stop.json').read_text('utf-8'))
                     if control.get('attempt') == self.attempt:
+                        if on_stop is not None:
+                            on_stop()
+                            return
                         try:
                             self.update(state='stopped', adapter_connected=False)
                         finally:

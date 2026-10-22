@@ -31,6 +31,9 @@ class QueueClient:
     def uncertain(self, dispatch_id):
         return self._request('uncertain', dispatch_id=dispatch_id)
 
+    def cancellation_receipt(self, dispatch_id, status):
+        return self._request('cancel', dispatch_id=dispatch_id, status=status)
+
 
 class CliConsumer:
     def __init__(self, client, inject, prompt):
@@ -43,6 +46,11 @@ class CliConsumer:
             return
         envelope = record['envelope']
         dispatch_id = envelope['dispatch_id']
+        if record.get('state') == 'cancelling':
+            # Generic native consoles have no verified per-turn interrupt.
+            # Keep the persistent process alive and never inject a new prompt.
+            self.client.cancellation_receipt(dispatch_id, 'unsupported')
+            return
         if dispatch_id == self.last_injected_dispatch_id:
             return
         # Set before injection. An exception may mean partial keystroke delivery.

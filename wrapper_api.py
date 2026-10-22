@@ -57,6 +57,7 @@ def main():
     managed_args, _ = preparse.parse_known_args()
     managed = None
     receipt = None
+    shutdown = threading.Event()
     if managed_args.seat_file:
         from api_seats import Receipt, validate_seat
         managed = json.loads(Path(managed_args.seat_file).read_text('utf-8'))
@@ -67,7 +68,7 @@ def main():
                            'api_key_env': managed['seat']['secret_ref']}}
         receipt = Receipt(Path(managed_args.seat_file).with_name('receipt.json'), managed['attempt'])
         receipt.update()
-        receipt.watch_for_stop()
+        receipt.watch_for_stop(on_stop=shutdown.set)
     agent_names = list(config.get("agents", {}).keys())
     api_agents = [n for n in agent_names if config["agents"][n].get("type") == "api"]
 
@@ -165,7 +166,7 @@ def main():
     # Heartbeat thread — same pattern as wrapper.py
     last_heartbeat = [time.monotonic()]
     def _heartbeat():
-        while True:
+        while not shutdown.is_set():
             try:
                 n = get_name()
                 t = get_token()
@@ -198,8 +199,8 @@ def main():
                 receipt.update(state='failed', adapter_connected=False,
                                error='Local server connection lost. Restart this seat from pre-flight.')
                 # Do not keep a managed child when its server stays unreachable.
-                os._exit(1)
-            time.sleep(5)
+                shutdown.set()
+            shutdown.wait(5)
 
     threading.Thread(target=_heartbeat, daemon=True).start()
 
@@ -248,8 +249,10 @@ def main():
             return json.loads(resp.read())
 
     # Send message back to chat
-    def send_message(text, channel="general", job_id=None):
+    def send_message(text, channel="general", job_id=None, dispatch_id=None):
         payload = {"text": text, "channel": channel}
+        if dispatch_id:
+            payload['dispatch_id'] = dispatch_id
         if job_id is not None:
             payload["job_id"] = job_id
         body = json.dumps(payload).encode()
@@ -263,15 +266,21 @@ def main():
             return json.loads(resp.read())
 
     # Call OpenAI-compatible chat completions API
-    def call_model(messages):
+    def call_model(messages, dispatch_id):
+        from api_invocation import run_completion, InvocationFailure
+        def cancelled():
+            if shutdown.is_set():
+                return True
+            current = queue.claim()
+            return bool(current and current['envelope']['dispatch_id'] == dispatch_id
+                        and current['state'] == 'cancelling')
         if managed:
-            from api_seats import request_completion
             try:
-                result = request_completion(managed['seat'], managed['provider'], messages)
-            except Exception as exc:
-                auth_failure = isinstance(exc, urllib.error.HTTPError) and exc.code in (401, 403)
-                diagnostic = (f'Provider returned HTTP {exc.code}. Check provider settings/limits and retry this seat.'
-                              if isinstance(exc, urllib.error.HTTPError) else
+                result = run_completion(managed['seat'], managed['provider'], messages, cancelled)
+            except InvocationFailure as exc:
+                auth_failure = exc.http_status in (401, 403)
+                diagnostic = (f'Provider returned HTTP {exc.http_status}. Check provider settings/limits and retry this seat.'
+                              if exc.http_status else
                               'Provider request failed, timed out or returned invalid text. Check provider availability/settings and retry this seat.')
                 receipt.update(state='action_required' if auth_failure else 'failed',
                                authentication='failed' if auth_failure else receipt.value['authentication'],
@@ -280,22 +289,11 @@ def main():
             receipt.update(confirmed_model=result['confirmed_model'], authentication='verified',
                            state='ready', error=None)
             return result['content']
-        url = f"{base_url}/chat/completions"
-        payload = {"messages": messages}
-        if model:
-            payload["model"] = model
-        if temperature is not None:
-            payload["temperature"] = temperature
-        body = json.dumps(payload).encode()
-
-        headers = {"Content-Type": "application/json"}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
-
-        req = urllib.request.Request(url, method="POST", data=body, headers=headers)
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read())
-        return data["choices"][0]["message"]["content"]
+        seat = {'id': 'compatibility', 'name': get_name(), 'provider': 'compatibility',
+                'adapter': 'openai-compatible', 'model': model or None, 'reasoning': None,
+                'launch_profile': 'standard', 'secret_ref': api_key_env}
+        result = run_completion(seat, {'base_url': base_url, 'temperature': temperature}, messages, cancelled)
+        return result['content']
 
     # Format chat messages into OpenAI format
     def format_messages(chat_msgs):
@@ -327,11 +325,15 @@ def main():
         return messages
 
     last_failure_category = ['']
+    last_cancelled = [False]
+    unresolved_dispatches = set()
 
     # Handle a trigger — read context, call model, respond
     def handle_trigger(channel="general", review_brief_id=None, prompt='', frozen=False, job_id=None, dispatch_id=None):
         from turn_events import EventValidationError
+        from api_invocation import InvocationCancelled
         last_failure_category[0] = ''
+        last_cancelled[0] = False
         my_name = get_name()
         set_working(True)
         try:
@@ -357,7 +359,7 @@ def main():
                     messages.insert(1, {'role': 'system', 'content': prompt})
             print(f"  [{channel}] Calling model with {len(messages)} messages...")
 
-            response = call_model(messages)
+            response = call_model(messages, dispatch_id)
             response = response.strip()
             if not response:
                 return False
@@ -399,9 +401,23 @@ def main():
                     response = response[len(prefix):]
                     break
 
-            send_message(response, channel=channel, job_id=job_id)
+            send_message(response, channel=channel, job_id=job_id, dispatch_id=dispatch_id)
             print(f"  [{channel}] Responded ({len(response)} chars)")
             return True
+        except InvocationCancelled as exc:
+            last_cancelled[0] = True
+            if not exc.local_ended:
+                unresolved_dispatches.add(dispatch_id)
+            if not shutdown.is_set():
+                current = queue.claim()
+                if current and current['state'] == 'cancelling':
+                    queue.cancellation_receipt(dispatch_id, 'local_ended' if exc.local_ended else 'unresolved')
+                elif not exc.local_ended:
+                    queue.uncertain(dispatch_id)
+            if receipt:
+                receipt.update(state='ready' if exc.local_ended else 'action_required',
+                               error=None if exc.local_ended else 'Local invocation termination is unresolved.')
+            return False
         except Exception as exc:
             malformed = isinstance(exc, EventValidationError)
             last_failure_category[0] = ('malformed_session_response' if malformed else
@@ -435,19 +451,30 @@ def main():
     print(f"  Ctrl+C to stop\n")
 
     try:
-        while True:
+        while not shutdown.is_set():
             try:
                 record = queue.claim()
                 if record:
                     entry = record['envelope']
                     dispatch_id = entry['dispatch_id']
+                    if dispatch_id in unresolved_dispatches and record['state'] != 'cancelling':
+                        queue.uncertain(dispatch_id)
+                        time.sleep(.2)
+                        continue
+                    if record['state'] == 'cancelling':
+                        # Prior unproven cleanup remains unresolved; absence
+                        # of a current call does not prove that child ended.
+                        queue.cancellation_receipt(dispatch_id, 'unresolved' if dispatch_id in unresolved_dispatches else 'local_ended')
+                        time.sleep(.2)
+                        continue
                     if dispatch_id != processed_dispatch:
                         queue.acknowledge(dispatch_id)
                         processed_ok = handle_trigger(channel=entry.get('channel', 'general'),
                             review_brief_id=entry.get('review_brief_id'),
                             frozen='review_brief_id' in entry, prompt=entry.get('prompt', ''), job_id=entry.get('job_id') or None, dispatch_id=dispatch_id)
                         processed_dispatch = dispatch_id
-                    queue.release(dispatch_id, failed=not processed_ok, error_category=last_failure_category[0])
+                    if not last_cancelled[0]:
+                        queue.release(dispatch_id, failed=not processed_ok, error_category=last_failure_category[0])
             except Exception as exc:
                 print(f'  Queue delivery held ({type(exc).__name__}); dispatch retained without model replay.')
 
@@ -455,6 +482,7 @@ def main():
     except KeyboardInterrupt:
         print("\n  Shutting down...")
     finally:
+        shutdown.set()
         if receipt:
             receipt.update(state='stopped', adapter_connected=False)
         try:

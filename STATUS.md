@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 published/closed; #10 reliable Stop contract planning)
+**Updated:** 2026-10-22 (autonomous continuation authorized; autonomous run; #1-8 published/closed; #10 builder verification passed; independent review pending)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -13,7 +13,7 @@
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
 - Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
 - Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
-- Durable run tracking: `AUTONOMOUS-RUN.md`. Active implementation: #10 reliable Stop contract planning, `TICKET-10-PLAN.md`. Historical receipts keep their original approval language as dated evidence.
+- Durable run tracking: `AUTONOMOUS-RUN.md`. Active implementation: #10 reliable Stop, `TICKET-10-PLAN.md`. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
 
@@ -119,6 +119,16 @@
 - A lost GLM turn/participant must expose retry, recover delivered answer, replace, skip, or stop without losing completed work. Deadlines and receipt states must be visible.
 - Seth reported a freeze and GLM re-submission; its root cause has not been reproduced. The source caps are verified separately. Acceptance IDs AT-01 through AT-22 remain; AT-21 now has four explicit subcases covering API failure, poll batching, result recovery, and participant loss. No implementation changes.
 
+## Ticket #10 implementation and builder verification
+
+- Same AGY ratified the coordinator ordering and owned API invocation child after HTTP/TLS probes showed socket shutdown did not end request threads within ten seconds. Root reproduced the result; child termination ended local work while parent/provider health survived. Remote provider compute remains unverified. Plan/evidence: `TICKET-10-PLAN.md`, reproducible `tools/probe_http_cancellation.py`.
+- Implemented durable Stop fence, scoped queue cancellation/receipts, coordinated Start/claim/enqueue/admission, typed and ordinary late-output quarantine, explicit owned CLI termination and operator Stop/evidence UI. Generic CLI reports unsupported, then unresolved at ten seconds without another injection or automatic process kill. Missing child-exit proof retains unresolved ownership. Static credentials cannot assign old untagged output a verified new scope.
+- Final builder suite: **350 tests OK, four expected Unix/tmux skips**, 17.169s. Helper's14 real-store tests and root runner/routing/transport/termination cases were observed red before implementation. Initial suite333 had one outdated End-state assertion, migrated to stopping plus persistent ineligibility. Real middleware integration caught cancellation-receipt403; reproduced and fixed the exact bearer allowlist entry. Additional red tests cover unproven child cleanup, Start-versus-Stop serialization, legacy conflict and refresh visibility.
+- Actual mixed Stop integration passed on helper and root. Final root `session stop integration b_g7l1hb`: API local end175.646ms before delayed provider progress, prior accepted result1/source retained, CLI unsupported then actual ten-second unresolved with one injection, quarantine/no cascades, fresh tagged discussion, peer completion, stale termination409, confirmed owned termination and reloaded fences. All six earlier integration scripts also passed; final runner changes were rerun through Stop, API-seat and explicit-session checks. Syntax/compile/whitespace pass. No external provider/native client/Omarchy or installation acceptance.
+- Browser verified actual unresolved CLI evidence/quarantine and opened/cancelled the separate termination confirmation. Human-only session4 exercised keyboard Stop plus confirmation, reached stopped/ineligible and retained that state through reload. Inspected desktop and390px screenshots; scoped panel390/scroll390, font14, text contrast9.33:1. Whole-chat body width713 is inherited overflow, so no whole-chat mobile pass. Actual confirmed CLI termination was exercised by HTTP integration, not by the browser. Browser/server fixtures stopped; markers cleaned.
+- Design triage: scoped panel uses existing product styles with readable spacing/focus. No new suppressions. Inherited shared-page low contrast, small text, padding and glow findings remain standing; index.html changes only the Stop label and static/style.css is unchanged. Guide overlay was dismissed before screenshots.
+- **Independent implementation review pending**, same AGY only. Review pack `TICKET-10-REVIEW.md`, user guide `STOPPING-REVIEWS.md`. #10 is not published or closed. #9 full restart reconciliation remains deferred.
+
 ## Ticket execution and review
 
 - [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1) is closed after Meta source/plan review, documentation corrections and Seth's final sign-off. Ticket #2 passed independent review and received Seth's final sign-off; reviewed branch is fast-forward merged and published on origin/main; GitHub issue #2 is confirmed closed as completed.
@@ -127,21 +137,21 @@
 
 ## Next step
 
-**Action:** Settle #10 run-scoped Stop, cancellation evidence, routing fences and late-output quarantine contract in `TICKET-10-PLAN.md`, with same AGY pressure-test before implementation. #10's only blocker #8 is closed. #9 full restart reconciliation remains deferred by milestone order.
-**Who:** Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` owns the next move: return #10 contract critique (requested with expectReply:true); that reply resumes Codex implementation. It remains the final reviewer. Test-only helper remains `fcc36344-f0ca-4514-9288-74753be75947` on Codex gpt-6-sol/medium. No routine human approval is pending.
+**Action:** Same AGY independently reviews the frozen #10 implementation and reproduces Stop plus regressions using `TICKET-10-REVIEW.md`. Codex addresses findings and requests substantive recheck, then publishes/closes only after PASS. #9 remains deferred by first-milestone order.
+**Who:** Same Antigravity reviewer `ec1fbcd1-4a02-410e-9029-e498f67918c8` owns the next review; its response resumes Codex. Test-only helper `fcc36344-f0ca-4514-9288-74753be75947` completed store/integration evidence and remains separate from final review. No routine human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-10-stop, base main `3bb4357`. #1-8 published and closed; #10 proposed contract only, no production edits.
+- **Branch:** codex/ticket-10-stop, base main `3bb4357`. #1-8 published and closed; #10 builder verified, independent implementation review pending; not published.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8 including explicit result/question admission, durable projection and operator continuation/human controls. Same AGY PASS, post-merge315 tests OK (four skips), all six isolated integrations passed. Actual invocation cancellation remains #10. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #10 reliable Stop contract planning. #1-8 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #10 frozen review preparation. Builder350 tests/four skips, mixed Stop integration, regressions and scoped browser checks pass; same AGY implementation review remains pending. #1-8 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 

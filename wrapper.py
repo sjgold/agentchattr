@@ -489,6 +489,7 @@ def _queue_watcher(get_identity_fn, inject_fn, *, is_multi_instance: bool = Fals
                 text += ' RULES: ' + '; '.join(rules['rules'])
         # Explicit routing belongs to this envelope, including custom prompts.
         text += f" Dispatch channel: #{channel}."
+        text += f" Include dispatch_id='{entry['dispatch_id']}' in every chat_send reply for this work."
         if entry.get('job_id'):
             text += f" Read and reply in job_id={entry['job_id']}."
         text += (f" After finishing this dispatch, call chat_queue_release(dispatch_id='{entry['dispatch_id']}'). "

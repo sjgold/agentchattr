@@ -27,6 +27,9 @@ class SessionEngine:
         self._registry = registry
         self._rules = rules_store
         self._lock = threading.RLock()
+        if agent_trigger is not None and hasattr(agent_trigger, 'queue'):
+            from queue_coordinator import CoordinatedQueue
+            self._trigger.queue = CoordinatedQueue(agent_trigger.queue, self._store, self._lock)
 
         # Hook into message stream
         self._messages.on_message(self._on_message)
@@ -35,6 +38,10 @@ class SessionEngine:
 
     def start_session(self, template_id: str, channel: str, cast: dict,
                       started_by: str, goal: str = "", input_text: str = "") -> dict | None:
+        with self._lock:
+            return self._start_session(template_id, channel, cast, started_by, goal, input_text)
+
+    def _start_session(self, template_id, channel, cast, started_by, goal, input_text):
         """Start a new session. Returns the session dict or None on failure."""
         bindings = {}
         if isinstance(cast, dict):
@@ -94,17 +101,127 @@ class SessionEngine:
         )
 
     def end_session(self, session_id: int, reason: str = "ended by user") -> dict | None:
-        """End a session early."""
-        session = self._store.interrupt(session_id, reason)
-        if session:
-            log.info("Session %d interrupted: %s", session_id, reason)
-        return session
+        return self.stop_session(session_id, reason)
+
+    def stop_session(self, session_id, reason='stopped by user'):
+        with self._lock:
+            if self._store.get(session_id) is None:
+                return None
+            session = self._store.stop_run(session_id, reason)
+            self._trigger.queue.cancel_run(session['run_id'], session['stop_id'])
+            return session
+
+    def reconcile_stops(self, now=None):
+        now = time.time() if now is None else now
+        with self._lock:
+            for session in self._store.list_all():
+                if session.get('dispatch_eligible') is not False:
+                    continue
+                records = self._trigger.queue.cancel_run(session['run_id'], session['stop_id'])
+                held = [r for r in records if r['state'] == 'cancelling']
+                state = ('stopped' if not held else 'unresolved'
+                         if now >= session['stopped_at'] + 10 else 'stopping')
+                receipts = [{'dispatch_id': r['envelope']['dispatch_id'], 'state': r['state'],
+                    'seat_identity_id': r['envelope']['target_identity_id'],
+                    'evidence': r.get('cancellation', {'status': r['state'], 'remote_compute': 'unverified'})}
+                    for r in records]
+                if session['state'] != state or session.get('cancellation_receipts') != receipts:
+                    self._store.stop_outcome(session['id'], state, receipts)
+
+    def chat_scope(self, instance, dispatch_id=None):
+        """Derive routing authority from the actual seat, never client run IDs."""
+        from dispatch_queue import QueueAccessError
+        with self._lock:
+            instance = self._live_instance(instance)
+            stopped = {s['run_id']: s for s in self._store.list_all() if s.get('dispatch_eligible') is False}
+            if dispatch_id is not None:
+                if not isinstance(dispatch_id, str) or not dispatch_id:
+                    raise QueueAccessError('Chat needs a valid owned dispatch ID.')
+                record = self._trigger.queue.owned(instance, dispatch_id)
+                envelope = record['envelope']
+                metadata = {key: envelope[key] for key in ('dispatch_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision') if key in envelope}
+                metadata['seat_identity_id'] = instance['identity_id']
+                metadata['provenance'] = 'authenticated_dispatch'
+                run = stopped.get(envelope.get('run_id'))
+                if run:
+                    metadata.update(routing_suppressed=True, quarantine_session_id=run['id'])
+                return metadata
+            records = self._trigger.queue.for_identity(instance)
+            run = next((stopped[r['envelope']['run_id']] for r in reversed(records)
+                        if r['envelope'].get('run_id') in stopped), None)
+            return ({'routing_suppressed': True, 'provenance': 'unverified_scope',
+                     'seat_identity_id': instance['identity_id'], 'quarantine_session_id': run['id']}
+                    if run else {'seat_identity_id': instance['identity_id']})
+
+    def stop_status(self, session_id, manager=None):
+        with self._lock:
+            self.reconcile_stops()
+            session = self._store.get(session_id)
+            if not session:
+                return None
+            offers = []
+            if manager and session.get('dispatch_eligible') is False:
+                records = self._trigger.queue.cancel_run(session['run_id'], session['stop_id'])
+                for record in records:
+                    if record['state'] != 'cancelling':
+                        continue
+                    offer = manager.termination_offer(record['envelope']['target_identity_id'])
+                    if offer:
+                        offers.append(dict(offer, dispatch_id=record['envelope']['dispatch_id']))
+            session['termination_offers'] = offers
+            return self._enrich(session)
+
+    def terminate_seat(self, session_id, dispatch_id, launch_attempt, manager):
+        from turn_events import EventConflict
+        with self._lock:
+            session = self._store.get(session_id)
+            if not session or session.get('dispatch_eligible') is not False:
+                raise EventConflict('Stop this run before requesting owned seat termination.')
+            records = self._trigger.queue.cancel_run(session['run_id'], session['stop_id'])
+            record = next((r for r in records if r['envelope']['dispatch_id'] == dispatch_id and r['state'] == 'cancelling'), None)
+            if record is None:
+                raise EventConflict('This dispatch no longer owns a cancelling invocation.')
+            identity = record['envelope']['target_identity_id']
+            instance = next((item for item in self._registry.get_all().values() if item['identity_id'] == identity), None)
+            if instance is None:
+                raise EventConflict('The owning seat identity is no longer current.')
+            held = self._trigger.queue.for_identity(instance)
+            result = manager.terminate_owned(identity, launch_attempt)
+            for current in held:
+                if current['state'] == 'cancelling':
+                    self._trigger.queue.cancellation_receipt(instance, current['envelope']['dispatch_id'],
+                        current['consumer_id'], 'local_ended' if result['local_ended'] else 'unresolved')
+            return self.stop_status(session_id, manager)
+
+    def send_chat(self, instance, text, *, dispatch_id=None, channel='general', publish=None, **fields):
+        """Persist scoped ordinary chat or quarantined output under the fence."""
+        from turn_events import validate_content
+        with self._lock:
+            metadata = self.chat_scope(instance, dispatch_id)
+            if metadata.get('routing_suppressed'):
+                validate_content('final', text)
+                event = dict(metadata, content=text, kind='chat')
+                self._store.quarantine_event(metadata['quarantine_session_id'], event, instance)
+                if metadata.get('provenance') == 'unverified_scope':
+                    # Seat provenance is known; old/new invocation attribution
+                    # cannot be inferred from a persistent bearer alone.
+                    text = '[quarantine-warning] Unscoped output from a stopped seat: ' + text
+            if publish is not None:
+                return publish(text, metadata)
+            merged = dict(fields.pop('metadata', None) or {}, **metadata)
+            if metadata.get('routing_suppressed'):
+                fields['msg_type'] = 'quarantine'
+            return self._messages.add(instance['name'], text, channel=channel, metadata=merged, **fields)
 
     def get_active(self, channel: str) -> dict | None:
         """Get the active session for a channel, enriched with phase info."""
         session = self._store.get_active(channel)
         if not session:
-            return None
+            history = self._store.list_all(channel)
+            latest = history[-1] if history else None
+            if not latest or latest.get('dispatch_eligible') is not False:
+                return None
+            session = latest
         return self._enrich(session)
 
     def get_allowed_agent(self, channel: str) -> str | None:
@@ -117,14 +234,12 @@ class SessionEngine:
 
     def list_active(self) -> list[dict]:
         """List all active/waiting/paused sessions, enriched for the frontend."""
-        active = []
-        for session in self._store.list_all():
-            if session.get("state") in ("active", "waiting", "paused", "awaiting_input"):
-                active.append(self._enrich(session))
-        return active
+        channels = dict.fromkeys(s.get('channel', 'general') for s in self._store.list_all())
+        return [session for channel in channels if (session := self.get_active(channel)) is not None]
 
     def resume_active_sessions(self):
         """Project accepted events; adoption/replay of held work remains #9."""
+        self.reconcile_stops()
         self.recover_projections()
 
     def _is_agent(self, name: str) -> bool:
@@ -190,6 +305,17 @@ class SessionEngine:
         if human:
             event['submitted_by'] = submitted_by
         with self._lock:
+            session = self._store.get(envelope['session_id'])
+            if session and session.get('dispatch_eligible') is False:
+                from turn_events import EventConflict
+                # Immutable references and live bearer ownership were checked
+                # before this path. Forged identity overrides are not preserved.
+                if any(event[key] != envelope[key] for key in IDENTITY_FIELDS):
+                    raise EventConflict('Event references do not match its immutable brief.')
+                accepted = session.get('admitted_events', [])
+                if not human and not any(e['attempt_id'] == event['attempt_id'] or e['event_id'] == event['event_id'] for e in accepted):
+                    self._store.quarantine_event(session['id'], event, instance)
+                raise EventConflict('Run was stopped; late output was not admitted.')
             self._store.admit_event(envelope['session_id'], event, instance, human=human)
             self._project_session(envelope['session_id'])
             return {'status': 'admitted', 'event_id': event['event_id'], 'kind': kind,

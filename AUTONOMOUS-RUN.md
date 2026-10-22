@@ -15,7 +15,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-8 | Published and closed | Latest #8 publication `aee0414`, independent AGY PASS |
-| #10 reliable Stop | Contract planning | Same AGY owns contract critique; reply resumes Codex implementation |
+| #10 reliable Stop | Builder verified, independent review pending | Same AGY reviews frozen source; Codex fixes/rechecks before publication |
 | #11-12, #16 | Pending, first milestone | Follow dependencies after #10 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#1-8 are published and closed. #8 independently passed on frozen d75852a, publication aee0414; post-merge315 tests OK (four skips), all six isolated integrations passed. Next is #10 reliable Stop, whose only blocker #8 is closed. Codex wrote `TICKET-10-PLAN.md`; same AGY owns the requested contract critique (expectReply:true). Its reply resumes implementation. No #10 production edits yet. Open points are Stop linearization, invocation-scoped API cancellation, unsupported CLI evidence/termination and routing provenance/quarantine. #9 full restart reconciliation remains deferred by milestone order. Existing seat stop can terminate the whole worker, so it must not be mistaken for invocation-scoped graceful cancellation. Native/live acceptance stays outside routine scope.
+#1-8 are published and closed. #10 implementation is builder verified:350 tests OK/four skips, actual mixed Stop plus all six prior integrations pass, scoped Stop UI and keyboard confirmation/reload checked. Initial cancellation auth403 was reproduced and fixed; no assertion was weakened. Same AGY ratified the contract and now owns independent frozen implementation review; Codex resumes on findings or PASS. No #10 publication/closure yet. Review briefing TICKET-10-REVIEW.md, plan TICKET-10-PLAN.md, usage STOPPING-REVIEWS.md. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.

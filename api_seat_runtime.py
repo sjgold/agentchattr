@@ -268,6 +268,52 @@ class SeatManager:
             attempt.update(state='stopped', adapter_connected=False)
             return self._view(attempt)
 
+    def _owned_cli_identity(self, identity_id):
+        instance = next((item for item in self.registry.get_all().values()
+                         if item['identity_id'] == identity_id), None)
+        if instance:
+            for attempt in self.attempts.values():
+                if (attempt.get('base') == instance.get('base') and not attempt.get('released')
+                        and attempt['seat']['adapter'] == 'cli' and attempt.get('process')
+                        and attempt['process'].poll() is None):
+                    return attempt
+        return None
+
+    def termination_offer(self, identity_id):
+        with self.lock:
+            attempt = self._owned_cli_identity(identity_id)
+            if not attempt:
+                return None
+            return {'launch_attempt': attempt['id'], 'seat_name': attempt['seat']['name'],
+                    'impact': 'Terminates this persistent CLI context and disconnects its seat. Other queued work for this seat will need recovery.'}
+
+    def terminate_owned(self, identity_id, launch_attempt):
+        with self.lock:
+            attempt = self._owned_cli_identity(identity_id)
+            if not attempt or attempt['id'] != launch_attempt:
+                raise SeatError('Owned CLI launch changed; refresh its termination offer before confirming.')
+            # The worker owns the actual CLI process handle and must terminate
+            # that child before writing its final receipt. Killing the worker
+            # first could orphan that child, so it cannot prove local_ended.
+            atomic_json(attempt['snapshot'].with_name('stop.json'), {'attempt': attempt['id']})
+            try:
+                attempt['process'].wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                return {'local_ended': False, 'remote_compute': 'unverified'}
+            ended = False
+            try:
+                receipt = json.loads(attempt['receipt'].read_text(encoding='utf-8'))
+                ended = (attempt['process'].poll() is not None and receipt.get('attempt') == attempt['id']
+                         and receipt.get('state') == 'stopped' and type(receipt.get('child_exit_code')) is int)
+            except (OSError, ValueError):
+                pass
+            if ended:
+                attempt.update(released=True, state='stopped', adapter_connected=False)
+                for name, item in self.registry.get_all().items():
+                    if item.get('base') == attempt.get('base'):
+                        self.registry.deregister(name)
+            return {'local_ended': ended, 'remote_compute': 'unverified'}
+
     def shutdown(self):
         self.closed.set()
         with self.lock:
