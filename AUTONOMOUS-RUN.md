@@ -14,9 +14,9 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 | Work | State | Next owner/action |
 | --- | --- | --- |
-| #1-8 | Published and closed | Latest #8 publication `aee0414`, independent AGY PASS |
-| #10 reliable Stop | Independent PASS, locally merged | Codex publishes and closes, then #11 contract planning |
-| #11-12, #16 | Pending, first milestone | Follow dependencies after #10 |
+| #1-8, #10 | Published and closed | Latest #10 publication `10f75e3`, independent AGY PASS |
+| #11 corrected-document clean restart | Next eligible | Codex bounded plan, same AGY contract critique |
+| #12, #16 | Pending, first milestone | Follow dependencies after #11 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
 
@@ -29,4 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#1-8 are published and closed. #10 implementation is builder verified:350 tests OK/four skips, actual mixed Stop plus all six prior integrations pass, scoped Stop UI and keyboard confirmation/reload checked. Initial cancellation auth403 was reproduced and fixed; no assertion was weakened. Frozen target `eeb90269e92d89d294550d029e1861617caf07bb`. Same AGY independently passed350 tests/four skips, all seven integrations and static checks. Main locally fast-forward merged; post-merge350 tests/four skips pass. Codex owns publication/closure, then #11 contract planning. Review briefing TICKET-10-REVIEW.md, plan TICKET-10-PLAN.md, usage STOPPING-REVIEWS.md. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.
+#1-8 and #10 are published and closed. #10 publication10f75e3, frozen sourceeeb9026, same AGY independent PASS on350 tests/four skips and all seven integrations. Post-merge350 tests/four skips/static checks pass. Receipt REVIEW-GEMINI-TICKET-10.md; usage STOPPING-REVIEWS.md. Next is #11 corrected-document clean restart (blocker #10 closed), starting with a bounded Codex plan and same AGY contract critique. No #11 production changes yet. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.

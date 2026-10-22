@@ -1,6 +1,6 @@
 # Ticket #10: stop an active review reliably
 
-**State:** Implemented and builder verified; same-AGY independent implementation PASS. Reviewed publication in progress.
+**State:** Implemented and builder verified; same-AGY independent implementation PASS. Published on main at10f75e3; issue #10 confirmed closed.
 
 **Authority:** Approved issue #10, spec v1.7 SC-1/2 and AT-06, autonomous execution amendment. Its only blocker #8 is published and closed. #9 full restart reconciliation remains deferred by first-milestone order. Base main `3bb4357`.
 
@@ -65,7 +65,7 @@ The [Python socket documentation](https://docs.python.org/3/library/socket.html#
 - [x] Test-only helper captures red scoped-stop/race/late-output regressions (14 tests, observed red then green).
 - [x] Implement durable fence, scoped queue cancellation and ingress quarantine/routing guards.
 - [x] Implement adapter evidence and bounded cancellation, plus explicit owned termination/UI.
-- [ ] Isolated real fake-client verification, frozen same-AGY review/recheck, reviewed publication/closure.
+- [x] Isolated real fake-client verification, frozen same-AGY independent PASS, reviewed publication/closure.
 
 Next owner: Codex publishes the reviewed merge and closes #10, then begins #11 contract planning. Same AGY independently passed all checks; no application fixes requested. No routine human approval is requested. Live provider usage, Desktop installation changes and native Omarchy remain outside authorization.
 
@@ -83,3 +83,5 @@ Next owner: Codex publishes the reviewed merge and closes #10, then begins #11 c
 350 tests OK/four skips (17.169s). Root mixed Stop check PASS at `session stop integration b_g7l1hb`, local end175.646ms, real unsupported CLI ten-second unresolved, exact late quarantine/no cascades, retained result1, stale termination409 and confirmed owned cleanup. Helper --serve finished PASS after real UI inspection, markers removed, all3 managed workers stopped. Six earlier integration scripts pass. Browser keyboard Stop/confirm/reload passed for a human-only run, and actual unresolved CLI termination offer opened/cancelled; mobile scoped panel390px/scroll390, text contrast9.33:1, inherited body713px overflow left standing. No new design ignores; shared inherited findings preserved. Final independent review remains pending.
 
 Independent same-AGY PASS received:350 tests/four skips, all seven integrations and static checks independently pass on eeb9026. Receipt REVIEW-GEMINI-TICKET-10.md. Local main fast-forward merge verified350 tests/four skips in17.013s. Publication/closure in progress.
+
+Published on origin/main10f75e360bcf6f6b2426b4b2c8a9f71d5477d7f3; issue #10 confirmed closed. Post-merge350 tests/four skips and static checks pass. Next #11 corrected-document clean restart; #9 remains deferred.
