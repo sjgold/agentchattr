@@ -22,4 +22,4 @@ No blocking findings were reported. Native AI clients, external providers, Linux
 
 Durable reviewer artifact: `epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-11-independent-review/index.md`. Root verified Python3.14.6 and per-file test counts14/15/2/9/1; the reviewer verified and corrected receipt metadata, unresolved-parent exception wording, prepared fresh CLI versus retained API read scope, and browser attribution before publication. These corrections change no application code or verdict.
 
-Receipt corrections are confirmed. Fast-forward merged locally; post-merge401 tests pass with four expected skips (19.547s), plus JS/diff checks. Publication and issue closure follow under standing authorization.
+Receipt corrections are confirmed. Fast-forward merged locally; post-merge401 tests pass with four expected skips (19.547s), plus JS/diff checks. Published on origin/main at `f403b590a0256a7db601aa48144c05f121c13ed1`; GitHub issue #11 confirmed closed as completed under standing authorization.

@@ -14,9 +14,9 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 | Work | State | Next owner/action |
 | --- | --- | --- |
-| #1-8, #10 | Published and closed | Latest #10 publication `10f75e3`, independent AGY PASS |
-| #11 corrected-document clean restart | Implementing | Same AGY PASS; Receipt corrected, merged401 tests pass; publication |
-| #12, #16 | Pending, first milestone | Follow dependencies after #11 |
+| #1-8, #10-11 | Published and closed | Latest #11 publication `f403b59`, same AGY PASS |
+| #12 stalled turns/retry | Planning next | Codex bounded contract; same AGY critique before implementation |
+| #16 | Pending, first milestone | Follow #12 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
 
@@ -29,6 +29,4 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-#1-8 and #10 are published and closed. #10 publication10f75e3, frozen sourceeeb9026, same AGY independent PASS on350 tests/four skips and all seven integrations. Post-merge350 tests/four skips/static checks pass. Receipt REVIEW-GEMINI-TICKET-10.md; usage STOPPING-REVIEWS.md. Current branch codex/ticket-11-clean-restart, base83aa04a. Codex wrote TICKET-11-PLAN.md; same AGY owns contract critique on context assurance, managed launch provenance, history exclusion and durable idempotent preparation. Contract ratified. Local implementation checkpoint:401 tests/four skips pass. Prepared repair, pre-spawn read fencing, fresh CLI orchestration and operator routes/UI are implemented; actual corrected integration, seven prior integrations and scoped browser checks pass. Same AGY owns final frozen review after Codex pins the implementation. Usage CORRECTING-REVIEWS.md, pack TICKET-11-REVIEW.md. Same AGY independent PASS received:401 tests/four skips, eight integrations, JS/diff. Receipt corrections and merged401-test verification pass; reviewed publication remains pending. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.
-
-Frozen #11 implementation: `78b418df887596c5f173c0126a3e52d6d144670b`. Same AGY independent PASS received; receipt correction/merged checks precede publication. No #11 push yet.
+#1-8 and #10-11 are published and closed. Latest source publication `f403b590a0256a7db601aa48144c05f121c13ed1`, #11 frozen implementation `78b418df887596c5f173c0126a3e52d6d144670b`. Same AGY independently passed401 tests/four expected platform skips and all eight integrations; post-merge401 tests/four skips pass (19.547s). Receipt metadata/scope corrections are confirmed. Receipt REVIEW-GEMINI-TICKET-11.md; usage CORRECTING-REVIEWS.md. Next: Codex plans #12, same AGY critiques its retry/ownership/deadline contract, then observed-red tests and implementation. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.

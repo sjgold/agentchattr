@@ -1,6 +1,6 @@
 # Ticket #11: correct the document and restart cleanly
 
-**State:** Builder implementation and acceptance complete. Same AGY settled Sections7/8; frozen independent implementation review is next. STATUS.md and TICKET-11-REVIEW.md carry current evidence.
+**State:** Published and closed. Same AGY independently passed frozen implementation78b418d; source publicationf403b59. STATUS.md and REVIEW-GEMINI-TICKET-11.md carry final evidence.
 
 **Authority:** Approved issue #11, spec v1.7 SC-3 and AT-07, October22 autonomous execution amendment. Its only blocker #10 is published/closed. Base main `83aa04a`. Full runtime restart adoption (#9), stalled-turn deadlines/retry (#12), worker outbox recovery in later backlog and file intake (#18) remain separate scope.
 
@@ -56,7 +56,7 @@
 - [x] Test-only helper captured real red lineage/launch/repair regressions; current unit checks pass.
 - [x] Codex implemented linked preparation, new-run isolation, bounded context preparation and child-only repair.
 - [x] Implement operator source preview/impact/blocked/restart controls and real fake-client verification.
-- [ ] Freeze, same-AGY independent review/recheck, reviewed publication and issue closure.
+- [x] Freeze, same-AGY independent PASS, reviewed publication and issue closure.
 
 Current owner: Codex finishes scoped UI/regression acceptance; test helper executes the isolated corrected integration. Same AGY owns final frozen implementation review. No native/live-provider usage is authorized by these checks. Routine human plan/completion gates remain removed.
 
@@ -107,4 +107,4 @@ Next move belongs to same AGY's contract follow-up; its response resumes Codex. 
 
 ## Current verification checkpoint
 
-401 tests pass with four expected Unix/tmux skips. Operator source/context/activation routes and UI are implemented. Actual corrected integration, seven prior integrations and scoped desktop/mobile/keyboard checks pass. Same AGY Section8 contract is settled. No independent implementation PASS or publication yet. STATUS.md carries the current owner and remaining work.
+401 tests pass with four expected Unix/tmux skips. Operator source/context/activation routes and UI are implemented. Actual corrected integration, seven prior integrations and scoped desktop/mobile/keyboard checks pass. Same AGY Section8 contract is settled. Same AGY independent PASS and publication/closure confirmed. STATUS.md carries the current owner and remaining work.
