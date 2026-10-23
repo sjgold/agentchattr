@@ -1,6 +1,6 @@
 # Ticket #13: recover saved API results without regeneration
 
-State: same-AGY contract Sections7.3/7.4 ratified. Storage, private brief authority, managed issuance and worker save-before-post are implemented and tested. Internal saved-content store admission and transport/hold components now pass unit checks; operator engine recovery, routes and UI remain pending. Final Ticket13 acceptance has not occurred.
+State: same-AGY contract Sections7.3/7.4 ratified. Storage, private brief authority, managed issuance and worker save-before-post are implemented and tested. Internal saved-content admission, transport/holds and operator engine/routes now pass component tests. Actual-worker recovery and UI remain pending. Final Ticket13 acceptance has not occurred.
 
 Base: published main2bdbc777b5ab8e254b36e54cd784a469d02720b4. Branch: codex/ticket-13-api-result-outbox. Scope authority: issue13, specificationv1.7 SC-5/AT-21c, standing autonomous execution policy in STATUS.md. Same Antigravity independent reviewer remains assigned.
 
@@ -269,3 +269,15 @@ Helper next owns only tests/test_saved_result_recovery.py,10-12 bounded real-sto
 ## Internal store and hold component evidence
 
 Root missing SessionStore ingress red1/0.056s preceded implementation. Six real-store/seal-verified payload cases pass0.345s: original revoked identity, distinct provenance/operator attribution, final/question progression, binding/fence denial and disk+memory rollback. Shared admission progression retains live-seat/human authority checks. Helper initial hold2 missing-method errors0.091s preceded implementation; final8 pass0.620s. Additional expanded release/cancelled-clear cases first ran green after production arrived, so no separate lifecycle red is claimed. Combined36 pass2.289s; full714 tests OK/four expected skips59.749s. No real HTTP/recovery/provider/GUI acceptance. Next helper freezes engine recovery tests; operator implementation follows observed missing-method red.
+
+
+## Operator HTTP and UI wiring boundary
+
+GET /api/sessions/{session_id}/saved-results returns {session_id,saved_results:[...]} with Cache-Control:no-store. POST deliver-saved-result accepts only {result_id:<32hex>} in bounded8KiB metadata; duplicate/unknown/raw-content/key/path fields are rejected. Existing browser operator middleware is required; registered worker bearers are not added to its allowlist. Server fixes submitted_by='operator'. Status/conflict/validation/IO use existing sanitized event error handling. Root route tests use actual middleware/stores, not an external server acceptance claim.
+
+UI preserves existing session styling and14px functional text. A Check saved answers action in stalled-turn controls and a Saved answers action on the existing session-start history banner open the same readonly preview panel. History entry preserves access after completion/Stop/reload without adding a history store or reviving a run. Render signed text through textContent, distinguish saved/admitted/blocked and current server reason, require explicit Deliver saved answer, and describe that no new model call occurs. Idempotent admitted replay can Check worker release when old execution remains held. Separate Refresh/Close controls; no automatic delivery/Retry/seat replacement. Channel changes cancel stale preview requests. Use existing tokens and normal keyboard-accessible controls, inspect desktop390px together once and confirm fixes once. Source/native proof and real browser claims remain separate.
+
+
+## Engine/HTTP component evidence
+
+Helper initial2 engine errors0.174s preceded production. Extended12 pass2.495s after two fixture corrections (reconcile Stop before corrected restart; compare parsed CRLF text exactly rather than against JSON escapes). Actual sealed stores/engine/queue cover original identity without registry revival, question/final, current fences versus exact admitted replay, hold ordering/other successor, five concurrent calls, ACK and projection gaps, tamper and IO. Root operator routes4 pass0.430s after missing-handler red1/0.084s, using real middleware and stores; registered agent bearer is denied. Combined23 pass3.445s; full730 tests OK/four expected skips63.750s. No actual HTTP server/native recovery or browser claims yet. Next bounded integration draft and frontend wiring, then frozen independent review.

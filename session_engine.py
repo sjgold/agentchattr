@@ -1057,6 +1057,14 @@ class SessionEngine:
             return {'status': 'admitted', 'event_id': event['event_id'], 'kind': kind,
                     'session_id': envelope['session_id']}
 
+    def saved_results(self, session_id):
+        from result_recovery import saved_results
+        return saved_results(self, session_id)
+
+    def deliver_saved_result(self, session_id, result_id, *, submitted_by='operator'):
+        from result_recovery import deliver_saved_result
+        return deliver_saved_result(self, session_id, result_id, submitted_by=submitted_by)
+
     def human_result(self, session_id, brief_id, content, submitted_by='user'):
         from turn_events import EventAccessError, EventValidationError
         from review_brief import BriefError

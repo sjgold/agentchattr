@@ -3052,6 +3052,45 @@ async def session_recovery_status(session_id: int):
         return _restart_error(exc)
 
 
+@app.get('/api/sessions/{session_id}/saved-results')
+async def get_saved_session_results(session_id: int):
+    from turn_events import EventConflict, EventValidationError
+    try:
+        if session_engine is None:
+            return JSONResponse({'error': 'Session recovery is unavailable.'}, status_code=503)
+        values = await asyncio.to_thread(session_engine.saved_results, session_id)
+        return JSONResponse({'session_id': session_id, 'saved_results': values}, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, OSError) as exc:
+        return _session_event_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/deliver-saved-result')
+async def deliver_saved_session_result(session_id: int, request: Request):
+    from turn_events import EventConflict, EventValidationError, EventAccessError, event_id
+    try:
+        raw = await request.body()
+        if len(raw) > 8192:
+            raise EventValidationError('Saved-result delivery requires only bounded result metadata.')
+        def unique(pairs):
+            value = dict(pairs)
+            if len(value) != len(pairs):
+                raise ValueError('Duplicate metadata fields.')
+            return value
+        try:
+            body = json.loads(raw, object_pairs_hook=unique)
+        except (ValueError, UnicodeError):
+            raise EventValidationError('Saved-result delivery requires valid JSON metadata.') from None
+        if not isinstance(body, dict) or set(body) != {'result_id'}:
+            raise EventValidationError('Use only the saved result_id; content and authority come from its verified record.')
+        event_id(body['result_id'])
+        if session_engine is None:
+            return JSONResponse({'error': 'Session recovery is unavailable.'}, status_code=503)
+        value = await asyncio.to_thread(session_engine.deliver_saved_result, session_id, body['result_id'], submitted_by='operator')
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, EventAccessError, OSError) as exc:
+        return _session_event_error(exc)
+
+
 async def _restart_body(request, required, optional=()):
     from turn_events import EventValidationError
     raw = await request.body()
