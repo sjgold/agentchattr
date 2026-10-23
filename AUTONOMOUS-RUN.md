@@ -22,7 +22,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Checkpoint b9cd507 under bounded review | Same AGY verdict, remaining replacement/engine/UI/integration and final acceptance; STOP after15 |
+| #15 | Transport b9cd507 bounded-PASS | Ratified replacement store/repair contract, store observed-red tests next; STOP after15 |
 | #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
