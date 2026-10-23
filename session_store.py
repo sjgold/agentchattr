@@ -517,7 +517,11 @@ class SessionStore:
             session.setdefault('superseded_attempts', []).append({
                 **{key: invocation[key] for key in ('attempt_id', 'turn_id', 'dispatch_id', 'expected_identity_id')},
                 'run_id': session['run_id'], 'input_revision': session['input_revision'],
-                'superseded_at': now, 'reason': 'superseded_by_operator_recovery', 'request_id': request_id})
+                'superseded_at': now, 'reason': 'superseded_by_operator_recovery', 'request_id': request_id,
+                'selected_transport': {'dispatch_id': invocation['dispatch_id'],
+                    'seat_identity_id': invocation['expected_identity_id'],
+                    'launch_provenance': deepcopy(session['participant_bindings'][invocation['role']]['launch_provenance']),
+                    'resolved': False, 'resolved_at': None}})
             record = {key: invocation[key] for key in IDENTITY_FIELDS}
             record.update(session_id=session_id, event_id=uuid.uuid4().hex, kind=kind,
                 content=snapshot['text'], projected_message_id=None, accepted_at=now,
@@ -528,6 +532,36 @@ class SessionStore:
                 attribution=attribution, recovered_at=now, selected_request=deepcopy(intent))
             self._append_admission(session, record)
         return self._event_update(session_id, admit, skip_if_unchanged=True)
+
+    def resolve_selected_transport(self, session_id, request_id, evidence):
+        """Internal audit after genuine CLI exit proof, including unpublished work."""
+        from turn_events import EventConflict, EventValidationError, event_id
+        event_id(request_id)
+        if (type(session_id) is not int or session_id <= 0 or not isinstance(evidence, dict)
+                or evidence.get('local_ended') is not True
+                or not isinstance(evidence.get('verification_basis'), str)
+                or evidence['verification_basis'] not in {'observed_child_exit_and_ipc',
+                    'durable_receipt_and_observed_absent', 'retained_native_handle_observed_end'}):
+            raise EventValidationError('Exact verified CLI exit evidence is required.')
+        event_id(evidence.get('dispatch_id'))
+        event_id(evidence.get('launch_attempt'))
+        proof = {key: evidence.get(key) for key in
+                 ('dispatch_id', 'seat_identity_id', 'launch_attempt', 'verification_basis')}
+        def resolve(session):
+            fence = next((item for item in session.get('superseded_attempts', [])
+                          if item.get('request_id') == request_id
+                          and item.get('reason') == 'superseded_by_operator_recovery'), None)
+            transport = (fence or {}).get('selected_transport')
+            if (not transport or proof['dispatch_id'] != transport['dispatch_id']
+                    or proof['seat_identity_id'] != transport['seat_identity_id']
+                    or proof['launch_attempt'] != transport['launch_provenance'].get('launch_attempt')):
+                raise EventConflict('CLI exit evidence does not match the selected transport.')
+            if transport.get('resolved') is True:
+                if transport.get('exit_proof') != proof:
+                    raise EventConflict('Selected transport exit evidence changed.')
+                return
+            transport.update(resolved=True, resolved_at=time.time(), exit_proof=deepcopy(proof))
+        return self._event_update(session_id, resolve, skip_if_unchanged=True)
 
     def admit_verified_saved_event(self, session_id, payload, *, submitted_by='operator'):
         """Internal ingress after private brief seal verification by the engine."""

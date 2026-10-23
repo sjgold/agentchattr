@@ -1,6 +1,6 @@
 # Ticket14: recover an operator-selected CLI message
 
-State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage checkpoint b9763b2 independently bounded-PASS (focused15 and full744 tests, four expected skips). Candidate inspection implemented and tested as a bounded checkpoint below. No admission/transport/UI implementation or final acceptance yet.
+State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage, candidate and admission-store checkpoints independently bounded-PASS. Transport/CLI proof components implemented and tested, pending bounded review. No engine attachment/HTTP/UI integration or final acceptance yet.
 
 Base: published main `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Scope: issue14, specification v1.7 SC-5 and CLI AT-21c, standing autonomous policy in STATUS.md. Ticket12 blocker and Ticket13 are closed. Independent review: [contract settlement](epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-14-contract-review/index.md). Same AGY remains final reviewer.
 
@@ -94,8 +94,14 @@ Root proof tests exercise real owned toy supervisor self-birth/retained native h
 
 Limits: no live providers/native AI clients, Desktop/global settings, participant replacement (#15), new scheduler or Omarchy acceptance. Imported provenance is rejected; trusted historical storage is not a general signature system.
 
-## OPEN precision: selected dispatch never published
+## Settled precision: selected dispatch never published
 
-Observed after real queue.enqueue OSError: interrupted run retains a bound CLI invocation; authenticated legacy message can be selected and admitted, but no ledger record exists for its fenced dispatch. Current coordinator then fails peer claims while installing the nonexistent hold. New test_cli_missing_dispatch fails before a fix; this test was added AFTER full783/four-skips passed.
+A real queue.enqueue OSError leaves an interrupted run with a valid bound CLI invocation but no ledger record. Initial test_cli_missing_dispatch failed because reconciliation tried holding that nonexistent record and blocked an unrelated peer. This red was added AFTER full783/four skips passed; expanded3 tests also failed before the ratified fix.
 
-Do not ignore worker lifetime or fabricate a transport/ACK/exit. Proposed same-AGY settlement: persist exact selected transport identity/dispatch/frozen launch provenance and unresolved/resolved state in the existing session recovery audit. If its queue record is absent, block new claims only on that identity until genuine CLI exit proof resolves the session hold. Existing ledger holds/settlement apply when records exist. This remains an OPEN proposal awaiting reviewer ruling, not implemented behavior.
+Same AGY Section6 ratifies selected_transport audit on the superseded attempt: exact dispatch_id, seat_identity_id, copied frozen launch_provenance, resolved=False and resolved_at=None. A selected_cli=True hold lookup on an absent ledger record returns None; default API behavior still rejects absence. The coordinator derives only the affected unresolved identity hold from the durable session audit, while peers remain claimable.
+
+QueueStore.claim accepts internal blocked_identity_ids and checks it AFTER existing active/cancelling-consumer polling, before a NEW claim. Published transports use their ordinary exact ledger holds; unresolved unpublished ones use this identity-scoped session hold. No fictitious queue entry or consumer ACK is created.
+
+SessionStore.resolve_selected_transport(session_id, request_id, evidence) is internal only, invoked after genuine selected_cli_exit_proof. It requires literal local_ended=True, exact dispatch/seat/launch and allowed CLI basis against the frozen audit, marks resolved with immutable proof/time, and preserves byte-identical exact replay. Persistence failure rolls memory/disk back. It can resolve transport after Stop without bypassing content fences.
+
+Root missing-dispatch3 plus queue/admission/API hold/settlement regression39 PASS3.180s. Full786 tests OK/four expected skips70.610s (shell4688a3af exit0). Earlier missing-dispatch red and broad CLI-basis API regression remain recorded; no engine attach, HTTP, UI or actual CLI end-to-end acceptance is claimed.

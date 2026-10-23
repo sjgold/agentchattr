@@ -130,7 +130,7 @@ class QueueStore:
             self._write(ledger)
             return deepcopy(record)
 
-    def claim(self, instance, consumer_id, *, blocked_run_ids=None):
+    def claim(self, instance, consumer_id, *, blocked_run_ids=None, blocked_identity_ids=None):
         identity = _seat(instance)
         _identifier(consumer_id, 'Consumer ID')
         blocked = set(blocked_run_ids or ())
@@ -143,6 +143,8 @@ class QueueStore:
                     if record['consumer_id'] != consumer_id:
                         raise QueueBusy('Seat already owns a dispatch; pending work is retained.')
                     return deepcopy(record)
+            if identity in (blocked_identity_ids or set()):
+                raise QueueBusy('Saved-result transport exit is unproven; pending work is retained.')
             if any(record.get('recovery_hold') and record['recovery_hold'].get('cleared') is not True
                    for record in records):
                 raise QueueBusy('Saved-result transport exit is unproven; pending work is retained.')
@@ -326,6 +328,8 @@ class QueueStore:
             raise QueueConflict('The exact saved result and dispatch are required.')
         with self._transaction() as ledger:
             record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
+            if record is None and selected_cli:
+                return None
             if not record or record['envelope']['target_identity_id'] != seat_identity_id:
                 raise QueueConflict('Saved-result hold identity does not match.')
             if record['state'] == 'settled_recovered':
