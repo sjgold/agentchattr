@@ -18,8 +18,9 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #12 stalled turns/retry | Published and closed | Publication8297bc1, same AGY PASS |
 | #16 | Published and closed | Publication08fcee2, final same-AGY PASS including hidden windows |
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
-| #13 | Final independent PASS; post-merge734 OK | Publication/closure by Codex, then14 |
-| #14-15, #17-26 | Pending | Follow documented dependency graph |
+| #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
+| #14 | Next eligible, planning | Codex plan/contract critique, same AGY retained |
+| #15, #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
 
@@ -65,3 +66,5 @@ Ticket13 d75f90f independently bounded sourcePASS; engine/routes730 total before
 Ticket13 final builder pack ready: full734/four expected skips68.060s,5 prior integrationsPASS, coldfinal/question/Stop/lostACK and actualUIservePASS with clean cleanup. EarlierlostACKthird-peer routingfailure retained; root4 observed-red projectionrouting tests/fix thenunchangedrerunPASS. Browser1280/390 panel metrics14px/44px/9.332contrast, pointerdelivery/keyboard/history/channelhideverified; inherited globalmobileoverflow andunsavedtool screenshots clearlylimited. NextsameAGYfinalfrozen review, thenauthorizedpublicationonlyafterPASS. Usage/reviewpack prepared; no final13verdict/push/closureyet.
 
 Ticket13 sameAGYfinalFULLPASS e64ff8c/pin16ab003: independent734/four skips63.966s plusallnewactualworker cases. Report-onlyprecision corrected, sourceverdictunchanged. LocalmainFF/postmerge734/four skips64.099s+JS/diffPASS. Receipt REVIEW-GEMINI-TICKET-13.md, publication/closure next then14.
+
+Ticket13 publishedorigin/main5e6a79646c0fa71b03c01a86510c3522db6bd3f3(remoteexacthashverified), issue13closedcompleted. Finalreviewsourcee64ff8c/pin16ab003, independent734/four63.966s, postmerge734/four64.099s+JS/diffPASS. Next14 selectedCLIanswerrecovery planning/contractcritique, no14implementationyet. SameAGYretained; no liveproviders/Omarchy.
