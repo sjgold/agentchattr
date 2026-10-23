@@ -329,6 +329,46 @@ class QueueStore:
             self._write(ledger)
             return deepcopy(record)
 
+    def confirm_retired_exit(self, dispatch_id, cancellation_id, *, evidence):
+        """Internal retired-participant completion after the session audit validates."""
+        _identifier(dispatch_id, 'Dispatch ID')
+        _identifier(cancellation_id, 'Cancellation ID')
+        if (not isinstance(evidence, dict) or evidence.get('local_ended') is not True
+                or evidence.get('dispatch_id') != dispatch_id
+                or evidence.get('wrapper_status') not in ('observed_exited', 'absent')):
+            raise QueueConflict('Exact retired worker and child exit evidence is required.')
+        launch = _identifier(evidence.get('launch_attempt'), 'Launch attempt')
+        identity = _identifier(evidence.get('seat_identity_id'), 'Seat identity')
+        basis = evidence.get('verification_basis')
+        cli = (basis in ('observed_child_exit_and_ipc', 'durable_receipt_and_observed_absent',
+                         'retained_native_handle_observed_end') and type(evidence.get('child_exit_code')) is int)
+        api = ((basis == 'all_bound_invocations_ended' and evidence.get('model_status') == 'ended')
+               or (basis == 'protocol_one_no_invocations' and evidence.get('model_status') == 'never_spawned'))
+        if not re.fullmatch('[0-9a-f]{32}', launch) or not (cli or api):
+            raise QueueConflict('Verified retired participant lifecycle is required.')
+        fields = ('local_ended', 'dispatch_id', 'seat_identity_id', 'launch_attempt',
+                  'wrapper_status', 'verification_basis', 'child_exit_code' if cli else 'model_status')
+        proof = {key: deepcopy(evidence.get(key)) for key in fields}
+        with self._transaction() as ledger:
+            record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
+            if (not record or record['envelope']['target_identity_id'] != identity
+                    or (record.get('cancellation_id') or record.get('stop_id')) != cancellation_id):
+                raise QueueConflict('The exact retired dispatch cancellation is required.')
+            previous = record.get('cancellation') or {}
+            if record['state'] == 'cancelled':
+                if previous.get('source') == 'runtime_reconciliation' and previous.get('exit_proof') != proof:
+                    raise QueueConflict('Retired exit evidence changed.')
+                return deepcopy(record)
+            if record['state'] != 'cancelling':
+                raise QueueConflict('No retired cancellation is pending for this dispatch.')
+            record['cancellation'] = {'status': 'local_ended', 'at': time.time(), 'remote_compute': 'unverified',
+                'source': 'runtime_reconciliation', 'launch_attempt': launch, 'verification_basis': basis,
+                'exit_proof': proof}
+            record.setdefault('cancellation_receipts', []).append(deepcopy(record['cancellation']))
+            self._event(record, 'cancelled')
+            self._write(ledger)
+            return deepcopy(record)
+
     def hold_recovered(self, dispatch_id, seat_identity_id, result_id, *, selected_cli=False):
         """Reserve the original seat before admitting verified saved content."""
         if type(selected_cli) is not bool:

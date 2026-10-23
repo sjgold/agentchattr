@@ -348,11 +348,55 @@ def restart_readiness(manager, identity_id, boot_id, *, now=None):
         return result
 
 
+def _api_launch_exit_proof(manager, item, identity_id, dispatch):
+    """Lock-held lifecycle query shared by sealed and retired API callers."""
+    import hashlib
+    from invocation_evidence import classify, classify_history
+    unproven = {'local_ended': False, 'reason': 'unproven_worker_exit'}
+    ownership, birth = item['identity'], item['birth']
+    launch = ownership['attempt']
+    attempt = next((value for value in manager.attempts.values() if value['id'] == launch), None)
+    warm_ended = False
+    if attempt is not None:
+        cached_birth = attempt.get('worker_birth')
+        if ((cached_birth is not None and cached_birth != birth) or attempt.get('ownership') != ownership
+                or attempt.get('identity_id') != identity_id):
+            return unproven
+        worker = attempt.get('worker_process') or attempt.get('process')
+        if cached_birth is not None and birth and worker and worker.pid == birth['pid']:
+            if type(worker.poll()) is not int:
+                return unproven
+            warm_ended = True
+    if warm_ended:
+        models = classify_history(item['path'].parent)
+        if not models['local_ended']:
+            return unproven
+        if (item['path'].parent / 'invocations' / dispatch).exists():
+            exact = classify({'runtime_path': str(item['path'].parent), 'dispatch_id': dispatch,
+                'launch_attempt': launch, 'launch_nonce': ownership['launch_nonce']})
+            if not exact['local_ended']:
+                return unproven
+        elif models.get('verification_basis') != 'protocol_one_no_invocations':
+            return unproven
+        proof = dict(models, wrapper_status='observed_exited')
+    else:
+        effective = manager._provenance_effective(item['effective'])
+        provenance = {'key': item['key'], 'launch_attempt': launch, 'identity_id': identity_id, 'effective': effective}
+        hashed = effective
+        base = item['snapshot'].get('context_base_effective')
+        if base:
+            provenance['fresh_base_effective'] = manager._provenance_effective(base)
+            hashed = {'effective': effective, 'fresh_base_effective': provenance['fresh_base_effective']}
+        provenance['fingerprint'] = hashlib.sha256(json.dumps(hashed, sort_keys=True).encode()).hexdigest()
+        proof = runtime_exit_proof(manager, provenance, dispatch)
+        if not proof['local_ended']:
+            return unproven
+    return dict(proof, local_ended=True, launch_attempt=launch, dispatch_id=dispatch, seat_identity_id=identity_id)
+
+
 def saved_result_exit_proof(manager, payload):
     """Query exact saved transport lifetime, without controlling its worker."""
-    import hashlib
     import re
-    from invocation_evidence import classify, classify_history
     unproven = {'local_ended': False, 'reason': 'unproven_worker_exit'}
     with manager.lock:
         try:
@@ -374,47 +418,41 @@ def saved_result_exit_proof(manager, payload):
                     or not isinstance(payload.get('seat_identity_id'), str)
                     or receipt.get('identity_id') != payload['seat_identity_id']):
                 return unproven
-            attempt = next((value for value in manager.attempts.values() if value['id'] == launch), None)
-            warm_ended = False
-            if attempt is not None:
-                cached_birth = attempt.get('worker_birth')
-                if ((cached_birth is not None and cached_birth != birth) or attempt.get('ownership') != ownership
-                        or attempt.get('identity_id') != payload['seat_identity_id']):
-                    return unproven
-                worker = attempt.get('worker_process') or attempt.get('process')
-                # The Popen object can refer to a venv launcher shim. Its exit
-                # never establishes the lifetime of the self-attested worker.
-                if cached_birth is not None and birth and worker and worker.pid == birth['pid']:
-                    if type(worker.poll()) is not int:
-                        return unproven
-                    warm_ended = True
-            if warm_ended:
-                models = classify_history(item['path'].parent)
-                if not models['local_ended']:
-                    return unproven
-                if (item['path'].parent / 'invocations' / dispatch).exists():
-                    exact = classify({'runtime_path': str(item['path'].parent), 'dispatch_id': dispatch,
-                        'launch_attempt': launch, 'launch_nonce': ownership['launch_nonce']})
-                    if not exact['local_ended']:
-                        return unproven
-                elif models.get('verification_basis') != 'protocol_one_no_invocations':
-                    return unproven
-                proof = dict(models, wrapper_status='observed_exited')
-            else:
-                effective = manager._provenance_effective(item['effective'])
-                provenance = {'key': item['key'], 'launch_attempt': launch,
-                    'identity_id': payload['seat_identity_id'], 'effective': effective}
-                hashed = effective
-                base = item['snapshot'].get('context_base_effective')
-                if base:
-                    provenance['fresh_base_effective'] = manager._provenance_effective(base)
-                    hashed = {'effective': effective, 'fresh_base_effective': provenance['fresh_base_effective']}
-                provenance['fingerprint'] = hashlib.sha256(json.dumps(hashed, sort_keys=True).encode()).hexdigest()
-                proof = runtime_exit_proof(manager, provenance, dispatch)
-                if not proof['local_ended']:
-                    return unproven
-            return dict(proof, local_ended=True, launch_attempt=launch,
-                        dispatch_id=dispatch, seat_identity_id=payload['seat_identity_id'])
+            return _api_launch_exit_proof(manager, item, payload['seat_identity_id'], dispatch)
+        except (OSError, ValueError, KeyError, TypeError):
+            return unproven
+
+
+def participant_exit_proof(manager, provenance, dispatch_id):
+    """Prove an exact retired participant lifetime without content authority."""
+    import hashlib
+    from turn_events import event_id
+    unproven = {'local_ended': False, 'reason': 'unproven_worker_exit'}
+    with manager.lock:
+        try:
+            event_id(dispatch_id)
+            if not isinstance(provenance, dict):
+                return unproven
+            effective = provenance.get('effective')
+            if not isinstance(effective, dict) or not isinstance(effective.get('seat'), dict):
+                return unproven
+            if effective['seat'].get('adapter') == 'cli':
+                return selected_cli_exit_proof(manager, provenance, dispatch_id)
+            launch = event_id(provenance['launch_attempt'])
+            hashed = ({'effective': provenance['effective'], 'fresh_base_effective': provenance['fresh_base_effective']}
+                      if provenance.get('fresh_base_effective') else provenance['effective'])
+            if hashlib.sha256(json.dumps(hashed, sort_keys=True).encode()).hexdigest() != provenance.get('fingerprint'):
+                return unproven
+            item = _candidate(manager, manager.store.path.parent / 'api_seat_runtime' / launch / 'config.json')
+            base = item['snapshot'].get('context_base_effective')
+            receipt = _read(item['path'].with_name('receipt.json'))
+            if (item['effective']['seat']['adapter'] != 'openai-compatible'
+                    or item['manifest']['spawn_outcome'] != 'spawned' or item['key'] != provenance['key']
+                    or manager._provenance_effective(item['effective']) != provenance['effective']
+                    or provenance.get('fresh_base_effective') != (manager._provenance_effective(base) if base else None)
+                    or receipt.get('attempt') != launch or receipt.get('identity_id') != provenance['identity_id']):
+                return unproven
+            return _api_launch_exit_proof(manager, item, provenance['identity_id'], dispatch_id)
         except (OSError, ValueError, KeyError, TypeError):
             return unproven
 

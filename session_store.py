@@ -676,11 +676,12 @@ class SessionStore:
             transport.update(resolved=True, resolved_at=time.time(), exit_proof=deepcopy(proof))
         return self._event_update(session_id, resolve, skip_if_unchanged=True)
 
-    def resolve_old_transport(self, session_id, request_id, evidence):
-        """Record verified retired-worker lifetime, never a worker acknowledgement."""
+    @staticmethod
+    def _old_transport_proof(session, request_id, evidence):
+        """Validate a copied audit without IO; also used before queue settlement."""
         from turn_events import EventConflict, EventValidationError, event_id
         event_id(request_id)
-        if (type(session_id) is not int or session_id <= 0 or not isinstance(evidence, dict)
+        if (not isinstance(session, dict) or not isinstance(evidence, dict)
                 or evidence.get('local_ended') is not True
                 or evidence.get('wrapper_status') not in ('observed_exited', 'absent')
                 or not isinstance(evidence.get('verification_basis'), str)):
@@ -691,36 +692,43 @@ class SessionStore:
         for key in ('dispatch_id', 'seat_identity_id', 'launch_attempt'):
             event_id(proof[key])
 
+        matches = [item for item in session.get('superseded_attempts', [])
+                   if item.get('request_id') == request_id
+                   and item.get('reason') in ('participant_replacement', 'participant_skipped')]
+        if len(matches) != 1:
+            raise EventConflict('The exact retired participant transport is unavailable.')
+        transport = matches[0].get('old_transport') or {}
+        provenance = transport.get('launch_provenance') or {}
+        if (proof['dispatch_id'] != transport.get('dispatch_id')
+                or proof['seat_identity_id'] != transport.get('seat_identity_id')
+                or proof['launch_attempt'] != provenance.get('launch_attempt')):
+            raise EventConflict('Exit evidence does not match the retired participant transport.')
+        adapter = provenance.get('effective', {}).get('seat', {}).get('adapter')
+        basis = proof['verification_basis']
+        if adapter == 'cli':
+            if (basis not in {'observed_child_exit_and_ipc', 'durable_receipt_and_observed_absent',
+                              'retained_native_handle_observed_end'} or type(proof['child_exit_code']) is not int):
+                raise EventValidationError('Verified CLI worker and child exit evidence is required.')
+            canonical = {key: value for key, value in proof.items() if key != 'model_status'}
+        elif adapter == 'openai-compatible':
+            expected = {'all_bound_invocations_ended': 'ended', 'protocol_one_no_invocations': 'never_spawned'}
+            if basis not in expected or proof['model_status'] != expected[basis]:
+                raise EventValidationError('Verified API supervisor and model history exit is required.')
+            canonical = {key: value for key, value in proof.items() if key != 'child_exit_code'}
+        else:
+            raise EventConflict('No managed participant lifecycle is bound to this audit.')
+        if transport.get('resolved') is True and transport.get('exit_proof') != canonical:
+            raise EventConflict('Retired participant exit evidence changed.')
+        return transport, canonical
+
+    def resolve_old_transport(self, session_id, request_id, evidence):
+        """Record verified retired-worker lifetime, never a worker acknowledgement."""
+        from turn_events import EventValidationError
+        if type(session_id) is not int or session_id <= 0:
+            raise EventValidationError('Session ID must be a positive integer.')
         def resolve(session):
-            matches = [item for item in session.get('superseded_attempts', [])
-                       if item.get('request_id') == request_id
-                       and item.get('reason') in ('participant_replacement', 'participant_skipped')]
-            if len(matches) != 1:
-                raise EventConflict('The exact retired participant transport is unavailable.')
-            transport = matches[0].get('old_transport') or {}
-            provenance = transport.get('launch_provenance') or {}
-            if (proof['dispatch_id'] != transport.get('dispatch_id')
-                    or proof['seat_identity_id'] != transport.get('seat_identity_id')
-                    or proof['launch_attempt'] != provenance.get('launch_attempt')):
-                raise EventConflict('Exit evidence does not match the retired participant transport.')
-            adapter = provenance.get('effective', {}).get('seat', {}).get('adapter')
-            basis = proof['verification_basis']
-            if adapter == 'cli':
-                if (basis not in {'observed_child_exit_and_ipc', 'durable_receipt_and_observed_absent',
-                                  'retained_native_handle_observed_end'}
-                        or type(proof['child_exit_code']) is not int):
-                    raise EventValidationError('Verified CLI worker and child exit evidence is required.')
-                canonical = {key: value for key, value in proof.items() if key != 'model_status'}
-            elif adapter == 'openai-compatible':
-                expected = {'all_bound_invocations_ended': 'ended', 'protocol_one_no_invocations': 'never_spawned'}
-                if basis not in expected or proof['model_status'] != expected[basis]:
-                    raise EventValidationError('Verified API supervisor and model history exit is required.')
-                canonical = {key: value for key, value in proof.items() if key != 'child_exit_code'}
-            else:
-                raise EventConflict('No managed participant lifecycle is bound to this audit.')
+            transport, canonical = self._old_transport_proof(session, request_id, evidence)
             if transport.get('resolved') is True:
-                if transport.get('exit_proof') != canonical:
-                    raise EventConflict('Retired participant exit evidence changed.')
                 return
             transport.update(resolved=True, resolved_at=time.time(), exit_proof=deepcopy(canonical))
         return self._event_update(session_id, resolve, skip_if_unchanged=True)

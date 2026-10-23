@@ -1,5 +1,5 @@
 """Serialize durable run eligibility with queue mutations, without store nesting."""
-from dispatch_queue import QueueConflict
+from dispatch_queue import ACTIVE, QueueBusy, QueueConflict
 
 
 class CoordinatedQueue:
@@ -34,6 +34,27 @@ class CoordinatedQueue:
                    for run in runs):
                 raise QueueConflict('Superseded attempts cannot enqueue further work.')
             return self._queue.enqueue(instance, envelope)
+
+    def settle_old_transport(self, session_id, request_id, evidence):
+        """Commit exact ledger completion before lifting a durable identity hold."""
+        if type(session_id) is not int or session_id <= 0:
+            raise QueueConflict('Session ID must be a positive integer.')
+        with self._lock:
+            session = self._sessions.get(session_id)
+            transport, proof = self._sessions._old_transport_proof(session, request_id, evidence)
+            if transport.get('resolved') is True:
+                return session
+            self._reconcile()
+            owner = {'name': 'retired-participant', 'identity_id': proof['seat_identity_id']}
+            records = self._queue.for_identity(owner)
+            if any(record['state'] in ACTIVE and record['envelope']['dispatch_id'] != proof['dispatch_id']
+                   for record in records):
+                raise QueueBusy('Other work still owns this retired seat; it was not cancelled.')
+            record = next((r for r in records if r['envelope']['dispatch_id'] == proof['dispatch_id']), None)
+            if record and record['state'] == 'cancelling':
+                self._queue.confirm_retired_exit(proof['dispatch_id'],
+                    record.get('cancellation_id') or record.get('stop_id'), evidence=proof)
+            return self._sessions.resolve_old_transport(session_id, request_id, proof)
 
     def claim(self, instance, consumer_id):
         with self._lock:

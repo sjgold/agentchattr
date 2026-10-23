@@ -22,7 +22,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Old-identity hold/audit tested | Same AGY3a bounded review; native proof/internal completion3b contract next; STOP after15 |
+| #15 | Native proof/internal settlement tested | Same AGY unified Tranche3 bounded review; remaining replacement/engine/UI/integration; STOP after15 |
 | #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -40,6 +40,6 @@ Ticket14 builder acceptance complete: full806 tests/four expected skips73.299s; 
 
 Same AGY reaffirmed final FULL PASS for fc921ca884ba3b63303d8a8489320bf668729bcc after source/caller recheck, focused72/7.721s and corrected report. Full806 total/four expected skips80.458s and four independent actual cases have raw logs/scratch corroborated by builder. Initial inaccurate report remains an explained assurance correction; no source changed. Post-merge806 total/four skips71.794s and syntax/diff pass. Ticket14 publication and closure now verified. Next Codex begins issue15 participant-replacement contract planning and asks the same AGY to critique before implementation.
 
-Ticket15 skip storage8834a8d and clone/replay964d3af independently bounded-PASS. Ratified3a hold/audit and narrow cold cancellation poll implemented after genuine3RED; helper12PASS/root75PASS/full842 total with4 expected skips80.047s. New proof dictionaries are algorithm inputs, not native exit collection. Next same AGY bounded3a review and3b native proof/internal cancellation contract, then remaining explicit repair/replacement store/engine/HTTP/output/UI and final15 acceptance/publication. Stop after15, never begin another ticket.
+Ticket15 skip storage8834a8d and clone/replay964d3af independently bounded-PASS. Unified3a/3b hold/native proof/internal settlement now tested: helper12 hold+12 settlement, root7 native-lifetime cases with explicit CLI receipt/cold seams, saved-result proof regression unchanged. Final combined39PASS9.357s/full861 total with4 expected skips79.601s. Genuine raw changed-child-code replay and malformed provenance failures fixed; fixture mismatch enum correction retained. Next same AGY unifiedTranche3 bounded review, then remaining explicit repair/replacement store/engine/HTTP/output/UI and actual integration/final15 acceptance/publication. Stop after15, never begin another ticket.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.
