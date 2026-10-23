@@ -20,7 +20,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Proposed contract ready | Same AGY critiques TICKET-15-PLAN and source-grounded OPEN choices before code |
+| #15 | Skip storage tested | Same AGY bounded checkpoint review before replacement/transport tranches |
 | #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -38,6 +38,6 @@ Ticket14 builder acceptance complete: full806 tests/four expected skips73.299s; 
 
 Same AGY reaffirmed final FULL PASS for fc921ca884ba3b63303d8a8489320bf668729bcc after source/caller recheck, focused72/7.721s and corrected report. Full806 total/four expected skips80.458s and four independent actual cases have raw logs/scratch corroborated by builder. Initial inaccurate report remains an explained assurance correction; no source changed. Post-merge806 total/four skips71.794s and syntax/diff pass. Ticket14 publication and closure now verified. Next Codex begins issue15 participant-replacement contract planning and asks the same AGY to critique before implementation.
 
-Ticket15 is now proposed on codex/ticket-15-participant-replacement from55bd7cbea6367b299fc4c927f71cf4736480bd40. Source-grounded TICKET-15-PLAN.md recommends fresh managed replacement preserving role/completed work and explicit current-turn skip with missing notices. Scoped old-seat transport hold, preparation/repair/restart and skip/output IO-gap mechanics remain OPEN for the same AGY critique. No production or new tests yet. Next owner is same AGY for contract critique, then Codex freezes components for existing helper observed-red tests.
+Ticket15 contract plus five precision amendments ratified on codex/ticket-15-participant-replacement from55bd7cbea6367b299fc4c927f71cf4736480bd40. Tranche1 skip storage implemented after initial missing-method red, helper12PASS, root combined58PASS2.889s/full818 total tests with4 expected skips73.010s. Only store atomic fence/missing audit/cursor and exact replay; no queue/projection/process/HTTP/UI claim. Same AGY bounded storage source/execution review next, then replacement-store/manager signatures and observed-red tests. Later retired-transport, replacement and missing-output/export integration remain unimplemented.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.

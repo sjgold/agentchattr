@@ -460,6 +460,119 @@ class SessionStore:
     def admit_event(self, session_id, event, instance, *, human=False):
         return self._admit_event(session_id, event, instance, human=human)
 
+    @staticmethod
+    def _participant_checkpoint(session, checkpoint_id, attempt_id):
+        """Validate the current failed contribution without inferring process exit."""
+        from turn_events import EventConflict
+        invocation = session.get('active_invocation')
+        checkpoint = session.get('turn_recovery')
+        if (session.get('stop_id') or session.get('replaced_by_run_id')
+                or session.get('pending_retry') or session.get('pending_replacement')
+                or session['state'] not in ('stalled', 'waiting', 'interrupted')
+                or not invocation or invocation.get('consumed') is not False
+                or invocation.get('human') is not False or not checkpoint
+                or invocation['attempt_id'] != attempt_id
+                or checkpoint.get('checkpoint_id') != checkpoint_id
+                or checkpoint.get('attempt_id') != attempt_id
+                or checkpoint.get('status') not in ('stalled', 'waiting')
+                or any(item.get('attempt_id') == attempt_id
+                       for item in session.get('superseded_attempts', []))):
+            raise EventConflict('Participant recovery belongs to a different, completed or stopped turn.')
+        phase_index, turn_index = session['current_phase'], session['current_turn']
+        phase = session['design_snapshot']['phases'][phase_index]
+        if (invocation['run_id'] != session['run_id']
+                or invocation['input_revision'] != session['input_revision']
+                or invocation['phase_index'] != phase_index or invocation['turn_index'] != turn_index
+                or invocation['role'] != phase['participants'][turn_index]
+                or invocation['turn_id'] != f"{session['run_id']}:{phase_index}:{turn_index}"):
+            raise EventConflict('Participant recovery does not match this logical turn.')
+        return invocation
+
+    def skip_participant(self, session_id, *, checkpoint_id, attempt_id, request_id,
+                         reason, confirm_skip, submitted_by='operator', now=None):
+        """Record missing work and fence its attempt atomically, without actuating it."""
+        import math
+        import uuid
+        from turn_events import EventConflict, EventValidationError, event_id
+        if type(session_id) is not int or session_id <= 0:
+            raise EventValidationError('Session ID must be a positive integer.')
+        for identifier in (checkpoint_id, attempt_id, request_id):
+            event_id(identifier)
+        if (confirm_skip is not True or not isinstance(reason, str) or not reason.strip()
+                or len(reason) > 256 or '\0' in reason
+                or not isinstance(submitted_by, str) or not submitted_by.strip()
+                or len(submitted_by) > 80 or '\0' in submitted_by):
+            raise EventValidationError('Confirm skipping this contribution with a reason of 1-256 characters.')
+        try:
+            reason.encode('utf-8')
+            submitted_by.encode('utf-8')
+        except UnicodeError:
+            raise EventValidationError('Skip reason and operator name must be valid UTF-8.') from None
+        requested_at = time.time() if now is None else now
+        if (type(requested_at) not in (int, float) or not math.isfinite(requested_at)
+                or requested_at < 0):
+            raise EventValidationError('Skip time must be a finite nonnegative number.')
+        intent = {'request_id': request_id, 'checkpoint_id': checkpoint_id, 'attempt_id': attempt_id,
+                  'reason': reason, 'confirm_skip': True, 'submitted_by': submitted_by}
+
+        def skip(session):
+            previous = next((item for item in session.get('skipped_turns', [])
+                             if item['request_id'] == request_id), None)
+            if previous is not None:
+                if previous['skip_request'] != intent:
+                    raise EventConflict('Skip request ID was already used for a different decision.')
+                return
+            invocation = self._participant_checkpoint(session, checkpoint_id, attempt_id)
+            record = {'request_id': request_id, 'checkpoint_id': checkpoint_id,
+                      'role': invocation['role'], 'phase': session['current_phase'],
+                      'turn': session['current_turn'], 'turn_id': invocation['turn_id'],
+                      'run_id': session['run_id'], 'input_revision': session['input_revision'],
+                      'attempt_id': invocation['attempt_id'], 'dispatch_id': invocation['dispatch_id'],
+                      'seat_identity_id': invocation['expected_identity_id'],
+                      'agent_name': invocation['expected_agent'], 'reason': reason,
+                      'submitted_by': submitted_by, 'skipped_at': requested_at,
+                      'projection_id': uuid.uuid4().hex, 'projected_message_id': None,
+                      'is_output': bool(session['design_snapshot']['phases'][session['current_phase']].get('is_output')),
+                      'skip_request': deepcopy(intent)}
+            self._advance_skipped_turn(session, record)
+        return self._event_update(session_id, skip, skip_if_unchanged=True)
+
+    @staticmethod
+    def _advance_skipped_turn(session, skip_record):
+        """Lock-held skip transaction; missing work never enters admitted_events."""
+        invocation = session['active_invocation']
+        binding = session.get('participant_bindings', {}).get(invocation['role'], {})
+        session.setdefault('superseded_attempts', []).append({
+            **{key: invocation[key] for key in ('attempt_id', 'turn_id', 'dispatch_id', 'expected_identity_id')},
+            'run_id': session['run_id'], 'input_revision': session['input_revision'],
+            'superseded_at': skip_record['skipped_at'], 'reason': 'participant_skipped',
+            'request_id': skip_record['request_id'],
+            'old_transport': {'dispatch_id': invocation['dispatch_id'],
+                'seat_identity_id': invocation['expected_identity_id'],
+                'launch_provenance': deepcopy(binding.get('launch_provenance')),
+                'resolved': False, 'resolved_at': None}})
+        session.setdefault('skipped_turns', []).append(deepcopy(skip_record))
+        session['turn_recovery'].update(status='resolved', resolved_by=skip_record['projection_id'])
+        session['turn_recovery'].setdefault('actions', []).append({
+            'action': 'skip', 'at': skip_record['skipped_at'], 'request_id': skip_record['request_id']})
+        session['active_invocation'] = None
+        session.pop('current_question', None)
+        session['waiting_on'] = None
+        phases = session['design_snapshot']['phases']
+        phase = phases[session['current_phase']]
+        session.setdefault('missing_output', False)
+        if session['current_turn'] + 1 < len(phase['participants']):
+            session['current_turn'] += 1
+            session['state'] = 'active'
+        elif session['current_phase'] + 1 < len(phases):
+            session['current_phase'] += 1
+            session['current_turn'] = 0
+            session['state'] = 'active'
+        else:
+            session['state'] = 'complete'
+            if skip_record['is_output']:
+                session['missing_output'] = True
+
     def admit_selected_cli_event(self, session_id, snapshot, *, request_id, message_uid,
                                  snapshot_hash, checkpoint, kind='final',
                                  confirm_operator_attribution=False, submitted_by='operator'):
