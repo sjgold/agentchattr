@@ -790,10 +790,16 @@ class SessionEngine:
         channels = dict.fromkeys(s.get('channel', 'general') for s in self._store.list_all())
         return [session for channel in channels if (session := self.get_active(channel)) is not None]
 
-    def resume_active_sessions(self):
-        """Project accepted events; adoption/replay of held work remains #9."""
-        self.reconcile_stops()
-        self.recover_projections()
+    def resume_active_sessions(self, *, boot_id=None):
+        """Fence cold runs and recover projections under one stable boot ID."""
+        if boot_id is None:
+            boot_id = getattr(self._seat_manager, 'boot_id', None)
+            if not isinstance(boot_id, str):
+                boot_id = getattr(self, '_restart_boot_id', None)
+            if boot_id is None:
+                import uuid
+                boot_id = uuid.uuid4().hex
+        return self.reconcile_restart(boot_id=boot_id)
 
     def _restart_role_ready(self, session, role, boot_id):
         binding = session.get('participant_bindings', {}).get(role, {})

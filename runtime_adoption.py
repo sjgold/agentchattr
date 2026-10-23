@@ -35,7 +35,7 @@ def has_unverified_launch(manager, key):
             validated = _validate(path, snapshot)
             if validated is not None:
                 manifest = _manifest(path.with_name('launch.json'), validated[0])
-                if manifest['spawn_outcome'] == 'failed':
+                if manifest['spawn_outcome'] == 'failed' and not path.with_name('birth.json').exists():
                     continue
             return True
         except (OSError, ValueError, KeyError, TypeError):
@@ -72,14 +72,53 @@ def _candidate(manager, path):
         raise ValueError('foreign_server_identity')
     manifest = _manifest(path.with_name('launch.json'), identity)
     if manifest['spawn_outcome'] == 'failed':
-        raise ValueError('synchronous_spawn_failed')
+        if path.with_name('birth.json').exists():
+            raise ValueError('failed_spawn_has_conflicting_birth')
+        return {'snapshot': snapshot, 'path': path, 'identity': identity,
+                'birth': None, 'effective': effective, 'key': identity['launch_key'], 'manifest': manifest}
     birth = _read(path.with_name('birth.json'))
     if (birth.get('ownership') != identity or birth.get('attempt') != identity['attempt']
             or birth.get('base') != snapshot['base']
             or os.path.normcase(str(birth.get('worker_root'))) != os.path.normcase(root)):
         raise ValueError('worker_birth_mismatch')
     return {'snapshot': snapshot, 'path': path, 'identity': identity,
-            'birth': birth, 'effective': effective, 'key': identity['launch_key']}
+            'birth': birth, 'effective': effective, 'key': identity['launch_key'], 'manifest': manifest}
+
+
+def _historical_exit(item):
+    """Classify evidence without adopting or controlling a candidate process."""
+    if item['manifest']['spawn_outcome'] == 'failed':
+        return {'state': 'failed', 'reason': 'synchronous_spawn_failed', 'spawn_outcome': 'failed'}
+    try:
+        observed = open_verified_process(item['birth'])
+    except (OSError, ValueError):
+        return {'state': 'unverified', 'reason': 'process_probe_failed'}
+    process = observed.get('process')
+    if process:
+        process.close()  # Inventory never retains lifecycle authority.
+    absent = ((observed.get('status') == 'absent' and observed.get('error_code') == 87)
+              or (observed.get('status') == 'mismatch' and observed.get('reason') == 'creation_time_mismatch'))
+    if not absent:
+        return {'state': 'unverified', 'reason': ('awaiting_authenticated_boot_proof'
+                if observed.get('status') == 'live' else 'unproven_worker_exit')}
+    if item['effective']['seat']['adapter'] != 'cli':
+        from invocation_evidence import classify_history
+        child_proof = classify_history(item['path'].parent)
+        if child_proof['local_ended']:
+            return {'state': 'exited', 'reason': 'local_exit_proven',
+                    'exit_evidence': {'wrapper_status': 'absent', **child_proof}}
+        return {'state': 'unverified', 'reason': 'unproven_worker_exit'}
+    try:
+        receipt = _read(item['path'].with_name('receipt.json'))
+        if (receipt.get('attempt') == item['identity']['attempt']
+                and receipt.get('state') in ('stopped', 'failed')
+                and type(receipt.get('child_exit_code')) is int):
+            return {'state': 'exited', 'reason': 'local_exit_proven', 'exit_evidence': {
+                'wrapper_status': 'absent', 'child_exit_code': receipt['child_exit_code'],
+                'verification_basis': 'durable_receipt_and_observed_absent'}}
+    except (OSError, ValueError):
+        pass
+    return {'state': 'unverified', 'reason': 'unproven_worker_exit'}
 
 
 def reconcile_runtime(manager, *, now=None):
@@ -89,9 +128,14 @@ def reconcile_runtime(manager, *, now=None):
         for path in sorted(directory.glob('*/config.json')):
             try:
                 item = _candidate(manager, path)
-                candidates[item['identity']['attempt']] = item
-                public.append({'attempt': item['identity']['attempt'], 'key': item['key'],
-                               'state': 'unverified', 'reason': 'awaiting_authenticated_boot_proof'})
+                classification = _historical_exit(item)
+                attempt_id = item['identity']['attempt']
+                if classification['state'] in ('exited', 'failed'):
+                    manager.retired_attempts.add(attempt_id)
+                    manager.runtime_history[attempt_id] = {**item, **classification}
+                else:
+                    candidates[attempt_id] = item
+                public.append({'attempt': attempt_id, 'key': item['key'], **classification})
             except (OSError, ValueError, KeyError, TypeError):
                 public.append({'attempt': path.parent.name, 'state': 'unverified',
                                'reason': 'runtime_evidence_unverified'})
@@ -165,7 +209,7 @@ def observe_runtime_heartbeat(manager, instance, payload, *, now=None):
                        'ownership': identity, 'spawn_outcome': 'spawned'}
             for field in ('context_id', 'context_source_fingerprint', 'context_base_effective',
                           'context_key', 'child_run_id', 'role', 'retried_from', 'retry_source_ended',
-                          'verification_basis', 'context_clean_verified', 'preparation_history'):
+                          'verification_basis', 'context_clean_verified', 'preparation_history', 'invocation_protocol'):
                 if field in item['snapshot']:
                     attempt[field] = deepcopy(item['snapshot'][field])
             manager.attempts[item['key']] = attempt

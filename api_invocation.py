@@ -28,22 +28,33 @@ class InvocationFailure(Exception):
         self.category = category if isinstance(category, str) and category in FAILURE_CATEGORIES else 'provider_failure'
 
 
-def run_completion(seat, provider, messages, cancel_requested, timeout=120):
+def run_completion(seat, provider, messages, cancel_requested, timeout=120, *, evidence=None):
     """Return provider text/metadata, or observed cancellation, never stderr data."""
     if cancel_requested():
         raise InvocationCancelled(local_ended=True)
     reference = seat.get('secret_ref', '')
     secret = os.environ.get(reference) if reference else None
-    packet = json.dumps({'seat': seat, 'provider': provider, 'messages': messages,
-                         'secret': secret, 'timeout': timeout}, ensure_ascii=False).encode('utf-8')
+    packet_value = {'seat': seat, 'provider': provider, 'messages': messages, 'secret': secret, 'timeout': timeout}
+    lifecycle = None
+    if evidence is not None:
+        from invocation_evidence import begin
+        lifecycle = begin(evidence)
+        packet_value['evidence'] = lifecycle
+    packet = json.dumps(packet_value, ensure_ascii=False).encode('utf-8')
     if len(packet) > MAX_PACKET:
         raise InvocationFailure()
     environment = os.environ.copy()
     if reference:
         environment.pop(reference, None)
-    child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--child'],
-        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-        env=environment, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    try:
+        child = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), '--child'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            env=environment, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+    except OSError:
+        if lifecycle:
+            from invocation_evidence import spawn_outcome
+            spawn_outcome(lifecycle, 'failed')
+        raise
     done = threading.Event()
     output = {}
 
@@ -56,7 +67,9 @@ def run_completion(seat, provider, messages, cancel_requested, timeout=120):
             done.set()
 
     communication = threading.Thread(target=communicate, daemon=True)
-    communication.start()
+    communication_started = False
+    # Cleanup responsibility starts as soon as Popen returns. Even a failed
+    # journal write must not abandon a live child or its IPC thread.
     deadline = time.monotonic() + timeout
     cleanup_attempted = False
 
@@ -68,16 +81,30 @@ def run_completion(seat, provider, messages, cancel_requested, timeout=120):
                 child.terminate()
         except OSError:
             pass
-        communication.join(2)
+        def drain():
+            if communication_started:
+                communication.join(2)
+            else:
+                try:
+                    child.communicate(input=b'', timeout=2)
+                    done.set()
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+        drain()
         try:
             if child.poll() is None:
                 child.kill()
         except OSError:
             pass
-        communication.join(2)
+        drain()
         return child.poll() is not None and done.is_set()
 
     try:
+        if lifecycle:
+            from invocation_evidence import spawn_outcome
+            spawn_outcome(lifecycle, 'spawned')
+        communication.start()
+        communication_started = True
         while not done.wait(.05):
             if cancel_requested():
                 raise InvocationCancelled(local_ended=end_child())
@@ -106,6 +133,11 @@ def run_completion(seat, provider, messages, cancel_requested, timeout=120):
     finally:
         if not cleanup_attempted and (child.poll() is None or not done.is_set()):
             end_child()
+        if lifecycle and child.poll() is not None and done.is_set():
+            if communication_started:
+                communication.join()
+            from invocation_evidence import record_exit
+            record_exit(lifecycle, child.returncode)
 
 
 def _child():
@@ -118,6 +150,9 @@ def _child():
         if len(raw) > MAX_PACKET:
             raise ValueError('Oversized invocation packet')
         packet = json.loads(raw)
+        if packet.get('evidence') is not None:
+            from invocation_evidence import record_birth
+            record_birth(packet['evidence'])
         reference = packet['seat'].get('secret_ref', '')
         if reference and isinstance(packet.get('secret'), str):
             os.environ[reference] = packet['secret']

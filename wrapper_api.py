@@ -293,7 +293,12 @@ def main():
                         and current['state'] == 'cancelling')
         if managed:
             try:
-                result = run_completion(managed['seat'], managed['provider'], messages, cancelled)
+                evidence = None
+                if managed.get('ownership'):
+                    evidence = {'runtime_path': str(Path(managed_args.seat_file).resolve().parent),
+                                'launch_attempt': managed['attempt'],
+                                'launch_nonce': managed['ownership']['launch_nonce'], 'dispatch_id': dispatch_id}
+                result = run_completion(managed['seat'], managed['provider'], messages, cancelled, evidence=evidence)
             except InvocationFailure as exc:
                 auth_failure = exc.http_status in (401, 403)
                 diagnostic = (f'Provider returned HTTP {exc.http_status}. Check provider settings/limits and retry this seat.'

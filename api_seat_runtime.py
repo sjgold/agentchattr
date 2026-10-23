@@ -28,6 +28,7 @@ class SeatManager:
         self.attempts = {}
         self.package_selections = {}
         self.runtime_candidates = {}
+        self.runtime_history = {}
         self.retired_attempts = set()
         self.lock = threading.RLock()
         self.closed = threading.Event()
@@ -129,6 +130,16 @@ class SeatManager:
         fingerprint = hashlib.sha256(json.dumps(effective, sort_keys=True).encode()).hexdigest()
         previous = self.attempts.get(key)
         if previous:
+            if (previous['seat']['adapter'] == 'cli' and previous.get('process') is not None
+                    and previous['process'].poll() is not None
+                    and not self._retry_preparation_exit_proven(previous)):
+                raise SeatError('The CLI worker ended without verified client exit. No replacement was started.')
+            if (previous['seat']['adapter'] != 'cli' and previous.get('process') is not None
+                    and previous['process'].poll() is not None
+                    and previous['snapshot'].with_name('invocations').exists()):
+                from invocation_evidence import classify_history
+                if not classify_history(previous['snapshot'].parent)['local_ended']:
+                    raise SeatError('The supervisor ended, but its model invocation exit is unproven. No replacement was started.')
             current = self._inspect(key)
             alive = previous.get('process') and previous['process'].poll() is None
             if alive and not restart:
@@ -169,6 +180,9 @@ class SeatManager:
         attempt['spawn_outcome'] = 'pending'
         snapshot = {**effective, 'attempt': attempt_id, 'base': base, **(launch_metadata or {}),
                     'ownership': ownership}
+        if not cli:
+            snapshot['invocation_protocol'] = 1
+            attempt['invocation_protocol'] = 1
         try:
             atomic_json(attempt['snapshot'], snapshot)
             record_spawn_outcome(attempt['snapshot'], snapshot, 'pending')
@@ -556,7 +570,17 @@ class SeatManager:
     def _retry_preparation_exit_proven(attempt):
         process = attempt.get('process')
         if process is None:
-            return attempt['state'] == 'failed'  # Popen never supplied a worker.
+            # A reboot loses RAM handles even when Popen previously succeeded.
+            # Only the validated synchronous failure record proves no spawn.
+            from runtime_ownership import _validate, _manifest
+            try:
+                path = attempt['snapshot']
+                snapshot = json.loads(path.read_text(encoding='utf-8'))
+                validated = _validate(path, snapshot)
+                return (validated is not None and not path.with_name('birth.json').exists()
+                        and _manifest(path.with_name('launch.json'), validated[0])['spawn_outcome'] == 'failed')
+            except (OSError, ValueError, KeyError, TypeError):
+                return False
         if process.poll() is None:
             return False
         try:

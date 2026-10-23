@@ -147,6 +147,11 @@ def record_worker_birth(snapshot_path, snapshot):
         raise ValueError('A failed spawn cannot claim a worker birth.')
     result = {**capture_birth(), 'attempt': snapshot['attempt'], 'base': snapshot['base'],
               'ownership': identity, 'worker_root': str(Path(__file__).resolve().parent)}
+    if 'invocation_protocol' in snapshot:
+        if (type(snapshot['invocation_protocol']) is not int or snapshot['invocation_protocol'] != 1
+                or snapshot['seat']['adapter'] != 'openai-compatible'):
+            raise ValueError('Unsupported model invocation evidence protocol.')
+        result['invocation_protocol'] = 1
     target = path.with_name('birth.json')
     if target.exists():
         try:

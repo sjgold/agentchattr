@@ -425,6 +425,9 @@ async def start_turn_monitor():
             if session_engine:
                 interval = session_engine._recovery_policy['monitor_interval']
                 try:
+                    boot_id = getattr(session_engine, '_restart_boot_id', None)
+                    if boot_id:
+                        await asyncio.to_thread(session_engine.reconcile_restart, boot_id=boot_id)
                     sessions = await asyncio.to_thread(session_engine.monitor_turns)
                     interval = min([interval] + [(((s.get('active_invocation') or {}).get('monitoring') or {}).get('policy')
                                                   or s.get('recovery_policy') or {}).get('monitor_interval', interval)
@@ -535,6 +538,11 @@ def configure(cfg: dict, session_token: str = ""):
                                    seat_manager=api_seat_manager, recovery_policy=cfg.get('session_recovery'),
                                    adapter_recovery_policy=cfg.get('session_recovery_by_adapter'))
     session_store.on_change(_on_session_change)
+
+    # This runs before HTTP/MCP publication or background claim/monitor loops.
+    # Cold run eligibility is persisted before surviving workers can reconnect.
+    api_seat_manager.reconcile_runtime()
+    session_engine.resume_active_sessions(boot_id=api_seat_manager.boot_id)
 
     # Bridge: when ANY message is added to store (including via MCP),
     # broadcast to all WebSocket clients
