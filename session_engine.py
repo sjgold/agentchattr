@@ -1061,6 +1061,10 @@ class SessionEngine:
         from result_recovery import saved_results
         return saved_results(self, session_id)
 
+    def cli_message_candidate(self, session_id, message_id):
+        from cli_result_recovery import cli_message_candidate
+        return cli_message_candidate(self, session_id, message_id)
+
     def deliver_saved_result(self, session_id, result_id, *, submitted_by='operator'):
         from result_recovery import deliver_saved_result
         return deliver_saved_result(self, session_id, result_id, submitted_by=submitted_by)

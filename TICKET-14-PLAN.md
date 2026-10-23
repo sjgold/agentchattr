@@ -1,6 +1,6 @@
 # Ticket14: recover an operator-selected CLI message
 
-State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage interfaces frozen below; observed-red storage tests assigned. No production implementation or acceptance yet.
+State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage checkpoint b9763b2 independently bounded-PASS (focused15 and full744 tests, four expected skips). Candidate inspection implemented and tested as a bounded checkpoint below. No admission/transport/UI implementation or final acceptance yet.
 
 Base: published main `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Scope: issue14, specification v1.7 SC-5 and CLI AT-21c, standing autonomous policy in STATUS.md. Ticket12 blocker and Ticket13 are closed. Independent review: [contract settlement](epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-14-contract-review/index.md). Same AGY remains final reviewer.
 
@@ -16,7 +16,7 @@ Authenticated immutable seat identity is mandatory. Missing legacy turn associat
 - Source metadata.seat_identity_id must match the current expected CLI identity OR an immutable superseded source attempt within the SAME run, logical turn and input revision. Use retained brief/queue/attempt lineage, never current name or template alone.
 - All present run/turn/attempt/dispatch/input tags must match that specific source lineage. Complete authenticated dispatch association is machine_verified. Missing association requires literal confirm_operator_attribution=True and operator_attributed. Partial metadata cannot erase a known conflict.
 - Imported history is display data. Strip identity/execution claims during import and always stamp imported=True. Harmless metadata, literal content, UID, timestamps, channel and reply links remain intact.
-- Snapshot digest is full SHA256 of canonical JSON (UTF-8, sorted keys, compact separators, ensure_ascii=False, allow_nan=False). Native UID is the global source identity; missing legacy UID uses legacy-{message_id}-{snapshot_sha256[:16]} without rewriting history. This synthetic identifier supports deduplication, not authentication.
+- Snapshot digest is full SHA256 of canonical JSON (UTF-8, sorted keys, compact separators, ensure_ascii=False, allow_nan=False). Native nonempty string UID is the global source identity; absent/null/empty legacy UID uses legacy-{message_id}-{snapshot_sha256[:16]} without rewriting history. Present non-string UIDs reject as malformed. This synthetic identifier supports deduplication, not authentication.
 - Numeric message IDs start at0 and can be reused after clear/reload. Audit numeric IDs, but prevent global reuse by source_message_uid, not numeric ID alone. A UID under a different numeric ID is still the same source.
 - Store the copied exact selected content and source hash/UID/identity/available attempt scope in the accepted event. Later source edits cannot change admitted content.
 
@@ -46,6 +46,18 @@ Dedicated SeatManager.selected_cli_exit_proof(instance_or_provenance, dispatch_i
 - MessageStore.get_snapshot(msg_id): literal int >=0 (bool/string/negative raise ValueError); returns deepcopy of the complete stored message or None if absent. Copies nested metadata/attachments under the store lock, performs no writes or UID migration. Existing get_by_id remains unchanged.
 - archive.import_archive: every newly imported message receives copied dict metadata (non-dict becomes empty), stripping seat_identity_id, provenance, dispatch_id, run_id, turn_id, attempt_id, input_revision, routing_scope, quarantine_session_id and quarantine_reason; sets imported=True regardless of supplied value. Existing local messages and archive dedup/reply/content behavior remain intact.
 - Later component signatures will be pinned in bounded tranches before their tests. Core public routes are operator-only GET /api/sessions/{session_id}/cli-message-candidate/{message_id} and POST /api/sessions/{session_id}/attach-cli-message. Strict bounded JSON, sanitized errors, no keys/internal paths. Admission ACK includes accepted_event_id, attribution and truthful transport_settled.
+
+## Frozen candidate inspection tranche
+
+SessionEngine.cli_message_candidate(session_id, message_id) serializes readonly inspection under the engine RLock. Session ID must be literal positive int and message ID literal nonnegative int; malformed input raises EventValidationError. Missing or ineligible source/session raises EventConflict with a sanitized explanation.
+
+Response: session_id, message_id, message_uid, sender, channel, created_at (stored timestamp), text, snapshot_hash, eligible=True, attribution, requires_operator_confirmation, available_kinds=['final','question'], source_attempt_id and checkpoint. No raw metadata, runtime path, nonce, secret or process-control capability.
+
+Checkpoint is exactly {session_id, run_id, turn_id, attempt_id, input_revision} for the CURRENT invocation. Source attempt is resolved separately: complete authenticated_dispatch tags match one current/historical source entry and return that source_attempt_id; incomplete legacy tags preserve conflicts but return source_attempt_id=None and operator_attributed. Historical candidates must match current run/turn/input and immutable expected identity. Mixed tags from different attempts reject. Unknown nonempty provenance rejects; absent provenance with known authenticated seat identity remains eligible legacy output.
+
+Only managed CLI agent bindings, protocol1, unconsumed active/waiting/stalled/interrupted invocation, no Stop/pending retry qualify. A false dispatch_eligible flag does not reject content inspection. Text must satisfy existing final/question validation, without truncation. Previously consumed source UID is ineligible across all sessions; source numeric ID alone is not a global duplicate key.
+
+This tranche adds inspection only. It does not admit content, mutate stores/queue, trigger dispatch, query exit proof, adopt workers or extend leases. It does not expose the HTTP endpoint yet.
 
 ## Implementation and verification sequence
 
