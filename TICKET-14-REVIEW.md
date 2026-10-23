@@ -1,6 +1,6 @@
 # Ticket14 final review pack
 
-State: builder verification complete; same-AGY final independent review pending. No Ticket14 publication or closure yet.
+State: builder verification complete. Same AGY reported final PASS, but builder found incorrect source descriptions in that artifact, including nonexistent SQLite/methods and reversed transaction ordering. Publication is held pending actual source/caller recheck, corrected execution attribution and re-evaluated verdict. No Ticket14 merge, publication or closure yet.
 
 Base: `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Frozen implementation: `fc921ca884ba3b63303d8a8489320bf668729bcc`. This receipt pin changes documentation only; evaluate executable source at the frozen target.
 
