@@ -18,7 +18,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #12 stalled turns/retry | Published and closed | Publication8297bc1, same AGY PASS |
 | #16 | Published and closed | Publication08fcee2, final same-AGY PASS including hidden windows |
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
-| #13 | Proposed contract | Same AGY critique of TICKET-13-PLAN.md, then settlement/red tests |
+| #13 | Contract ratified | Frozen core storage interface; helper observed-red tests next |
 | #14-15, #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -41,3 +41,5 @@ Final same-AGY PASS for7777f81 (reviewed pinf3c5966):630 tests/four skips52.504s
 Ticket9 source published on origin/main2047834e7092553be2bff56e32bc3d409a400a1c; remote exact hash and closed issue verified. Post-merge630/four skips52.068s. Next13 saved-answer/outbox planning; no13 implementation yet.
 
 Ticket13 proposed plan written on codex/ticket-13-api-result-outbox from closure2bdbc77. Outbox authority after bearer revocation and separate transport settlement remain OPEN for same-AGY critique; no implementation/tests yet. Implementation-owner moved from completed9 to13.
+
+Ticket13 same-AGY HMAC-in-private-brief mechanism and five source-grounded refinements ratified. Core ResultOutbox/payload/HMAC/ack interfaces frozen; helper storage red tranche next. No production implementation yet.

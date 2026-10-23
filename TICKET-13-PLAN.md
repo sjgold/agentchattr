@@ -1,6 +1,6 @@
 # Ticket #13: recover saved API results without regeneration
 
-State: same-AGY critique approved the bounded direction. Brief-key isolation, exact transport scoping and duplicate-ack refinements are pending ratification. No implementation or red tests yet.
+State: same-AGY contract and all five source-grounded refinements ratified. Core storage interfaces frozen below; observed-red tests next. No production implementation yet.
 
 Base: published main2bdbc777b5ab8e254b36e54cd784a469d02720b4. Branch: codex/ticket-13-api-result-outbox. Scope authority: issue13, specificationv1.7 SC-5/AT-21c, standing autonomous execution policy in STATUS.md. Same Antigravity independent reviewer remains assigned.
 
@@ -18,13 +18,13 @@ Ratified bounded scope is managed frozen API review turns, including typed quest
 - A targeted worker restart revokes its bearer. A new identity cannot post an old brief as if it were the original seat. Native process metadata alone does not authenticate result content.
 - Ticket9 now provides exact launch/model-child evidence and internal cancellation settlement, but that settlement is bound to a Stop/Retry cancellation ID. It cannot be repurposed as a fictional worker acknowledgement.
 
-## Settled mechanism and pending refinements
+## Settled mechanism
 
 The reviewer rejected a separate pre-generation ticket endpoint/store as unnecessary. Reuse the existing authenticated brief fetch instead: generate one random256-bit symmetric seal_secret with the durable managed API brief, retain the key privately on the server, and deliver it to the exact authenticated expected API worker during its existing HTTP GET. No asymmetric signing or extra request/key database is required. Stable result_id == dispatch_id == event_id.
 
 The worker holds the key in memory, validates final/question output, computes HMAC-SHA256 over deterministic UTF-8 payload bytes (sorted keys, compact separators, finite JSON), and atomically writes the sealed outbox before posting. Outbox content includes the seal, never the key, seat bearer or provider credential. Recovery verifies the original saved result without reviving a bearer or fabricating a live principal.
 
-Pending source-grounded refinement: BriefStore.get is also used by MCP, operator views and admission. Its default result must redact private keys. Only the existing authenticated HTTP delivery to the exact managed API owner may expose the key. No key in CLI/human briefs, model messages, API model-child packet, outbox, receipts, logs, exports or public provenance. Identical immutable put retries retain the original key; legacy briefs are not silently rewritten. Existing brief_messages allowlists prompt fields, but this gets an explicit leak regression.
+Ratified isolation: BriefStore.get is also used by MCP, operator views and admission. Its default result must redact private keys. Only the existing authenticated HTTP delivery to the exact managed API owner may expose the key. No key in CLI/human briefs, model messages, API model-child packet, outbox, receipts, logs, exports or public provenance. Identical immutable put retries retain the original key; legacy briefs are not silently rewritten. Existing brief_messages allowlists prompt fields, but this gets an explicit leak regression.
 
 HMAC proves payload integrity relative to a trusted server-held key. It does not protect against an actor who can rewrite the trusted brief/key store. Actual runtime path remains data/api_seat_runtime/<launch_attempt>/outbox/<dispatch_id>.json.
 
@@ -32,15 +32,15 @@ HMAC proves payload integrity relative to a trusted server-held key. It does not
 
 Ratified: admission alone cannot release transport or prove worker/model exit. A distinct internal settled_recovered operation requires exact original launch/dispatch lifecycle evidence from Ticket9, stores source=result_recovery and a genuine verification basis, and never forges consumer acknowledgement, exit codes or Stop/Retry cancellation IDs.
 
-Pending refinement: hold only the occupied seat/dispatch. Do not globally disable an unrelated verified successor seat after content is accepted. Existing queue ownership and cold readiness boundaries still prevent execution in the occupied seat. If the original lifecycle remains unproven, preserve transport ownership visibly; its live original worker may send its real release.
+Ratified: hold only the occupied seat/dispatch. Do not globally disable an unrelated verified successor seat after content is accepted. Existing queue ownership and cold readiness boundaries still prevent execution in the occupied seat. If the original lifecycle remains unproven, preserve transport ownership visibly; its live original worker may send its real release.
 
-Pending refinement: an exact already-admitted result remains idempotently acknowledgeable after a later Stop/Retry because no new admission occurs. An unadmitted pending result for stopped/superseded/corrected work rejects409. Recovery must validate the original stable identity and immutable fields before either disposition.
+Ratified: an exact already-admitted result remains idempotently acknowledgeable after a later Stop/Retry because no new admission occurs. An unadmitted pending result for stopped/superseded/corrected work rejects409. Recovery must validate the original stable identity and immutable fields before either disposition.
 
 ## Proposed data and failure boundaries
 
 One immutable outbox record per result_id under a validated managed runtime path. Use current kernel-lock/atomic-replace patterns; reject path traversal, schema drift, duplicate IDs with changed content and malformed/tampered records without rewriting them. Preserve exact Unicode/newlines and enforce existing event byte limits without truncation.
 
-Immutable payload: version, result_id, dispatch_id, session_id, brief_id, run_id, turn_id, attempt_id, input_revision, seat_identity_id, launch_attempt/nonce/fingerprint, kind, content, created_at and HMAC seal. No whole prompt/source snapshot, credentials, raw provider errors or unrelated context. Precise allowlist is proposed, not frozen yet.
+Immutable payload: version, result_id, dispatch_id, session_id, brief_id, run_id, turn_id, attempt_id, input_revision, seat_identity_id, launch_attempt/nonce/fingerprint, kind, content, created_at and HMAC seal. No whole prompt/source snapshot, credentials, raw provider errors or unrelated context. Exact core allowlist is frozen below.
 
 Delivery acknowledgement is separate mutable bookkeeping. A crash after server admission but before local ack persistence leaves a pending record; retry must identify the exact already-accepted result and mark acknowledged without another admission or model call. Changing content/kind/scope under the same ID must conflict. Local acknowledgement-write failure must remain truthful even when the server already accepted.
 
@@ -83,3 +83,44 @@ Tests must precede production implementation. Existing helper authors bounded ou
 - Real isolated local provider/Windows workers, retained native handles, bounded fault seams and complete cleanup. No live providers/native AI/Omarchy. Browser refresh and explicit Deliver saved answer distinct from Retry; full suite/prior relevant integrations.
 
 Implementation begins only after the consequential choices are settled with the same reviewer under the standing autonomous policy. Unresolved reproduced correctness disputes use the recorded Astra escalation procedure, never automatic extra model spawning.
+
+
+## Frozen core storage interface, tranche1
+
+New module result_outbox.py (not implemented at freeze):
+
+```python
+class OutboxError(ValueError): ...
+class OutboxConflict(OutboxError): ...
+
+def seal_result(payload, seal_secret): ...  # -> {"payload": deep copy, "seal": hex SHA256 MAC}
+def verify_result(record, seal_secret): ...  # -> verified deep-copy payload; mismatch raises OutboxError
+
+class ResultOutbox:
+    def __init__(self, runtime_path): ...
+    def save(self, payload, seal_secret): ...  # immutable, idempotent -> sealed record
+    def get(self, result_id): ...  # schema-validated record, not an authentication claim
+    def list_records(self): ...  # sorted immutable records, malformed final JSON fails closed
+    def acknowledge(self, result_id, accepted_event_id): ...  # -> durable ack, exact matching IDs
+    def get_ack(self, result_id): ...  # -> ack dict or None
+```
+
+Exact payload fields: version, result_id, dispatch_id, event_id, session_id, brief_id, run_id, turn_id, attempt_id, input_revision, seat_identity_id, launch_attempt, launch_nonce, fingerprint, kind, content, created_at. No optional unknown fields. version is literal int1; IDs are32 lowercase hex except positive-int session_id,64hex input_revision/fingerprint, and turn_id equal to run_id + ':' + nonnegative phase + ':' + nonnegative turn. result_id == dispatch_id == event_id. created_at is positive finite int/float, booleans rejected. kind/content obey turn_events.validate_content and its512KiB UTF-8 bound. No Unicode/newline normalization.
+
+seal_secret is64 lowercase hex encoding32 random bytes. HMAC key is bytes.fromhex(seal_secret). MAC covers only payload JSON with ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False encoded UTF-8. Use compare_digest. Record exactly {payload, seal}; mutable acknowledgement never changes sealed bytes.
+
+ResultOutbox validates existing runtime config through runtime_ownership._validate and accepts only managed openai-compatible snapshots. save additionally binds launch_attempt/nonce/fingerprint to that snapshot. This is structural storage validation, never runtime adoption or result authenticity by itself. get/list perform schema and launch checks; authentication is explicit verify_result with the trusted brief key. Legacy/unmanaged/CLI paths fail closed without mutation.
+
+Result file is runtime_path/outbox/<result_id>.json. Separate acknowledgement at runtime_path/outbox_ack/<result_id>.json contains exactly version, result_id, accepted_event_id and acknowledged_at (finite positive timestamp). IDs must match an existing valid result; repeat ack retains the original ack bytes/time. One shared per-result kernel lock serializes save/ack. Use existing atomic_json; failed writes preserve prior immutable result/ack and do not leak a failed record into a later save. Identical saves return original bytes; changed payload under the same ID raises OutboxConflict. Read/list do not create files. Reject invalid IDs/path escape/symlink targets; temporary/lock files are not recoverable results and remain ignored/preserved.
+
+No arbitrary directory scan or native process is needed for tranche1. Use structurally valid isolated ownership snapshots; no fake OS ownership claim. Test helper owns only tests/test_result_outbox.py. Root writes private brief delivery and later engine/HTTP tests separately after their own frozen interface tranche.
+
+## Implementation sequence
+
+- [ ] Helper captures missing-module/core-storage red, then extends bounded atomicity/HMAC/schema/identity/path/concurrency tests. Root waits for early red before creating result_outbox.py.
+- [ ] Root implements minimal storage/sealing against that tranche, runs focused and appropriate regressions; no delivery/recovery claim yet.
+- [ ] Root freezes BriefStore key issuance/redaction/HTTP-only delivery interface, captures red leak/identity/immutable retry tests, implements and checks prompt/child/outbox exclusion.
+- [ ] Freeze engine recovery/discovery and operator routes: exact sealed result provenance, duplicate acknowledgement versus pending stale409, transport settlement only with original supervisor+exact model end proof. Helper authors bounded red cases; root owns authority/race tests.
+- [ ] Wire worker save-before-first-post and durable ack, bounded3 delivery attempts and explicit cold recovery; generation/persistence failures never claim a saved answer. No automatic cold model invocation or result admission.
+- [ ] Actual isolated fake-provider/worker integration exercises post outage, lost ack, explicit wrapper/server restart with revoked original bearer, real end proof/held transport, Stop/Retry/corrected source and peer isolation. Complete retained-handle cleanup on failure. Browser explicit saved-answer delivery/preview/refresh distinct from Retry.
+- [ ] Freeze final target, full suite/appropriate prior tools/static checks and same-AGY independent reproduction/recheck. Publish/close only after PASS under standing authorization.
