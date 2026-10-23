@@ -414,6 +414,59 @@ def saved_result_exit_proof(manager, payload):
             return unproven
 
 
+def selected_cli_exit_proof(manager, provenance, dispatch_id):
+    """Query a frozen CLI launch's worker and child exit, without process control."""
+    import hashlib
+    from turn_events import event_id
+    unproven = {'local_ended': False, 'reason': 'unproven_worker_exit'}
+    with manager.lock:
+        try:
+            event_id(dispatch_id)
+            if not isinstance(provenance, dict):
+                return unproven
+            if 'launch_attempt' not in provenance:
+                provenance = manager.launch_provenance(provenance)
+                if not provenance:
+                    return unproven
+            launch = event_id(provenance['launch_attempt'])
+            hashed = ({'effective': provenance['effective'], 'fresh_base_effective': provenance['fresh_base_effective']}
+                      if provenance.get('fresh_base_effective') else provenance['effective'])
+            if hashlib.sha256(json.dumps(hashed, sort_keys=True).encode()).hexdigest() != provenance.get('fingerprint'):
+                return unproven
+            item = _candidate(manager, manager.store.path.parent / 'api_seat_runtime' / launch / 'config.json')
+            ownership, birth = item['identity'], item['birth']
+            receipt = _read(item['path'].with_name('receipt.json'))
+            base = item['snapshot'].get('context_base_effective')
+            if (item['effective']['seat']['adapter'] != 'cli' or item['manifest']['spawn_outcome'] != 'spawned'
+                    or item['key'] != provenance['key']
+                    or manager._provenance_effective(item['effective']) != provenance['effective']
+                    or provenance.get('fresh_base_effective') != (manager._provenance_effective(base) if base else None)
+                    or receipt.get('attempt') != launch or receipt.get('identity_id') != provenance['identity_id']
+                    or type(receipt.get('child_exit_code')) is not int):
+                return unproven
+            attempt = next((value for value in manager.attempts.values() if value['id'] == launch), None)
+            if attempt is not None:
+                cached_birth = attempt.get('worker_birth')
+                if ((cached_birth is not None and cached_birth != birth)
+                        or attempt.get('ownership') != ownership
+                        or attempt.get('identity_id') != provenance['identity_id']):
+                    return unproven
+                worker = attempt.get('worker_process') or attempt.get('process')
+                if cached_birth is not None and birth and worker and worker.pid == birth['pid']:
+                    if type(worker.poll()) is not int:
+                        return unproven
+                    return {'local_ended': True, 'launch_attempt': launch, 'dispatch_id': dispatch_id,
+                            'seat_identity_id': provenance['identity_id'], 'wrapper_status': 'observed_exited',
+                            'child_exit_code': receipt['child_exit_code'],
+                            'verification_basis': 'retained_native_handle_observed_end'}
+            proof = runtime_exit_proof(manager, provenance, dispatch_id)
+            if proof.get('local_ended') is not True:
+                return unproven
+            return dict(proof, dispatch_id=dispatch_id, seat_identity_id=provenance['identity_id'])
+        except (OSError, ValueError, KeyError, TypeError):
+            return unproven
+
+
 def runtime_exit_proof(manager, provenance, dispatch_id=None):
     """Resolve one immutable original launch, never a latest-by-name guess."""
     import hashlib

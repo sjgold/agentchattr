@@ -71,6 +71,18 @@ An exact admitted request replay precedes current fences and returns the stored 
 
 Implemented and component-tested: helper12 PASS0.754s; root combined56 PASS4.653s and full768/four expected skips65.477s. Initial missing-method red preceded implementation. Shared final/question progression retains existing admission behavior; exact selected replay uses an explicit unchanged-transaction path without callbacks or writes. This tranche has no queue writes, projection, process proof or HTTP handler. Coordinator hold/cancel/reconciliation follows separately, preserving durable fence ordering.
 
+## CLI transport and exit-proof tranche
+
+Same AGY ratified keyword-only hold_recovered(..., selected_cli=False), with literal bool validation. Default False preserves Ticket13 states/refusals. True permits queued/dispatched/acknowledged/uncertain/failed/cancelling/released/cancelled and records recovery_hold.selected_cli=True. Hold installation preserves all existing record state, consumer, envelope, cancellation IDs/receipts and history. Cleared holds remain cleared.
+
+CoordinatedQueue reconciles each durable superseded_by_operator_recovery fence by installing its exact hold before cancel_dispatch. Existing universal Stop precedence remains; selected mode can install the hold even if Stop already cancelled the record. Ordinary Retry fences do not acquire selected holds. No unrelated dispatch is cancelled. New claims remain blocked while the hold is uncleared; the existing owner still polls its cancelling dispatch.
+
+settle_recovered accepts new CLI-only durable_receipt_and_observed_absent and retained_native_handle_observed_end bases ONLY for exact holds marked selected_cli=True. This preserves old API rejection of CLI-only proof. Existing observed_child_exit_and_ipc remains an allowlisted shared basis. Held cancelled transports clear via audit without rewriting cancellation history; held released transports settle under genuine proof.
+
+SeatManager.selected_cli_exit_proof(frozen_provenance_or_instance, dispatch_id) validates exact managed CLI launch, approved server/root/effective settings, fingerprint, stored authenticated birth and receipt identity. Warm true-worker retained handle must match actual birth PID and have genuine integer exit; matching receipt must contain integer native-child exit. It never uses a launcher shim's exit as worker proof. Cold fallback reuses Ticket9 runtime_exit_proof. No handle close/control, worker adoption from this query or auth lease extension.
+
+Root proof tests exercise real owned toy supervisor self-birth/retained native handles; child-exit receipts are explicitly supplied protocol fixtures and cold absence uses an algorithm seam. They do not claim a real CLI child ran or native cold absence acceptance. Actual CLI/MCP end-to-end verification remains required later.
+
 ## Implementation and verification sequence
 
 1. Observed-red copied snapshot/import tests, minimal storage hardening, focused existing archive/message verification.
@@ -81,3 +93,9 @@ Implemented and component-tested: helper12 PASS0.754s; root combined56 PASS4.653
 6. Full regression, same AGY final frozen review/reproduction, post-merge checks before standing-authorized publication and issue closure.
 
 Limits: no live providers/native AI clients, Desktop/global settings, participant replacement (#15), new scheduler or Omarchy acceptance. Imported provenance is rejected; trusted historical storage is not a general signature system.
+
+## OPEN precision: selected dispatch never published
+
+Observed after real queue.enqueue OSError: interrupted run retains a bound CLI invocation; authenticated legacy message can be selected and admitted, but no ledger record exists for its fenced dispatch. Current coordinator then fails peer claims while installing the nonexistent hold. New test_cli_missing_dispatch fails before a fix; this test was added AFTER full783/four-skips passed.
+
+Do not ignore worker lifetime or fabricate a transport/ACK/exit. Proposed same-AGY settlement: persist exact selected transport identity/dispatch/frozen launch provenance and unresolved/resolved state in the existing session recovery audit. If its queue record is absent, block new claims only on that identity until genuine CLI exit proof resolves the session hold. Existing ledger holds/settlement apply when records exist. This remains an OPEN proposal awaiting reviewer ruling, not implemented behavior.

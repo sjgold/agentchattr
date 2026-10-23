@@ -66,6 +66,10 @@ class SeatManager:
         from runtime_adoption import saved_result_exit_proof
         return saved_result_exit_proof(self, payload)
 
+    def selected_cli_exit_proof(self, provenance, dispatch_id):
+        from runtime_adoption import selected_cli_exit_proof
+        return selected_cli_exit_proof(self, provenance, dispatch_id)
+
     def _effective(self, seat):
         original = self.store.providers[seat['provider']]
         if seat['adapter'] == 'cli':
