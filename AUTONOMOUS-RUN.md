@@ -20,7 +20,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Contract planning next | Codex reads issue/spec and delivered boundaries, then same AGY critique before code |
+| #15 | Proposed contract ready | Same AGY critiques TICKET-15-PLAN and source-grounded OPEN choices before code |
 | #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -37,5 +37,7 @@ Published/closed: #1-14 and #16. Ticket14 source4999c39342b85cfafc44bb373ad39cb6
 Ticket14 builder acceptance complete: full806 tests/four expected skips73.299s; all3 actual CLI recovery cases, Stop refusal and both actual UI serves PASS with cleanup unresolved[]. Prior turn recovery/corrected restart/Stop and API lost-ACK integrations PASS. Usage RECOVER-CLI-MESSAGES.md, final pack TICKET-14-REVIEW.md, contract TICKET-14-PLAN.md and builder browser artifact preserve exact scope and failures.
 
 Same AGY reaffirmed final FULL PASS for fc921ca884ba3b63303d8a8489320bf668729bcc after source/caller recheck, focused72/7.721s and corrected report. Full806 total/four expected skips80.458s and four independent actual cases have raw logs/scratch corroborated by builder. Initial inaccurate report remains an explained assurance correction; no source changed. Post-merge806 total/four skips71.794s and syntax/diff pass. Ticket14 publication and closure now verified. Next Codex begins issue15 participant-replacement contract planning and asks the same AGY to critique before implementation.
+
+Ticket15 is now proposed on codex/ticket-15-participant-replacement from55bd7cbea6367b299fc4c927f71cf4736480bd40. Source-grounded TICKET-15-PLAN.md recommends fresh managed replacement preserving role/completed work and explicit current-turn skip with missing notices. Scoped old-seat transport hold, preparation/repair/restart and skip/output IO-gap mechanics remain OPEN for the same AGY critique. No production or new tests yet. Next owner is same AGY for contract critique, then Codex freezes components for existing helper observed-red tests.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.

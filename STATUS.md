@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 (#1-14 and #16 published/closed; #15 contract planning next)
+**Updated:** 2026-10-23 (#1-14 and #16 published/closed; #15 proposed contract ready for same-AGY critique)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -320,3 +320,11 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Frozen implementation: fc921ca884ba3b63303d8a8489320bf668729bcc, original documentation pin925f2eb. Same AGY final FULL PASS after source-grounded recheck:806 total tests/four expected skips80.458s, focused72/7.721s and all four actual CLI cases PASS/unresolved[]. Builder independently read the raw reviewer logs and scratch results. The initial report's nonexistent SQLite/methods/test filenames and reversed ordering prompted a publication HOLD; reviewer reread source/callers, rewrote the artifact and re-evaluated PASS. Report-only refinements preserve actual UID semantics, method names, test/doc attribution and builder browser limits. No source changed after freeze. Receipt REVIEW-GEMINI-TICKET-14.md.
 - Local main fast-forward merged through HOLD documentationf8cea224a3f6c11f4113b6f6bf13e11cb69f4dc2. Post-merge806 total tests OK/four expected skips71.794s, sessions/chat JavaScript syntax and diff whitespace pass. Source publication4999c39 contains the acceptance receipt; this documentation-only closure receipt preserves those results.
 - Next owner/action: Codex reads issue15 and specification v1.7 participant-replacement scope, checks delivered recovery/Stop boundaries, writes a bounded plan and requests the same AGY contract critique before implementation. Ticket15 is unimplemented at this handoff. No helper resources running. Live AI/provider, native Omarchy, Desktop/global settings and remote-compute cancellation remain outside scope.
+
+## Ticket15 proposed contract
+
+- Implementation-owner Codex, claim a99548d9-49eb-4f70-9cf1-d185414cbad5. Branch codex/ticket-15-participant-replacement from verified published closure55bd7cbea6367b299fc4c927f71cf4736480bd40. Issue15/specification v1.7 SC-5/AT-21d/22 read; blocker12 and recovery13/14 delivered.
+- TICKET-15-PLAN.md is a proposed contract, not implemented behavior. Source reads covered current checkpoint/Retry, immutable brief ownership, fresh CLI contracts, runtime proof, identity-scoped queue holds, shared admission progression and existing export/projection. No existing repository graph was available; no tooling installed.
+- Recommendation: explicit role-preserving replacement clones a selected managed seat's frozen profile into a distinct fresh run-bound instance, preserving selected source seat/unrelated work and all completed results. Update only current and unstarted same-role assignments, retain original source/design/rules and audit actual seat/model changes. Missing coordinator uses the same operation. Skip applies to current contribution and stays visibly missing in downstream context/output/export, never fake agreement.
+- OPEN for same-AGY source-grounded contract critique: scoped retired-transport hold/proof/cancellation, preparation/restart/failed-repair representation, deterministic skip/output projection and IO-gap progression. No production changes or new tests before these settle. No live provider/native AI/Omarchy/global-setting changes.
+- Next owner/action: same AGY critiques the frozen proposed plan and actual callers; Codex settles contract and freezes bounded component interfaces, then requests observed-red tests from the existing helper. Final independent review/publication still required after eventual implementation.
