@@ -60,12 +60,16 @@ def main():
     preparse.add_argument('--seat-file')
     managed_args, _ = preparse.parse_known_args()
     managed = None
+    birth = None
+    observed_boot = [None]
     receipt = None
     shutdown = threading.Event()
     if managed_args.seat_file:
         from api_seats import Receipt, validate_seat
         managed = json.loads(Path(managed_args.seat_file).read_text('utf-8'))
         validate_seat(managed['seat'], {managed['seat']['provider']: managed['provider']})
+        from runtime_ownership import record_worker_birth
+        birth = record_worker_birth(managed_args.seat_file, managed)
         config['server'] = managed['server']
         config['agents'] = {managed['base']: {**managed['provider'], 'type': 'api',
                            'model': managed['seat']['model'], 'label': managed['seat']['name'],
@@ -138,6 +142,8 @@ def main():
 
     name = registration["name"]
     token = registration["token"]
+    if receipt:
+        receipt.update(identity_id=registration.get('identity_id'))
     print(f"  Registered as: {name} (slot {registration.get('slot', '?')})")
 
     # Thread-safe identity state (can change via heartbeat rename)
@@ -174,14 +180,19 @@ def main():
             try:
                 n = get_name()
                 t = get_token()
+                heartbeat_body = {"active": is_working()}
+                if birth:
+                    from runtime_ownership import heartbeat_payload
+                    heartbeat_body['runtime_ownership'] = heartbeat_payload(birth, observed_boot[0])
                 req = urllib.request.Request(
                     f"http://127.0.0.1:{server_port}/api/heartbeat/{n}",
                     method="POST",
-                    data=json.dumps({"active": is_working()}).encode(),
+                    data=json.dumps(heartbeat_body).encode(),
                     headers=_auth_headers(t, include_json=True),
                 )
                 with urllib.request.urlopen(req, timeout=5) as resp:
                     resp_data = json.loads(resp.read())
+                observed_boot[0] = resp_data.get('runtime_ownership', {}).get('boot_id')
                 server_name = resp_data.get("name", n)
                 if server_name != n:
                     set_identity(new_name=server_name)
@@ -194,6 +205,8 @@ def main():
                     try:
                         replacement = _register_instance(server_port, agent, args.label)
                         set_identity(replacement["name"], replacement["token"])
+                        if receipt:
+                            receipt.update(identity_id=replacement.get('identity_id'))
                         print(f"  Re-registered as: {replacement['name']}")
                     except Exception:
                         pass

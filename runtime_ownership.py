@@ -158,3 +158,13 @@ def record_worker_birth(snapshot_path, snapshot):
         return existing
     atomic_json(target, result)
     return result
+
+
+def heartbeat_payload(birth, boot_id):
+    if not birth or 'ownership' not in birth:
+        return None
+    identity = birth['ownership']
+    return {'attempt': identity['attempt'], 'launch_nonce': identity['launch_nonce'],
+            'server_identity': identity['server_identity'], 'boot_id': boot_id,
+            'worker_pid': birth.get('pid'), 'creation_filetime': birth.get('creation_filetime'),
+            'worker_root': birth.get('worker_root')}

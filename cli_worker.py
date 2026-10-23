@@ -21,6 +21,9 @@ def run(snapshot_path):
     snapshot = json.loads(snapshot_path.read_text(encoding='utf-8'))
     seat, client = snapshot['seat'], snapshot['provider']
     validate_seat(seat, {seat['provider']: client})
+    from runtime_ownership import record_worker_birth, heartbeat_payload
+    birth = record_worker_birth(snapshot_path, snapshot)
+    observed_boot = [None]
     receipt = Receipt(snapshot_path.with_name('receipt.json'), snapshot['attempt'])
     receipt.update(startup_checked=False, version=None, child_exit_code=None)
     stop = threading.Event()
@@ -34,8 +37,9 @@ def run(snapshot_path):
     outcome = 1
 
     def request(path):
-        req = urllib.request.Request(f'http://127.0.0.1:{port}' + path, data=b'', method='POST',
-                                     headers=_auth_headers(identity['token']))
+        body = {'runtime_ownership': heartbeat_payload(birth, observed_boot[0])} if path.startswith('/api/heartbeat/') else {}
+        req = urllib.request.Request(f'http://127.0.0.1:{port}' + path, data=json.dumps(body).encode(), method='POST',
+                                     headers=_auth_headers(identity['token'], include_json=True))
         with urllib.request.urlopen(req, timeout=2) as response:
             return json.loads(response.read())
 
@@ -52,6 +56,8 @@ def run(snapshot_path):
                 pass
             try:
                 response = request('/api/heartbeat/' + identity['name'])
+                proof = response.get('runtime_ownership', {})
+                observed_boot[0] = proof.get('boot_id')
                 identity['name'] = response.get('name', identity['name'])
                 last_success = time.monotonic()
                 if not stop.is_set():
@@ -87,6 +93,7 @@ def run(snapshot_path):
             if not mode:
                 raise SeatError('This client has no declared MCP identity injection contract. Configure a supported adapter before launch.')
             identity.update(_register_instance(port, base, seat['name']))
+            receipt.update(identity_id=identity.get('identity_id'))
             if not identity.get('name') or not identity.get('token'):
                 raise SeatError('The local server did not supply a CLI identity.')
             proxy_url = None

@@ -2609,8 +2609,11 @@ async def heartbeat(agent_name: str, request: Request):
         mcp_bridge._presence[current_name] = __import__("time").time()
     # Optional activity report from wrapper's terminal monitor
     _activity_changed = False
+    runtime_proof = None
     try:
         body = await request.json()
+        if isinstance(body, dict) and auth_inst and api_seat_manager and isinstance(body.get('runtime_ownership'), dict):
+            runtime_proof = api_seat_manager.observe_runtime_heartbeat(auth_inst, body['runtime_ownership'])
         if "active" in body:
             active_val = bool(body["active"])
             was_active = mcp_bridge._activity.get(current_name, False)
@@ -2623,6 +2626,8 @@ async def heartbeat(agent_name: str, request: Request):
         await broadcast_status()
     # Return canonical name so wrapper can track renames
     resp = {"ok": True, "name": current_name}
+    if runtime_proof is not None:
+        resp['runtime_ownership'] = runtime_proof
     if registry:
         # Follow rename chain (e.g. claude-2 was renamed to claude-music)
         canonical = registry.resolve_name(current_name)

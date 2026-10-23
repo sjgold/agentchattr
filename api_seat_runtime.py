@@ -18,12 +18,17 @@ from launcher import stop_owned_child
 
 
 class SeatManager:
-    def __init__(self, root, config, store, registry, startup_timeout=15, monitor=True):
+    def __init__(self, root, config, store, registry, startup_timeout=15, monitor=True, boot_id=None):
+        self.boot_id = uuid.uuid4().hex if boot_id is None else boot_id
+        if not isinstance(self.boot_id, str) or not re.fullmatch(r'[0-9a-f]{32}', self.boot_id):
+            raise SeatError('Server boot identity must be an exact UUID identifier.')
         self.root, self.config = Path(root), deepcopy(config)
         self.store, self.registry = store, registry
         self.timeout = startup_timeout
         self.attempts = {}
         self.package_selections = {}
+        self.runtime_candidates = {}
+        self.retired_attempts = set()
         self.lock = threading.RLock()
         self.closed = threading.Event()
         if monitor:
@@ -38,6 +43,18 @@ class SeatManager:
                         self._inspect(key)
                     except (SeatError, OSError):
                         self.attempts[key].update(state='failed', error='Owned wrapper cleanup failed. Check data-directory permissions before retrying.')
+
+    def reconcile_runtime(self, *, now=None):
+        from runtime_adoption import reconcile_runtime
+        return reconcile_runtime(self, now=now)
+
+    def observe_runtime_heartbeat(self, instance, payload, *, now=None):
+        from runtime_adoption import observe_runtime_heartbeat
+        return observe_runtime_heartbeat(self, instance, payload, now=now)
+
+    def restart_readiness(self, identity_id, boot_id, *, now=None):
+        from runtime_adoption import restart_readiness
+        return restart_readiness(self, identity_id, boot_id, now=now)
 
     def _effective(self, seat):
         original = self.store.providers[seat['provider']]
@@ -66,7 +83,8 @@ class SeatManager:
         server['data_dir'] = str(self.store.path.parent.resolve())
         if server.get('host', '127.0.0.1') not in ('127.0.0.1', 'localhost'):
             raise SeatError('API wrapper currently requires a server listening on IPv4 loopback.')
-        return {'seat': seat, 'provider': provider, 'server': server}
+        return {'seat': seat, 'provider': provider, 'server': server,
+                'mcp': deepcopy(self.config.get('mcp', {}))}
 
     def save(self, package):
         package = validate_package(package, self.store.providers)
@@ -104,6 +122,9 @@ class SeatManager:
     def _launch_effective(self, key, effective, restart=False, launch_metadata=None):
         # Caller holds manager.lock. Both normal and corrected launches use the
         # same ownership, resource checks and immutable snapshot writer.
+        from runtime_adoption import has_unverified_launch
+        if has_unverified_launch(self, key):
+            raise SeatError('An earlier launch for this seat has unverified ownership. Reconcile it before launching or restarting.')
         seat = effective['seat']
         fingerprint = hashlib.sha256(json.dumps(effective, sort_keys=True).encode()).hexdigest()
         previous = self.attempts.get(key)
@@ -142,9 +163,15 @@ class SeatManager:
         base = ('cli-' if cli else 'api-') + hashlib.sha256(key.encode()).hexdigest()[:8] + '-' + attempt_id[:12]
         self.registry.seed({base: {'type': 'cli' if cli else 'api', 'label': seat['name'], 'color': '#60a5fa'}})
         attempt['base'] = base
-        snapshot = {**effective, 'attempt': attempt_id, 'base': base, **(launch_metadata or {})}
+        from runtime_ownership import new_launch_identity, record_spawn_outcome
+        ownership = new_launch_identity(self.root, effective, key, attempt_id, self.boot_id)
+        attempt['ownership'] = ownership
+        attempt['spawn_outcome'] = 'pending'
+        snapshot = {**effective, 'attempt': attempt_id, 'base': base, **(launch_metadata or {}),
+                    'ownership': ownership}
         try:
             atomic_json(attempt['snapshot'], snapshot)
+            record_spawn_outcome(attempt['snapshot'], snapshot, 'pending')
             # No secret values in arguments, snapshot or managed diagnostics.
             command = [sys.executable, '-u', str(self.root / ('cli_worker.py' if cli else 'wrapper_api.py')), base,
                        '--seat-file', str(attempt['snapshot'])]
@@ -162,9 +189,19 @@ class SeatManager:
                         options.pop(field)
             else:
                 options['start_new_session'] = True
-            attempt['process'] = subprocess.Popen(command, **options)
+            try:
+                attempt['process'] = subprocess.Popen(command, **options)
+            except OSError:
+                attempt['spawn_outcome'] = 'failed'
+                record_spawn_outcome(attempt['snapshot'], snapshot, 'failed')
+                raise
+            attempt['spawn_outcome'] = 'spawned'
+            record_spawn_outcome(attempt['snapshot'], snapshot, 'spawned')
         except OSError:
-            attempt.update(state='failed', error='Could not start this owned wrapper. Check the application Python environment and retry.')
+            if attempt['process'] is not None:
+                attempt.update(state='action_required', error='The worker started, but ownership bookkeeping could not be persisted. Verify its state before retrying.')
+            else:
+                attempt.update(state='failed', error='Could not start this owned wrapper. Check the application Python environment and retry.')
         return self._view(attempt)
 
     def _view(self, attempt):
@@ -274,6 +311,7 @@ class SeatManager:
             if instance.get('base') == attempt.get('base'):
                 self.registry.deregister(name)
         attempt['released'] = True
+        self.retired_attempts.add(attempt['id'])
 
     def stop(self, package_id, seat_id):
         with self.lock:
@@ -645,3 +683,6 @@ class SeatManager:
                 if attempt['state'] != 'stopped':
                     self._release(attempt)
                     attempt.update(state='stopped', adapter_connected=False)
+                from process_identity import OwnedProcessHandle
+                if isinstance(attempt.get('process'), OwnedProcessHandle):
+                    attempt['process'].close()

@@ -168,7 +168,8 @@ class SessionStore:
         with self._lock:
             # One active session per channel
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "prepared", "stalled", "retrying", "interrupted"):
+                if s.get("channel") == channel and (s.get("state") in ("active", "waiting", "paused", "awaiting_input", "prepared", "stalled", "retrying")
+                        or (s.get('state') == 'interrupted' and s.get('restart_recovery'))):
                     return None
 
             session = {
@@ -223,7 +224,8 @@ class SessionStore:
         """Get the active/waiting/paused session for a channel."""
         with self._lock:
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "stalled", "retrying", "interrupted"):
+                if s.get("channel") == channel and (s.get("state") in ("active", "waiting", "paused", "awaiting_input", "stalled", "retrying")
+                        or (s.get('state') == 'interrupted' and s.get('restart_recovery'))):
                     return deepcopy(s)
             return None
 
