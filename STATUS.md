@@ -1,20 +1,27 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 (#1-14 and #16 published/closed; #15 native proof/internal settlement tested, bounded review next; stop after15)
+**Updated:** 2026-10-23 (#1-14 and #16 published/closed; #15 checkpoint b9cd507 under independent bounded review; stop after15)
+
+## Current handoff
+
+- Active work: Ticket15, branch `codex/ticket-15-participant-replacement`, frozen implementation checkpoint `b9cd50739235ac8e04ac69f020bd8dff84fd44e1`. Ticket15 is not complete, merged or published.
+- Verified:861 total tests OK,4 expected platform skips,79.601s. Skip storage and initial clone/replay have independent bounded PASS; combined transport/native-proof checkpoint is with the same AGY reviewer.
+- Next owner: AGY supplies the bounded Tranche3 verdict. Codex then completes replacement state/explicit repair, engine and HTTP integration, missing-work projection/export, UI and actual Windows/local-fake acceptance, followed by final independent review and publication/closure.
+- Stop condition: finish Ticket15 completely, then stop. Do not start another ticket. Helper is idle; no usage-consuming live providers, native AI clients, Omarchy or global/Desktop changes are authorized.
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
 - Update actual results and next steps, not intended features presented as shipped.
 - Root `AGENTS.md` requires agents to read this file before work and maintain current status, verification, blockers, and the next action before handing off.
-- Latest resume note: [2026-10-18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md). The October 12 handoff describes an earlier checkpoint; use this status and the latest handoff on resume.
+- Resume from the current handoff above and `TICKET-15-PLAN.md`. [October18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md) and older receipts describe historical checkpoints.
 
 ## Autonomous execution policy (2026-10-22)
 
 - Stop condition added by Seth on2026-10-23: finish the current Ticket15 through verified/reviewed publication and closure, then stop. Do not start another ticket. This supersedes backlog continuation after15.
 
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
-- Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
-- Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
+- Continue the approved Ticket15 work, then stop under the October23 instruction. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write assigned tests as before. AgY remains the independent reviewer. No self-approval or lowered verification bar.
+- Seth grants standing authorization within this agreed project scope to commit, merge, push and close Ticket15 after checks and Antigravity review/recheck pass. Routine plan/completion gates remain removed within this ticket; starting another ticket is no longer authorized. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
 - Durable run tracking: `AUTONOMOUS-RUN.md`. Next active work: #15 participant replacement after published #14 selected CLI message recovery. `TICKET-11-PLAN.md` records the completed corrected-document contract. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
@@ -340,4 +347,4 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Initial helper3RED0.193s/root3RED0.183s captured1FAIL/2ERROR before source (wrong new claim, absent resolver, denied cold cancellation). Final helper12PASS0.935s; first extended fixture mistakenly used separate reloaded store objects, corrected to shared store. Root combined75PASS5.219s; full842 total tests OK/four expected skips80.047s, syntax/diff clean. Evidence/receipts explicitly algorithm dictionaries, no native exit acceptance claim.
 - Same AGY ratified3b: participant_exit_proof validates actual frozen lifecycle and shares private API exit helper with saved-result caller while preserving its seal/payload guards. CLI uses existing native lifecycle proof without fake selected flags. Internal confirm_retired_exit and coordinator settle_old_transport validate exact audit, complete cancelling ledger, THEN clear session hold. Unrelated active work is refused without cancellation; IO gaps replay safely. Automatic engine calls remain unwired.
 - Native proof7 includes actual self-born Windows supervisor/retained handle and actual model child exit9; CLI child receipt23 and cold absence/mismatch/error statuses are explicitly protocol/algorithm fixtures. Helper settlement12 uses real ledger/stores with algorithm proof dictionaries, no native claim. Initial native2RED0.991s/helper settlement2RED0.506s precede methods. Genuine changed-child-code raw replay failure fixed with immutable ledger exit_proof; malformed provenance AttributeErrors fixed after focused red. One cold probe fixture enum corrected to actual mismatch status. Final combined39PASS9.357s/full861 total tests OK/four expected skips79.601s. No final replacement/native-client acceptance claim.
-- Next owner/action: freeze unified Tranche3 for same AGY bounded source/execution review; then replacement store/repair/engine orchestration, projection/export, HTTP/UI and actual integration. Helper idle. Finish Ticket15 through verified/reviewed publication and closure, then STOP; no next ticket. No live AI/Omarchy/global changes.
+- Frozen unified Tranche3 target b9cd50739235ac8e04ac69f020bd8dff84fd44e1 has been sent to same AGY for bounded source/execution review. Review is pending, not a final15 PASS. After the verdict, Codex completes remaining replacement store/repair/engine, projection/export, HTTP/UI and actual integration, then final review, verified publication and closure. Helper idle. STOP after15; no next ticket. No live AI/Omarchy/global changes.
