@@ -19,8 +19,9 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #16 | Published and closed | Publication08fcee2, final same-AGY PASS including hidden windows |
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
-| #14 | Accepted and locally merged | Codex publishes verified receipt/main and closes issue after final source-grounded PASS |
-| #15, #17-26 | Pending | Follow documented dependency graph |
+| #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
+| #15 | Contract planning next | Codex reads issue/spec and delivered boundaries, then same AGY critique before code |
+| #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
 
@@ -31,10 +32,10 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-Published/closed: #1-13 and #16. Published main before14 is9de60a2e9c413dad789a3f06e91682684d74e46f. Accepted14 is locally fast-forward merged into main, still awaiting publication/closure. Implementation-owner Codex; same AGY remains final independent reviewer.
+Published/closed: #1-14 and #16. Ticket14 source4999c39342b85cfafc44bb373ad39cb6e0b57377 is verified on origin/main; issue14 confirmed closed. Same AGY remains final independent reviewer.
 
 Ticket14 builder acceptance complete: full806 tests/four expected skips73.299s; all3 actual CLI recovery cases, Stop refusal and both actual UI serves PASS with cleanup unresolved[]. Prior turn recovery/corrected restart/Stop and API lost-ACK integrations PASS. Usage RECOVER-CLI-MESSAGES.md, final pack TICKET-14-REVIEW.md, contract TICKET-14-PLAN.md and builder browser artifact preserve exact scope and failures.
 
-Same AGY reaffirmed final FULL PASS for fc921ca884ba3b63303d8a8489320bf668729bcc after actual source/caller recheck, focused72/7.721s and corrected report. Full806 total/four expected skips80.458s and four independent actual cases have raw logs/scratch corroborated by builder. Initial inaccurate report remains an explained assurance correction; no source changed. Local post-merge806 total/four skips71.794s and syntax/diff pass. Codex publishes receipt/main then closes14 and records exact remote/issue state. Next ticket15 starts only after accepted14 publication.
+Same AGY reaffirmed final FULL PASS for fc921ca884ba3b63303d8a8489320bf668729bcc after source/caller recheck, focused72/7.721s and corrected report. Full806 total/four expected skips80.458s and four independent actual cases have raw logs/scratch corroborated by builder. Initial inaccurate report remains an explained assurance correction; no source changed. Post-merge806 total/four skips71.794s and syntax/diff pass. Ticket14 publication and closure now verified. Next Codex begins issue15 participant-replacement contract planning and asks the same AGY to critique before implementation.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.
