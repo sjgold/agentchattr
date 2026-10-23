@@ -20,6 +20,10 @@ let sessionTemplates = [];
 let activeSessionsByChannel = {};
 let sessionIndicatorTargetChannel = null;
 let stopStatusBusy = false;
+let recoveryStatusBusy = false;
+const recoveryRequests = new Map();
+const recoveryWaitDrafts = new Map();
+const recoveryOffers = new Map();
 
 // ---------------------------------------------------------------------------
 // Message Renderers
@@ -211,6 +215,8 @@ function handleSessionEvent(action, session) {
     const channel = session.channel || 'general';
     // A delayed parent Stop update must not replace its newer prepared child.
     if (activeSessionsByChannel[channel]?.id > session.id) return;
+    if (activeSessionsByChannel[channel]?.id === session.id &&
+        activeSessionsByChannel[channel].updated_at > session.updated_at) return;
 
     if (action === 'create' || action === 'update') {
         activeSessionsByChannel[channel] = session;
@@ -309,6 +315,12 @@ function updateSessionBar() {
     } else if (s.stop_id) {
         waitingEl.textContent = s.state === 'stopped' ? 'Stopped locally' : s.state === 'unresolved' ? 'Cancellation unresolved' : 'Stopping';
         waitingEl.style.display = '';
+    } else if (s.state === 'retrying') {
+        waitingEl.textContent = 'Retry preparing, previous attempt retired';
+        waitingEl.style.display = '';
+    } else if (s.state === 'stalled') {
+        waitingEl.textContent = 'Turn needs attention';
+        waitingEl.style.display = '';
     } else if (s.legacy) {
         waitingEl.textContent = 'Legacy run, explicit restart required';
         waitingEl.style.display = '';
@@ -351,6 +363,154 @@ async function refreshStopStatus() {
 }
 
 setInterval(refreshStopStatus, 2000);
+
+async function refreshRecoveryStatus() {
+    const s = activeSession;
+    if (!s || s.legacy || s.stop_id || !['waiting', 'stalled', 'retrying'].includes(s.state) || recoveryStatusBusy) return;
+    recoveryStatusBusy = true;
+    try { handleSessionEvent('update', await restartRequest(s.id, 'recovery-status')); }
+    catch (error) {
+        const note = document.querySelector('.session-recovery-status');
+        if (note) note.textContent = `${error.message}. Your saved checkpoint remains in place.`;
+    } finally { recoveryStatusBusy = false; }
+}
+setInterval(refreshRecoveryStatus, 1000);
+
+const recoveryReasons = {
+    missing_ack: 'Delivery was not acknowledged', response_timeout: 'The response deadline passed',
+    disconnected: 'The expected seat is disconnected', provider_timeout: 'The provider request timed out',
+    http_error: 'The provider returned an HTTP error', provider_failure: 'The provider request failed',
+    empty_completion: 'The provider returned no answer', malformed_session_response: 'The reply was not a valid final result or question',
+    local_delivery_failure: 'The completed reply could not be delivered', transport_closed: 'Delivery is uncertain',
+    process_crash: 'The request process exited unexpectedly', prepared_client_exit_unverified: 'Client exit has not been verified',
+    preparation_confirmation_required: 'Confirm ending the failed prepared context before repair'
+};
+
+function renderRecoveryControls(panel, s) {
+    const checkpoint = s.turn_recovery;
+    const pending = s.pending_retry;
+    const context = pending?.context;
+    if (s.retry_offer) recoveryOffers.set(checkpoint.checkpoint_id, s.retry_offer);
+    const offer = s.retry_offer || recoveryOffers.get(checkpoint.checkpoint_id);
+    const key = `${s.id}:recovery:${checkpoint.checkpoint_id}:${pending ? pending.status + ':' + (context?.launch_attempt || '') : 'choices:' + (offer?.launch_attempt || '')}`;
+    panel.hidden = false;
+    if (panel.dataset.key !== key) {
+        panel.dataset.key = key;
+        panel.replaceChildren();
+        const title = document.createElement('strong');
+        title.textContent = pending ? 'Retry preparing. Earlier accepted work is retained.' : 'This turn needs attention';
+        const status = document.createElement('p');
+        status.className = 'session-recovery-status';
+        status.setAttribute('role', 'status');
+        const evidence = document.createElement('p');
+        evidence.className = 'session-recovery-evidence';
+        const saved = document.createElement('p');
+        const accepted = s.admitted_events?.filter(e => e.kind === 'final').length || 0;
+        saved.textContent = `${accepted} accepted ${accepted === 1 ? 'result' : 'results'} retained. No durable saved answer is known for this failed attempt.`;
+        const error = document.createElement('p');
+        error.setAttribute('role', 'alert');
+        panel.append(title, status, evidence, saved, error);
+        const perform = async (action, body) => {
+            panel.dataset.busy = 'true';
+            panel.querySelectorAll('button').forEach(button => { button.disabled = true; });
+            error.textContent = 'Saving your recovery choice…';
+            try {
+                handleSessionEvent('update', await restartRequest(s.id, action, body));
+                error.textContent = '';
+                await refreshRecoveryStatus();
+            } catch (failure) { error.textContent = failure.message; }
+            finally {
+                delete panel.dataset.busy;
+                panel.querySelectorAll('button').forEach(button => { button.disabled = button.dataset.unavailable === 'true'; });
+            }
+        };
+        const confirmedAction = (label, attempt, description, submit) => {
+            const open = document.createElement('button');
+            open.textContent = label;
+            const confirmation = document.createElement('div');
+            confirmation.className = 'session-stop-termination';
+            confirmation.hidden = true;
+            const impact = document.createElement('p');
+            impact.textContent = `${description} Owned launch ${attempt.slice(0, 8)}. Native login and history files are preserved.`;
+            const yes = document.createElement('button');
+            yes.textContent = 'Confirm termination and retry';
+            const no = document.createElement('button');
+            no.textContent = 'Keep context running';
+            open.onclick = () => { confirmation.hidden = false; yes.focus(); yes.scrollIntoView({block: 'nearest', inline: 'nearest'}); };
+            no.onclick = () => { confirmation.hidden = true; open.focus(); };
+            yes.onclick = () => submit({confirm: true, launch_attempt: attempt});
+            confirmation.append(impact, yes, no);
+            panel.append(open, confirmation);
+        };
+        if (pending) {
+            if (pending.status === 'preparation_failed') {
+                const repair = confirmation => perform(context?.launch_attempt ? 'repair-retry' : 'retry', context?.launch_attempt ?
+                    {request_id: pending.request_id, preparation_attempt: context.launch_attempt, ...(confirmation ? {confirmation} : {})} :
+                    {checkpoint_id: pending.checkpoint_id, attempt_id: pending.old_invocation.attempt_id,
+                        request_id: pending.request_id, ...(pending.confirmation ? {confirmation: pending.confirmation} : {})});
+                if (context?.worker_alive) confirmedAction('Repair failed launch…', context.launch_attempt,
+                    'This ends only the failed prepared CLI context and prepares the same reserved turn again.', repair);
+                else {
+                    const button = document.createElement('button');
+                    button.textContent = 'Repair saved retry preparation';
+                    button.onclick = () => repair();
+                    panel.appendChild(button);
+                }
+            }
+        } else {
+            const form = document.createElement('form');
+            form.className = 'session-recovery-wait';
+            const label = document.createElement('label');
+            label.textContent = 'Wait another (seconds)';
+            const input = document.createElement('input');
+            input.id = 'session-wait-seconds';
+            input.type = 'number'; input.min = '.1'; input.step = 'any'; input.required = true;
+            input.value = recoveryWaitDrafts.get(checkpoint.checkpoint_id) || '300';
+            input.oninput = () => recoveryWaitDrafts.set(checkpoint.checkpoint_id, input.value);
+            label.htmlFor = input.id;
+            const wait = document.createElement('button');
+            wait.textContent = 'Wait longer'; wait.type = 'submit';
+            form.append(label, input, wait);
+            form.onsubmit = event => { event.preventDefault(); perform('wait', {
+                checkpoint_id: checkpoint.checkpoint_id, attempt_id: checkpoint.attempt_id, extend_seconds: Number(input.value)}); };
+            panel.appendChild(form);
+            const retry = confirmation => {
+                const fingerprint = JSON.stringify([checkpoint.checkpoint_id, confirmation || null]);
+                if (!recoveryRequests.has(fingerprint)) recoveryRequests.set(fingerprint, crypto.randomUUID());
+                return perform('retry', {checkpoint_id: checkpoint.checkpoint_id, attempt_id: checkpoint.attempt_id,
+                    request_id: recoveryRequests.get(fingerprint), ...(confirmation ? {confirmation} : {})});
+            };
+            const role = s.active_invocation?.role;
+            const cli = s.participant_bindings?.[role]?.launch_provenance?.effective.seat.adapter === 'cli';
+            if (cli && offer?.state === 'confirmation_required') confirmedAction('Retry this CLI turn…', offer.launch_attempt,
+                'This ends only this persistent CLI context and starts the same source and model in a new owned process. Other work on this seat blocks replacement.', retry);
+            else {
+                const button = document.createElement('button');
+                button.textContent = cli && !offer ? 'Checking owned CLI launch…' : 'Retry this turn';
+                button.dataset.unavailable = String(cli && (!offer || offer.state !== 'ready'));
+                button.disabled = button.dataset.unavailable === 'true';
+                button.onclick = () => retry();
+                panel.appendChild(button);
+                if (cli && !offer) refreshRecoveryStatus();
+            }
+            const note = document.createElement('p');
+            note.textContent = 'Wait keeps this attempt alive without calling the model again. Retry replaces it and starts only this turn. Remote provider computation remains unverified.';
+            panel.appendChild(note);
+        }
+    }
+    const status = panel.querySelector('.session-recovery-status');
+    const seatLabel = window.agentConfig?.[s.current_agent]?.label || s.current_agent || s.waiting_on || 'Participant';
+    const model = s.participant_bindings?.[s.active_invocation?.role]?.launch_provenance?.effective.seat.model;
+    status.textContent = pending ? (context?.state === 'starting' ? 'Starting the owned retry context. No new turn is dispatched until readiness is confirmed.' :
+        pending.status === 'awaiting_local_end' ? 'Waiting for proof that the old local invocation ended. No new prompt is sent yet.' :
+        recoveryReasons[context?.reason] || 'Preparation needs attention. Its reserved turn and source are retained.') :
+        `${seatLabel}${model ? ' (' + model + ')' : ''} · ${s.phase_name || 'Current phase'}: ${recoveryReasons[checkpoint.reason] || 'Turn stalled'}${checkpoint.http_status ? ' (HTTP ' + checkpoint.http_status + ')' : ''}.${checkpoint.status === 'waiting' ? ' Your wait extension is active.' : ''}`;
+    const policy = s.active_invocation?.monitoring?.policy || s.recovery_policy || {};
+    const receipt = checkpoint.last_event;
+    const timing = s.active_invocation?.monitoring;
+    const due = timing?.response_deadline || timing?.ack_deadline;
+    panel.querySelector('.session-recovery-evidence').textContent = `Last receipt: ${receipt?.state || 'not acknowledged'}${receipt?.at ? ' at ' + new Date(receipt.at * 1000).toLocaleTimeString() : ''}. Delivery limit ${policy.ack_timeout}s; response limit ${policy.response_timeout}s.${pending ? ' New timing begins after preparation.' : due ? ' Due at ' + new Date(due * 1000).toLocaleTimeString() + '.' : ''} Heartbeats do not extend these limits.`;
+}
 
 function renderStopControls(panel, s) {
     panel.hidden = false;
@@ -445,6 +605,12 @@ function renderSessionTurnControls(bar) {
     const s = activeSession;
     if (s?.stop_id) {
         renderStopControls(panel, s);
+        return;
+    }
+    if (s?.turn_recovery && (s.state === 'retrying' ||
+        (['stalled', 'waiting'].includes(s.state) && ['stalled', 'waiting'].includes(s.turn_recovery.status) &&
+         s.active_invocation?.attempt_id === s.turn_recovery.attempt_id))) {
+        renderRecoveryControls(panel, s);
         return;
     }
     const invocation = s?.active_invocation;
@@ -852,6 +1018,27 @@ function buildSessionCastEditor(tmpl, cast, assignees) {
 // Session launcher modal
 // ---------------------------------------------------------------------------
 
+function recoveryPolicyEditor() {
+    return `<details class="session-recovery-settings">
+        <summary>Turn timing</summary>
+        <p>Server defaults apply unless you choose custom limits. Heartbeats never renew a delivery or response deadline. Human inputs and paused turns are excluded.</p>
+        <label class="session-recovery-custom"><input id="session-custom-timing" type="checkbox" onchange="this.closest('details').querySelectorAll('input[type=number]').forEach(input => input.disabled = !this.checked)"> Use custom limits for this run</label>
+        <div class="session-recovery-limits">
+            <label>Delivery acknowledgement (seconds)<input type="number" id="session-ack-timeout" value="30" min="0.1" step="any" disabled></label>
+            <label>Response (seconds)<input type="number" id="session-response-timeout" value="900" min="0.1" step="any" disabled></label>
+            <label>Monitor interval (seconds)<input type="number" id="session-monitor-interval" value="1" min="0.1" step="any" disabled></label>
+        </div>
+    </details>`;
+}
+
+function selectedRecoveryPolicy() {
+    if (!document.getElementById('session-custom-timing')?.checked) return undefined;
+    const values = ['session-ack-timeout', 'session-response-timeout', 'session-monitor-interval']
+        .map(id => Number(document.getElementById(id).value));
+    if (values.some(value => !Number.isFinite(value) || value <= 0)) throw new Error('Turn timing requires positive, finite seconds. Your draft is retained.');
+    return {ack_timeout: values[0], response_timeout: values[1], monitor_interval: values[2]};
+}
+
 function showSessionLauncher() {
     let existing = document.getElementById('session-launcher-modal');
     if (existing) existing.remove();
@@ -900,6 +1087,7 @@ function showSessionLauncher() {
                 <textarea id="session-source-input" rows="6" placeholder="Paste the text every participant should review."></textarea>
                 <p>Start freezes this source, the task brief, design and rules. Source is data, not tool instructions. Oversized input is rejected and stays here for editing.</p>
             </div>
+            ${recoveryPolicyEditor()}
             <div id="session-step-templates">
                 <div class="session-launcher-templates">${templateOptions}${designCard}</div>
             </div>
@@ -987,6 +1175,7 @@ async function launchSessionWithCast(templateId) {
                 cast: cast,
                 goal: goal,
                 input_text: inputText,
+                recovery_policy: selectedRecoveryPolicy(),
                 started_by: window.username,
             }),
         });
@@ -1142,6 +1331,7 @@ function showDraftCastPreview(tmpl, draftMsgId) {
                 <textarea id="session-source-input" rows="6" placeholder="Paste the text every participant should review."></textarea>
                 <p>Start freezes source, task, design and rules. Oversized input stays here for editing.</p>
             </div>
+            ${recoveryPolicyEditor()}
             <div id="session-step-cast">
                 <div class="session-cast-list">${roleRows}</div>
                 <button class="session-start-btn" onclick="launchDraftSession(${draftMsgId})">Start Session</button>
@@ -1173,6 +1363,7 @@ async function launchDraftSession(draftMsgId) {
                 cast: cast,
                 goal: goal,
                 input_text: inputText,
+                recovery_policy: selectedRecoveryPolicy(),
                 started_by: window.username,
             }),
         });

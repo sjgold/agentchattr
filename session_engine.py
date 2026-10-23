@@ -20,7 +20,7 @@ class SessionEngine:
     agents via the AgentTrigger system.
     """
 
-    def __init__(self, session_store, message_store, agent_trigger, registry=None, rules_store=None, seat_manager=None, recovery_policy=None):
+    def __init__(self, session_store, message_store, agent_trigger, registry=None, rules_store=None, seat_manager=None, recovery_policy=None, adapter_recovery_policy=None):
         self._store = session_store
         self._messages = message_store
         self._trigger = agent_trigger
@@ -29,6 +29,17 @@ class SessionEngine:
         self._seat_manager = seat_manager
         from turn_recovery import recovery_policy as validate_policy
         self._recovery_policy = validate_policy(recovery_policy)
+        if adapter_recovery_policy is None:
+            adapter_recovery_policy = {}
+        if (not isinstance(adapter_recovery_policy, dict)
+                or adapter_recovery_policy.keys() - {'cli', 'openai-compatible'}):
+            raise ValueError('Adapter recovery settings accept cli and openai-compatible only.')
+        self._adapter_recovery_policy = {}
+        for adapter, limits in adapter_recovery_policy.items():
+            if not isinstance(limits, dict):
+                raise ValueError('Adapter recovery limits must be a mapping.')
+            validate_policy(limits)
+            self._adapter_recovery_policy[adapter] = dict(limits)
         self._lock = threading.RLock()
         if agent_trigger is not None and hasattr(agent_trigger, 'queue'):
             from queue_coordinator import CoordinatedQueue
@@ -62,6 +73,12 @@ class SessionEngine:
                                   'identity_id': instance.get('identity_id') if isinstance(instance, dict) else None}
                 if agent and instance and self._seat_manager:
                     bindings[role]['launch_provenance'] = self._seat_manager.launch_provenance(instance)
+                provenance = bindings[role].get('launch_provenance') or {}
+                adapter = provenance.get('effective', {}).get('seat', {}).get('adapter')
+                role_policy = dict(self._recovery_policy)
+                role_policy.update(self._adapter_recovery_policy.get(adapter, {}))
+                role_policy.update(recovery_policy or {})
+                bindings[role]['recovery_policy'] = role_policy
         session = self._store.create(
             template_id=template_id,
             channel=channel,
@@ -149,7 +166,7 @@ class SessionEngine:
             for session in self._store.list_all():
                 if session.get('stop_id') or session.get('completion_protocol') != 1:
                     continue
-                if session['state'] == 'retrying' and session.get('pending_retry', {}).get('status') == 'awaiting_local_end':
+                if session['state'] == 'retrying' and session.get('pending_retry', {}).get('status') in ('awaiting_local_end', 'preparing_contexts'):
                     self._finish_retry(session, now)
                     continue
                 if session['state'] not in ('waiting', 'stalled'):
@@ -157,10 +174,10 @@ class SessionEngine:
                 invocation = session.get('active_invocation')
                 if not invocation or invocation.get('human') or invocation.get('consumed'):
                     continue
-                policy = recovery_policy(session.get('recovery_policy'))
                 monitoring = deepcopy(invocation.get('monitoring'))
                 if not monitoring:  # Older runs are not silently re-dispatched.
                     continue
+                policy = recovery_policy(monitoring.get('policy') or session.get('recovery_policy'))
                 instance = {'name': invocation['expected_agent'], 'identity_id': invocation['expected_identity_id']}
                 records = self._trigger.queue.for_identity(instance)
                 record = next((r for r in records if r['envelope']['dispatch_id'] == invocation['dispatch_id']), None)
@@ -210,12 +227,27 @@ class SessionEngine:
         from turn_events import EventConflict
         invocation = session.get('active_invocation') if session else None
         checkpoint = session.get('turn_recovery') if session else None
-        if (not session or session.get('stop_id') or session['state'] != 'stalled'
+        if (not session or session.get('stop_id') or session['state'] not in ('stalled', 'waiting')
                 or not invocation or invocation.get('consumed') or invocation.get('human')
                 or invocation['attempt_id'] != attempt_id or not checkpoint
-                or checkpoint['checkpoint_id'] != checkpoint_id or checkpoint['attempt_id'] != attempt_id):
+                or checkpoint['checkpoint_id'] != checkpoint_id or checkpoint['attempt_id'] != attempt_id
+                or checkpoint.get('status') not in ('stalled', 'waiting')):
             raise EventConflict('Recovery choices belong to a different, completed or stopped turn. Refresh this review.')
         return invocation, checkpoint
+
+    def recovery_status(self, session_id):
+        """Read recovery evidence without a status poll launching any work."""
+        with self._lock:
+            session = self._store.get(session_id)
+            if not session:
+                return None
+            invocation = session.get('active_invocation')
+            if (session['state'] in ('stalled', 'waiting') and (session.get('turn_recovery') or {}).get('status') in ('stalled', 'waiting')
+                    and invocation and self._seat_manager):
+                provenance = session['participant_bindings'][invocation['role']].get('launch_provenance')
+                if provenance and provenance['effective']['seat']['adapter'] == 'cli':
+                    session['retry_offer'] = self._seat_manager.retry_context_offer(provenance)
+            return self._enrich(session)
 
     def wait_turn(self, session_id, checkpoint_id, attempt_id, extend_seconds, *, now=None):
         from turn_recovery import positive_seconds
@@ -243,9 +275,6 @@ class SessionEngine:
             _identifier(request_id, 'Retry request ID')
         except ValueError as exc:
             raise EventValidationError(str(exc)) from None
-        if confirmation is not None:
-            # Managed CLI confirmation/relaunch is a separately tested tranche.
-            raise EventConflict('Owned CLI retry preparation is not available yet.')
         now = time.time() if now is None else now
         intent = _revision({'checkpoint_id': checkpoint_id, 'attempt_id': attempt_id, 'confirmation': confirmation})
         with self._lock:
@@ -261,12 +290,33 @@ class SessionEngine:
                 return self._enrich(session)
             invocation, checkpoint = self._current_checkpoint(session, checkpoint_id, attempt_id)
             provenance = session['participant_bindings'][invocation['role']].get('launch_provenance')
-            if provenance and provenance['effective']['seat']['adapter'] == 'cli':
-                raise EventConflict('This CLI needs explicit owned termination before retry preparation.')
+            cli = bool(provenance and provenance['effective']['seat']['adapter'] == 'cli')
+            if confirmation is not None and not cli:
+                raise EventConflict('Process termination confirmation belongs only to an owned CLI turn.')
+            if cli:
+                if not self._seat_manager:
+                    raise EventConflict('Owned retry runtime is unavailable; no process will be guessed.')
+                offer = self._seat_manager.retry_context_offer(provenance)
+                if confirmation is not None:
+                    from api_seats import SeatError
+                    try:
+                        self._seat_manager.validate_context_confirmation(provenance, confirmation)
+                    except SeatError as exc:
+                        raise EventConflict(str(exc)) from None
+                if offer['state'] == 'confirmation_required' and confirmation is None:
+                    raise EventConflict('Confirm ending this exact owned CLI launch before retrying.')
+                if offer['state'] not in ('ready', 'confirmation_required'):
+                    raise EventConflict('The original CLI has no proven local end or current owned launch.')
+                records = self._trigger.queue.for_identity({'name': invocation['expected_agent'],
+                                                            'identity_id': invocation['expected_identity_id']})
+                if any(r['state'] in ('queued', 'dispatched', 'acknowledged', 'uncertain', 'cancelling')
+                       and r['envelope']['dispatch_id'] != invocation['dispatch_id'] for r in records):
+                    raise EventConflict('Other work uses this CLI seat; retry cannot terminate its context.')
             pending = {'request_id': request_id, 'checkpoint_id': checkpoint_id,
                        'old_invocation': deepcopy(invocation), 'new_attempt_id': uuid.uuid4().hex,
                        'new_brief_id': uuid.uuid4().hex, 'new_dispatch_id': uuid.uuid4().hex,
-                       'status': 'awaiting_local_end', 'requested_at': now}
+                       'status': 'awaiting_local_end', 'requested_at': now,
+                       'launch_provenance': deepcopy(provenance), 'confirmation': deepcopy(confirmation)}
             def fence(value):
                 current, recovery = self._current_checkpoint(value, checkpoint_id, attempt_id)
                 value.setdefault('superseded_attempts', []).append({
@@ -283,6 +333,53 @@ class SessionEngine:
             session = self._store._event_update(session_id, fence)
             return self._finish_retry(session, now)
 
+    def repair_retry(self, session_id, request_id, preparation_attempt, *, confirmation=None, now=None):
+        """Replace a failed prepared context only under explicit owned proof."""
+        from copy import deepcopy
+        from dispatch_queue import _identifier
+        from turn_events import EventConflict, EventValidationError
+        for value, label in ((request_id, 'Retry request ID'), (preparation_attempt, 'Prepared launch ID')):
+            try:
+                _identifier(value, label)
+            except ValueError as exc:
+                raise EventValidationError(str(exc)) from None
+        if confirmation is not None and (not isinstance(confirmation, dict)
+                or set(confirmation) != {'launch_attempt', 'confirm'} or confirmation['confirm'] is not True
+                or confirmation['launch_attempt'] != preparation_attempt):
+            raise EventConflict('Confirm the exact failed prepared launch before termination.')
+        now = time.time() if now is None else now
+        with self._lock:
+            session = self._store.get(session_id)
+            request = (session or {}).get('retry_requests', {}).get(request_id)
+            if (not session or session.get('stop_id') or not request
+                    or any(a['attempt_id'] == request['new_attempt_id'] for a in session.get('superseded_attempts', []))):
+                raise EventConflict('This retry is stopped, superseded or unknown.')
+            repairs = request.get('preparation_repairs', {})
+            pending = session.get('pending_retry')
+            if preparation_attempt in repairs and repairs[preparation_attempt].get('launch_attempt'):
+                if pending and pending['request_id'] == request_id:
+                    return self._finish_retry(session, now)
+                return self._enrich(session)
+            context = (pending or {}).get('context') or {}
+            provenance = (pending or {}).get('launch_provenance')
+            if (not pending or pending['request_id'] != request_id or session['state'] != 'retrying'
+                    or context.get('launch_attempt') != preparation_attempt
+                    or not provenance or provenance['effective']['seat']['adapter'] != 'cli'
+                    or pending['status'] != 'preparation_failed' or not self._seat_manager):
+                raise EventConflict('Only the exact failed pending CLI preparation can be repaired.')
+            if context.get('identity_id'):
+                records = self._trigger.queue.for_identity({'name': context['name'], 'identity_id': context['identity_id']})
+                if any(r['state'] in ('queued', 'dispatched', 'acknowledged', 'uncertain', 'cancelling') for r in records):
+                    raise EventConflict('Other work uses this prepared seat; repair cannot terminate it.')
+            def stage(value):
+                value['retry_requests'][request_id].setdefault('preparation_repairs', {}).setdefault(
+                    preparation_attempt, {'requested_at': now})
+                value['pending_retry'].update(preparation_attempt=preparation_attempt,
+                    preparation_confirmation=deepcopy(confirmation), status='preparing_contexts')
+            # Durable repair intent precedes process control, just like Retry.
+            session = self._store._event_update(session_id, stage)
+            return self._finish_retry(session, now)
+
     def _finish_retry(self, session, now):
         """Finish only the persisted operator intent, never a speculative replay."""
         from turn_events import EventConflict
@@ -293,15 +390,56 @@ class SessionEngine:
             return self._enrich(self._store._event_update(session['id'], lambda s: s.pop('pending_retry', None)))
         old = pending['old_invocation']
         record = self._trigger.queue.cancel_dispatch(old['dispatch_id'], pending['request_id'])
-        if record and record['state'] == 'cancelling':
+        provenance = pending.get('launch_provenance')
+        cli = bool(provenance and provenance['effective']['seat']['adapter'] == 'cli')
+        if record and record['state'] == 'cancelling' and not cli:
             return self._enrich(session)
+        context = None
+        if provenance and self._seat_manager:
+            from review_brief import _revision
+            context_key = _revision({'run_id': session['run_id'], 'role': old['role'], 'request_id': pending['request_id']})
+            context = self._seat_manager.prepare_retry_context(provenance, context_key,
+                confirmation=pending.get('preparation_confirmation') if pending.get('preparation_attempt') else pending.get('confirmation'),
+                binding={'child_run_id': session['run_id'], 'role': old['role']}, retry_attempt=pending.get('preparation_attempt'))
+            if record and record['state'] == 'cancelling' and context.get('old_local_ended'):
+                self._trigger.queue.cancellation_receipt({'name': old['expected_agent'], 'identity_id': old['expected_identity_id']},
+                    old['dispatch_id'], record['consumer_id'], 'local_ended')
+            status = 'preparing_contexts' if context['state'] == 'starting' else 'preparation_failed'
+            repair = pending.get('preparation_attempt')
+            if pending.get('context') != context or (context['state'] != 'ready' and pending['status'] != status):
+                def remember(value):
+                    value['pending_retry']['context'] = context
+                    if context['state'] != 'ready':
+                        value['pending_retry']['status'] = status
+                        value['state'] = 'retrying'
+                    if repair and context.get('launch_attempt') and context['launch_attempt'] != repair:
+                        entry = value['retry_requests'][pending['request_id']]['preparation_repairs'][repair]
+                        if not entry.get('launch_attempt'):
+                            value.setdefault('preparation_history', []).append({
+                                'previous_launch_attempt': repair, 'launch_attempt': context['launch_attempt'],
+                                'request_id': pending['request_id'], 'reserved_attempt_id': pending['new_attempt_id'], 'at': now})
+                            entry['launch_attempt'] = context['launch_attempt']
+                session = self._store._event_update(session['id'], remember)
+                pending = session['pending_retry']
+            if context['state'] != 'ready':
+                return self._enrich(session)
+        identity = context['identity_id'] if context else old['expected_identity_id']
         instance = next((item for item in self._registry.get_all().values()
-                         if item['identity_id'] == old['expected_identity_id']), None) if self._registry else None
+                         if item['identity_id'] == identity), None) if self._registry else None
         if instance is None:
             return self._enrich(session)  # No identity guess or replacement model.
+        actual_provenance = self._seat_manager.launch_provenance(instance) if context else None
+        if context and (not actual_provenance or actual_provenance['identity_id'] != identity
+                        or actual_provenance['launch_attempt'] != context['launch_attempt']):
+            raise EventConflict('Prepared retry launch changed before turn binding.')
         invocation = session.get('active_invocation')
         if invocation and invocation['attempt_id'] == old['attempt_id']:
             def prepare(value):
+                if actual_provenance:
+                    binding = value['participant_bindings'][old['role']]
+                    binding.update(identity_id=identity, launch_provenance=actual_provenance)
+                    value['cast'][old['role']] = instance['name']
+                    value['pending_retry']['context'] = context
                 value['active_invocation'] = None
                 value['state'] = 'active'
             session = self._store._event_update(session['id'], prepare)
@@ -316,7 +454,11 @@ class SessionEngine:
         except OSError:
             # Already-fenced work stays safe; the same explicit request repairs.
             raise
-        return self._enrich(self._store._event_update(session['id'], lambda s: s.pop('pending_retry', None)))
+        def finished(value):
+            value.pop('pending_retry', None)
+            if value.get('turn_recovery') and value['turn_recovery']['status'] == 'retrying':
+                value['turn_recovery'].update(status='resolved', resolved_by='retry', new_attempt_id=pending['new_attempt_id'])
+        return self._enrich(self._store._event_update(session['id'], finished))
 
     def _guard_restart_seats(self, record, bindings, allowed_runs, confirmations):
         from turn_events import EventConflict
@@ -554,7 +696,9 @@ class SessionEngine:
                                     quarantine_reason='stopped_run' if run.get('stop_id') else 'attempt_superseded')
                 return metadata
             records = self._trigger.queue.for_identity(instance)
-            run = next((stopped.get(r['envelope'].get('run_id')) or superseded.get(r['envelope']['dispatch_id'])
+            owner = self._seat_manager.fresh_context_owner(instance) if self._seat_manager else None
+            run = stopped.get(owner.get('child_run_id')) if owner else None
+            run = run or next((stopped.get(r['envelope'].get('run_id')) or superseded.get(r['envelope']['dispatch_id'])
                         for r in reversed(records) if r['envelope'].get('run_id') in stopped
                         or r['envelope']['dispatch_id'] in superseded), None)
             return ({'routing_suppressed': True, 'provenance': 'unverified_scope',
@@ -706,6 +850,12 @@ class SessionEngine:
                 if ((owned_run['state'] == 'prepared' and not owned_run.get('stop_id'))
                         or (owned_run.get('dispatch_eligible') and owned_run['state'] in ('active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'retrying'))):
                     return self._review_context_messages(owned_run, since_id, limit)
+                if owned_run.get('stop_id'):
+                    records = self._trigger.queue.for_identity(instance)
+                    fresh_discussion = any(r['state'] in ('dispatched', 'acknowledged')
+                                           and not r['envelope'].get('run_id') for r in records)
+                    if not fresh_discussion:
+                        return self._review_context_messages(owned_run, since_id, limit)
             runs = [s for s in self._store.list_all() if s.get('parent_run_id')
                     and s.get('dispatch_eligible') and s['state'] in ('active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'retrying')
                     and any(b.get('identity_id') == instance['identity_id']

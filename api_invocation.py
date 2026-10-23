@@ -21,9 +21,11 @@ class InvocationCancelled(Exception):
 
 
 class InvocationFailure(Exception):
-    def __init__(self, http_status=None):
+    def __init__(self, http_status=None, *, category='provider_failure'):
+        from turn_recovery import FAILURE_CATEGORIES
         super().__init__('Provider invocation failed' + (f' (HTTP {http_status}).' if http_status else '.'))
         self.http_status = http_status
+        self.category = category if isinstance(category, str) and category in FAILURE_CATEGORIES else 'provider_failure'
 
 
 def run_completion(seat, provider, messages, cancel_requested, timeout=120):
@@ -82,13 +84,13 @@ def run_completion(seat, provider, messages, cancel_requested, timeout=120):
             if time.monotonic() >= deadline:
                 if not end_child():
                     raise InvocationCancelled(local_ended=False)
-                raise InvocationFailure()
+                raise InvocationFailure(category='provider_timeout')
         # A completed response may race Stop. Publication still belongs to the
         # server's durable run fence; this check avoids knowingly submitting it.
         if cancel_requested():
             raise InvocationCancelled(local_ended=child.poll() is not None)
         if child.returncode or output.get('error'):
-            raise InvocationFailure()
+            raise InvocationFailure(category='process_crash')
         raw = output.get('raw', b'')
         if len(raw) > MAX_PACKET:
             raise InvocationFailure()
@@ -98,7 +100,8 @@ def run_completion(seat, provider, messages, cancel_requested, timeout=120):
             raise InvocationFailure() from None
         if result.get('status') != 'ok':
             status = result.get('http_status')
-            raise InvocationFailure(status if type(status) is int else None)
+            raise InvocationFailure(status if type(status) is int and 100 <= status <= 599 else None,
+                                    category=result.get('error_category', 'provider_failure'))
         return result['result']
     finally:
         if not cleanup_attempted and (child.poll() is None or not done.is_set()):
@@ -108,7 +111,7 @@ def run_completion(seat, provider, messages, cancel_requested, timeout=120):
 def _child():
     # No raw exceptions, provider response bodies or credentials reach stderr.
     import urllib.error
-    from api_seats import request_completion
+    from api_seats import request_completion, EmptyCompletion
     response = {'status': 'error'}
     try:
         raw = sys.stdin.buffer.read(MAX_PACKET + 1)
@@ -121,8 +124,14 @@ def _child():
         result = request_completion(packet['seat'], packet['provider'], packet['messages'],
                                     timeout=packet['timeout'])
         response = {'status': 'ok', 'result': result}
+    except EmptyCompletion:
+        response['error_category'] = 'empty_completion'
     except urllib.error.HTTPError as exc:
         response['http_status'] = exc.code
+        response['error_category'] = 'http_error'
+    except (TimeoutError, urllib.error.URLError) as exc:
+        if isinstance(exc, TimeoutError) or isinstance(getattr(exc, 'reason', None), TimeoutError):
+            response['error_category'] = 'provider_timeout'
     except Exception:
         pass
     encoded = json.dumps(response, ensure_ascii=False).encode('utf-8')

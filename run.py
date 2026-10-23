@@ -14,6 +14,15 @@ ROOT = Path(__file__).parent
 sys.path.insert(0, str(ROOT))
 
 
+def http_event_loop():
+    """Keep Windows HTTP listeners alive across reset peers (CPython #93821).
+
+    This selects only Uvicorn's HTTP loop, leaving MCP thread loops unchanged.
+    Windows select() supports at most 512 sockets per loop.
+    """
+    return "asyncio:SelectorEventLoop" if sys.platform == "win32" else "auto"
+
+
 def _parse_args():
     parser = argparse.ArgumentParser(
         description="Start agentchattr (web UI + MCP server).",
@@ -167,7 +176,7 @@ def main():
     print(f"  Data:    {data_dir}")
     print(f"  Agents auto-trigger on @mention")
 
-    uvicorn.run(app, host=host, port=port, log_level="info")
+    uvicorn.run(app, host=host, port=port, log_level="info", loop=http_event_loop())
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 """Fake CLI records real console input and cooperatively releases via MCP."""
 import asyncio
+import faulthandler
 import json
 import os
 from pathlib import Path
@@ -9,27 +10,44 @@ import threading
 import time
 
 
-async def release(settings, dispatch_id):
+async def release(settings, dispatch_id, phase):
     from mcp import ClientSession
     from mcp.client.streamable_http import streamablehttp_client
     server = settings['mcpServers']['agentchattr']
+    phase('transport_entering')
     async with streamablehttp_client(server.get('url') or server['httpUrl'],
                                      headers=server.get('headers'), timeout=10,
                                      sse_read_timeout=10) as (read, write, _):
+        phase('transport_entered')
+        phase('session_entering')
         async with ClientSession(read, write) as session:
+            phase('session_entered')
+            phase('initialize_entering')
             await session.initialize()
+            phase('initialize_returned')
+            phase('call_entering')
             result = await session.call_tool('chat_queue_release', {'dispatch_id': dispatch_id})
+            phase('call_returned')
             assert not result.isError, 'MCP release returned a tool error'
-            return ''.join(item.text for item in result.content if item.type == 'text')
+            reply = ''.join(item.text for item in result.content if item.type == 'text')
+            phase('session_exiting')
+        phase('session_exited')
+        phase('transport_exiting')
+    phase('transport_exited')
+    return reply
 
 
 def main():
     directory = Path(os.environ['TICKET7_RECORDS'])
     settings = json.loads(Path(os.environ['TICKET7_FAKE_SETTINGS']).read_text('utf-8'))
-    record = {'prompts': [], 'released': [], 'settings_path': os.environ['TICKET7_FAKE_SETTINGS']}
+    record = {'prompts': [], 'released': [], 'phases': [],
+              'settings_path': os.environ['TICKET7_FAKE_SETTINGS']}
     path = directory / 'cli-record.json'
     lock = threading.Lock()
     work = queue.Queue()
+    # Earlier evidence showed a released ledger record without the client
+    # returning. Capture every thread before the unchanged verifier deadline.
+    stack_output = (directory / 'cli-thread-stacks.log').open('a', encoding='utf-8')
 
     def save():
         temporary = path.with_suffix('.tmp')
@@ -54,7 +72,19 @@ def main():
                         if time.monotonic() > deadline:
                             raise TimeoutError('fixture release sentinel deadline')
                         time.sleep(.05)
-                reply = asyncio.run(release(settings, match.group(1)))
+                dispatch_id = match.group(1)
+                def phase(name):
+                    with lock:
+                        record['phases'].append({'dispatch_id': dispatch_id,
+                            'phase': name, 'at': time.time(), 'thread_id': threading.get_ident()})
+                        save()
+                phase('asyncio_run_entering')
+                faulthandler.dump_traceback_later(20, file=stack_output)
+                try:
+                    reply = asyncio.run(release(settings, dispatch_id, phase))
+                    phase('asyncio_run_returned')
+                finally:
+                    faulthandler.cancel_dump_traceback_later()
                 with lock:
                     record['released'].append({'dispatch_id': match.group(1), 'reply': reply})
                     save()

@@ -426,7 +426,8 @@ async def start_turn_monitor():
                 interval = session_engine._recovery_policy['monitor_interval']
                 try:
                     sessions = await asyncio.to_thread(session_engine.monitor_turns)
-                    interval = min([interval] + [(s.get('recovery_policy') or {}).get('monitor_interval', interval)
+                    interval = min([interval] + [(((s.get('active_invocation') or {}).get('monitoring') or {}).get('policy')
+                                                  or s.get('recovery_policy') or {}).get('monitor_interval', interval)
                                                   for s in sessions])
                 except Exception as exc:
                     log.warning('Turn monitor retained work after %s; no speculative replay.', type(exc).__name__)
@@ -529,7 +530,9 @@ def configure(cfg: dict, session_token: str = ""):
         str(Path(data_dir) / "session_runs.json"),
         templates_dir=str(ROOT / "session_templates"),
     )
-    session_engine = SessionEngine(session_store, store, agents, registry, rules_store=rules, seat_manager=api_seat_manager)
+    session_engine = SessionEngine(session_store, store, agents, registry, rules_store=rules,
+                                   seat_manager=api_seat_manager, recovery_policy=cfg.get('session_recovery'),
+                                   adapter_recovery_policy=cfg.get('session_recovery_by_adapter'))
     session_store.on_change(_on_session_change)
 
     # Bridge: when ANY message is added to store (including via MCP),
@@ -2728,6 +2731,7 @@ async def start_session(request: Request):
     if not session_engine or not session_store:
         return JSONResponse({"error": "sessions not configured"}, status_code=500)
     from review_brief import BriefError
+    from turn_events import EventValidationError
     raw = await request.body()
     if len(raw) > 4 * 1024 * 1024:
         return JSONResponse({'error': 'Session request exceeds the 4 MiB request limit; nothing was started.'}, status_code=413)
@@ -2790,8 +2794,9 @@ async def start_session(request: Request):
             )
 
     try:
-        session = session_engine.start_session(template_id, channel, cast, started_by, goal, input_text=input_text)
-    except BriefError as exc:
+        session = await asyncio.to_thread(session_engine.start_session, template_id, channel, cast,
+            started_by, goal, input_text=input_text, recovery_policy=body.get('recovery_policy'))
+    except (BriefError, EventValidationError) as exc:
         return JSONResponse({'error': str(exc)}, status_code=400)
     except OSError:
         return JSONResponse({'error': 'Frozen session input could not be saved; no successful Start is claimed.'}, status_code=503)
@@ -2949,6 +2954,71 @@ async def end_session(session_id: int):
 
     # Banner is added by _on_session_change("interrupt", ...) callback
     return JSONResponse(session)
+
+
+async def _turn_recovery_body(request, required, optional=()):
+    from turn_events import EventValidationError
+    raw = await request.body()
+    if len(raw) > 8192:
+        raise EventValidationError('Turn recovery request exceeds its metadata limit.')
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        raise EventValidationError('Turn recovery requires valid JSON metadata.') from None
+    if (not isinstance(body, dict) or not set(required) <= body.keys()
+            or body.keys() - set(required) - set(optional)
+            or any(not isinstance(body.get(key), str) or not _re.fullmatch(r'[0-9a-f]{32}', body[key])
+                   for key in ('checkpoint_id', 'attempt_id'))
+            or ('confirmation' in body and not isinstance(body['confirmation'], dict))):
+        raise EventValidationError('Use the exact checkpoint/attempt and named recovery fields only.')
+    return body
+
+
+@app.post('/api/sessions/{session_id}/wait')
+async def wait_session_turn(session_id: int, request: Request):
+    from turn_events import EventConflict, EventValidationError
+    try:
+        body = await _turn_recovery_body(request, ('checkpoint_id', 'attempt_id', 'extend_seconds'))
+        result = await asyncio.to_thread(session_engine.wait_turn, session_id,
+            body['checkpoint_id'], body['attempt_id'], body['extend_seconds'])
+        return JSONResponse(result, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, OSError) as exc:
+        return _restart_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/retry')
+async def retry_session_turn(session_id: int, request: Request):
+    from turn_events import EventConflict, EventValidationError
+    from api_seats import SeatError
+    try:
+        body = await _turn_recovery_body(request, ('checkpoint_id', 'attempt_id', 'request_id'), ('confirmation',))
+        result = await asyncio.to_thread(session_engine.retry_turn, session_id,
+            body['checkpoint_id'], body['attempt_id'], body['request_id'], confirmation=body.get('confirmation'))
+        return JSONResponse(result, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, SeatError, OSError) as exc:
+        return _restart_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/repair-retry')
+async def repair_session_retry(session_id: int, request: Request):
+    from turn_events import EventConflict, EventValidationError
+    from api_seats import SeatError
+    try:
+        body = await _restart_body(request, ('request_id', 'preparation_attempt'), ('confirmation',))
+        value = await asyncio.to_thread(session_engine.repair_retry, session_id, body['request_id'],
+            body['preparation_attempt'], confirmation=body.get('confirmation'))
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, SeatError, OSError) as exc:
+        return _restart_error(exc)
+
+
+@app.get('/api/sessions/{session_id}/recovery-status')
+async def session_recovery_status(session_id: int):
+    try:
+        value = await asyncio.to_thread(session_engine.recovery_status, session_id)
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'}) if value else JSONResponse({'error': 'Review not found.'}, status_code=404)
+    except OSError as exc:
+        return _restart_error(exc)
 
 
 async def _restart_body(request, required, optional=()):

@@ -40,7 +40,7 @@ class APIInvocationTests(unittest.TestCase):
                     self.wfile.write(b'credential-sensitive-provider-body')
                     return
                 data = json.dumps({'model': 'confirmed', 'choices': [
-                    {'message': {'content': 'Exact café\r\n' + 'x' * (512 * 1024)}}]}, ensure_ascii=False).encode('utf-8')
+                    {'message': {'content': '' if payload.get('model') == 'empty' else 'Exact café\r\n' + 'x' * (512 * 1024)}}]}, ensure_ascii=False).encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Length', str(len(data)))
                 self.end_headers()
@@ -108,6 +108,13 @@ class APIInvocationTests(unittest.TestCase):
         self.assertEqual(caught.exception.http_status, 401)
         self.assertNotIn('stdin-only-secret', str(caught.exception))
         self.assertNotIn('credential-sensitive-provider-body', str(caught.exception))
+
+    def test_empty_completion_keeps_its_sanitized_category_across_real_child_ipc(self):
+        with self.assertRaises(self.module.InvocationFailure) as caught:
+            self.module.run_completion({**self.seat, 'model': 'empty', 'secret_ref': ''}, self.provider, [], lambda: False)
+        self.assertEqual(caught.exception.category, 'empty_completion')
+        self.assertIsNone(caught.exception.http_status)
+        self.assertEqual(len(self.requests), 1)
 
     def test_whole_seat_stop_signals_supervisor_without_premature_exit_receipt(self):
         from api_seats import Receipt, atomic_json

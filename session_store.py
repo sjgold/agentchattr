@@ -272,8 +272,10 @@ class SessionStore:
             if not human:
                 created = time.time() if now is None else now
                 from turn_recovery import recovery_policy
-                policy = recovery_policy(session.get('recovery_policy'))
+                binding = session.get('participant_bindings', {}).get(envelope['role'], {})
+                policy = recovery_policy(binding.get('recovery_policy') or session.get('recovery_policy'))
                 session['active_invocation']['monitoring'] = {
+                    'policy': policy,
                     'created_at': created, 'ack_deadline': created + policy['ack_timeout'],
                     'acknowledged_at': None, 'response_deadline': None,
                     'last_event': {'state': 'bound', 'at': created}}

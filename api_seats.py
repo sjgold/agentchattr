@@ -18,6 +18,10 @@ class SeatError(ValueError):
     pass
 
 
+class EmptyCompletion(SeatError):
+    """The provider completed successfully with no textual answer."""
+
+
 def package_revision(package):
     return hashlib.sha256(json.dumps(package, sort_keys=True, ensure_ascii=True,
                                      separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
@@ -234,8 +238,10 @@ def request_completion(seat, provider, messages, timeout=120):
             raise SeatError('Provider response exceeds the 16 MiB response limit.')
         data = json.loads(raw)
     content = data['choices'][0]['message']['content']
-    if not isinstance(content, str) or not content.strip():
-        raise SeatError('Provider returned no text content.')
+    if not isinstance(content, str):
+        raise SeatError('Provider returned non-text content.')
+    if not content.strip():
+        raise EmptyCompletion('Provider returned no text content.')
     confirmed = data.get('model')
     return {'content': content, 'confirmed_model': confirmed if isinstance(confirmed, str) and confirmed else None}
 

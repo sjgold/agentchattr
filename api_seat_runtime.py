@@ -433,7 +433,7 @@ class SeatManager:
                             name=live['name'], verification_basis='isolated_request_packet')
             return dict(result, reason='owned_context_unavailable')
 
-    def prepare_retry_context(self, provenance, context_key, *, confirmation=None, binding=None):
+    def prepare_retry_context(self, provenance, context_key, *, confirmation=None, binding=None, retry_attempt=None):
         """Same-source retry preserves settings and never implies clean native context."""
         with self.lock:
             if self.closed.is_set():
@@ -450,30 +450,52 @@ class SeatManager:
                 raise SeatError('Retry context requires its exact run and role binding.')
             if not isinstance(context_key, str) or not re.fullmatch(r'[a-zA-Z0-9_.-]{1,128}', context_key):
                 raise SeatError('Retry context key must be a bounded identifier.')
-            if confirmation is not None:
+            if confirmation is not None and retry_attempt is None:
                 self.validate_context_confirmation(provenance, confirmation)
             if effective['seat']['adapter'] != 'cli':
                 return self.retry_context_offer(provenance)
             key = 'retry-' + hashlib.sha256(context_key.encode('utf-8')).hexdigest()[:24] + '/' + effective['seat']['id']
             existing = self.attempts.get(key)
+            history = []
             if existing:
                 if (existing.get('context_source_fingerprint') != fingerprint
                         or (binding is not None and any(existing.get(k) != v for k, v in binding.items()))):
                     raise SeatError('Retry context key belongs to different settings or run.')
-                return self._context_view(key)
-            offer = self.retry_context_offer(provenance)
-            if offer['state'] == 'confirmation_required':
-                if confirmation is None:
+                if retry_attempt is None or existing.get('retried_from') == retry_attempt:
+                    return self._context_view(key)
+                if existing['id'] != retry_attempt:
+                    raise SeatError('Prepared retry launch changed; refresh before repairing.')
+                process = existing.get('process')
+                if process and process.poll() is None:
+                    if confirmation is None:
+                        return dict(self._context_view(key), state='blocked', reason='preparation_confirmation_required')
+                    if (not isinstance(confirmation, dict) or set(confirmation) != {'confirm', 'launch_attempt'}
+                            or confirmation['confirm'] is not True or confirmation['launch_attempt'] != existing['id']):
+                        raise SeatError('Confirm the exact prepared launch before termination.')
+                    instance = next((i for i in self.registry.get_all().values() if i.get('base') == existing['base']), None)
+                    if not instance or not self.terminate_owned(instance['identity_id'], existing['id'])['local_ended']:
+                        return dict(self._context_view(key), state='blocked', reason='prepared_client_exit_unverified')
+                if not self._retry_preparation_exit_proven(existing):
+                    return dict(self._context_view(key), state='blocked', reason='prepared_client_exit_unverified')
+                history = deepcopy(existing.get('preparation_history', []))
+                history.append({'launch_attempt': existing['id'], 'context_id': existing.get('context_id')})
+                self._release(existing)
+            elif retry_attempt is not None:
+                raise SeatError('No owned prepared launch matches this repair.')
+            else:
+                offer = self.retry_context_offer(provenance)
+                if offer['state'] == 'confirmation_required':
+                    if confirmation is None:
+                        return offer
+                    ended = self.terminate_owned(provenance['identity_id'], provenance['launch_attempt'])
+                    if not ended['local_ended']:
+                        return dict(offer, state='blocked', reason='unresolved_child_exit')
+                elif offer['state'] != 'ready':
                     return offer
-                ended = self.terminate_owned(provenance['identity_id'], provenance['launch_attempt'])
-                if not ended['local_ended']:
-                    return dict(offer, state='blocked', reason='unresolved_child_exit')
-            elif offer['state'] != 'ready':
-                return offer
-            original = self.attempts[provenance['key']]
-            if not self._cli_exit_proven(original):
-                return dict(offer, state='blocked', reason='unresolved_child_exit', old_local_ended=False)
-            self._release(original)
+                original = self.attempts[provenance['key']]
+                if not self._cli_exit_proven(original):
+                    return dict(offer, state='blocked', reason='unresolved_child_exit', old_local_ended=False)
+                self._release(original)
             context_id = uuid.uuid4().hex
             base = deepcopy(provenance.get('fresh_base_effective', effective))
             fresh = deepcopy(base)
@@ -484,8 +506,23 @@ class SeatManager:
             self._launch_effective(key, fresh, launch_metadata={
                 'context_id': context_id, 'context_source_fingerprint': fingerprint, 'context_base_effective': base,
                 'context_key': context_key, **(binding or {}), 'retry_source_ended': True,
-                'verification_basis': 'same_turn_retry_relaunch', 'context_clean_verified': verified})
+                'verification_basis': 'same_turn_retry_relaunch', 'context_clean_verified': verified,
+                'retried_from': retry_attempt, 'preparation_history': history})
             return self._context_view(key)
+
+    @staticmethod
+    def _retry_preparation_exit_proven(attempt):
+        process = attempt.get('process')
+        if process is None:
+            return attempt['state'] == 'failed'  # Popen never supplied a worker.
+        if process.poll() is None:
+            return False
+        try:
+            receipt = json.loads(attempt['receipt'].read_text(encoding='utf-8'))
+            return (receipt.get('attempt') == attempt['id'] and receipt.get('state') in ('failed', 'stopped')
+                    and type(receipt.get('child_exit_code')) is int)
+        except (OSError, ValueError):
+            return False
 
     def fresh_context_owner(self, instance):
         """Resolve read scope before readiness/backlink, without adopting work."""
@@ -559,7 +596,8 @@ class SeatManager:
                 'identity_id': instance['identity_id'] if instance else None,
                 'name': instance['name'] if instance else None,
                 'clean_context': clean and view['state'] == 'ready' and instance is not None,
-                'verification_basis': basis, 'old_local_ended': attempt.get('retry_source_ended', False)}
+                'verification_basis': basis, 'old_local_ended': attempt.get('retry_source_ended', False),
+                'worker_alive': bool(attempt.get('process') and attempt['process'].poll() is None)}
 
     def termination_offer(self, identity_id):
         with self.lock:

@@ -33,9 +33,10 @@ ROOT = Path(__file__).parent
 
 class _ManagedProviderFailure(Exception):
     """Provider diagnostic already recorded without exposing response bodies."""
-    def __init__(self, http_status=None):
+    def __init__(self, http_status=None, category='provider_failure'):
         super().__init__('Provider invocation failed.')
         self.http_status = http_status
+        self.category = category
 
 
 def _auth_headers(token: str, *, include_json: bool = False) -> dict[str, str]:
@@ -288,14 +289,17 @@ def main():
                 receipt.update(state='action_required' if auth_failure else 'failed',
                                authentication='failed' if auth_failure else receipt.value['authentication'],
                                error='Provider rejected authentication. Check the credential reference and retry.' if auth_failure else diagnostic)
-                raise _ManagedProviderFailure(exc.http_status) from None
+                raise _ManagedProviderFailure(exc.http_status, exc.category) from None
             receipt.update(confirmed_model=result['confirmed_model'], authentication='verified',
                            state='ready', error=None)
             return result['content']
         seat = {'id': 'compatibility', 'name': get_name(), 'provider': 'compatibility',
                 'adapter': 'openai-compatible', 'model': model or None, 'reasoning': None,
                 'launch_profile': 'standard', 'secret_ref': api_key_env}
-        result = run_completion(seat, {'base_url': base_url, 'temperature': temperature}, messages, cancelled)
+        try:
+            result = run_completion(seat, {'base_url': base_url, 'temperature': temperature}, messages, cancelled)
+        except InvocationFailure as exc:
+            raise _ManagedProviderFailure(exc.http_status, exc.category) from None
         return result['content']
 
     # Format chat messages into OpenAI format
@@ -429,7 +433,7 @@ def main():
         except Exception as exc:
             malformed = isinstance(exc, EventValidationError)
             last_failure_category[0] = ('malformed_session_response' if malformed else
-                'provider_failure' if isinstance(exc, _ManagedProviderFailure) else 'local_delivery_failure')
+                exc.category if isinstance(exc, _ManagedProviderFailure) else 'local_delivery_failure')
             status = getattr(exc, 'http_status', None)
             if isinstance(exc, _ManagedProviderFailure) and type(status) is int and 100 <= status <= 599:
                 last_failure_category[0] = 'http_error'

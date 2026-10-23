@@ -8,6 +8,27 @@ from dispatch_queue import QueueConflict
 
 
 class RecoveryBoundaryTests(unittest.TestCase):
+    def test_stopped_pending_context_keeps_unscoped_reads_and_output_fenced(self):
+        from tests.test_managed_turn_retry import ManagedTurnRetryTests
+        f = ManagedTurnRetryTests()
+        f.setUp()
+        self.addCleanup(f.doCleanups)
+        f.prove_exit_on_wait()
+        f.retry(f.confirm())
+        context = f.current()['pending_retry']['context']
+        attempt = f.manager.attempts[context['key']]
+        fresh = f.registry.register(attempt['base'])
+        f.engine.stop_session(f.session_id)
+        self.assertTrue(f.engine.chat_scope(fresh).get('routing_suppressed'))
+        scoped = f.engine.review_messages(fresh)
+        self.assertIsNotNone(scoped)
+        self.assertEqual([m['text'] for m in scoped], ['Accepted API phase result'])
+        # An explicitly claimed unrelated dispatch retains its own authority.
+        f.trigger.trigger_sync(fresh['name'], channel='other', message='Explicit unrelated discussion')
+        generic = f.queue.claim(fresh, 'new-discussion')['envelope']
+        self.assertFalse(f.engine.chat_scope(fresh, generic['dispatch_id']).get('routing_suppressed'))
+        self.assertIsNone(f.engine.review_messages(fresh))
+
     def fixture(self):
         from tests.test_turn_recovery import TurnRecoveryTests
         fixture = TurnRecoveryTests()
