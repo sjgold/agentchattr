@@ -1,6 +1,6 @@
 # Ticket15: replace or skip a missing participant
 
-State: same-AGY contract and all five precision amendments RATIFIED. Tranche1 skip storage implemented/tested, pending independent bounded checkpoint review. No replacement manager, transport, HTTP, projection/export or UI behavior is implemented yet. Standing autonomous policy replaces routine human gates; material scope changes and live usage still require Seth.
+State: same-AGY contract and all five precision amendments RATIFIED. Tranche1 skip storage independently bounded-PASS8834a8d. Tranche2 initial clone/replay interface below frozen before observed-red tests; explicit failed-preparation repair receives its own later contract. No replacement manager, transport, HTTP, projection/export or UI behavior is implemented yet. Standing autonomous policy replaces routine human gates; material scope changes and live usage still require Seth.
 
 Base: published main `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Owner: Codex, claim `a99548d9-49eb-4f70-9cf1-d185414cbad5`. Independent reviewer: same AGY. Scope: issue15, specification v1.7 SC-5 and AT-21d/22. Ticket12 blocker and Tickets13/14 recovery are delivered.
 
@@ -88,6 +88,22 @@ Helper owns only new tests/test_participant_skip_storage.py, bounded12 cases wit
 Tranche1 evidence: root independently reproduced initial2 missing-method errors0.108s. First expanded12 run had9 pass/3 fixture setup errors0.708s because its unique channel exceeded the existing20-character limit; helper shortened only that channel. An unreached projection_idNone assertion was corrected to stable32hex projection_id plus projected_message_idNone, matching the contract. Helper12 pass0.768s. Root unchanged12 plus selected/saved admission and Stop/events58 pass2.889s. Full818 total tests OK/four expected platform skips73.010s; Python syntax and diff whitespace pass. Store only, no queue/projection/process control. Same AGY bounded source/execution review is next.
 
 ## Proposed verification tranches
+
+## Frozen tranche2: initial managed replacement clone and replay
+
+NEW `SeatManager.prepare_replacement_context(source_provenance, context_key, *, binding) -> context view`. binding is exactly {child_run_id, role}, using current run UUID and nonempty role. context_key is a bounded1..128 plain identifier. No retry_attempt/confirmation in this tranche: failed/live/uncertain preparation replay never replaces a worker. Explicit repair receives a later observed-red contract.
+
+New preparation validates server-derived provenance fingerprint against the current owned source and real immutable config/launch records, current approved root/data/web/MCP and current registry identity. Require source native current-boot readiness. Source queries must never use cleanup/termination paths or extend its lease. Component tests may mock only that readiness boundary and label it nonnative; no invented birth metadata.
+
+Use a stable replacement key independent of selected seat ID so a repeated context_key cannot silently switch sources. Persist source reference {key, launch_attempt, identity_id, fingerprint} as replacement_source with existing context_id/context_key/context_source_fingerprint/context_base_effective/child_run_id/role fields. Validate exact source/binding/metadata on warm/cold replay, returning the same attempt or failed/blocked view. Corrupt/pending/ambiguous disk evidence never permits blind Popen. Reuse recover_prepared_context for disk lineage without repair; adoption retains replacement_source metadata without broadening process authority.
+
+Clone frozen base effective settings rather than edited saved/provider/template values. API gets a distinct worker. CLI requires verified fresh context args/new nonce and existing config_resource guard. Env/flag-generated MCP configuration remains attempt-scoped; active fixed settings-file ownership blocks before spawn instead of overwriting it or stopping its owner. Use existing _launch_effective pending/spawned journaling and hidden console behavior.
+
+Source process/handle/files/registry/context and unrelated jobs remain intact. Clone is starting/unverified until its OWN genuine current-boot native proof plus ready receipt; receipt alone cannot report clean_contextTrue. Context view exposes only existing safe fields. No review brief, dispatch or model call in this component. Engine intent-before-clone ordering belongs to the later engine tests.
+
+Helper owns only tests/test_prepare_replacement_context.py, bounded10-12 real manager/store/registry cases with explicit Popen/readiness doubles. Capture initial API clone/source-preservation plus invalid binding/key red before implementation. Cover drift, fresh CLI/resource refusal, exact replay/conflicting source, separate source/clone readiness, ownership/journal IO, strict source/root guards and cold failed/pending replay without respawn. No native lifecycle/engine/provider/UI acceptance claim.
+
+Tranche1 independent review: same AGY bounded-PASS8834a8d, dedicated12/0.805s, focused80/4.018s, full818 total/four expected skips73.115s. Later wiring explicitly excluded.
 
 - [x] Settle the three architecture choices and five precision amendments with same AGY source/caller critique; freeze each component signature before its observed-red tests.
 - [ ] Store tests observed red before implementation: exact checkpoint/intent, current/future assignment audit, original completed bytes, atomic fence/skip cursor, global first-writer races, Stop/corrected/pending guard, persistence rollback and exact replay/reload.
