@@ -36,3 +36,5 @@ Current branch codex/ticket-12-stalled-turns, base0d247d5. Same AGY ratified tim
 Same AGY independently passed frozen ebc85ae at reviewed docs pin154412b:467 tests/four skips24.367s, all nine integrations, JS/diff clean. Transient fixture limitations judged nonblocking. Receipt REVIEW-GEMINI-TICKET-12.md. Publication/post-merge checks now in progress; #16 six-seat capacity follows.
 
 #12 published on origin/main8297bc1bd15468540328df2b7364fc505989f9d2, issue closed confirmed. Post-merge467 tests/four skips25.863s, JS/diff clean. Reviewer precision corrections confirmed, PASS unchanged. Next#16 shared session capacity/whole team, then#9 after milestone.
+
+#16 planning branch codex/ticket-16-whole-team at baseee52c32. Proposal TICKET-16-PLAN.md, shared policy/snapshot with sequential full-team scheduling, defaults open for same-AGY critique. No implementation/tests assigned yet.
