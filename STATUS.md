@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 (#1-12 and #16 published/closed; #13 saved API answer planning next)
+**Updated:** 2026-10-23 (#1-12 and #16 published/closed; #13 proposed saved-answer contract awaiting same-AGY critique)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -205,6 +205,13 @@
 - Local main fast-forwarded to the reviewed branch; post-merge630 tests OK/four expected skips52.068s, sessions/chat JS syntax and diff whitespace pass. No application changes after the reviewed target.
 - Published source on origin/main2047834e7092553be2bff56e32bc3d409a400a1c; remote branch hash matched local, issue9 confirmed closed as completed.
 - Next owner: Codex begins13 saved-answer/outbox planning and same-AGY contract critique, then observed-red tests. No13 implementation or live provider usage yet. Codex holds implementation-owner responsibility; AGY retains independent-reviewer.
+
+## Ticket #13 planning
+
+- Branch codex/ticket-13-api-result-outbox starts from published closure2bdbc777b5ab8e254b36e54cd784a469d02720b4. Issue13 is open and its blocker12 is closed;9 is also complete. TICKET-13-PLAN.md is a proposed contract with explicit open choices, not settled implementation.
+- Scope: atomic saved API review result before posting, exact stable result/seat/run/turn/attempt/input identities, idempotent recovery after post/ack failure or restart without another model call, and durable Stop/Retry/correction fences. No CLI selected-message recovery, live providers or native credential edits.
+- Two consequential open choices go to the same AGY critique: authenticating a saved result after original bearer revocation (proposed scoped pre-generation ticket/signature versus simpler trusted-file boundary), and settling exact old queue ownership separately from result admission with genuine local-end proof. Operator-directed delivery versus bounded startup replay and review-only scope also require settlement. No cryptographic or recovery guarantee is claimed yet.
+- No13 production implementation or red tests yet. Codex claimed implementation-owner for13 (claim087f6a49-75de-4664-bdab-9485b97a4115);9 role relinquished after verified publication/closure. Same AGY retains independent-reviewer. Next: critique and settle interfaces, then observed-red test tranche.
 
 ## Ticket execution and review
 

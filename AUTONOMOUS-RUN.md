@@ -18,7 +18,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #12 stalled turns/retry | Published and closed | Publication8297bc1, same AGY PASS |
 | #16 | Published and closed | Publication08fcee2, final same-AGY PASS including hidden windows |
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
-| #13 | Planning next | Codex outbox contract; same AGY critique |
+| #13 | Proposed contract | Same AGY critique of TICKET-13-PLAN.md, then settlement/red tests |
 | #14-15, #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -39,3 +39,5 @@ Same AGY bounded-passed09f65639,61cc0be,49432621 and328309a, explicitly not fina
 Final same-AGY PASS for7777f81 (reviewed pinf3c5966):630 tests/four skips52.504s, all Ticket9 crash/process tools and10 prior integrations PASS. Report precision corrections applied without source changes. Local main fast-forward merged; post-merge630 tests/four skips52.068s and JS/diff pass. Codex publishes/closes9 next, then13 planning. Receipt REVIEW-GEMINI-TICKET-9.md.
 
 Ticket9 source published on origin/main2047834e7092553be2bff56e32bc3d409a400a1c; remote exact hash and closed issue verified. Post-merge630/four skips52.068s. Next13 saved-answer/outbox planning; no13 implementation yet.
+
+Ticket13 proposed plan written on codex/ticket-13-api-result-outbox from closure2bdbc77. Outbox authority after bearer revocation and separate transport settlement remain OPEN for same-AGY critique; no implementation/tests yet. Implementation-owner moved from completed9 to13.
