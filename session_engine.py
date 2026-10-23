@@ -227,7 +227,7 @@ class SessionEngine:
         from turn_events import EventConflict
         invocation = session.get('active_invocation') if session else None
         checkpoint = session.get('turn_recovery') if session else None
-        if (not session or session.get('stop_id') or session['state'] not in ('stalled', 'waiting')
+        if (not session or session.get('stop_id') or session['state'] not in ('stalled', 'waiting', 'interrupted')
                 or not invocation or invocation.get('consumed') or invocation.get('human')
                 or invocation['attempt_id'] != attempt_id or not checkpoint
                 or checkpoint['checkpoint_id'] != checkpoint_id or checkpoint['attempt_id'] != attempt_id
@@ -795,6 +795,73 @@ class SessionEngine:
         self.reconcile_stops()
         self.recover_projections()
 
+    def _restart_role_ready(self, session, role, boot_id):
+        binding = session.get('participant_bindings', {}).get(role, {})
+        if binding.get('kind') == 'human':
+            return True
+        identity = binding.get('identity_id')
+        current = self._registry.get_all().values() if self._registry else ()
+        if not any(item.get('identity_id') == identity for item in current):
+            return False
+        if not binding.get('launch_provenance'):
+            return True  # Explicit manual clients need a current registered identity.
+        if not self._seat_manager or not hasattr(self._seat_manager, 'restart_readiness'):
+            return False
+        proof = self._seat_manager.restart_readiness(identity, boot_id)
+        return (isinstance(proof, dict) and proof.get('state') == 'ready'
+                and proof.get('process_verified') is True)
+
+    def _restart_checkpoint(self, session, boot_id, ready, now):
+        from copy import deepcopy
+        import uuid
+        old = session.get('restart_recovery') or {}
+        previous = old.get('previous_state', session['state'])
+        recovery = dict(old, boot_id=boot_id, status='verified' if ready else 'interrupted',
+                        reason=None if ready else 'restart_unverified', previous_state=previous)
+        recovery.setdefault('observed_at', now)
+        updated = deepcopy(session)
+        updated['restart_recovery'] = recovery
+        updated['dispatch_eligible'] = ready
+        if session['state'] not in ('paused', 'awaiting_input', 'prepared', 'complete'):
+            updated['state'] = ((previous if previous in ('waiting', 'stalled') else 'active')
+                                if session.get('active_invocation') else 'active') if ready else 'interrupted'
+        invocation = session.get('active_invocation')
+        if not ready and invocation and not invocation.get('human') and not invocation.get('consumed'):
+            if not updated.get('turn_recovery'):
+                updated['turn_recovery'] = {'checkpoint_id': uuid.uuid4().hex,
+                    'attempt_id': invocation['attempt_id'], 'dispatch_id': invocation['dispatch_id'],
+                    'reason': 'restart_unverified', 'status': 'stalled', 'first_at': now,
+                    'last_event': deepcopy((invocation.get('monitoring') or {}).get('last_event')),
+                    'actions': [], 'recoverable_result': False}
+        if updated == session:
+            return session
+        return self._store._event_update(session['id'], lambda value: value.update(updated))
+
+    def reconcile_restart(self, *, boot_id, now=None):
+        """Reconcile cold run authority without replaying a bound invocation."""
+        from dispatch_queue import _identifier
+        _identifier(boot_id, 'Server boot ID')
+        now = time.time() if now is None else now
+        with self._lock:
+            if getattr(self, '_restart_boot_id', None) != boot_id:
+                self._restart_boot_id = boot_id
+                self._restart_session_ids = {s['id'] for s in self._store.list_all()}
+            self.reconcile_stops()
+            self.recover_projections()
+            for session in self._store.list_all():
+                if (session['id'] not in self._restart_session_ids or session.get('stop_id')
+                        or session.get('completion_protocol') != 1 or session['state'] in ('complete', 'prepared')):
+                    continue
+                phase = session['design_snapshot']['phases'][session['current_phase']]
+                role = phase['participants'][session['current_turn']]
+                pending = session.get('pending_retry')
+                ready = not pending and self._restart_role_ready(session, role, boot_id)
+                session = self._restart_checkpoint(session, boot_id, ready, now)
+                if (ready and session['state'] == 'active' and not session.get('active_invocation')
+                        and session.get('admitted_events')):
+                    self._trigger_current(session)
+            return self.list_active()
+
     def _is_agent(self, name: str) -> bool:
         """Check if name belongs to a registered agent (not a human)."""
         if self._registry:
@@ -903,7 +970,7 @@ class SessionEngine:
             session = self._store.get(envelope['session_id'])
             superseded = bool(session and any(item['attempt_id'] == event['attempt_id']
                                                for item in session.get('superseded_attempts', [])))
-            if session and (session.get('dispatch_eligible') is False or superseded):
+            if session and (session.get('stop_id') or superseded):
                 from turn_events import EventConflict
                 # Immutable references and live bearer ownership were checked
                 # before this path. Forged identity overrides are not preserved.
@@ -944,7 +1011,7 @@ class SessionEngine:
         with self._lock:
             return self._store.resume_explicit(session_id)
 
-    def _project_session(self, session_id):
+    def _project_session(self, session_id, *, dispatch=True):
         from turn_events import IDENTITY_FIELDS
         session = self._store.get(session_id)
         for context in session.get('continuation_context', []):
@@ -972,7 +1039,7 @@ class SessionEngine:
             self._messages.add_once('session-end:' + session['run_id'], 'system',
                 session['template_name'] + ' complete.', msg_type='session_end', channel=session['channel'],
                 metadata={'session_id': session_id, 'output_message_id': session.get('output_message_id')})
-        elif session['state'] == 'active' and not session.get('active_invocation'):
+        elif dispatch and session['state'] == 'active' and not session.get('active_invocation'):
             self.emit_current_phase_banner(session)
             return self._trigger_current(session)
 
@@ -981,7 +1048,7 @@ class SessionEngine:
         with self._lock:
             for session in self._store.list_all():
                 if session.get('completion_protocol') == 1:
-                    self._project_session(session['id'])
+                    self._project_session(session['id'], dispatch=False)
 
     def _trigger_current(self, session: dict, *, retry=None, now=None):
         """Trigger the agent whose turn it is."""
@@ -1005,6 +1072,14 @@ class SessionEngine:
             return
 
         role = participants[turn_idx]
+        recovery = session.get('restart_recovery')
+        if recovery:
+            ready = self._restart_role_ready(session, role, recovery['boot_id'])
+            if not ready:
+                self._restart_checkpoint(session, recovery['boot_id'], False, time.time())
+                return False
+            if not session.get('dispatch_eligible'):
+                session = self._restart_checkpoint(session, recovery['boot_id'], True, time.time())
         cast = session.get("cast", {})
         agent = cast.get(role)
 

@@ -1,6 +1,6 @@
 # Ticket #9: reconcile interrupted runs after server restart
 
-**State:** Proposal for same-AGY contract critique, before tests or implementation. Base main `139e2dee00b2d803fbe8e31f5bd680d7f16df728`. First milestone (#1-8, #10-12, #16) is published and closed. Builder Codex; independent reviewer remains Antigravity agent ec1fbcd1-4a02-410e-9029-e498f67918c8. Seth's standing autonomous authorization removes routine human gates. Preserve the requested hidden managed terminal startup.
+**State:** Contract settled through same-AGY review Sections13-16. Core reconciliation and native/manifest foundations implemented and unit-tested; worker/adoption wiring and actual restart acceptance pending. Base main `139e2dee00b2d803fbe8e31f5bd680d7f16df728`. First milestone (#1-8, #10-12, #16) is published and closed. Builder Codex; independent reviewer remains Antigravity agent ec1fbcd1-4a02-410e-9029-e498f67918c8. Seth's standing autonomous authorization removes routine human gates. Preserve the requested hidden managed terminal startup.
 
 ## Required outcome and current evidence
 
@@ -18,7 +18,7 @@ Current SeatManager starts with an empty attempts map; it cannot own an old work
 
 No global process-name search, taskkill tree, external client control, new storage backend or mandatory dependency install is proposed.
 
-## Contract choices requiring critique
+## Settled contract and implementation boundaries
 
 ### 1. Startup fence and reconciliation transaction
 
@@ -32,13 +32,13 @@ Persist launch ownership metadata under the existing runtime attempt directory: 
 
 Before controlling an old worker, validate its exact birth identity through an OS handle plus matching launch metadata and fresh authenticated adapter report bound to the new boot. A stale receipt, changed PID birth, replaced registry identity or foreign root/data/config fails closed. Keep a retained verified process handle so PID reuse cannot redirect a later stop. No automatic process kill during reconciliation.
 
-Separate completion admission from OS termination authority. Open question: retain #12's current unfenced typed-final authority when the same authenticated immutable brief/attempt returns after restart, even if process adoption remains unverified, or hold admission pending fresh adapter proof? Prefer preserving existing first-writer admission semantics without inventing a hidden operator-held result store, while blocking any successor dispatch that lacks proven readiness. The reviewer must settle this boundary explicitly.
+Separate completion admission from OS termination authority. Ratified: retain #12 first-writer admission for the authenticated unfenced immutable attempt, independently of OS termination authority. No artificial held-answer store. Cold-reconciled successor dispatch waits for its own ready managed proof; current registered manual clients and human turns remain eligible. Normal explicitly started runs retain existing behavior.
 
 ### 3. Bounded process adapter and platform honesty
 
 Recommend a small owned-process handle interface for adopted processes, with poll/wait/close and explicitly authorized termination, rather than faking Popen or inferring exit from receipt age. Windows can use OpenProcess/GetProcessTimes/QueryFullProcessImageName and retained handles; verify actual worker versus venv shim identity. POSIX support must use equally stable process identity/handles where available and fail visibly closed otherwise. Native Linux/Omarchy acceptance remains deferred; do not claim it from Windows mocks.
 
-Settle whether a worker authenticated reconciliation handshake suffices for dispatch continuity while process control stays unavailable, and how existing runtimes lacking new ownership metadata are displayed. Legacy runtime files must remain intact and readable. Unprovable old processes must never be adopted or killed by guesswork.
+Ratified: managed ownership requires exact native birth/image and fresh authenticated boot-bound evidence; missing metadata remains legacy_unverified. General seat heartbeat/registration stays available for unrelated work and cannot resurrect a stopped run. Legacy runtime files must remain intact and readable. Unprovable old processes must never be adopted or killed by guesswork.
 
 ### 4. Explicit Retry, Stop and pending preparation after a crash
 
@@ -59,3 +59,19 @@ Expose restored/verified, interrupted/unverified, exited and blocked states with
 3. Actual isolated fake-provider/Windows CLI integration retains handles to exact server/workers, crashes only the owned server (not its process tree), restarts the same port/data, and observes genuine reconnect/ownership receipts. Verify no new provider call/injection during reconciliation, no duplicate accepted result/phase advancement, explicit Retry with new IDs/old409, preserved accepted work, repeated-crash idempotence and permanent Stop after cold restart. Parent fixture provider survives server death independently.
 4. Cover both surviving and genuinely exited workers; never fabricate local-exit proof. Use bounded crash/restart windows relative to current15s heartbeat expiry and report which case was exercised. Cleanup only retained owned handles/verified attempts. No live provider/native AI calls.
 5. Verify UI/refresh, full suite, affected integrations, JS/diff and same-AGY frozen independent review/recheck. No implementation begins until these consequential ownership/authority choices are settled. Escalate a reproduced unresolved correctness dispute with the specified Astra evidence pack rather than silently weakening proof.
+
+## Settled refinements and foundation checkpoint
+
+- Permanent Stop is stop_id alone, scoped to run/attempt. Interrupted/unverified states do not invent permanent Stop or globally revoke a shared seat.
+- Exact64-bit FILETIME is stored as a decimal string. Native live adoption verifies creation bits and absolute case-normalized image. Retained verified handles provide genuine wait/poll/termination without another PID lookup; exit259 is distinguished from STILL_ACTIVE through a signaled process handle.
+- Only OpenProcess failure87 proves absence. Permission denial, post-open identity query failures (even87) and other probe failures remain uncertain. Explicit confirmation authorizes only an already positively verified owned handle; it cannot replace missing proof or authorize orphan-PID guesses.
+- Fresh postmortem image query returned WinError31 in actual Windows tests. Same AGY Section16 ratified uncertain/error_code31/nohandle for this new probe, while original retained handles still report exact23/259. Two assumed fresh-probe expectations were corrected with explicit review approval; live verification was not relaxed.
+- Missing in-memory handles do not mean never spawned. Manifest records pending intent, then spawned or synchronously failed; crash gaps remain unknown. Dead API supervisor alone cannot prove its model invocation ended. Dispatch/attempt-bound model-child evidence is required, with no payload/credentials; otherwise remain unproven_worker_exit. Cold absent/reused worker plus matching integer CLI child-exit receipt yields structured evidence, never a fake Popen returncode0.
+- Frozen core interface reconcile_restart(*,boot_id,now=None) records restart_recovery and preserves current invocation/checkpoint/Wait/deadlines/source/results/policies. _project_session(...,dispatch=True) remains normal admission behavior; recover_projections uses dispatch=False. Blocked claims retain exact envelopes/consumer. Same boot can progress after genuine readiness change, never replay an existing held attempt.
+- Foundations now implemented: process_identity.capture_birth/open_verified_process and retained OwnedProcessHandle; runtime_ownership.new_launch_identity/record_spawn_outcome/record_worker_birth. Pure ownership files validate immutable root/data/server/fingerprint/attempt/nonce/path references and preserve legacy files. They alone grant no process-control authority; manager must compare its own approved root and fresh adapter evidence. Worker root is self-recorded separately to detect another checkout.
+- Helper captured real red for premature projection successor, missing reconciliation signature, missing process/ownership modules and post-open87 misclassification. Core17, native15 and ownership10 tests pass. A reconnect fixture was corrected from deliberate token revocation to reclaimable crash semantics; replacement/revocation assertions unchanged. Full foundation checkpoint: **536 tests OK, four expected skips, 26.481s**.
+- Not yet wired: app startup/manager adoption, worker self-birth/handshake, invocation-child proof, real server crash/restart and operator UI. No complete #9 acceptance, independent implementation PASS or publication claimed. Next is launch/worker ownership wiring, then manager reconciliation and actual crash verification.
+
+### Primary API references
+
+Microsoft documents creation FILETIME as64-bit and permits process time queries on an appropriate retained handle: [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes). Handles remain valid until closed, even after termination: [Process handles and identifiers](https://learn.microsoft.com/en-us/windows/win32/procthread/process-handles-and-identifiers). Polling uses [WaitForSingleObject](https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject) before interpreting [GetExitCodeProcess](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getexitcodeprocess), avoiding confusion with exit259. Executable identity is read through [QueryFullProcessImageNameW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew). Postmortem error31 above is local observed evidence, not a universal API guarantee.

@@ -34,3 +34,5 @@ Published and closed: #1-8, #10-12 and #16. First milestone includes whole-team 
 Next: #9 restart reconciliation. Settle ownership proof and startup fences with same AGY before red tests/implementation; preserve permanent Stop/superseded fences and no blind dispatch. Runtime process adoption is still unimplemented at this handoff.
 
 #9 planning branch codex/ticket-9-restart-reconciliation at base139e2de. TICKET-9-PLAN.md proposes startup fences, OS birth/adapter proof and visible uncertainty, with completion-authority/control boundaries open for same-AGY critique. No #9 code/tests assigned yet.
+
+#9 foundations now implemented after same-AGY Sections13-16: core17/native15/ownership10 tests pass; full536 tests/four expected skips26.481s. Explicit fresh postmortem image31 stays uncertain, retained real exit23/259 verified. App/worker/manager adoption and actual crash acceptance remain unwired. Next launch/worker ownership tranche, then manager proof and same-AGY final review. No #9 publication/PASS.

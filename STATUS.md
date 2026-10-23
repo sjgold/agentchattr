@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (#1-8, #10-12 and #16 published/closed; #9 restart-reconciliation planning)
+**Updated:** 2026-10-22 (#1-8, #10-12 and #16 published/closed; #9 reconciliation/process foundations checkpoint)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -166,11 +166,13 @@
 - Seth asked that terminal windows come up hidden. Managed Windows CLI now adds STARTUPINFO STARTF_USESHOWWINDOW/SW_HIDE while retaining CREATE_NEW_CONSOLE/native console input. API workers/model children already use CREATE_NO_WINDOW. Explicit manual launchers/global terminal settings unchanged.
 - Unit regression observed missing startupinfo red, then green. Full494 tests OK/four expected skips25.649s. Actual CLI integration verified real console existence and invisible window state for initial/restarted clients, real input isolation, Stop/peer survival and exact child exit23. Actual mixed turn-retry and corrected-restart integrations also PASS with hidden launches, preserving observed old exit/new identity/MCP results and peer survival. Same AGY final recheck PASS on5f458089f69b5732345a999a5fb3706468d2bc41:494 tests/four expected skips25.415s, actual CLI/turn-recovery/corrected-restart integrations and JS/diff clean. Fast-forward merged locally; post-merge494 tests OK/four expected skips25.349s, JS/diff clean. Published on origin/main08fcee2f78c626f4fccb72f8ed894e44c46f2bf9; issue#16 confirmed closed as completed. #9 planning next. CLI-SEATS.md records behavior.
 
-## Ticket #9 planning
+## Ticket #9 foundations checkpoint
 
-- Branch codex/ticket-9-restart-reconciliation, base139e2de. Proposal TICKET-9-PLAN.md requests same-AGY critique of startup eligibility, OS birth/adapter ownership proof, late admission authority, explicit Retry/Stop and platform limits. No #9 production/test changes yet.
-- Current manager has no adopted process handles after restart; reclaimable registry tokens and old ready receipts cannot alone justify OS control. Existing projection/Stop/fence durability stays authoritative. Proposed reconciliation preserves held envelopes, old deadlines and accepted work, never blindly dispatches, and visibly interrupts uncertainty.
-- Next owner: same AGY settles contract before Codex/test helper write red tests. No human gate pending; runtime adoption remains unimplemented at this checkpoint.
+- Branch codex/ticket-9-restart-reconciliation, base139e2de. Same AGY contract Sections13-16 ratify scoped startup gating, first-writer late admission, permanent run Stop, exact process birth/fresh adapter proof, no synthetic exitcodes and fail-closed probe precision. TICKET-9-PLAN.md records interfaces and evidence.
+- Core reconcile_restart, interrupted/checkpoint preservation, cold successor readiness, channel reservation and non-destructive queue claim gating implemented. Projection recovery no longer dispatches before reconciliation. Current authenticated unfenced results remain admissible; Stop/superseded attempts stay fenced. Normal manual clients/human turns preserved. Core17 tests pass after observed premature-dispatch/missing-interface red.
+- Native process_identity captures exact decimal64-bit birth/image and retains verified Windows handles; self/owned-child tests cover23/259, wait deadlines, termination without PID reopening, mismatch/nonactuation and closed handles. Only OpenProcess87 proves absence; post-open87 is uncertain. Fresh postmortem image query31 remains uncertain under explicit AGY ruling, while retained handles preserve actual exit proof. Native15 tests pass, no POSIX acceptance claimed.
+- runtime_ownership validates immutable launch metadata/path/fingerprint and atomic pending->spawned/failed intent; self-birth preserves existing conflicting evidence and legacy snapshots stay read-only. Ownership10 tests pass after missing-module red. These primitives grant no adoption authority by themselves.
+- Latest full checkpoint: **536 tests OK/four expected skips26.481s**. No app startup/manager adoption, worker hooks/boot handshake, model-child exit evidence, actual crash/restart integration or operator UI wiring yet. #9 remains incomplete/unpublished/unreviewed. Next owner: Codex launch/worker ownership wiring, existing helper observed-red tranche, then same AGY independent final review.
 
 ## Ticket execution and review
 
@@ -180,7 +182,7 @@
 
 ## Next step
 
-**Action:** Plan #9 restart reconciliation against SC-4/AT-08, settle process/adapter ownership and uncertain-turn recovery with same AGY before red tests. #16 follows reviewed publication; #9 remains deferred.
+**Action:** Wire durable launch outcomes and actual worker birth/boot handshake, then manager adoption/model-child proof and real crash/restart acceptance. #16 follows reviewed publication; #9 remains deferred.
 **Who:** Codex owns verification/freeze/fixes; same AGY remains independent reviewer. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 

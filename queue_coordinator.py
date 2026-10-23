@@ -28,7 +28,9 @@ class CoordinatedQueue:
     def claim(self, instance, consumer_id):
         with self._lock:
             self._reconcile()
-            return self._queue.claim(instance, consumer_id)
+            blocked = {run['run_id'] for run in self._sessions.list_all()
+                       if run.get('dispatch_eligible') is False and not run.get('stop_id')}
+            return self._queue.claim(instance, consumer_id, blocked_run_ids=blocked)
 
     def __getattr__(self, name):
         attribute = getattr(self._queue, name)

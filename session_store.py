@@ -168,7 +168,7 @@ class SessionStore:
         with self._lock:
             # One active session per channel
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "prepared", "stalled", "retrying"):
+                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "prepared", "stalled", "retrying", "interrupted"):
                     return None
 
             session = {
@@ -223,7 +223,7 @@ class SessionStore:
         """Get the active/waiting/paused session for a channel."""
         with self._lock:
             for s in self._sessions:
-                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "stalled", "retrying"):
+                if s.get("channel") == channel and s.get("state") in ("active", "waiting", "paused", "awaiting_input", "stalled", "retrying", "interrupted"):
                     return deepcopy(s)
             return None
 
@@ -421,7 +421,7 @@ class SessionStore:
             invocation = session.get('active_invocation')
             if not invocation:
                 raise EventConflict('No current invocation can accept this event.')
-            if (session['state'] not in ('active', 'waiting', 'stalled') or invocation['consumed']
+            if (session['state'] not in ('active', 'waiting', 'stalled', 'interrupted') or session.get('stop_id') or invocation['consumed']
                     or any(event.get(key) != invocation.get(key) for key in IDENTITY_FIELDS)
                     or event['input_revision'] != session['input_revision']
                     or any(prior['event_id'] == event['event_id'] for run in self._sessions for prior in run.get('admitted_events', []))):

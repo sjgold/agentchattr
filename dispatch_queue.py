@@ -130,18 +130,23 @@ class QueueStore:
             self._write(ledger)
             return deepcopy(record)
 
-    def claim(self, instance, consumer_id):
+    def claim(self, instance, consumer_id, *, blocked_run_ids=None):
         identity = _seat(instance)
         _identifier(consumer_id, 'Consumer ID')
+        blocked = set(blocked_run_ids or ())
         with self._transaction() as ledger:
             records = [r for r in ledger['records'] if r['envelope']['target_identity_id'] == identity]
             for record in records:
                 if record['state'] in ACTIVE:
+                    if record['envelope'].get('run_id') in blocked:
+                        raise QueueBusy('Restart ownership is unverified; held work is retained.')
                     if record['consumer_id'] != consumer_id:
                         raise QueueBusy('Seat already owns a dispatch; pending work is retained.')
                     return deepcopy(record)
             for record in records:
                 if record['state'] == 'queued':
+                    if record['envelope'].get('run_id') in blocked:
+                        continue
                     record['consumer_id'] = consumer_id
                     self._event(record, 'dispatched')
                     self._write(ledger)
