@@ -16,8 +16,8 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | --- | --- | --- |
 | #1-8, #10-11 | Published and closed | Latest #11 publication `f403b59`, same AGY PASS |
 | #12 stalled turns/retry | Published and closed | Publication8297bc1, same AGY PASS |
-| #16 | Builder verification | Codex full checks/freeze; same AGY independent review |
-| #9 | Pending | Full restart reconciliation follows first milestone |
+| #16 | Published and closed | Publication08fcee2, final same-AGY PASS including hidden windows |
+| #9 | Planning | Codex ownership proposal, same AGY contract critique |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -29,10 +29,6 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-Published and closed: #1-8 and #10-12. Latest #12 source publication8297bc1, closure/status mainee52c32. Same AGY independently467 tests/four skips and all9 integrations PASS; post-merge467 tests/four skips25.863s. Receipt REVIEW-GEMINI-TICKET-12.md.
+Published and closed: #1-8, #10-12 and #16. First milestone includes whole-team capacity, durable turn ownership/completion, Stop/corrected restart and visible recovery. Latest #16 source publication08fcee2f78c626f4fccb72f8ed894e44c46f2bf9; issue closed confirmed. Final reviewed target5f45808 includes user-requested hidden managed Windows CLI startup. Same AGY independently494 tests/four skips25.415s plus hidden CLI/retry/corrected integrations, capacity target all10 integrations PASS. Post-merge494 tests/four skips25.349s, JS/diff clean. Fixture WinError5 scratch race was independently diagnosed and hardened with bounded atomic writer/rechecked. Receipt REVIEW-GEMINI-TICKET-16.md, usage SESSION-CAPACITY.md and CLI-SEATS.md. No live providers/native AI/Omarchy/Desktop changes.
 
-#16 current branch codex/ticket-16-whole-team, baseee52c32. Same AGY ratified shared policy/defaults, low explicit caps, sanity ceilings, turn counting, frozen inheritance and sequential scheduling. Implemented policy/config/API/validation/UI, including intact rejection and explicit stale-draft recheck. Final discovery493 tests OK/four expected skips25.909s; all10 integration scripts have current-backend passing runs. Actual normal and --serve seven-seat/six-turn integration passed with all7 exact worker exit handles; native UI recheck and scoped desktop/phone cast verification passed. All owned servers/browsers stopped. Retain recurring MCP fixture ExceptionGroup/missing-return limitation and diagnostic evidence without claiming a production fix. Frozen target 5e6f86ee731ccee0a0e33525d906353cd01f12f8; same AGY received the independent implementation review request. No #16 push/PASS yet. Usage SESSION-CAPACITY.md, review pack TICKET-16-REVIEW.md, plan TICKET-16-PLAN.md. After reviewed #16 publication, #9 follows milestone order.
-
-Same AGY independently PASS on5e6f86e:493 tests/four skips26.294s, all10 integrations. Captured nested WinError5 local scratch replacement race. Root fixture-only atomic_json reuse passed controlled collision probe+actual queue integration; targeted same-AGY recheck pending before publication. Application source/tests unchanged; no #16 push yet.
-
-Fixture2171991 independently rechecked PASS. Seth requested hidden terminal startup; managed Windows CLI now retains input console with SW_HIDE startup info. Unit red->green, full494/four skips25.649s and actual hidden-console injection/restart/Stop/exit23 PASS. Actual mixed Retry/corrected integrations also PASS. Same AGY final target5f45808 recheck PASS:494 tests/four skips25.415s and3 integrations; publication/post-merge checks next; no #16 push yet.
+Next: #9 restart reconciliation. Settle ownership proof and startup fences with same AGY before red tests/implementation; preserve permanent Stop/superseded fences and no blind dispatch. Runtime process adoption is still unimplemented at this handoff.

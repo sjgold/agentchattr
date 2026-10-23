@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; #16 final independent PASS including hidden terminals; publication in progress)
+**Updated:** 2026-10-22 (#1-8, #10-12 and #16 published/closed; #9 restart-reconciliation planning)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -13,7 +13,7 @@
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
 - Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
 - Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
-- Durable run tracking: `AUTONOMOUS-RUN.md`. Next active work: #16 whole selected team after published #12. `TICKET-11-PLAN.md` records the completed corrected-document contract. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
+- Durable run tracking: `AUTONOMOUS-RUN.md`. Next active work: #9 restart reconciliation after published #16 and the first milestone. `TICKET-11-PLAN.md` records the completed corrected-document contract. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
 
@@ -164,7 +164,7 @@
 ### User amendment: hidden terminal startup
 
 - Seth asked that terminal windows come up hidden. Managed Windows CLI now adds STARTUPINFO STARTF_USESHOWWINDOW/SW_HIDE while retaining CREATE_NEW_CONSOLE/native console input. API workers/model children already use CREATE_NO_WINDOW. Explicit manual launchers/global terminal settings unchanged.
-- Unit regression observed missing startupinfo red, then green. Full494 tests OK/four expected skips25.649s. Actual CLI integration verified real console existence and invisible window state for initial/restarted clients, real input isolation, Stop/peer survival and exact child exit23. Actual mixed turn-retry and corrected-restart integrations also PASS with hidden launches, preserving observed old exit/new identity/MCP results and peer survival. Same AGY final recheck PASS on5f458089f69b5732345a999a5fb3706468d2bc41:494 tests/four expected skips25.415s, actual CLI/turn-recovery/corrected-restart integrations and JS/diff clean. Fast-forward merged locally; post-merge494 tests OK/four expected skips25.349s, JS/diff clean. Publication/closure next. CLI-SEATS.md records behavior.
+- Unit regression observed missing startupinfo red, then green. Full494 tests OK/four expected skips25.649s. Actual CLI integration verified real console existence and invisible window state for initial/restarted clients, real input isolation, Stop/peer survival and exact child exit23. Actual mixed turn-retry and corrected-restart integrations also PASS with hidden launches, preserving observed old exit/new identity/MCP results and peer survival. Same AGY final recheck PASS on5f458089f69b5732345a999a5fb3706468d2bc41:494 tests/four expected skips25.415s, actual CLI/turn-recovery/corrected-restart integrations and JS/diff clean. Fast-forward merged locally; post-merge494 tests OK/four expected skips25.349s, JS/diff clean. Published on origin/main08fcee2f78c626f4fccb72f8ed894e44c46f2bf9; issue#16 confirmed closed as completed. #9 planning next. CLI-SEATS.md records behavior.
 
 ## Ticket execution and review
 
@@ -174,7 +174,7 @@
 
 ## Next step
 
-**Action:** Fast-forward merge, post-merge checks and publish/close final-reviewed #16; then plan #9 restart reconciliation. #16 follows reviewed publication; #9 remains deferred.
+**Action:** Plan #9 restart reconciliation against SC-4/AT-08, settle process/adapter ownership and uncertain-turn recovery with same AGY before red tests. #16 follows reviewed publication; #9 remains deferred.
 **Who:** Codex owns verification/freeze/fixes; same AGY remains independent reviewer. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
@@ -182,13 +182,13 @@
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** codex/ticket-16-whole-team, base published mainee52c32. #12 source published at8297bc1. Prior #12 base main `0d247d5`. Published #11 source `f403b59` (frozen implementation `78b418d`, base `83aa04a`), closure/status published. Same AGY PASS and post-merge401 tests/four skips pass.
+- **Branch:** main, #16 source published at08fcee2, preparing #9 branch. Previous #16 base mainee52c32. Prior #12 base main `0d247d5`. Published #11 source `f403b59` (frozen implementation `78b418d`, base `83aa04a`), closure/status published. Same AGY PASS and post-merge401 tests/four skips pass.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
-- **Current build:** published #1-8 and #10-12, including stalled-turn visibility, Wait/Retry and explicit preparation repair. Same AGY PASS, post-merge467 tests OK/four skips, all nine integrations independently pass. No live providers, native-client/Omarchy or Desktop changes.
+- **Current build:** published #1-8, #10-12 and #16, including whole-team capacity and user-requested hidden managed Windows terminals. Same AGY final PASS, post-merge494 tests OK/four skips, all ten integrations independently passed on capacity target and hidden amendment rechecked. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #12 published/closed; #16 whole-team capacity implemented, builder verification/review pending. TICKET-12-PLAN.md and TICKET-12-REVIEW.md record scope/evidence. #1-8 and #10-11 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** first milestone published; #9 restart-reconciliation planning next. TICKET-12-PLAN.md and TICKET-12-REVIEW.md record scope/evidence. #1-8 and #10-11 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
