@@ -343,6 +343,77 @@ def restart_readiness(manager, identity_id, boot_id, *, now=None):
         return result
 
 
+def saved_result_exit_proof(manager, payload):
+    """Query exact saved transport lifetime, without controlling its worker."""
+    import hashlib
+    import re
+    from invocation_evidence import classify, classify_history
+    unproven = {'local_ended': False, 'reason': 'unproven_worker_exit'}
+    with manager.lock:
+        try:
+            if not isinstance(payload, dict):
+                return unproven
+            for field, length in (('launch_attempt', 32), ('launch_nonce', 32),
+                                  ('dispatch_id', 32), ('fingerprint', 64)):
+                if not isinstance(payload.get(field), str) or not re.fullmatch('[0-9a-f]{%d}' % length, payload[field]):
+                    return unproven
+            launch, dispatch = payload['launch_attempt'], payload['dispatch_id']
+            item = _candidate(manager, manager.store.path.parent / 'api_seat_runtime' / launch / 'config.json')
+            ownership, birth = item['identity'], item['birth']
+            receipt = _read(item['path'].with_name('receipt.json'))
+            if (item['effective']['seat']['adapter'] != 'openai-compatible'
+                    or item['manifest']['spawn_outcome'] != 'spawned'
+                    or ownership['launch_nonce'] != payload['launch_nonce']
+                    or ownership['fingerprint'] != payload['fingerprint']
+                    or receipt.get('attempt') != launch
+                    or not isinstance(payload.get('seat_identity_id'), str)
+                    or receipt.get('identity_id') != payload['seat_identity_id']):
+                return unproven
+            attempt = next((value for value in manager.attempts.values() if value['id'] == launch), None)
+            warm_ended = False
+            if attempt is not None:
+                cached_birth = attempt.get('worker_birth')
+                if ((cached_birth is not None and cached_birth != birth) or attempt.get('ownership') != ownership
+                        or attempt.get('identity_id') != payload['seat_identity_id']):
+                    return unproven
+                worker = attempt.get('worker_process') or attempt.get('process')
+                # The Popen object can refer to a venv launcher shim. Its exit
+                # never establishes the lifetime of the self-attested worker.
+                if cached_birth is not None and birth and worker and worker.pid == birth['pid']:
+                    if type(worker.poll()) is not int:
+                        return unproven
+                    warm_ended = True
+            if warm_ended:
+                models = classify_history(item['path'].parent)
+                if not models['local_ended']:
+                    return unproven
+                if (item['path'].parent / 'invocations' / dispatch).exists():
+                    exact = classify({'runtime_path': str(item['path'].parent), 'dispatch_id': dispatch,
+                        'launch_attempt': launch, 'launch_nonce': ownership['launch_nonce']})
+                    if not exact['local_ended']:
+                        return unproven
+                elif models.get('verification_basis') != 'protocol_one_no_invocations':
+                    return unproven
+                proof = dict(models, wrapper_status='observed_exited')
+            else:
+                effective = manager._provenance_effective(item['effective'])
+                provenance = {'key': item['key'], 'launch_attempt': launch,
+                    'identity_id': payload['seat_identity_id'], 'effective': effective}
+                hashed = effective
+                base = item['snapshot'].get('context_base_effective')
+                if base:
+                    provenance['fresh_base_effective'] = manager._provenance_effective(base)
+                    hashed = {'effective': effective, 'fresh_base_effective': provenance['fresh_base_effective']}
+                provenance['fingerprint'] = hashlib.sha256(json.dumps(hashed, sort_keys=True).encode()).hexdigest()
+                proof = runtime_exit_proof(manager, provenance, dispatch)
+                if not proof['local_ended']:
+                    return unproven
+            return dict(proof, local_ended=True, launch_attempt=launch,
+                        dispatch_id=dispatch, seat_identity_id=payload['seat_identity_id'])
+        except (OSError, ValueError, KeyError, TypeError):
+            return unproven
+
+
 def runtime_exit_proof(manager, provenance, dispatch_id=None):
     """Resolve one immutable original launch, never a latest-by-name guess."""
     import hashlib

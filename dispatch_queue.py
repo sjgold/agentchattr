@@ -28,7 +28,7 @@ class QueueAccessError(PermissionError):
 
 
 ACTIVE = {'dispatched', 'acknowledged', 'uncertain', 'cancelling'}
-STATES = ACTIVE | {'queued', 'released', 'failed', 'cancelled'}
+STATES = ACTIVE | {'queued', 'released', 'failed', 'cancelled', 'settled_recovered'}
 
 
 def _identifier(value, label):
@@ -310,6 +310,37 @@ class QueueStore:
             record['cancellation'] = receipt
             record.setdefault('cancellation_receipts', []).append(deepcopy(receipt))
             self._event(record, 'cancelled')
+            self._write(ledger)
+            return deepcopy(record)
+
+    def settle_recovered(self, dispatch_id, seat_identity_id, *, evidence):
+        """Internal saved-result settlement; never forge a worker release."""
+        _identifier(dispatch_id, 'Dispatch ID')
+        _identifier(seat_identity_id, 'Seat identity')
+        allowed = {'all_bound_invocations_ended', 'protocol_one_no_invocations',
+                   'bound_invocation_birth_and_observed_absent', 'observed_child_exit_and_ipc'}
+        if (not isinstance(evidence, dict) or evidence.get('local_ended') is not True
+                or evidence.get('dispatch_id') != dispatch_id
+                or evidence.get('seat_identity_id') != seat_identity_id
+                or not isinstance(evidence.get('launch_attempt'), str)
+                or not re.fullmatch(r'[0-9a-f]{32}', evidence['launch_attempt'])
+                or not isinstance(evidence.get('verification_basis'), str)
+                or evidence['verification_basis'] not in allowed):
+            raise QueueConflict('Exact verified saved-result exit evidence is required.')
+        proof = {'source': 'result_recovery', 'launch_attempt': evidence['launch_attempt'],
+                 'verification_basis': evidence['verification_basis']}
+        with self._transaction() as ledger:
+            record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
+            if not record or record['envelope']['target_identity_id'] != seat_identity_id:
+                raise QueueConflict('Saved-result transport identity does not match.')
+            if record['state'] == 'settled_recovered':
+                if any(record.get('recovery', {}).get(key) != value for key, value in proof.items()):
+                    raise QueueConflict('Saved-result settlement evidence changed.')
+                return deepcopy(record)
+            if record['state'] not in {'dispatched', 'acknowledged', 'uncertain', 'failed'}:
+                raise QueueConflict('Transport cannot be settled by saved-result recovery in this state.')
+            record['recovery'] = dict(proof, at=time.time())
+            self._event(record, 'settled_recovered')
             self._write(ledger)
             return deepcopy(record)
 
