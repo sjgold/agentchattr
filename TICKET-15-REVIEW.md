@@ -25,7 +25,7 @@ Read participant_replacement_store.py, replacement_preparation.py, participant_r
 
 ## Builder checks
 
-- Full discovery: 918 TOTAL tests, 914 passed and four expected platform skips, 88.791s. Log `.audit-tmp/ticket15-skip-routes-full.log`. Published base806 plus112 new tests across16 dedicated modules equals918.
+- Final frozen discovery at fc7ef93:918 TOTAL tests,914 passed and four expected platform skips87.210s. Log `.audit-tmp/ticket15-final-frozen-full.log`, tracked shelld9954f50 exit0. Earlier skip/routes run918/four skips88.791s remains `.audit-tmp/ticket15-skip-routes-full.log`. Published base806 plus112 new tests across16 dedicated modules equals918.
 - Focused skip/controller/HTTP/brief checks:44 passed4.167s. Later sanitized can_skip/options guard:15 passed2.751s. Python compilation, node syntax and git diff checks pass.
 - New tests distinguish real store/ledger/HTTP effects from explicitly supplied algorithm exit-proof dictionaries, process doubles and native-readiness/delegate seams. Native component supervisor/model tests have their own real Windows witnesses; actual end-to-end evidence follows below.
 - Same AGY bounded-PASS: skip8834a8d, clone964d3af, transportb9cd507, controller132e598. Last bounded audit independently ran40/6.461s and95/12.605s; builder frozen901/90.284s was reviewer-log-verified. Reviewer shared-tree task3727 was cancelled, not presented as independent frozen discovery. Final review covers later skip/routes/UI/tools and whole-ticket regression.
