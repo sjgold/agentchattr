@@ -1,11 +1,23 @@
-"""DRAFT selectable Windows/local-fake participant recovery; compile before review.
+"""Verified selectable Windows participant recovery with local fake API/CLI.
 
---case replace-api|replace-cli|skip|repair-cold selects one isolated scenario.
---serve is permitted only for replace-api/skip: root owns browser actions.
-Before a decision the sentinel wait is bounded600s; after clicking Replace/Skip
-the reviewer must pulse within30s, inside the normal120s provider deadline.
---compile-only starts no server, provider, model, worker or console.
-No live AI/provider, remote-compute, Omarchy or native AI-client acceptance.
+Example: .venv-windows/Scripts/python.exe tools/verify_participant_recovery.py --case replace-api
+Select one case: replace-api, replace-cli, skip, or repair-cold.
+All four passed individually. API replacement and cold repair each verified
+three API generations and one old CLI injection; CLI replacement verified one
+API generation and three CLI injections; skip verified two API generations,
+one CLI injection, authentic synthesis and missing-work audit/footer/ZIP export.
+
+Add --serve only to replace-api or skip. Both browser modes passed with actual
+operator UI decisions, replaying their original stored request metadata.
+The sentinel pause permits 600 seconds before a decision; pulse within 30 seconds
+after the Replace/Skip click, inside the normal 120-second provider deadline.
+
+--compile-only checks eight generated server variants and one fake client,
+starting no server, provider, model, worker or console. Actual cases use isolated
+ports/data, retained exact native handles and complete cleanup accounting.
+The cold case covers one fast restart and explicit failed-preparation repair;
+it establishes no general long-outage guarantee. No live AI/provider, native
+AI-client, Omarchy or remote-compute guarantee is claimed.
 """
 import argparse
 from copy import deepcopy

@@ -22,7 +22,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Store/repair/controller component checks green | Frozen132e598 full901/four skips90.284s; same AGY bounded-PASS; skip projection/HTTP/UI/native acceptance pending; STOP after15 |
+| #15 | Builder acceptance complete | Full918/four skips,4native+2browser cases PASS; final same AGY source/execution review then publication/closure; STOP |
 | #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -34,8 +34,8 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-Published/closed: #1-14 and #16, main55bd7cb. Current branch codex/ticket-15-participant-replacement. Same AGY independently bounded-passed Ticket15 skip8834a8d, clone964d3af and unified transport/native proofb9cd507. Replacement store/explicit repair/controller are now implemented and component-tested, with native process/readiness delegates explicitly mocked in these new orchestration tests. Frozen132e598 full901 total/four skips90.284s and40 focused5.517s pass. Same AGY bounded-PASS:40/6.461s,95/12.605s independent; frozen901 builder-run log independently checked. First actual replace-api verifier run authorized after cleanup review; other native/browser cases pending.
+Published/closed: #1-14 and #16, main55bd7cb. Ticket15 executable checkpoint1cebd9d on codex/ticket-15-participant-replacement. Builder full918 total/four skips88.791s,4 actual Windows/local-fake cases and2 actual UI serves PASS, cleanup unresolved[]. Same AGY bounded-PASS through132e598; final whole-ticket review and reproduction next. Source/role/brief/queue/native/browser evidence and earlier corrected-restart timeout versus unchanged pass are in TICKET-15-REVIEW.md.
 
-Skip notices/missing context/output/export and operator HTTP routes now implemented/tested, full918 total/four skips88.791s. UI implemented with syntax/design checks but browser acceptance pending. Remaining owner Codex: actual Windows/local-fake replacement/skip/repair/restart and browser acceptance, same AGY final source/execution review and verified publication/closure. Finish Ticket15, then stop. No other ticket, live provider/native AI/Omarchy/Desktop/global change is authorized.
+Remaining owner Codex: final frozen discovery and same AGY review/recheck, then fast-forward main merge/post-merge checks/standing-authorized push/verified issue15 closure/status receipt. Finish15 thenSTOP, never start another ticket. No live AI/provider, Omarchy, Desktop/global changes or remote compute guarantee. All builder fake-client/browser resources are stopped.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.

@@ -1,6 +1,6 @@
 # Replace or skip a review participant
 
-Branch implementation for Ticket15. Final Windows/browser acceptance and independent review are pending.
+Ticket15 builder Windows/local-fake and browser checks pass. Final independent acceptance and publication are pending.
 
 When a review turn needs attention, open **Replace or skip participant** in its recovery controls. Earlier accepted results stay in the run.
 
