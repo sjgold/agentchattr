@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; #16 independent PASS; user-requested hidden terminals implemented, recheck pending)
+**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; #16 final independent PASS including hidden terminals; publication in progress)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -164,7 +164,7 @@
 ### User amendment: hidden terminal startup
 
 - Seth asked that terminal windows come up hidden. Managed Windows CLI now adds STARTUPINFO STARTF_USESHOWWINDOW/SW_HIDE while retaining CREATE_NEW_CONSOLE/native console input. API workers/model children already use CREATE_NO_WINDOW. Explicit manual launchers/global terminal settings unchanged.
-- Unit regression observed missing startupinfo red, then green. Full494 tests OK/four expected skips25.649s. Actual CLI integration verified real console existence and invisible window state for initial/restarted clients, real input isolation, Stop/peer survival and exact child exit23. Actual mixed turn-retry and corrected-restart integrations also PASS with hidden launches, preserving observed old exit/new identity/MCP results and peer survival. Same-AGY new-target recheck pending before #16 publication. CLI-SEATS.md records behavior.
+- Unit regression observed missing startupinfo red, then green. Full494 tests OK/four expected skips25.649s. Actual CLI integration verified real console existence and invisible window state for initial/restarted clients, real input isolation, Stop/peer survival and exact child exit23. Actual mixed turn-retry and corrected-restart integrations also PASS with hidden launches, preserving observed old exit/new identity/MCP results and peer survival. Same AGY final recheck PASS on5f458089f69b5732345a999a5fb3706468d2bc41:494 tests/four expected skips25.415s, actual CLI/turn-recovery/corrected-restart integrations and JS/diff clean. Publication/post-merge checks next. CLI-SEATS.md records behavior.
 
 ## Ticket execution and review
 
@@ -174,7 +174,7 @@
 
 ## Next step
 
-**Action:** Same AGY rechecks the explicit hidden-terminal amendment after mixed integration checks, then Codex publishes/closes #16 and advances to #9. #16 follows reviewed publication; #9 remains deferred.
+**Action:** Fast-forward merge, post-merge checks and publish/close final-reviewed #16; then plan #9 restart reconciliation. #16 follows reviewed publication; #9 remains deferred.
 **Who:** Codex owns verification/freeze/fixes; same AGY remains independent reviewer. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
