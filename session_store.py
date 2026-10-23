@@ -456,6 +456,23 @@ class SessionStore:
         return self._event_update(session_id, quarantine)
 
     def admit_event(self, session_id, event, instance, *, human=False):
+        return self._admit_event(session_id, event, instance, human=human)
+
+    def admit_verified_saved_event(self, session_id, payload, *, submitted_by='operator'):
+        """Internal ingress after private brief seal verification by the engine."""
+        from result_outbox import _payload
+        from turn_events import EventConflict, IDENTITY_FIELDS, EventValidationError
+        payload = _payload(payload)
+        if payload['session_id'] != session_id:
+            raise EventConflict('Saved result belongs to another session.')
+        if not isinstance(submitted_by, str) or not submitted_by.strip() or len(submitted_by) > 80:
+            raise EventValidationError('Operator display name must contain 1-80 characters.')
+        event = {key: payload[key] for key in (*IDENTITY_FIELDS, 'session_id', 'event_id', 'kind', 'content')}
+        event.update(submitted_by=submitted_by, result_id=payload['result_id'],
+                     result_launch_attempt=payload['launch_attempt'])
+        return self._admit_event(session_id, event, None, saved_payload=payload)
+
+    def _admit_event(self, session_id, event, instance, *, human=False, saved_payload=None):
         from turn_events import EventConflict, EventAccessError, IDENTITY_FIELDS, validate_content
         validate_content(event['kind'], event['content'])
         def admit(session):
@@ -465,9 +482,19 @@ class SessionStore:
             if (session['state'] not in ('active', 'waiting', 'stalled', 'interrupted') or session.get('stop_id') or invocation['consumed']
                     or any(event.get(key) != invocation.get(key) for key in IDENTITY_FIELDS)
                     or event['input_revision'] != session['input_revision']
+                    or any(item['attempt_id'] == event['attempt_id'] for item in session.get('superseded_attempts', []))
                     or any(prior['event_id'] == event['event_id'] for run in self._sessions for prior in run.get('admitted_events', []))):
                 raise EventConflict('Event is stale, duplicated, superseded or this session is not accepting results.')
-            if human:
+            if saved_payload is not None:
+                binding = session.get('participant_bindings', {}).get(invocation['role'], {})
+                provenance = binding.get('launch_provenance') or {}
+                if (invocation.get('human') or binding.get('kind') != 'agent'
+                        or provenance.get('effective', {}).get('seat', {}).get('adapter') != 'openai-compatible'
+                        or provenance.get('launch_attempt') != saved_payload['launch_attempt']
+                        or saved_payload['seat_identity_id'] != invocation['expected_identity_id']
+                        or saved_payload['dispatch_id'] != invocation['dispatch_id']):
+                    raise EventAccessError('Saved API result does not belong to this original managed invocation.')
+            elif human:
                 if not invocation.get('human'):
                     raise EventAccessError('Operator results cannot impersonate an agent seat.')
             elif (invocation.get('human') or not isinstance(instance, dict)
@@ -479,7 +506,8 @@ class SessionStore:
             record = deepcopy(event)
             record.update(projected_message_id=None, accepted_at=time.time(),
                           sender=invocation['expected_agent'],
-                          provenance='human_operator' if human else 'authenticated_seat',
+                          provenance=('verified_saved_api_result' if saved_payload is not None else
+                                      'human_operator' if human else 'authenticated_seat'),
                           expected_identity_id=invocation['expected_identity_id'])
             phases = session['design_snapshot']['phases']
             phase = phases[session['current_phase']]

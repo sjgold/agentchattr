@@ -143,6 +143,9 @@ class QueueStore:
                     if record['consumer_id'] != consumer_id:
                         raise QueueBusy('Seat already owns a dispatch; pending work is retained.')
                     return deepcopy(record)
+            if any(record.get('recovery_hold') and record['recovery_hold'].get('cleared') is not True
+                   for record in records):
+                raise QueueBusy('Saved-result transport exit is unproven; pending work is retained.')
             for record in records:
                 if record['state'] == 'queued':
                     if record['envelope'].get('run_id') in blocked:
@@ -313,6 +316,30 @@ class QueueStore:
             self._write(ledger)
             return deepcopy(record)
 
+    def hold_recovered(self, dispatch_id, seat_identity_id, result_id):
+        """Reserve the original seat before admitting verified saved content."""
+        _identifier(seat_identity_id, 'Seat identity')
+        if (not isinstance(dispatch_id, str) or not re.fullmatch(r'[0-9a-f]{32}', dispatch_id)
+                or result_id != dispatch_id):
+            raise QueueConflict('The exact saved result and dispatch are required.')
+        with self._transaction() as ledger:
+            record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
+            if not record or record['envelope']['target_identity_id'] != seat_identity_id:
+                raise QueueConflict('Saved-result hold identity does not match.')
+            if record['state'] == 'settled_recovered':
+                return deepcopy(record)
+            if record['state'] not in {'dispatched', 'acknowledged', 'uncertain', 'failed'}:
+                raise QueueConflict('Transport cannot be held by saved-result recovery in this state.')
+            previous = record.get('recovery_hold')
+            if previous is not None:
+                if previous.get('result_id') != result_id or previous.get('seat_identity_id') != seat_identity_id:
+                    raise QueueConflict('Saved-result hold references changed.')
+                return deepcopy(record)
+            record['recovery_hold'] = {'result_id': result_id, 'seat_identity_id': seat_identity_id,
+                                       'held_at': time.time(), 'cleared': False}
+            self._write(ledger)
+            return deepcopy(record)
+
     def settle_recovered(self, dispatch_id, seat_identity_id, *, evidence):
         """Internal saved-result settlement; never forge a worker release."""
         _identifier(dispatch_id, 'Dispatch ID')
@@ -333,14 +360,26 @@ class QueueStore:
             record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
             if not record or record['envelope']['target_identity_id'] != seat_identity_id:
                 raise QueueConflict('Saved-result transport identity does not match.')
-            if record['state'] == 'settled_recovered':
+            hold = record.get('recovery_hold')
+            held = (isinstance(hold, dict) and hold.get('result_id') == dispatch_id
+                    and hold.get('seat_identity_id') == seat_identity_id)
+            if record['state'] == 'settled_recovered' or (held and hold.get('cleared') is True):
                 if any(record.get('recovery', {}).get(key) != value for key, value in proof.items()):
                     raise QueueConflict('Saved-result settlement evidence changed.')
                 return deepcopy(record)
-            if record['state'] not in {'dispatched', 'acknowledged', 'uncertain', 'failed'}:
+            if (record['state'] not in {'dispatched', 'acknowledged', 'uncertain', 'failed'}
+                    and not (held and record['state'] in {'released', 'cancelled'})):
                 raise QueueConflict('Transport cannot be settled by saved-result recovery in this state.')
             record['recovery'] = dict(proof, at=time.time())
-            self._event(record, 'settled_recovered')
+            if held:
+                hold.update(cleared=True, cleared_at=record['recovery']['at'],
+                            cleared_basis=evidence['verification_basis'])
+            if record['state'] == 'cancelled':
+                # Preserve genuine Stop disposition and cancellation receipts.
+                record['events'].append({'state': 'recovery_hold_cleared',
+                                         'at': record['recovery']['at'], 'error': ''})
+            else:
+                self._event(record, 'settled_recovered')
             self._write(ledger)
             return deepcopy(record)
 
