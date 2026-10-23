@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; #16 builder-tested, frozen review next)
+**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; #16 frozen for same-AGY independent implementation review)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -159,7 +159,7 @@
 - Test helper20 and root config2/route4 tests pass after observed red. Final full discovery493 tests OK/four expected skips25.909s. Malformed non-object draft was observed AttributeError red, then correctly rejected before cache/dispatch. Actual normal plus --serve team integration PASS: seven saved/launched seats, one coordinator call, six review calls and six distinct sequential identity/brief/attempt/dispatch contexts/results; seventh excluded from review; five intact over-cap drafts rejected without extra work. All seven actual retained worker handles exited; server exited.
 - Browser desktop/phone policy/cast verified exact shared text, six selectors and14px type. First pass found select overflow, one scoped flex fix confirmed all selects fit349px dialog on390px viewport. Screenshots visually inspected; browser stopped. Native old-invalid recheck became runnable with all six roles, leaving original metadata unchanged; separate no-client/provider server/browser stopped. Existing whole-page header/composer overflow remains standing. No new suppressions or whole-app mobile claim.
 - Prior recovery/Stop/events/brief regressions pass. Queue fixture ExceptionGroup recurred after call_returned; one bounded diagnostic rerun passed without reproducing nested cause. Private traceback capture retained, no production mitigation/assertion weakening. All other prior scripts pass, as does one bounded diagnostic queue rerun. JS/diff/scoped detector checks pass; frozen independent review remains pending. Same AGY must assess transient limitation; no #16 push/independent implementation PASS.
-- Next owner: Codex final verification/docs/freeze, same AGY independent review/recheck. #9 follows reviewed #16 publication. No human approval pending.
+- Frozen implementation 5e6f86ee731ccee0a0e33525d906353cd01f12f8, baseee52c32. Same AGY received the review request and reproduction pack; this later pin changes documentation only. Next owner: same AGY independent review/recheck, Codex substantive fixes/publication after PASS. #9 follows reviewed #16 publication. No human approval pending.
 
 ## Ticket execution and review
 

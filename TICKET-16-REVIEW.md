@@ -1,6 +1,6 @@
 # Ticket #16 independent review briefing
 
-Base main: `ee52c32dfb24b926d84375dbe4a8fb35558f08c5`. Frozen implementation is the commit carrying this briefing, with its exact hash supplied in the review assignment. No independent implementation PASS or publication is claimed yet.
+Base main: `ee52c32dfb24b926d84375dbe4a8fb35558f08c5`. Frozen implementation: `5e6f86ee731ccee0a0e33525d906353cd01f12f8`. Later target pins change documentation only. No independent implementation PASS or publication is claimed yet.
 
 Contract: TICKET-16-PLAN.md plus the same AGY's ticket-16-contract-review artifact. Usage: SESSION-CAPACITY.md. Builder Codex, independent reviewer remains Antigravity agent ec1fbcd1-4a02-410e-9029-e498f67918c8. Routine human gates remain removed; independent review/recheck remains mandatory.
 
