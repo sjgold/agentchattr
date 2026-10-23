@@ -164,6 +164,13 @@ class MessageStore:
                     return m
             return None
 
+    def get_snapshot(self, msg_id: int) -> dict | None:
+        """Copy a complete message without exposing the stored mutable record."""
+        if type(msg_id) is not int or msg_id < 0:
+            raise ValueError("Message ID must be a nonnegative integer.")
+        with self._lock:
+            return next((deepcopy(m) for m in self._messages if m["id"] == msg_id), None)
+
     def get_recent(self, count: int = 50, channel: str | None = None) -> list[dict]:
         with self._lock:
             msgs = self._messages

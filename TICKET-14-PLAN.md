@@ -1,82 +1,59 @@
 # Ticket14: recover an operator-selected CLI message
 
-State: proposed contract for same-AGY critique. The choices marked OPEN are not settled. No production implementation or new tests yet.
+State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage interfaces frozen below; observed-red storage tests assigned. No production implementation or acceptance yet.
 
-Base: published main `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Scope: issue14, specificationv1.7 SC-5 and CLI AT-21c, standing autonomous policy in STATUS.md. Ticket12 blocker is confirmed closed; Ticket13 is published and closed. Same AGY remains independent reviewer.
+Base: published main `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Scope: issue14, specification v1.7 SC-5 and CLI AT-21c, standing autonomous policy in STATUS.md. Ticket12 blocker and Ticket13 are closed. Independent review: [contract settlement](epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-14-contract-review/index.md). Same AGY remains final reviewer.
 
 ## Required outcome
 
-An operator selects a specific existing channel message ID, inspects exact text and attribution, then explicitly attaches it to the failed CLI turn. Ordinary chat still cannot complete turns automatically. The server verifies expected seat/instance, channel, available run/turn/input association and duplicate use. Missing legacy turn association is operator-attributed, never machine-verified. Unknown authorship and any known conflicting association are rejected.
+An operator selects an existing channel message ID, inspects exact text and attribution, then explicitly attaches it as a final answer or question to the failed CLI logical turn. Ordinary chat cannot complete turns automatically. No model invocation, process launch/termination, participant replacement or source rewrite occurs during recovery.
 
-If recovery follows Retry, permanently fence the replacement attempt before attaching the selected answer, preserve original source-attempt provenance and commit once under the current logical turn. Stop and corrected/superseded runs remain protected. No model invocation, implicit seat replacement, native termination or source/message rewrite is part of content recovery.
+Authenticated immutable seat identity is mandatory. Missing legacy turn association requires explicit operator attribution; known conflicting scope or unknown authorship rejects. After Retry, the original source and current replacement can have different identities. Preserve source provenance while atomically fencing the unconsumed replacement and admitting once under the current logical turn. Stop and corrected/superseded runs remain protected.
 
-## Source-grounded baseline
+## Settled source and attribution boundaries
 
-- MessageStore.add creates nonnegative numeric IDs starting at0, UUID-string uid, timestamp, sender, text, type and channel. Legacy load can lack uid; get_by_id currently returns an in-memory alias after releasing its lock. Need a copied snapshot for inspect/attach, not a borrowed mutable mapping.
-- SessionEngine.send_chat/chat_scope stamps authenticated stable seat_identity_id. Tagged chat additionally has authenticated_dispatch provenance and dispatch/run/turn/attempt/input metadata. Untagged authenticated chat can have known seat identity while missing turn association. Name equality alone cannot prove authorship after identity replacement/rename.
-- Tagged stopped/superseded output is quarantined with routing_suppressed. It must not become a recovery bypass. Typed results/questions/operator inputs already have their own protocol and are display-only after Ticket13; candidate selection concerns ordinary CLI chat text.
-- SessionStore persists current invocation, frozen participant binding/launch provenance, superseded attempt identity/dispatch/run/turn/input, retry intent and accepted events. BriefStore retains old immutable packets. These are the authority for association, not the live seat name or current provider template.
-- Ticket13 provides separate operator admission/projection patterns, exact idempotent ACK, per-seat recovery_hold and native end proof. Its HMAC outbox and API-only result_owner do not authenticate selected CLI chat and must not be relabelled as such.
-- Archive import currently forwards supplied metadata to store.add; archive fingerprints are deduplication aids, not authentication. Demotion can replace metadata. Before claiming message provenance, audit import/edit paths and prevent imported or rewritten claims from masquerading as live authenticated ingress. Do not add a general signing/key system without demonstrating necessity.
+- Only ordinary chat in the session channel qualifies. Reject imported messages, routing-suppressed/quarantined entries, unverified_scope, typed session projections, system/leave and non-CLI sources. Name equality alone never proves authorship.
+- Source metadata.seat_identity_id must match the current expected CLI identity OR an immutable superseded source attempt within the SAME run, logical turn and input revision. Use retained brief/queue/attempt lineage, never current name or template alone.
+- All present run/turn/attempt/dispatch/input tags must match that specific source lineage. Complete authenticated dispatch association is machine_verified. Missing association requires literal confirm_operator_attribution=True and operator_attributed. Partial metadata cannot erase a known conflict.
+- Imported history is display data. Strip identity/execution claims during import and always stamp imported=True. Harmless metadata, literal content, UID, timestamps, channel and reply links remain intact.
+- Snapshot digest is full SHA256 of canonical JSON (UTF-8, sorted keys, compact separators, ensure_ascii=False, allow_nan=False). Native UID is the global source identity; missing legacy UID uses legacy-{message_id}-{snapshot_sha256[:16]} without rewriting history. This synthetic identifier supports deduplication, not authentication.
+- Numeric message IDs start at0 and can be reused after clear/reload. Audit numeric IDs, but prevent global reuse by source_message_uid, not numeric ID alone. A UID under a different numeric ID is still the same source.
+- Store the copied exact selected content and source hash/UID/identity/available attempt scope in the accepted event. Later source edits cannot change admitted content.
 
-## Approaches
+## Operator intent and first-writer rules
 
-| Approach | Assessment |
-| --- | --- |
-| Explicit message snapshot plus dedicated operator recovery ingress | Recommended. Fits durable message IDs, existing atomic admission and coordinator locking; preserves attribution and original text |
-| Guess the latest answer or allow normal chat/status to advance | Rejected by SC-5. Cannot distinguish status, wrong input, late output or duplicate use |
-| Rewrite selected chat as a normal machine final or relax live-bearer validation | Rejected. Forges protocol/identity and risks routing old text again |
+Inspect returns exact source snapshot/hash/UID and checkpoint {session_id, run_id, turn_id, attempt_id, input_revision}. Actual ID and SHA256 revision formats follow existing session schema.
 
-## Proposed operator flow
+Attach supplies request_id, message_id, message_uid, snapshot_hash, kind, checkpoint and confirm_operator_attribution. Content is always loaded server-side. Validate literal nonnegative message ID, strict allowlists, existing request-ID format, exact checkpoint and final/question content limits. No content override.
 
-1. Current failed CLI review offers Recover a message, distinct from Wait, Retry and API saved-answer delivery.
-2. Operator selects a nonnegative message ID (including0), receives readonly exact text, source identity/channel, available scope and verification/legacy explanation. No auto-selection of latest message.
-3. Server returns a source snapshot key/hash plus current turn/checkpoint identity. Known contradictory fields block attachment. If turn association is missing but authenticated seat is known, require explicit operator-attributed association, never a machine-verified label.
-4. Operator explicitly attaches it as a final answer (OPEN: also allow explicit question kind through the existing event model). Request supplies IDs/hash/intent only; content comes from the server snapshot.
-5. Under engine RLock, recheck source hash/UID, expected participant lineage, current turn, Stop/Retry fences and global duplicate source use. Persist recovery decision, accepted content and required replacement fence atomically. Cancel/hold exact affected transport separately; peers remain untouched.
-6. Project once with routing suppressed, preserve copied text and source metadata. Repeating exact admitted intent resolves an ACK without another turn advance or model call. Transport end remains a separate proof/clear action.
+An exact already-admitted intent returns accepted_event_id before current Stop/Retry fences or source lookup; repair projection with dispatch=False and never trigger another successor. Changed intent under the same request ID conflicts. A new pending decision requires current unconsumed invocation, permitted state active/waiting/stalled/interrupted, no stop_id, no pending_retry and no corrected/superseded run. dispatch_eligible=False alone does not forbid content recovery.
 
-## Decisions for critique
+Normal authenticated final and operator attachment race under the same engine RLock: the first durable admission wins. Completed replacement turns reject a new selection. Questions enter awaiting_input through the existing continuation contract. Independent first-pass input restrictions remain applicable.
 
-### OPEN1: legacy provenance boundary
+## Transaction and transport boundary
 
-Recommended: known authenticated stable seat identity is mandatory. Missing run/turn/input fields may be attached only with explicit operator attribution; all present fields must agree with the selected failed logical turn. Unknown identity, name-only, forged/imported provenance, other channels/jobs, human/API/other seats, typed events and quarantine entries are ineligible.
+1. Under coordinator RLock, validate copied source, current checkpoint, lineage, duplicate use and operator decision.
+2. One SessionStore transaction commits the selected event and fences the current replacement attempt (reason superseded_by_operator_recovery), preserving true source identity/attempt separately. No fabricated live principal. Global source UID single-use is checked under the same SessionStore lock.
+3. After releasing that store lock, hold the exact affected dispatch before cancelling it. No nested cross-store locks or cross-file atomicity claim. Queue IO failure cannot undo the durable admission/fence; reconciliation must complete hold/cancellation before any affected successor dispatch.
+4. Project accepted content once with routing suppression. Preserve earlier results and unrelated jobs/peer seats.
 
-Verify the source identity against the frozen CLI binding or documented same-turn retry lineage, not the current registry alone. A disconnected original identity can remain a valid source; recovery must not revive its bearer. Determine the smallest ingress/import marking needed so raw imported metadata cannot manufacture authenticated provenance. Existing trusted server data versus untrusted history import must be explicit.
+Extend hold_recovered only for the settled queued/dispatched/acknowledged/uncertain/failed/cancelling replacement states, while preserving existing API behavior and exact result/dispatch binding. Same active/cancelling consumer still polls its cancellation; new claims on the held physical identity are blocked. Cancellation preserves cancellation IDs/receipts. Exit proof clears held cancelled records without rewriting cancellation history. Released/previously terminal cases must be handled explicitly against existing lifecycle rules, never inferred as process exit.
 
-Native UID is preferred for duplicate detection. For legacy records missing UID but with known authenticated identity, settle whether a full canonical snapshot digest can identify the selected source without rewriting history, or whether another explicit migration boundary is required. Existing16hex archive fingerprints alone are not an authentication primitive.
+Dedicated SeatManager.selected_cli_exit_proof(instance_or_provenance, dispatch_id) keeps CLI ownership separate from API HMAC authority. Warm proof requires a retained verified TRUE-worker handle with actual integer exit and matching integer native-child exit receipt. Launcher shim exit is insufficient. Cold proof reuses Ticket9 exact provenance/receipt and observed-absence rules. Only genuine produced bases are allowed: observed_child_exit_and_ipc, durable_receipt_and_observed_absent, retained_native_handle_observed_end. No synthetic exit codes, force termination, lease extension, unsupported tmux proof or native POSIX acceptance.
 
-### OPEN2: recovery after Retry and replacement fences
+## Frozen storage tranche
 
-The spec explicitly permits deliberate recovery following Retry, while prohibiting automatic acceptance of superseded work. A source already associated with the same logical turn/run/input and original expected identity may be eligible through explicit recovery, rather than weakening normal event admission.
+- MessageStore.get_snapshot(msg_id): literal int >=0 (bool/string/negative raise ValueError); returns deepcopy of the complete stored message or None if absent. Copies nested metadata/attachments under the store lock, performs no writes or UID migration. Existing get_by_id remains unchanged.
+- archive.import_archive: every newly imported message receives copied dict metadata (non-dict becomes empty), stripping seat_identity_id, provenance, dispatch_id, run_id, turn_id, attempt_id, input_revision, routing_scope, quarantine_session_id and quarantine_reason; sets imported=True regardless of supplied value. Existing local messages and archive dedup/reply/content behavior remain intact.
+- Later component signatures will be pinned in bounded tranches before their tests. Core public routes are operator-only GET /api/sessions/{session_id}/cli-message-candidate/{message_id} and POST /api/sessions/{session_id}/attach-cli-message. Strict bounded JSON, sanitized errors, no keys/internal paths. Admission ACK includes accepted_event_id, attribution and truthful transport_settled.
 
-Recommended minimal direction: validate the current replacement is still current/unconsumed, then atomically fence that replacement and record the operator-selected answer under the current logical turn identity, retaining source attempt/identity separately. Ordinary machine admission must never bypass the new fence. Settle whether consuming/fencing the current attempt in the same operator transaction is sufficient, or a distinct operator recovery attempt is necessary. Do not silently rotate an immutable brief/owner or launch a process.
+## Implementation and verification sequence
 
-Also settle preparation-in-progress: pending_retry may reserve IDs before a new brief/identity is ready. Prefer a clear fail-closed state boundary over inventing a new scheduler. Bound replacement attempts already in waiting/stalled/interrupted states must be handled consistently. A normal final versus operator recovery races under the same first-writer engine lock.
+1. Observed-red copied snapshot/import tests, minimal storage hardening, focused existing archive/message verification.
+2. Freeze candidate/admission component contracts; observed-red identity/lineage/checkpoint/dedup/concurrency/persistence tests; implement dedicated operator transaction and reconciliation.
+3. Observed-red queue hold/CLI proof/HTTP authentication tests; implement transport integration without weakening API authority.
+4. Existing review-panel UI: explicit message ID, readonly preview, attribution/legacy confirmation, final/question actions, idempotent feedback. No general editing, skip or participant replacement.
+5. Actual isolated Windows fake CLI/MCP integration and browser selection/attachment. Verify exact generations/injections/dispatches, after-Retry fences, original provenance, no quoted-command routing, Stop/corrected rejection, peer preservation, projection/ACK recovery, true native lifecycle cleanup.
+6. Full regression, same AGY final frozen review/reproduction, post-merge checks before standing-authorized publication and issue closure.
 
-### OPEN3: admission audit, duplicate use and source edits
-
-Proposed accepted record includes selected message ID, UID or stable source key, full SHA256 snapshot hash, copied exact content, available source scope/identity/attempt, current target identities, operator request/decision and attribution strength. Scan retained accepted recovery records under SessionStore lock to prevent reusing one source message across turns/runs. Preserve the original message and earlier accepted results.
-
-Inspect returns a copied snapshot; attach binds the reviewed hash and rejects a changed candidate. Freeze copied text at admission so later edits cannot alter the result. Settle message-edit/import provenance and snapshot ordering without nested MessageStore/SessionStore locks. Idempotent replay of an already committed exact decision must not be defeated by a later Stop, Retry or source display edit. Avoid a separate recovery database when one session transaction can record the decision.
-
-### OPEN4: physical seat lifetime
-
-Content recovery must not declare the CLI process or its current replacement ended. Reuse conservative per-seat holds/cancellation under exact dispatch, with explicit original/current attempt attribution. No force kill during inspect/attach. Peers or unrelated verified successor seats remain eligible.
-
-Settle a minimal adapter-neutral extension of Ticket13 hold/settlement for genuine CLI worker plus child receipt/native end proof. API-only HMAC ownership and proof basis cannot be fabricated for a CLI. Confirmed termination remains a separate exact-owned operator action. A fenced replacement transport stays held until genuine release/end semantics settle; never cancel unrelated same-seat jobs.
-
-## Planned interfaces after settlement
-
-Operator-only inspect and attach routes; engine coordination; copied MessageStore snapshot; dedicated SessionStore operator-selected ingress/audit. Exact signatures and field allowlists will be frozen only after critique. Wrong/malformed/stale requests use strict errors, sanitized diagnostics and no provider/control side effects.
-
-UI uses the existing review panel and message IDs with readonly preview, clear attribution and explicit attachment. Do not add participant replacement/skip (#15), general message editing, file intake, source correction or broader channel redesign.
-
-## Observed-red and acceptance plan
-
-- Capture missing inspect/attach interface and ordinary-chat noncompletion baselines before implementation. Separate helper tests from final same-AGY review.
-- Exact Unicode/CRLF text and message0; correct tagged source and explicit legacy association; wrong seat/channel/input/run/turn, unknown/imported provenance and duplicate source use reject.
-- Source snapshot changed between inspect/attach, concurrent decisions, storage rollback, projection gap, lost ACK and restart preserve one result and audit. No source mutation or fake principal.
-- After Retry, old selected answer can be attached only through settled same-turn lineage; replacement late output is fenced, Stop/corrected/superseded runs never bypassed, unrelated envelopes stay intact.
-- Real local fake CLI/MCP and isolated app; source message selected through actual UI; exact process/model/injection/dispatch counts, no regeneration from recovery. Native retained handles and complete cleanup; no live clients/providers/Omarchy.
-- Same AGY final frozen review/reproduction and post-merge checks before standing-authorized publication/closure.
+Limits: no live providers/native AI clients, Desktop/global settings, participant replacement (#15), new scheduler or Omarchy acceptance. Imported provenance is rejected; trusted historical storage is not a general signature system.

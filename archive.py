@@ -8,6 +8,7 @@ import threading
 import time
 import uuid
 import zipfile
+from copy import deepcopy
 
 SCHEMA_VERSION = 1
 MAX_IMPORT_SIZE = 50 * 1024 * 1024  # 50MB uncompressed
@@ -244,13 +245,19 @@ def _do_import(zip_bytes, store, jobs_store, rules_store,
                 msg_report["duplicates"] += 1
                 continue
             channel = resolve_channel(msg.get("channel", "general"))
+            metadata = deepcopy(msg.get("metadata")) if isinstance(msg.get("metadata"), dict) else {}
+            for field in ('seat_identity_id', 'provenance', 'dispatch_id', 'run_id',
+                          'turn_id', 'attempt_id', 'input_revision', 'routing_scope',
+                          'quarantine_session_id', 'quarantine_reason'):
+                metadata.pop(field, None)
+            metadata['imported'] = True
             new_msg = store.add(
                 sender=msg.get("sender", "unknown"),
                 text=msg.get("text", ""),
                 msg_type=msg.get("type", "chat"),
                 attachments=msg.get("attachments"),
                 channel=channel,
-                metadata=msg.get("metadata"),
+                metadata=metadata,
                 uid=msg_uid,
                 timestamp=msg.get("timestamp"),
                 time_str=msg.get("time"),
