@@ -450,6 +450,93 @@ class SeatManager:
                     'seat_identity_id': provenance['identity_id'], 'launch_attempt': attempt['id'],
                     'launch_nonce': ownership['launch_nonce'], 'fingerprint': ownership['fingerprint']}
 
+    def prepare_replacement_context(self, source_provenance, context_key, *, binding):
+        """Clone a frozen owned profile without ending its source conversation."""
+        from runtime_adoption import _candidate, _launch_record, recover_prepared_context
+        if (not isinstance(context_key, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,128}', context_key)
+                or not isinstance(binding, dict) or set(binding) != {'child_run_id', 'role'}
+                or not isinstance(binding['child_run_id'], str)
+                or not re.fullmatch(r'[0-9a-f]{32}', binding['child_run_id'])
+                or not isinstance(binding['role'], str) or not binding['role'].strip()):
+            raise SeatError('Replacement preparation requires an exact run, role and bounded context key.')
+        try:
+            provenance = deepcopy(source_provenance)
+            effective = provenance['effective']
+            payload = ({'effective': effective, 'fresh_base_effective': provenance['fresh_base_effective']}
+                       if provenance.get('fresh_base_effective') else effective)
+            fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True).encode('utf-8')).hexdigest()
+            if fingerprint != provenance['fingerprint']:
+                raise ValueError('Changed source profile')
+            source = {field: provenance[field] for field in ('key', 'launch_attempt', 'identity_id', 'fingerprint')}
+            base = deepcopy(provenance.get('fresh_base_effective', effective))
+            if base['seat']['adapter'] not in ('cli', 'openai-compatible'):
+                raise ValueError('Unknown adapter')
+        except (KeyError, TypeError, ValueError, UnicodeError):
+            raise SeatError('Replacement source provenance is malformed or changed.') from None
+        scope = {**deepcopy(binding), 'replacement_source': source, 'context_base_effective': base}
+        key = 'replacement-' + hashlib.sha256(context_key.encode('utf-8')).hexdigest()[:24] + '/context'
+        with self.lock:
+            if self.closed.is_set():
+                raise SeatError('Server is shutting down; no replacement can launch.')
+            existing = self.attempts.get(key)
+            if existing:
+                try:
+                    item = (_candidate(self, existing['snapshot']) if existing.get('worker_birth') is not None
+                            else _launch_record(self, existing['snapshot']))
+                    if (item['identity'] != existing.get('ownership') or item['key'] != key
+                            or (existing.get('worker_birth') is not None and item['birth'] != existing['worker_birth'])
+                            or any(item['snapshot'].get(field) != value or existing.get(field) != value
+                                   for field, value in {**scope, 'context_key': context_key,
+                                                        'context_source_fingerprint': fingerprint}.items())):
+                        raise ValueError('Prepared replacement changed')
+                except (OSError, ValueError, KeyError, TypeError):
+                    raise SeatError('Replacement preparation evidence changed; no worker was replaced.') from None
+                return self._replacement_context_view(key)
+            # A lost RAM handle is never permission to start another copy.
+            cold = recover_prepared_context(self, key, context_key, fingerprint, scope, None)
+            if cold:
+                return cold['view']
+            instance = next((value for value in self.registry.get_all().values()
+                             if value.get('identity_id') == source['identity_id']), None)
+            if instance is None or self.launch_provenance(instance) != provenance:
+                raise SeatError('The selected source is not the same currently owned profile.')
+            original = self.attempts[provenance['key']]
+            try:
+                item = (_candidate(self, original['snapshot']) if original.get('worker_birth') is not None
+                        else _launch_record(self, original['snapshot']))
+                if (item['identity'] != original.get('ownership') or item['key'] != source['key']
+                        or item['identity']['attempt'] != source['launch_attempt']
+                        or item['manifest']['spawn_outcome'] != 'spawned'
+                        or (original.get('worker_birth') is not None and item['birth'] != original['worker_birth'])):
+                    raise ValueError('Source launch changed')
+            except (OSError, ValueError, KeyError, TypeError):
+                raise SeatError('Selected source ownership is unverified or changed.') from None
+            proof = self.restart_readiness(source['identity_id'], self.boot_id)
+            if (not isinstance(proof, dict) or proof.get('state') != 'ready'
+                    or proof.get('process_verified') is not True):
+                raise SeatError('Selected source needs fresh authenticated native readiness.')
+            context_id = uuid.uuid4().hex
+            fresh = deepcopy(base)
+            cli = fresh['seat']['adapter'] == 'cli'
+            if cli:
+                from cli_seats import build_fresh_context_args
+                fresh['provider']['cli_args'] = list(fresh['provider'].get('cli_args', [])) + build_fresh_context_args(fresh['provider'], context_id)
+            self._launch_effective(key, fresh, launch_metadata={
+                **scope, 'context_id': context_id, 'context_key': context_key,
+                'context_source_fingerprint': fingerprint,
+                'verification_basis': 'verified_fresh_launch_contract' if cli else 'isolated_request_packet'})
+            return self._replacement_context_view(key)
+
+    def _replacement_context_view(self, key):
+        """A ready receipt cannot substitute for this clone's native boot proof."""
+        view = self._context_view(key)
+        if view['state'] == 'ready':
+            proof = self.restart_readiness(view['identity_id'], self.boot_id)
+            if (not isinstance(proof, dict) or proof.get('state') != 'ready'
+                    or proof.get('process_verified') is not True):
+                return dict(view, state='starting', reason='awaiting_authenticated_boot_proof', clean_context=False)
+        return view
+
     def prepare_clean_context(self, provenance, context_key, *, confirmation=None, retry_attempt=None, binding=None):
         with self.lock:
             if self.closed.is_set():

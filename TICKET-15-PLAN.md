@@ -1,6 +1,6 @@
 # Ticket15: replace or skip a missing participant
 
-State: same-AGY contract and all five precision amendments RATIFIED. Tranche1 skip storage independently bounded-PASS8834a8d. Tranche2 initial clone/replay interface below frozen before observed-red tests; explicit failed-preparation repair receives its own later contract. No replacement manager, transport, HTTP, projection/export or UI behavior is implemented yet. Standing autonomous policy replaces routine human gates; material scope changes and live usage still require Seth.
+State: same-AGY contract and all five precision amendments RATIFIED. Tranche1 skip storage independently bounded-PASS8834a8d. Tranche2 initial manager clone/replay implemented/tested, pending bounded independent review. Explicit failed-preparation repair receives its own later contract. No transport, HTTP, projection/export or UI behavior is implemented yet. Standing autonomous policy replaces routine human gates; material scope changes and live usage still require Seth.
 
 Base: published main `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Owner: Codex, claim `a99548d9-49eb-4f70-9cf1-d185414cbad5`. Independent reviewer: same AGY. Scope: issue15, specification v1.7 SC-5 and AT-21d/22. Ticket12 blocker and Tickets13/14 recovery are delivered.
 
@@ -87,8 +87,6 @@ Helper owns only new tests/test_participant_skip_storage.py, bounded12 cases wit
 
 Tranche1 evidence: root independently reproduced initial2 missing-method errors0.108s. First expanded12 run had9 pass/3 fixture setup errors0.708s because its unique channel exceeded the existing20-character limit; helper shortened only that channel. An unreached projection_idNone assertion was corrected to stable32hex projection_id plus projected_message_idNone, matching the contract. Helper12 pass0.768s. Root unchanged12 plus selected/saved admission and Stop/events58 pass2.889s. Full818 total tests OK/four expected platform skips73.010s; Python syntax and diff whitespace pass. Store only, no queue/projection/process control. Same AGY bounded source/execution review is next.
 
-## Proposed verification tranches
-
 ## Frozen tranche2: initial managed replacement clone and replay
 
 NEW `SeatManager.prepare_replacement_context(source_provenance, context_key, *, binding) -> context view`. binding is exactly {child_run_id, role}, using current run UUID and nonempty role. context_key is a bounded1..128 plain identifier. No retry_attempt/confirmation in this tranche: failed/live/uncertain preparation replay never replaces a worker. Explicit repair receives a later observed-red contract.
@@ -104,6 +102,10 @@ Source process/handle/files/registry/context and unrelated jobs remain intact. C
 Helper owns only tests/test_prepare_replacement_context.py, bounded10-12 real manager/store/registry cases with explicit Popen/readiness doubles. Capture initial API clone/source-preservation plus invalid binding/key red before implementation. Cover drift, fresh CLI/resource refusal, exact replay/conflicting source, separate source/clone readiness, ownership/journal IO, strict source/root guards and cold failed/pending replay without respawn. No native lifecycle/engine/provider/UI acceptance claim.
 
 Tranche1 independent review: same AGY bounded-PASS8834a8d, dedicated12/0.805s, focused80/4.018s, full818 total/four expected skips73.115s. Later wiring explicitly excluded.
+
+Tranche2 evidence: helper2 tests/10 missing-method AttributeError observations0.083s; root independently reproduced2/10 observations0.363s before implementation. Initial unchanged2 pass0.109s after manager clone/replay plus replacement_source adoption whitelist. Existing47 regressions pass5.266s. Helper12 final pass0.799s; its first expanded run had10 pass and2 fixture assumptions, corrected to accept the existing safe failed view on pre-spawn write failure and use the public context key rather than an absent internal key field. No production assertion weakened. Root unchanged12 plus launch/owner/native/adoption/ownership/cold replay63 pass7.640s; full830 total tests OK/four expected skips72.847s. Python syntax/diff clean. Cold incomplete pending/birth or ambiguous records use existing safe SeatError refusal, never Popen; synchronous failed preparation returns the same failed attempt. New clone tests use explicit process/readiness doubles, no native replacement acceptance. Same AGY bounded source/execution review next.
+
+## Verification tranches
 
 - [x] Settle the three architecture choices and five precision amendments with same AGY source/caller critique; freeze each component signature before its observed-red tests.
 - [ ] Store tests observed red before implementation: exact checkpoint/intent, current/future assignment audit, original completed bytes, atomic fence/skip cursor, global first-writer races, Stop/corrected/pending guard, persistence rollback and exact replay/reload.

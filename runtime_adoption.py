@@ -307,7 +307,8 @@ def observe_runtime_heartbeat(manager, instance, payload, *, now=None):
                        'ownership': identity, 'spawn_outcome': 'spawned'}
             for field in ('context_id', 'context_source_fingerprint', 'context_base_effective',
                           'context_key', 'child_run_id', 'role', 'retried_from', 'retry_source_ended',
-                          'verification_basis', 'context_clean_verified', 'preparation_history', 'invocation_protocol'):
+                          'verification_basis', 'context_clean_verified', 'preparation_history', 'invocation_protocol',
+                          'replacement_source'):
                 if field in item['snapshot']:
                     attempt[field] = deepcopy(item['snapshot'][field])
             manager.attempts[item['key']] = attempt
