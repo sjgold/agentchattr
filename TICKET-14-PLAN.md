@@ -1,6 +1,6 @@
 # Ticket14: recover an operator-selected CLI message
 
-State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage, candidate and admission-store checkpoints independently bounded-PASS. Transport/CLI proof checkpoint2e10812 independently bounded-PASS. Engine attachment/operator HTTP routes implemented and tested (full802/four expected skips70.279s), pending bounded review. UI implemented with syntax checks only; actual CLI integration and browser/final acceptance remain pending.
+State: implementation and builder verification complete. Same AGY independently bounded-passed all foundation checkpoints and the same-boot handle correction. Final quarantine/UI/tool review and whole-ticket reproduction remain pending. No Ticket14 publication yet. Final pack: TICKET-14-REVIEW.md; usage: RECOVER-CLI-MESSAGES.md.
 
 Base: published main `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Scope: issue14, specification v1.7 SC-5 and CLI AT-21c, standing autonomous policy in STATUS.md. Ticket12 blocker and Ticket13 are closed. Independent review: [contract settlement](epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-14-contract-review/index.md). Same AGY remains final reviewer.
 
@@ -95,7 +95,7 @@ ACK fields: status='admitted', session_id, accepted_event_id, kind, source_messa
 
 Operator-only GET /api/sessions/{session_id}/cli-message-candidate/{message_id} and POST /api/sessions/{session_id}/attach-cli-message use real existing security middleware. Successful responses are no-store. POST accepts at most8192 bytes, strict decision fields, unique JSON keys including nested checkpoint, and no content/authority overrides. Worker bearer alone is insufficient. Errors use existing sanitized event error mapping.
 
-Evidence before full regression: helper engine initial2 missing-method RED0.108s; expanded12 had11PASS/1 active warm-proof failure0.856s (root0.864s), then scoped confirmation fix and final12PASS0.914s including Stop-ID fallback. Root HTTP initial2 missing-handler RED0.090s; expanded4 routes plus engine12/API routes4/cold settlement4 PASS24/1.897s. Root full802 tests OK/four expected skips70.279s, Python syntax/diff clean. No real server/CLI/browser acceptance claimed yet.
+Evidence before full regression: helper engine initial2 missing-method RED0.108s; expanded12 had11PASS/1 active warm-proof failure0.856s (root0.864s), then scoped confirmation fix and final12PASS0.914s including Stop-ID fallback. Root HTTP initial2 missing-handler RED0.090s; expanded4 routes plus engine12/API routes4/cold settlement4 PASS24/1.897s. Root full802 tests OK/four expected skips70.279s, Python syntax/diff clean. That802-test checkpoint preceded the actual integration and browser checks recorded below.
 
 ## Implementation and verification sequence
 
@@ -118,17 +118,17 @@ QueueStore.claim accepts internal blocked_identity_ids and checks it AFTER exist
 
 SessionStore.resolve_selected_transport(session_id, request_id, evidence) is internal only, invoked after genuine selected_cli_exit_proof. It requires literal local_ended=True, exact dispatch/seat/launch and allowed CLI basis against the frozen audit, marks resolved with immutable proof/time, and preserves byte-identical exact replay. Persistence failure rolls memory/disk back. It can resolve transport after Stop without bypassing content fences.
 
-Root missing-dispatch3 plus queue/admission/API hold/settlement regression39 PASS3.180s. Full786 tests OK/four expected skips70.610s (shell4688a3af exit0). Earlier missing-dispatch red and broad CLI-basis API regression remain recorded; no engine attach, HTTP, UI or actual CLI end-to-end acceptance is claimed.
+Root missing-dispatch3 plus queue/admission/API hold/settlement regression39 PASS3.180s. Full786 tests OK/four expected skips70.610s (shell4688a3af exit0). Earlier missing-dispatch red and broad CLI-basis API regression remain recorded. This786-test checkpoint preceded the later engine/HTTP and actual CLI checks.
 
-## UI and actual integration progress
+## UI and actual integration verification
 
-The inline existing-theme UI now offers explicit message number and exact preview, verified or legacy operator attribution, literal legacy confirmation, and separate final/question attachment actions. It preserves request ID across uncertain acknowledgement, provides history-based release rechecks, and hides competing review panels until Close. Channel changes invalidate stale responses. Static syntax/whitespace checks pass; desktop/mobile functional/contrast checks remain pending.
+The existing-theme inline panel provides an explicit message number, exact readonly preview, machine or legacy operator attribution, required legacy checkbox and separate final/question actions. Request IDs survive uncertain acknowledgement; history supports exact release rechecks after reload. Close/Escape and channel changes invalidate stale previews. After question attachment, Close focuses the visible empty answer field. Index CSS226/JS228 versions load the new behavior.
 
-Same AGY independently bounded-PASS c48b18a (73 focused/full802 tests, four expected skips71.597s). Actual integration tools are draft-only except one separately authorized tagged-final normal run pending result. Root read full resource cleanup and corrected draft Retry key/termination lookup to exact new identity/launch. Later cases and browser serve still require coordinator readiness after actual preceding results, not a routine human approval gate.
+Root actual UI finalza6r12aj and legacy-question6eb9bnjj passed with the original stored seven-field decisions. Desktop1280x900/mobile390x844 inspection verified consent gating, exact Unicode/CRLF preview, attachment, acknowledgement, history/reload, keyboard actions and channel hiding. No Continue submitted. New panel14px text/44px controls, contrast9.332:1, internal390px containment. Inherited whole-page header overflow717px and mechanical index warnings remain outside scope. Screenshots were inspected in tool output without portable file paths. Browser Harness had no daemon; existing Chrome extension supplied task-only QA without installs/settings changes. Full builder evidence is in ticket-14-browser-qa.
 
-Browser Harness doctor reports no daemon/active connection. Existing Chrome extension is available for bounded desktop/mobile QA without changing user browser settings. Inherited index hook findings stay outside the scoped recovery panel; no suppressions or page redesign are claimed.
+Actual Windows/local-fake cases passed individually: tagged-final7bfj2rgf, legacy-question4pe29lrq, after-retryajo5d4hu, tagged Stop50l46tq4 and both serves above. Exactly1 prior API generation per case; CLI injection1 or2 afterRetry. Original source identity, prior/source/rules/frozen profile preserved; actual replacement B late output rejected and quarantined. Inspect/attach/replay performed no lifecycle actuation. A separate exact-owned fixture termination then genuine retained worker/client waits and matching child receipt made same-intent transport settlement true. Healthy API peer stayed ready/unused. Every pass cleanup unresolved[].
 
-Actual first tagged-final run2ua_bi5_ failed before ordinary chat/attachment on a fixture Unicode serialization assertion; stored prior_results text independently equals the expected Unicode string and cleanup unresolved[]. Both string-in-JSON assertions are being replaced with exact parsed-text equality; one corrected normal rerun authorized, no other cases/serve yet. No production failure or positive native attachment acceptance claimed from that run.
+First tagged-final2ua_bi5_ failed before chat/attach because a Unicode string was searched in escaped JSON. Root re-derived exact parsed equality and strengthened both assertions to compare parsed text. That original failure remains intact. Lifecycle draft lookups were corrected before execution to exact identity/launch rather than a hardcoded pre-Retry key.
 
 ## Native settlement failure and same-boot worker-handle correction
 
@@ -136,4 +136,12 @@ Second actual tagged-final7sop0n1_ preserved one real selected admission/project
 
 Heartbeat now retains the verified true-worker handle separately as worker_process when original Popen PID differs from birth PID, preserving original Popen authority. Duplicate handles/true-PID launches keep existing behavior. No identity/exit/lease guard is relaxed. Native/proof/adoption32 pass11.137s; stronger native2 check exact unchanged lease during proof passes0.927s.
 
-Unchanged tagged-final7bfj2rgf then passes: one API prior generation, one hidden CLI injection, one recovered admission/projection, no inspect/attach/replay actuation, separate actual owned CLI end, exact replay settled via retained_native_handle_observed_end, peer preserved, cleanup unresolved[]. Root reread persisted result/session. Earlier Unicode fixture2ua_bi5_ and genuine settlement7sop0n1_ failures remain evidence. Legacy-question/after-Retry batch is authorized sequentially, stopping on any failure; Stop/serve/browser acceptance still pending. Substantive handle correction requires same-AGY recheck and final full regression.
+Unchanged tagged-final7bfj2rgf then passed. Same AGY independently bounded-passed2887184: native2/0.896s, focused75/7.538s and frozen804/four expected skips72.599s. That review excluded UI/tools and subsequent quarantine edits.
+
+## Replacement quarantine correction and final builder checks
+
+After-Retryio6ppxny actually rejected B's late MCP typed final but recorded no quarantine: a selected copy carried B's current attempt ID, so existing duplicate suppression mistook it for B's own admitted generation. Root's focused regression failed before the narrow guard correction. Operator-selected provenance now cannot suppress audit of actual late typed output; true typed duplicates retain their existing behavior. Focused58 pass5.552s. Unchanged after-Retryajo5d4hu then passed, including exact late-output quarantine and native lifecycle settlement. Original failure remains intact.
+
+Final root full806 tests OK/four expected skips73.299s; base734 plus72 across10 dedicated modules. Existing turn recovery44.799s, corrected restart30.112s and session Stop21.930s integrations pass. Existing API lost-ACKisfhwjra passes with2 calls/2 posts/one event/projection/ACK and no peer invocation; cleanup unresolved[]. Node syntax and diff checks pass. No Python production changes followed these checks; the final question-Close JS focus refinement was separately exercised after reload.
+
+Codex prepares the frozen final review pack for the same AGY, including quarantine/UI/tools not covered by the last bounded audit. Final independent whole-ticket PASS and post-merge checks are still required before standing-authorized publication/closure. See TICKET-14-REVIEW.md for exact commands, scratch paths and limits.

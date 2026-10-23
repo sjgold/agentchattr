@@ -1,10 +1,24 @@
-"""DRAFT: bounded Windows/local-fake selected CLI recovery integration.
+"""Verified bounded Windows selected-message recovery with local fake API/CLI.
 
-Compile only until the coordinator approves lifecycle and failure cleanup:
-  .venv-windows/Scripts/python.exe tools/verify_cli_result_recovery.py --compile-only
-Cases: tagged-final, legacy-question, after-retry. Optional --stop-before-attach
-and tagged-final --serve are separately authorized acceptance runs, not defaults.
-No live AI, remote compute, Linux/Omarchy or native client product claim.
+Usage: .venv-windows/Scripts/python.exe tools/verify_cli_result_recovery.py
+  --case tagged-final|legacy-question|after-retry
+  --case tagged-final --stop-before-attach
+  --case tagged-final|legacy-question --serve
+  --compile-only
+
+All three normal cases, tagged Stop refusal and both browser fixtures passed
+individually. Serve waits at most 600 seconds for the browser sentinel and replays the
+original stored UI request when the operator already attached the message.
+Compile-only checks this fixture/client/generated server without starting
+processes. Each actual case uses isolated ports/data and exact retained native
+handles; inspect/attach/replay performs no process control. Explicit fixture
+termination is separate, with actual worker/client exit and receipt checks.
+
+Earlier failures remain evidence: escaped-JSON Unicode comparison (before chat
+or attach), lost same-boot true-worker handle (after admission, before transport
+settlement), and replacement late-output quarantine suppression (after Retry).
+Their later passes preserve the original failure records. This tool establishes
+no live AI/provider, remote-compute, Linux/Omarchy or native AI-client guarantee.
 """
 import argparse
 from copy import deepcopy
@@ -456,7 +470,8 @@ def exercise(fixture,args):
             admitted=[v for v in fixture.session(fixture.run_id)['admitted_events'] if v.get('source_message_uid')==source['uid']]
             if admitted:
                 intent=deepcopy(admitted[0]['selected_request'])
-                assert intent['message_id']==message_id and intent['message_uid']==source['uid'] and intent['snapshot_hash']==digest and intent['kind']=='final'
+                expected_kind='question' if args.case=='legacy-question' else 'final'
+                assert intent['message_id']==message_id and intent['message_uid']==source['uid'] and intent['snapshot_hash']==digest and intent['kind']==expected_kind
                 decision={key:intent[key] for key in decision}
         finally:
             marker.unlink(missing_ok=True)
@@ -521,7 +536,7 @@ def main():
     parser.add_argument('--stop-before-attach',action='store_true')
     parser.add_argument('--serve',action='store_true')
     args=parser.parse_args()
-    assert not args.serve or (args.case=='tagged-final' and not args.stop_before_attach),'Serve scope is tagged-final only'
+    assert not args.serve or (args.case in ('tagged-final','legacy-question') and not args.stop_before_attach),'Serve scope is tagged-final or legacy-question only'
     assert not args.stop_before_attach or args.case=='tagged-final','Stop scope is tagged-final only'
     compile(server_code(ROOT/'.audit-tmp/compile-cli-selected',19000),'<generated-server>','exec')
     compile((ROOT/'tools/fake_cli_result_recovery.py').read_text('utf-8'),'<dedicated-fake-cli>','exec')

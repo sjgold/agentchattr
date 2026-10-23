@@ -1048,7 +1048,9 @@ class SessionEngine:
                 if any(event[key] != envelope[key] for key in IDENTITY_FIELDS):
                     raise EventConflict('Event references do not match its immutable brief.')
                 accepted = session.get('admitted_events', [])
-                if not human and not any(e['attempt_id'] == event['attempt_id'] or e['event_id'] == event['event_id'] for e in accepted):
+                if not human and not any(e.get('provenance') != 'operator_selected_cli_result'
+                        and (e['attempt_id'] == event['attempt_id'] or e['event_id'] == event['event_id'])
+                        for e in accepted):
                     self._store.quarantine_event(session['id'], event, instance,
                                                  reason='attempt_superseded' if superseded else 'stopped_run')
                 raise EventConflict('Attempt was stopped or superseded; late output was not admitted.')

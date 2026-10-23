@@ -790,7 +790,12 @@ function closeCliMessageRecovery(restoreFocus = true) {
     const panel = document.getElementById('session-cli-controls');
     if (panel) panel.hidden = true;
     updateSessionBar();
-    if (restoreFocus && cliRecoveryReturnFocus?.isConnected) cliRecoveryReturnFocus.focus();
+    if (restoreFocus) {
+        const answer = document.getElementById('session-turn-answer');
+        const target = answer?.getClientRects().length ? answer :
+            cliRecoveryReturnFocus?.isConnected && cliRecoveryReturnFocus.getClientRects().length ? cliRecoveryReturnFocus : null;
+        target?.focus();
+    }
 }
 
 async function showCliMessageRecovery(sessionId) {
