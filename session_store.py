@@ -277,23 +277,62 @@ class SessionStore:
         def bind(session):
             if session['state'] != 'active' or session.get('active_invocation'):
                 raise EventConflict('A current invocation is already bound or this session is not active.')
-            session['active_invocation'] = {key: deepcopy(envelope[key]) for key in (
-                'brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision',
-                'expected_agent', 'expected_identity_id', 'phase_index', 'turn_index', 'role')}
-            session['active_invocation'].update(dispatch_id=dispatch_id, consumed=False, human=human)
-            if not human:
-                created = time.time() if now is None else now
-                from turn_recovery import recovery_policy
-                binding = session.get('participant_bindings', {}).get(envelope['role'], {})
-                policy = recovery_policy(binding.get('recovery_policy') or session.get('recovery_policy'))
-                session['active_invocation']['monitoring'] = {
-                    'policy': policy,
-                    'created_at': created, 'ack_deadline': created + policy['ack_timeout'],
-                    'acknowledged_at': None, 'response_deadline': None,
-                    'last_event': {'state': 'bound', 'at': created}}
+            session['active_invocation'] = self._invocation(session, envelope, dispatch_id, human, now)
             session['state'] = 'waiting'
             session['waiting_on'] = envelope['expected_agent']
         return self._event_update(session_id, bind)
+
+    @staticmethod
+    def _invocation(session, envelope, dispatch_id, human, now):
+        invocation = {key: deepcopy(envelope[key]) for key in (
+            'brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision',
+            'expected_agent', 'expected_identity_id', 'phase_index', 'turn_index', 'role')}
+        invocation.update(dispatch_id=dispatch_id, consumed=False, human=human)
+        if not human:
+            from turn_recovery import recovery_policy
+            created = time.time() if now is None else now
+            binding = session.get('participant_bindings', {}).get(envelope['role'], {})
+            policy = recovery_policy(binding.get('recovery_policy') or session.get('recovery_policy'))
+            invocation['monitoring'] = {'policy': policy, 'created_at': created,
+                'ack_deadline': created + policy['ack_timeout'], 'acknowledged_at': None,
+                'response_deadline': None, 'last_event': {'state': 'bound', 'at': created}}
+        return invocation
+
+    def settle_bound_retry(self, session_id, request_id, envelope, dispatch_id, *, queued, now):
+        """Repair bookkeeping for already-sealed authority, never create work."""
+        from turn_events import EventConflict
+        import uuid
+        def settle(session):
+            pending = session.get('pending_retry')
+            if (session.get('stop_id') or not pending or pending['request_id'] != request_id
+                    or pending['new_brief_id'] != envelope['brief_id']
+                    or pending['new_attempt_id'] != envelope['attempt_id']
+                    or pending['new_dispatch_id'] != dispatch_id or envelope['run_id'] != session['run_id']
+                    or envelope['input_revision'] != session['input_revision']
+                    or session['participant_bindings'][envelope['role']]['identity_id'] != envelope['expected_identity_id']):
+                raise EventConflict('Sealed retry authority no longer matches this turn.')
+            invocation = session.get('active_invocation')
+            if invocation is None:
+                invocation = self._invocation(session, envelope, dispatch_id, False, pending['requested_at'])
+                session['active_invocation'] = invocation
+            if (invocation['attempt_id'] != envelope['attempt_id'] or invocation['dispatch_id'] != dispatch_id
+                    or invocation['brief_id'] != envelope['brief_id'] or invocation.get('consumed')):
+                raise EventConflict('Another invocation occupies this sealed turn.')
+            session['waiting_on'] = envelope['expected_agent']
+            interrupted = session.get('restart_recovery') and session.get('dispatch_eligible') is False
+            if queued:
+                session['state'] = 'interrupted' if interrupted else 'waiting'
+                if session.get('turn_recovery', {}).get('status') == 'retrying':
+                    session['turn_recovery'].update(status='resolved', resolved_by='retry',
+                                                   new_attempt_id=invocation['attempt_id'])
+            else:
+                session['state'] = 'interrupted' if interrupted else 'stalled'
+                session['turn_recovery'] = {'checkpoint_id': uuid.uuid4().hex, 'attempt_id': invocation['attempt_id'],
+                    'turn_id': invocation['turn_id'], 'dispatch_id': dispatch_id, 'first_at': now,
+                    'actions': [], 'recoverable_result': False, 'reason': 'local_delivery_failure',
+                    'last_event': {'state': 'publication_failed', 'at': now}, 'status': 'stalled'}
+            session.pop('pending_retry')
+        return self._event_update(session_id, settle)
 
     def stop_run(self, session_id, reason):
         import uuid

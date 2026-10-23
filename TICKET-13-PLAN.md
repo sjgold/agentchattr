@@ -161,3 +161,26 @@ Same AGY independently bounded-passed5f2ce30: dedicated24 tests and full654/four
 - Root normal issuance3 tests captured missing private API key/unsafe unsealed fallback red, then pass with metadata7 (10 total0.525s). API owner scope binds exact dispatch and launch; CLI/manual/human turns stay unsealed; managed owner lookup failure persists interruption/no queue. Initial root TestCase alias accidentally imported15 duplicate tests; corrected to module import before counting. Preparation failure returnsNone per existing Start contract; test reads persisted interruption rather than changing API behavior.
 - Full664 first failed3 older manager doubles lacking result_owner. Added explicit metadata-only stubs to those fixtures without weakening readiness/identity/timing assertions; affected26 pass1.091s, full664 tests OK/four expected skips54.278s. No worker persistence, recovery admission or transport settlement acceptance.
 - Next helper owns tests/test_result_authority_retry.py (5-7 cases) for actual persisted-brief/bind/enqueue crash gaps. Expected behavior: sealed owner/key never mutate; post-authority failure becomes a recoverable current reserved-turn delivery failure (stalled/local_delivery_failure), pending preparation no longer permits replacement under those IDs; explicit new Retry creates fresh IDs. If exact enqueue was already committed, finalize existing pending bookkeeping without duplicate context/dispatch or deadline reset. Stop remains permanent. No model invocation is inferred from missing queue records. Missing/malformed authority evidence fails closed before process control.
+
+
+## Post-authority failure evidence
+
+Helper tests/test_result_authority_retry.py captured initial2 FAIL0.183s (bind gap active, enqueue gap retrying), then expanded7 FAIL0.617s including original-request replay re-entering context preparation after committed enqueue. Root implementation now passes unchanged7 in0.657s. A separate atomic SessionStore transaction reconstructs only the already-reserved invocation from its durable sealed brief, exposes stalled/local_delivery_failure when no queue record exists, and removes preparation pending. A new explicit Retry uses fresh IDs. If exact enqueue already committed, finalize bookkeeping without another context/dispatch or deadline reset. Stop wins; no key/owner bytes mutate. Full671 tests OK/four expected skips55.327s; no model invocation is inferred from unpublished work. No worker result persistence/delivery/recovery claim yet.
+
+## Frozen worker delivery component, tranche4
+
+New module result_delivery.py, to be tested before implementation:
+
+```python
+def complete_review_turn(runtime_path, envelope, dispatch_id, generate, submit, *, on_saved=None): ...
+```
+
+Caller already owns the queue claim; this is not a second scheduler or process-adoption mechanism. envelope is the existing get_delivery response with private seal_secret and exact result_owner. Validate that scope and the managed ResultOutbox snapshot BEFORE generate. Invalid/missing key or changed launch/scope cannot invoke the model. generate() returns the raw provider response text once; strict parse_session_response yields final/question. Provider/cancellation/validation failures propagate with no saved record or submit.
+
+Build the exact tranche1 payload from the trusted envelope/owner, result=dispatch=event ID, and creation time. Atomically ResultOutbox.save before the first submit. Call on_saved(result_id), if supplied, only after a valid sealed result exists. Key never enters payload, submit event, model request or ack.
+
+submit(event) is a callback to the existing authenticated session-event HTTP request. Its exact event fields are brief_id, kind, content, event_id, run_id, turn_id, attempt_id and input_revision. It returns parsed server JSON or raises urllib/OSError. Accept status='admitted' only with exact event_id. Identical accepted_event_id in HTTP409 is idempotent success. HTTP5xx and OSError retry at most3 total attempts with the SAME event and no generate/save repetition; other4xx or malformed/wrong ack fail. On success, persist separate ResultOutbox.acknowledge and return {status:'admitted', result_id}. Ack-write failure propagates after the one admission, retaining the immutable saved record; do not regenerate or claim local ack.
+
+Add ResultOutbox.find(result_id): read-only schema/launch-validated record orNone only on genuine missing result path; malformed/unreadable/symlink cases fail, never mean absent. Existing get semantics unchanged. If complete_review_turn finds an existing record, verify it with the current trusted key, call on_saved and return {status:'saved', result_id}, with ZERO generate or submit calls. This implements explicit cold recovery posture; operator recovery is a later component. A saved record is not by itself a claim that current Stop/Retry fences allow delivery.
+
+Helper owns only tests/test_result_delivery.py, bounded10-12 cases using real isolated structural runtime/outbox and injected generation/HTTP callbacks. No model subprocess/native proof or full wrapper/engine acceptance inferred. Root wires wrapper only after the component's early red and green, and separately tests saved status versus current recoverability/fences.

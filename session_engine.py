@@ -166,6 +166,9 @@ class SessionEngine:
             for session in self._store.list_all():
                 if session.get('stop_id') or session.get('completion_protocol') != 1:
                     continue
+                if session.get('pending_retry') and self._retry_authority_bound(session['pending_retry']):
+                    self._finish_retry(session, now)
+                    continue
                 if session['state'] == 'retrying' and session.get('pending_retry', {}).get('status') in ('awaiting_local_end', 'preparing_contexts'):
                     self._finish_retry(session, now)
                     continue
@@ -375,6 +378,8 @@ class SessionEngine:
                 return self._enrich(session)
             context = (pending or {}).get('context') or {}
             provenance = (pending or {}).get('launch_provenance')
+            if pending and pending['request_id'] == request_id and self._retry_authority_bound(pending):
+                raise EventConflict('This retry already has immutable result authority. Use a fresh Retry for another owner.')
             if (not pending or pending['request_id'] != request_id or session['state'] not in ('retrying', 'interrupted')
                     or context.get('launch_attempt') != preparation_attempt
                     or not provenance or provenance['effective']['seat']['adapter'] not in ('cli', 'openai-compatible')
@@ -394,6 +399,29 @@ class SessionEngine:
             session = self._store._event_update(session_id, stage)
             return self._finish_retry(session, now)
 
+    def _retry_authority_bound(self, pending):
+        from review_brief import BriefError
+        from turn_events import EventConflict
+        try:
+            return self._store.briefs.has_result_authority(pending['new_brief_id'])
+        except (BriefError, KeyError):
+            raise EventConflict('Retry result authority is unavailable; no prepared context was changed.') from None
+
+    def _settle_bound_retry(self, session, now):
+        """Account for the existing sealed turn without preparing or sending it."""
+        from turn_events import EventConflict
+        pending = session['pending_retry']
+        envelope = self._store.briefs.get(pending['new_brief_id'], operator=True)
+        instance = {'name': envelope['expected_agent'], 'identity_id': envelope['expected_identity_id']}
+        record = next((r for r in self._trigger.queue.for_identity(instance)
+                       if r['envelope']['dispatch_id'] == pending['new_dispatch_id']), None)
+        if record and (record['envelope'].get('review_brief_id') != envelope['brief_id']
+                or any(record['envelope'].get(field) != envelope[field]
+                       for field in ('run_id', 'turn_id', 'attempt_id', 'input_revision'))):
+            raise EventConflict('Committed dispatch does not match its sealed retry authority.')
+        return self._enrich(self._store.settle_bound_retry(session['id'], pending['request_id'], envelope,
+            pending['new_dispatch_id'], queued=record is not None and record['state'] != 'cancelled', now=now))
+
     def _finish_retry(self, session, now):
         """Finish only the persisted operator intent, never a speculative replay."""
         from turn_events import EventConflict
@@ -402,6 +430,8 @@ class SessionEngine:
             return self._enrich(session)
         if any(e['attempt_id'] == pending['new_attempt_id'] for e in session.get('admitted_events', [])):
             return self._enrich(self._store._event_update(session['id'], lambda s: s.pop('pending_retry', None)))
+        if self._retry_authority_bound(pending):
+            return self._settle_bound_retry(session, now)
         old = pending['old_invocation']
         record = self._trigger.queue.cancel_dispatch(old['dispatch_id'], pending['request_id'])
         provenance = pending.get('launch_provenance')
@@ -467,6 +497,8 @@ class SessionEngine:
         try:
             if self._trigger_current(session, retry=pending, now=now) is False:
                 current = self._store.get(session['id'])
+                if self._retry_authority_bound(pending):
+                    return self._settle_bound_retry(current, now)
                 recovery = current.get('restart_recovery')
                 waiting_for_proof = recovery and not self._restart_role_ready(current, old['role'], recovery['boot_id'])
                 def blocked(value):
@@ -474,7 +506,9 @@ class SessionEngine:
                     value['pending_retry']['status'] = 'preparing_contexts' if waiting_for_proof else 'preparation_failed'
                 return self._enrich(self._store._event_update(session['id'], blocked))
         except OSError:
-            # Already-fenced work stays safe; the same explicit request repairs.
+            if self._retry_authority_bound(pending):
+                self._settle_bound_retry(self._store.get(session['id']), now)
+            # Storage may still fail; never pretend the original post succeeded.
             raise
         def finished(value):
             value.pop('pending_retry', None)

@@ -208,6 +208,16 @@ class BriefStore:
         self._authorize(value, instance, operator)
         return self._public(value)
 
+    def has_result_authority(self, brief_id):
+        """Internal immutable-binding check; unreadable evidence is not absence."""
+        try:
+            self._path(brief_id).stat()
+        except FileNotFoundError:
+            return False
+        except OSError:
+            raise BriefError('Result authority cannot be inspected safely.') from None
+        return '_result_seal' in self._load(brief_id)
+
     def get_delivery(self, brief_id, instance):
         value = self._load(brief_id)
         self._authorize(value, instance, False)

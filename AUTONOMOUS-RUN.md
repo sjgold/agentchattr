@@ -47,3 +47,5 @@ Ticket13 same-AGY HMAC-in-private-brief mechanism and five source-grounded refin
 Ticket13 bounded foundation: sealed ResultOutbox18 and private BriefStore6 tests pass, full654/four skips53.118s. Initial missing module/interface red, real Windows extended-prefix concurrency failure and HTTP private-delivery red retained. No worker outbox/delivery/recovery admission/UI wired yet. SameAGY bounded source review and managed-launch issuance tests next; no final13 acceptance.
 
 Ticket13 managed API owner metadata7/engine issuance3 pass; full664/four skips54.278s after updating3 explicit manager stubs. AGY ratifies post-sealed authority immutable; helper crash-gap tests and root failure-to-fresh-Retry transition next. Worker outbox delivery/recovery remains unwired.
+
+Post-sealed authority gap7 tests red->green; full671/four skips55.327s. Reserved turn failure checkpoint enables fresh explicit Retry, committed enqueue replay does not prepare/spawn/reset timing. Next result_delivery component red tests; no worker persistence/recovery ingress/transport/UI acceptance yet.
