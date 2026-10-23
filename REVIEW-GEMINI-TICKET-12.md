@@ -17,3 +17,5 @@ The review retains transient failures followed by passing reruns: a client-side 
 Root verified exact new-module test counts:18/7/12/6/4/2/3/4/6/1/2, totaling65 across11 modules, plus one empty-completion regression in an existing module. Corrections were requested for count metadata, separation of builder/reviewer transient observations, repair confirmation wording and scope: #16 covers six seats, while Windows Selector's512-socket bound remains a documented limit. These wording corrections change no source or tests.
 
 Native AI clients, external providers, Linux/Omarchy, full process adoption, saved-answer outbox and six-seat capacity remain outside #12 acceptance. Usage: STALLED-TURNS.md. Review briefing: TICKET-12-REVIEW.md. Durable reviewer artifact: `epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-12-independent-review/index.md`.
+
+Reviewer verified and applied all requested wording corrections; verdict remains PASS. Local fast-forward merge completed. Post-merge discovery467 tests OK/four expected skips25.863s, JS syntax and diff whitespace clean. Publication/issue closure follows under standing authorization.
