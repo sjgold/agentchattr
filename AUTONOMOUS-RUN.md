@@ -45,3 +45,5 @@ Ticket13 proposed plan written on codex/ticket-13-api-result-outbox from closure
 Ticket13 same-AGY HMAC-in-private-brief mechanism and five source-grounded refinements ratified. Core ResultOutbox/payload/HMAC/ack interfaces frozen; helper storage red tranche next. No production implementation yet.
 
 Ticket13 bounded foundation: sealed ResultOutbox18 and private BriefStore6 tests pass, full654/four skips53.118s. Initial missing module/interface red, real Windows extended-prefix concurrency failure and HTTP private-delivery red retained. No worker outbox/delivery/recovery admission/UI wired yet. SameAGY bounded source review and managed-launch issuance tests next; no final13 acceptance.
+
+Ticket13 managed API owner metadata7/engine issuance3 pass; full664/four skips54.278s after updating3 explicit manager stubs. AGY ratifies post-sealed authority immutable; helper crash-gap tests and root failure-to-fresh-Retry transition next. Worker outbox delivery/recovery remains unwired.

@@ -16,6 +16,7 @@ from registry import RuntimeRegistry
 from session_engine import SessionEngine
 from session_store import SessionStore
 from store import MessageStore
+from tests.test_restart_reconciliation import result_owner_metadata
 
 
 class ColdRetrySettlementTests(unittest.TestCase):
@@ -103,7 +104,9 @@ class ColdRetrySettlementTests(unittest.TestCase):
 
     def proof_manager(self, local_ended):
         manager = Mock(spec=['runtime_exit_proof', 'prepare_retry_context', 'context_status',
-                             'launch_provenance', 'restart_readiness', 'boot_id'])
+                             'launch_provenance', 'restart_readiness', 'boot_id', 'result_owner'])
+        manager.result_owner.side_effect = lambda instance, dispatch: result_owner_metadata(
+            instance, dispatch, manager.launch_provenance(instance)['launch_attempt'])
         manager.boot_id = uuid.uuid4().hex
         manager.restart_readiness.return_value = {'state': 'unverified', 'process_verified': False}
         def proof(provenance, dispatch_id=None):

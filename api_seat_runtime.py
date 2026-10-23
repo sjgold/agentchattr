@@ -417,6 +417,31 @@ class SeatManager:
                     return result
             return None
 
+    def result_owner(self, instance, dispatch_id):
+        """Bind result sealing to this owned API launch, without adopting it."""
+        if not isinstance(dispatch_id, str) or not re.fullmatch(r'[0-9a-f]{32}', dispatch_id):
+            raise SeatError('Result authority requires an exact dispatch identifier.')
+        with self.lock:
+            provenance = self.launch_provenance(instance)
+            if self.closed.is_set() or not provenance or provenance['effective']['seat']['adapter'] != 'openai-compatible':
+                return None
+            attempt = self.attempts[provenance['key']]
+            from runtime_adoption import _launch_record, _candidate
+            try:
+                item = (_candidate(self, attempt['snapshot']) if attempt.get('worker_birth') is not None
+                        else _launch_record(self, attempt['snapshot']))
+                ownership = item['identity']
+                if (ownership != attempt.get('ownership') or item['key'] != provenance['key']
+                        or ownership['attempt'] != attempt['id']
+                        or item['manifest']['spawn_outcome'] != 'spawned'
+                        or (attempt.get('worker_birth') is not None and item['birth'] != attempt['worker_birth'])):
+                    raise ValueError('Owned result launch evidence changed.')
+            except (OSError, ValueError, KeyError, TypeError):
+                raise SeatError('Managed result ownership is unverified or changed; no result key was issued.') from None
+            return {'adapter': 'openai-compatible', 'dispatch_id': dispatch_id,
+                    'seat_identity_id': provenance['identity_id'], 'launch_attempt': attempt['id'],
+                    'launch_nonce': ownership['launch_nonce'], 'fingerprint': ownership['fingerprint']}
+
     def prepare_clean_context(self, provenance, context_key, *, confirmation=None, retry_attempt=None, binding=None):
         with self.lock:
             if self.closed.is_set():

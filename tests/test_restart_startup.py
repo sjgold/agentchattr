@@ -19,6 +19,7 @@ from registry import RuntimeRegistry
 from session_engine import SessionEngine
 from session_store import SessionStore
 from store import MessageStore
+from tests.test_restart_reconciliation import result_owner_metadata
 
 
 class RestartStartupTests(unittest.TestCase):
@@ -142,8 +143,10 @@ class RestartStartupTests(unittest.TestCase):
         self.assertFalse(self.store.get(stopped['id'])['dispatch_eligible'])
         # A new explicit run belongs to this already-bootstrapped coordinator,
         # even before its newly launched managed worker finishes boot echo.
+        launch_attempt = uuid.uuid4().hex
         self.manager.launch_provenance = lambda instance: {'key': 'team/api', 'identity_id': instance['identity_id'],
-            'launch_attempt': uuid.uuid4().hex, 'effective': {'seat': {'adapter': 'openai-compatible'}}}
+            'launch_attempt': launch_attempt, 'effective': {'seat': {'adapter': 'openai-compatible'}}}
+        self.manager.result_owner = lambda instance, dispatch: result_owner_metadata(instance, dispatch, launch_attempt)
         self.manager.restart_readiness = lambda *args, **kw: {'state': 'unverified', 'process_verified': False}
         fresh = self.engine.start_session('one', 'new-runtime', {'r': owner['name']}, 'operator')
         self.assertIsNotNone(fresh['active_invocation'])

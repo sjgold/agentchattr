@@ -20,6 +20,13 @@ from store import MessageStore
 from turn_events import EventConflict
 
 
+def result_owner_metadata(instance, dispatch_id, launch_attempt):
+    """Declared metadata stub, not native ownership or model-result evidence."""
+    return {'adapter': 'openai-compatible', 'dispatch_id': dispatch_id,
+            'seat_identity_id': instance['identity_id'], 'launch_attempt': launch_attempt,
+            'launch_nonce': 'b' * 32, 'fingerprint': 'a' * 64}
+
+
 class RestartReconciliationTests(unittest.TestCase):
     def setUp(self):
         (ROOT / '.audit-tmp').mkdir(exist_ok=True)
@@ -58,7 +65,7 @@ class RestartReconciliationTests(unittest.TestCase):
 
     def managed(self, states=None):
         self.readiness = states or {}
-        self.manager = Mock(spec=['restart_readiness', 'launch_provenance', 'prepare_retry_context'])
+        self.manager = Mock(spec=['restart_readiness', 'launch_provenance', 'prepare_retry_context', 'result_owner'])
         self.manager.restart_readiness.side_effect = lambda identity_id, boot_id: deepcopy(self.readiness.get(identity_id,
             {'state': 'unverified', 'process_verified': False}))
         def bind(value):
@@ -68,6 +75,9 @@ class RestartReconciliationTests(unittest.TestCase):
                     'launch_attempt': uuid.uuid4().hex, 'fingerprint': 'a' * 64,
                     'effective': {'seat': {'id': role, 'adapter': 'openai-compatible', 'model': 'frozen-model'}}}
         self.sessions._event_update(self.session_id, bind)
+        self.manager.result_owner.side_effect = lambda instance, dispatch: result_owner_metadata(instance, dispatch,
+            next(b['launch_provenance']['launch_attempt'] for b in self.current()['participant_bindings'].values()
+                 if b['identity_id'] == instance['identity_id']))
         self.engine._seat_manager = self.manager
         return self.manager
 
