@@ -40,7 +40,7 @@
 .session-stop-termination button { margin: 4px 8px 4px 0; }
 .session-quarantine-content { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .session-turn-controls button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
-.session-saved-controls { max-height: 38vh; }
+.session-saved-controls { max-height: 60vh; }
 .session-saved-heading { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .session-saved-heading strong { margin-right: auto; }
 .session-saved-answer { padding: 12px 0; border-top: 1px solid var(--border); min-width: 0; }

@@ -1099,12 +1099,13 @@ class SessionEngine:
             message = self._messages.add_once('session-input:' + context['question_event_id'],
                 'operator', context['answer'], msg_type='session_input', channel=session['channel'],
                 metadata={'session_id': session_id, 'question_event_id': context['question_event_id'],
-                          'provenance': 'human_operator'})
+                          'provenance': 'human_operator', 'routing_suppressed': True})
             self._store.link_continuation_projection(session_id, context['question_event_id'], message['id'])
         for event in session.get('admitted_events', []):
             if event['projected_message_id'] is not None:
                 continue
             metadata = {key: event[key] for key in (*IDENTITY_FIELDS, 'event_id', 'kind', 'session_id', 'provenance')}
+            metadata['routing_suppressed'] = True
             if event.get('submitted_by'):
                 metadata['submitted_by'] = event['submitted_by']
             if event.get('is_output') and session['state'] == 'complete':

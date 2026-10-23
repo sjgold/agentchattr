@@ -1,9 +1,14 @@
-"""DRAFT selectable real-worker saved-answer recovery, local fake provider only.
+"""Windows real-worker saved-answer recovery with a local fake provider.
 
 --compile-only starts no process. Select --case cold-final|cold-question|lost-ack.
-Optional --stop-before-delivery checks pending Stop refusal in a cold case.
---serve is cold-final only: browser may Deliver, script then posts idempotently.
-Requires coordinator review/readiness before execution. No live AI/Omarchy.
+Run with .venv-windows/Scripts/python.exe tools/verify_saved_result_recovery.py.
+Add --stop-before-delivery to a cold case for pending Stop refusal; --serve is
+cold-final only, allowing browser Deliver before idempotent script submission.
+Verified bounded scope: cold final/question recovery, lost-ACK deduplication,
+pending Stop refusal and one UI-delivery serve run. Each uses two generations,
+retained native handles and isolated data. The earlier lost-ACK routing failure
+and its separate cleanup audit remain preserved alongside the passing rerun.
+Live AI clients, Omarchy and remote-compute termination are outside this proof.
 """
 import argparse
 from copy import deepcopy
@@ -231,6 +236,7 @@ class RecoveryFixture(base.WorkerFixture):
                 try:
                     proof=classify_history(worker['path'])
                     if proof.get('local_ended') is True:inventory['empty_basis']=proof['verification_basis']
+                    else:unresolved.append(attempt+': empty model history is unproven despite possible wrapper exit')
                 except Exception:unresolved.append(attempt+': empty-history proof unreadable')
             for directory in directories:
                 dispatch=directory.name
@@ -290,7 +296,9 @@ class RecoveryFixture(base.WorkerFixture):
             except Exception:unresolved.append('true server exit unresolved')
             finally:
                 if server['handle']:
-                    server['handle'].close();server['handle']=None
+                    try:server['handle'].close()
+                    except Exception:unresolved.append('true server handle close failed')
+                    server['handle']=None
             try:server['launcher'].wait(timeout=8)
             except Exception:unresolved.append('launcher exit unresolved; no PID/tree fallback')
         self.provider.shutdown();self.provider.server_close()
@@ -337,6 +345,15 @@ def exercise(f,serve=False,stop_before=False):
     assert payload['content']==base.ANSWER and all(row['dispatch_id']==rid and row['saved_before_post'] is True for row in posts)
     assert payload['kind']==('question' if f.case=='cold-question' else 'final')
     assert len(f.captures)==2
+    first_id=before['admitted_events'][0]['event_id']
+    assert box.get(first_id)['payload']['content']==base.PRIOR
+    assert box.get_ack(first_id)['accepted_event_id']==first_id
+    assert all(value['model']=='frozen-recovery-model' for value in f.captures)
+    context=[json.loads(message['content']) for message in f.captures[1]['messages'] if message['role']=='user']
+    source=next(value for value in context if value.get('kind')=='untrusted_review_source')
+    prior=next(value for value in context if value.get('kind')=='prior_review_results')
+    assert source['text']==base.SOURCE and source['input_revision']==before['input_revision']
+    assert [value['text'] for value in prior['results']]==[base.PRIOR]
     if f.case=='lost-ack':
         ack=f.wait(lambda:box.get_ack(rid),'actual worker duplicate409 local ACK')
         current=f.session(sid)
@@ -348,8 +365,12 @@ def exercise(f,serve=False,stop_before=False):
         assert f.state()['managed_spawns']==2
         return {'case':f.case,'provider_calls':2,'second_posts':2,'second_admissions':1,'second_projections':1,'acknowledged':True}
     assert box.get_ack(rid) is None and len(f.session(sid)['admitted_events'])==1
+    f.wait(lambda:v if (v:=f.session(sid))['state']=='stalled' and
+        v.get('turn_recovery',{}).get('reason')=='local_delivery_failure' else None,
+        'durable failed-post recovery checkpoint')
     model['exit_observed']=model['handle'].wait(timeout=8)
-    assert classify_history(original['path'])['local_ended'] is True
+    f.wait(lambda:v if (v:=classify_history(original['path'])).get('local_ended') is True else None,
+        'genuine parent model exit and IPC evidence',8)
     f.api('/api/preflight/seats/outbox/api/stop',{})
     original['exit_observed']=original['handle'].wait(timeout=8)
     atomic_json(f.root/'observed-original-exit.json',{'attempt':owner['attempt'],'actual_worker_exit':original['exit_observed'],
@@ -359,6 +380,9 @@ def exercise(f,serve=False,stop_before=False):
     immutable={p:p.read_bytes() for worker in f.workers.values() for p in
         (worker['path']/'config.json',worker['path']/'birth.json',worker['path']/'launch.json')}
     directories={p.name for p in (f.data/'api_seat_runtime').iterdir() if p.is_dir()}
+    precrash=deepcopy(f.session(sid))
+    assert precrash['active_invocation']['attempt_id']==invocation['attempt_id']
+    atomic_json(f.root/'precrash-session.json',precrash)
     crash=time.monotonic()
     server=f.servers[-1]
     server['handle'].terminate();server['handle'].wait(timeout=8);server['exit_observed']=True
@@ -380,7 +404,8 @@ def exercise(f,serve=False,stop_before=False):
     preview=next(v for v in previews if v['result_id']==rid)
     assert preview['state']=='saved' and preview['can_deliver'] is True and preview['content']==base.ANSWER
     assert f.session(sid)['admitted_events']==before['admitted_events'] and box.get_ack(rid) is None
-    for key in ('active_invocation','input_snapshot','input_revision','design_revision','rules_snapshot','rules_revision','goal'):
+    assert f.session(sid)['active_invocation']==precrash['active_invocation']
+    for key in ('input_snapshot','input_revision','design_revision','rules_snapshot','rules_revision','goal'):
         assert f.session(sid)[key]==before[key]
     assert len(f.captures)==2
     private=json.loads((f.data/'review_briefs'/(invocation['brief_id']+'.json')).read_text('utf-8'))['_result_seal']

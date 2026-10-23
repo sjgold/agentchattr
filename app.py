@@ -918,6 +918,11 @@ async def _handle_new_message(msg: dict):
     msg_type = msg.get("type", "chat")
     sender = msg.get("sender", "")
     channel = msg.get("channel", "general")
+    # These are projections of already-scoped review events, not chat input.
+    # Preserve literal mentions/commands for display without a second dispatch.
+    if msg_type in ('session_result', 'session_question', 'session_input'):
+        await broadcast(msg)
+        return
     routing_scope = {}
     if session_engine and registry:
         instance = registry.get_instance(sender)

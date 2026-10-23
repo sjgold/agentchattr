@@ -677,6 +677,7 @@ function closeSavedSessionResults() {
     savedResultRequest += 1;
     const panel = document.getElementById('session-saved-controls');
     if (panel) panel.hidden = true;
+    updateSessionBar();
 }
 
 async function showSavedSessionResults(sessionId) {
@@ -691,6 +692,7 @@ async function showSavedSessionResults(sessionId) {
         document.getElementById('session-turn-controls').after(panel);
     }
     panel.hidden = false;
+    updateSessionBar();
     const heading = document.createElement('div');
     heading.className = 'session-saved-heading';
     const title = document.createElement('strong');
@@ -721,7 +723,8 @@ async function showSavedSessionResults(sessionId) {
         const reasons = {stopped_run: 'This review was stopped.', attempt_superseded: 'A newer attempt replaced this answer.',
             not_current_attempt: 'This answer belongs to a different turn or input.',
             accepted_event_conflict: 'This answer differs from the result already accepted.'};
-        for (const saved of value.saved_results) {
+        const ordered = [...value.saved_results].sort((a, b) => Number(b.state === 'saved') - Number(a.state === 'saved'));
+        for (const saved of ordered) {
             const row = document.createElement('article');
             row.className = 'session-saved-answer';
             const preview = document.createElement('details');
@@ -780,6 +783,8 @@ function renderSessionTurnControls(bar) {
         panel.className = 'session-turn-controls';
         bar.after(panel);
     }
+    const saved = document.getElementById('session-saved-controls');
+    if (saved && !saved.hidden) { panel.hidden = true; return; }
     const s = activeSession;
     if (s?.stop_id) {
         renderStopControls(panel, s);
@@ -912,6 +917,8 @@ function renderRestartControls(bar) {
         panel.className = 'session-turn-controls session-restart-controls';
         document.getElementById('session-turn-controls').after(panel);
     }
+    const saved = document.getElementById('session-saved-controls');
+    if (saved && !saved.hidden) { panel.hidden = true; return; }
     const s = activeSession;
     const prepared = s?.state === 'prepared' && !s.stop_id;
     panel.hidden = !s || (!s.stop_id && !prepared) || !!s.legacy;
