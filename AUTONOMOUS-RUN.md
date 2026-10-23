@@ -15,8 +15,8 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-8, #10-11 | Published and closed | Latest #11 publication `f403b59`, same AGY PASS |
-| #12 stalled turns/retry | Independent PASS | Codex post-merge checks, publication and closure |
-| #16 | Pending, first milestone | Follow #12 |
+| #12 stalled turns/retry | Published and closed | Publication8297bc1, same AGY PASS |
+| #16 | Planning, first milestone | Codex policy proposal; same AGY contract critique |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
 
@@ -34,3 +34,5 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 Current branch codex/ticket-12-stalled-turns, base0d247d5. Same AGY ratified timing, retry/repair and Windows HTTP mitigation. Managed retry/repair, adapter timing, routes/UI and actual isolated recovery acceptance implemented. Latest full suite467 tests/four expected skips passes (24.883s). Normal and completed aligned --serve recovery pass; earlier gate timeout and Proactor listener failure remain failures. Selector HTTP regression passed128 reset connections. Owned browser-mode workers/server and separate UI server/browser stopped. Final queue regression timed out returning its second MCP call despite both ledger records released; unchanged reproduction passed but exact return stall remains unexplained; instrumented run also passed all actual MCP replies with all phase exits recorded/no watchdog firing. Diagnostic change is not a proven fix. All other eight integrations pass. Implementation frozen at ebc85aedafbef4c53d70ebdaad37f553ddcbe683; same AGY received the independent review request, retaining this limitation explicitly. No #12 push or independent implementation PASS. Usage STALLED-TURNS.md; review pack TICKET-12-REVIEW.md. #16 next after publication; #9 deferred.
 
 Same AGY independently passed frozen ebc85ae at reviewed docs pin154412b:467 tests/four skips24.367s, all nine integrations, JS/diff clean. Transient fixture limitations judged nonblocking. Receipt REVIEW-GEMINI-TICKET-12.md. Publication/post-merge checks now in progress; #16 six-seat capacity follows.
+
+#12 published on origin/main8297bc1bd15468540328df2b7364fc505989f9d2, issue closed confirmed. Post-merge467 tests/four skips25.863s, JS/diff clean. Reviewer precision corrections confirmed, PASS unchanged. Next#16 shared session capacity/whole team, then#9 after milestone.

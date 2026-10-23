@@ -18,4 +18,4 @@ Root verified exact new-module test counts:18/7/12/6/4/2/3/4/6/1/2, totaling65 a
 
 Native AI clients, external providers, Linux/Omarchy, full process adoption, saved-answer outbox and six-seat capacity remain outside #12 acceptance. Usage: STALLED-TURNS.md. Review briefing: TICKET-12-REVIEW.md. Durable reviewer artifact: `epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-12-independent-review/index.md`.
 
-Reviewer verified and applied all requested wording corrections; verdict remains PASS. Local fast-forward merge completed. Post-merge discovery467 tests OK/four expected skips25.863s, JS syntax and diff whitespace clean. Publication/issue closure follows under standing authorization.
+Reviewer verified and applied all requested wording corrections; verdict remains PASS. Local fast-forward merge completed. Post-merge discovery467 tests OK/four expected skips25.863s, JS syntax and diff whitespace clean. Published on origin/main at8297bc1bd15468540328df2b7364fc505989f9d2; issue#12 confirmed closed as completed under standing authorization.
