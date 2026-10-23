@@ -371,9 +371,12 @@ def main():
         last_failure_category[0] = ''
         last_failure_http_status[0] = None
         last_cancelled[0] = False
+        saved_result = [False]
         my_name = get_name()
         set_working(True)
         try:
+            if receipt:
+                receipt.update(result_saved=False, result_id=None, recoverable_result=False)
             chat_msgs = read_messages(channel=channel, limit=context_messages, job_id=job_id)
             if frozen:
                 from review_brief import BriefError, brief_messages
@@ -394,9 +397,37 @@ def main():
                 messages = format_messages(chat_msgs)
                 if prompt:
                     messages.insert(1, {'role': 'system', 'content': prompt})
-            print(f"  [{channel}] Calling model with {len(messages)} messages...")
+            def generate():
+                print(f"  [{channel}] Calling model with {len(messages)} messages...")
+                return call_model(messages, dispatch_id)
 
-            response = call_model(messages, dispatch_id)
+            if frozen and managed is not None:
+                from result_delivery import complete_review_turn
+                def on_saved(result_id):
+                    saved_result[0] = True
+                    if receipt:
+                        # Eligibility belongs to server-side run/attempt fences,
+                        # not the existence of a file in this worker.
+                        receipt.update(result_saved=True, result_id=result_id, recoverable_result=None)
+                def submit(event):
+                    request = urllib.request.Request(
+                        f"http://127.0.0.1:{server_port}/api/sessions/{envelope['session_id']}/event",
+                        data=json.dumps(event).encode('utf-8'),
+                        headers=_auth_headers(get_token(), include_json=True))
+                    with urllib.request.urlopen(request, timeout=10) as delivered:
+                        return json.load(delivered)
+                outcome = complete_review_turn(Path(managed_args.seat_file).resolve().parent,
+                    envelope, dispatch_id, generate, submit, on_saved=on_saved)
+                if outcome['status'] == 'admitted':
+                    if receipt:
+                        receipt.update(state='ready', error=None, recoverable_result=False)
+                    return True
+                last_failure_category[0] = 'local_delivery_failure'
+                if receipt:
+                    receipt.update(state='failed', error='A saved answer is retained. Check its delivery status before generating again.')
+                return False
+
+            response = generate()
             response = response.strip()
             if not response:
                 last_failure_category[0] = 'empty_completion'
@@ -409,8 +440,8 @@ def main():
                 event = parse_session_response(response)
                 event.update(brief_id=review_brief_id, event_id=dispatch_id,
                              **{key: envelope[key] for key in ('run_id', 'turn_id', 'attempt_id', 'input_revision')})
-                # Only submission retries, never another provider call. Durable
-                # pre-submission worker outbox recovery remains a later ticket.
+                # Unmanaged compatibility turns retain their prior bounded
+                # live-bearer delivery; they make no durable outbox claim.
                 for delivery_attempt in range(3):
                     request = urllib.request.Request(
                         f"http://127.0.0.1:{server_port}/api/sessions/{envelope['session_id']}/event",
@@ -468,9 +499,13 @@ def main():
                 last_failure_http_status[0] = status
             if receipt:
                 if not isinstance(exc, _ManagedProviderFailure):
+                    blocked_saved = saved_result[0] and isinstance(exc, urllib.error.HTTPError) and exc.code < 500
                     receipt.update(state='failed', error=(
                         'Session response was not valid final/question JSON; no event was admitted.' if malformed else
-                        'Local event or chat delivery needs attention. Check the queue and session before retrying.'))
+                        'Saved answer cannot be delivered for this turn; retained for audit.' if blocked_saved else
+                        'Answer saved locally; check delivery status before generating again.' if saved_result[0] else
+                        'Local event or chat delivery needs attention. Check the queue and session before retrying.'),
+                        recoverable_result=False if blocked_saved or not saved_result[0] else None)
                 print('  Managed API turn failed; see pre-flight diagnostics.')
             else:
                 print(f'  API turn failed ({last_failure_category[0]}); no successful delivery was claimed.')

@@ -1,8 +1,11 @@
-"""DRAFT real managed worker save-before-post check, local fake provider only.
+"""Real managed API worker save-before-post check with a local fake provider.
 
---compile-only validates this script and generated server without execution.
-No recovery endpoint, browser, server crash, CLI, or provider usage is implied.
-Run only after coordinator review; baseline wrapper intentionally lacks wiring.
+Run: .venv-windows/Scripts/python.exe tools/verify_result_outbox.py
+--compile-only validates the generated server without starting processes.
+Verified scope: two API generations, retained prior result, signed outbox before
+three failed HTTP submissions, separate acknowledgements and private-key
+redaction. Recovery delivery, cold replay, browser UI and live providers remain
+outside this worker persistence check.
 """
 import argparse
 import asyncio

@@ -156,6 +156,25 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual([p.name for p in self.root.iterdir()], ['config.toml'])
         spawn.assert_not_called()
 
+    @unittest.skipUnless(sys.platform == 'win32', 'Windows byte-range locking')
+    def test_empty_file_locked_by_a_contender_does_not_require_initialization(self):
+        import msvcrt
+        path = self.root / 'initialization.lock'
+        path.touch()
+        with path.open('r+b') as holder:
+            # Windows permits byte-range locks beyond EOF. Exercise a real
+            # competing lock while the file is still empty, without mocks.
+            msvcrt.locking(holder.fileno(), msvcrt.LK_NBLCK, 1)
+            try:
+                with self.assertRaises(self.launcher.LaunchError):
+                    with self.launcher.startup_lock(path, time.monotonic() + 0.03):
+                        self.fail('contender entered the held lock')
+            finally:
+                holder.seek(0)
+                msvcrt.locking(holder.fileno(), msvcrt.LK_UNLCK, 1)
+        with self.launcher.startup_lock(path, time.monotonic() + 1):
+            pass
+
     def test_kernel_lock_excludes_a_separate_process(self):
         import subprocess
         path = self.root / 'cross-process.lock'

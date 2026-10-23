@@ -82,9 +82,8 @@ def startup_lock(path, deadline):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('a+b') as lock:
-        if path.stat().st_size == 0:
-            lock.write(b'\0')
-            lock.flush()
+        # Byte-range locks may extend beyond EOF on Windows; flock likewise
+        # needs no file contents. Writing before locking races other holders.
         while True:
             try:
                 lock.seek(0)

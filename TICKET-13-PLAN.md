@@ -1,6 +1,6 @@
 # Ticket #13: recover saved API results without regeneration
 
-State: same-AGY contract and all five source-grounded refinements ratified. Core storage and private-brief interfaces frozen below; bounded storage/private-authority implementation and unit checks pass. Managed launch issuance, worker persistence/delivery, recovery admission and UI remain unwired.
+State: same-AGY contract Sections7.3/7.4 ratified. Storage, private brief authority, managed issuance and worker save-before-post are implemented and tested. Recovery admission, transport settlement and UI remain pending; final Ticket13 acceptance has not occurred.
 
 Base: published main2bdbc777b5ab8e254b36e54cd784a469d02720b4. Branch: codex/ticket-13-api-result-outbox. Scope authority: issue13, specificationv1.7 SC-5/AT-21c, standing autonomous execution policy in STATUS.md. Same Antigravity independent reviewer remains assigned.
 
@@ -193,3 +193,18 @@ Initial helper3 errors0.005s were missing result_delivery before implementation.
 Full683 tests OK/four expected platform skips56.104s. Same AGY bounded650 source PASS remains separate: frozen671 tests; its shared-tree674 execution included first3 evolving delivery tests/refactor and is labelled accordingly in the audit. No final13 review.
 
 New draft tools/verify_result_outbox.py uses actual full app/two API workers/local fake provider. Phase1 accepted, phase2 provider body held until retained true server/workers/model proof; exact phase2 event service returns503 on3 posts. It checks a valid sealed file existed BEFORE each post, first result ACK, second result without ACK, prior/source retained, zero regeneration and key exclusion from actual provider/public/MCP/status/log surfaces. Root reviewed full fault/cleanup and compile-only; ONE baseline run against still-unwired wrapper is authorized. Expected gap is missing outbox before post. No execution result is claimed yet; wrapper wiring waits for the observed baseline.
+
+
+## Actual worker persistence evidence and shared-lock correction
+
+Unwired baseline4p0fj60e failed before first-post persistence: exactly2 provider calls,1 prior admission and3 same-event503 posts, all without outbox records. After wrapper wiring, the unchanged r7hsjjtw tool passed with a signed scoped record before each post, first result plus separate ACK, second saved result without ACK, exact Unicode/CRLF and no regeneration. Both keys stayed out of actual provider/MCP/public status/log surfaces; idle peer remained ready/unchanged. Native retained-handle cleanup unresolved[]. No cold delivery/UI claim.
+
+First post-wiring full683 run failed at startup_lock initialization flush during concurrent queue writes. Native empty-file contention reproduced PermissionError before the bounded lock loop. Removing the unnecessary initialization write permits direct kernel exclusion on empty files. Launcher/queue/outbox49 tests pass2.865s including independent-process exclusion; full684 tests OK/four expected skips56.313s. Earlier failure retained. Same AGY bounded checkpoint review precedes further recovery implementation.
+
+## Ratified recovery boundary, Section7.4
+
+Operator-only GET /api/sessions/{session_id}/saved-results returns sanitized text preview and metadata, with no key/internal path. Operator-only POST /api/sessions/{session_id}/deliver-saved-result serializes under the engine coordinator RLock. Verify seal/scope first; an exact already-admitted result receives idempotent accepted_event_id even after Stop/Retry. A pending unadmitted result must pass current Stop/superseded fences. SessionStore.admit_verified_saved_event preserves original signed identity, provenance verified_saved_api_result and submitted_by operator, without synthesizing a live principal. Recovery never calls a provider or spawns.
+
+SeatManager.saved_result_exit_proof(payload) verifies trusted exact launch/nonce/fingerprint against cached immutable ownership/birth. Prefer an already retained true-worker handle (worker_process when the launcher is a shim), genuine observed exit and exact model lifecycle evidence; fall back to cold runtime_exit_proof. Query never closes/reopens/terminates handles or extends a lease. Wrapper and model child must both be ended. Content admission remains independent of this process-control proof.
+
+QueueStore.settle_recovered is internal-only. Proven ended transport becomes settled_recovered with source result_recovery and genuine verification basis; preserve old consumer/history and never invent acknowledgements, exit codes or cancellation IDs. Cancelling records remain governed by Stop. Unproven exit keeps only that occupied seat held, allowing unrelated verified successor seats to proceed. Worker receipt result_saved=True/recoverable_result=None is provisional; server current fences determine eligibility. Detailed component interfaces will be frozen before their observed-red tests.
