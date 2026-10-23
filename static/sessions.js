@@ -25,6 +25,7 @@ let recoveryStatusBusy = false;
 const recoveryRequests = new Map();
 const recoveryWaitDrafts = new Map();
 const recoveryOffers = new Map();
+let savedResultRequest = 0;
 
 // ---------------------------------------------------------------------------
 // Message Renderers
@@ -49,6 +50,13 @@ window._messageRenderers['session_start'] = function (el, msg) {
     el.classList.add('system-msg', 'session-banner', 'session-banner-start');
     const goal = msg.metadata?.goal ? ` -- ${window.escapeHtml(msg.metadata.goal)}` : '';
     el.innerHTML = `<span class="session-banner-icon">&#9654;</span> <strong>${window.escapeHtml(msg.text)}</strong>${goal}`;
+    if (Number.isInteger(msg.metadata?.session_id)) {
+        const saved = document.createElement('button');
+        saved.className = 'session-saved-link';
+        saved.textContent = 'Saved answers';
+        saved.onclick = () => showSavedSessionResults(msg.metadata.session_id);
+        el.appendChild(saved);
+    }
 };
 
 window._messageRenderers['session_end'] = function (el, msg) {
@@ -463,10 +471,15 @@ function renderRecoveryControls(panel, s) {
         evidence.className = 'session-recovery-evidence';
         const saved = document.createElement('p');
         const accepted = s.admitted_events?.filter(e => e.kind === 'final').length || 0;
-        saved.textContent = `${accepted} accepted ${accepted === 1 ? 'result' : 'results'} retained. No durable saved answer is known for this failed attempt.`;
+        saved.textContent = `${accepted} accepted ${accepted === 1 ? 'result' : 'results'} retained. Check for a saved API answer before generating another.`;
         const error = document.createElement('p');
         error.setAttribute('role', 'alert');
         panel.append(title, status, evidence, saved, error);
+        const checkSaved = document.createElement('button');
+        checkSaved.className = 'session-saved-link';
+        checkSaved.textContent = 'Check saved answers';
+        checkSaved.onclick = () => showSavedSessionResults(s.id);
+        panel.appendChild(checkSaved);
         const perform = async (action, body) => {
             panel.dataset.busy = 'true';
             panel.querySelectorAll('button').forEach(button => { button.disabled = true; });
@@ -657,6 +670,105 @@ function renderStopControls(panel, s) {
             details.appendChild(text);
         }
         panel.appendChild(details);
+    }
+}
+
+function closeSavedSessionResults() {
+    savedResultRequest += 1;
+    const panel = document.getElementById('session-saved-controls');
+    if (panel) panel.hidden = true;
+}
+
+async function showSavedSessionResults(sessionId) {
+    if (!Number.isInteger(sessionId) || sessionId <= 0) return;
+    const request = ++savedResultRequest;
+    let panel = document.getElementById('session-saved-controls');
+    if (!panel) {
+        panel = document.createElement('section');
+        panel.id = 'session-saved-controls';
+        panel.className = 'session-turn-controls session-saved-controls';
+        panel.setAttribute('aria-label', 'Saved review answers');
+        document.getElementById('session-turn-controls').after(panel);
+    }
+    panel.hidden = false;
+    const heading = document.createElement('div');
+    heading.className = 'session-saved-heading';
+    const title = document.createElement('strong');
+    title.textContent = 'Saved answers';
+    const refresh = document.createElement('button');
+    refresh.textContent = 'Refresh';
+    refresh.onclick = () => showSavedSessionResults(sessionId);
+    const close = document.createElement('button');
+    close.textContent = 'Close';
+    close.onclick = closeSavedSessionResults;
+    heading.append(title, refresh, close);
+    const explanation = document.createElement('p');
+    explanation.textContent = 'Deliver the saved text without another model call. Review the preview before delivering.';
+    const status = document.createElement('p');
+    status.setAttribute('role', 'status');
+    status.textContent = 'Checking saved answers…';
+    const answers = document.createElement('div');
+    panel.replaceChildren(heading, explanation, status, answers);
+    try {
+        const response = await fetch(`/api/sessions/${sessionId}/saved-results`,
+            {headers: {'X-Session-Token': window.SESSION_TOKEN}, cache: 'no-store'});
+        const value = await response.json();
+        if (request !== savedResultRequest) return;
+        if (!response.ok) throw new Error(value.error || 'Saved answers could not be checked. Refresh to retry.');
+        status.textContent = value.saved_results.length ?
+            'Only answers verified against their original review are shown.' :
+            'No saved API answer is available for this review. Its accepted answers stay in chat.';
+        const reasons = {stopped_run: 'This review was stopped.', attempt_superseded: 'A newer attempt replaced this answer.',
+            not_current_attempt: 'This answer belongs to a different turn or input.',
+            accepted_event_conflict: 'This answer differs from the result already accepted.'};
+        for (const saved of value.saved_results) {
+            const row = document.createElement('article');
+            row.className = 'session-saved-answer';
+            const preview = document.createElement('details');
+            preview.open = saved.state === 'saved';
+            const label = document.createElement('summary');
+            label.textContent = `${saved.kind === 'question' ? 'Question' : 'Final answer'} · ${new Date(saved.created_at * 1000).toLocaleString()}`;
+            const text = document.createElement('pre');
+            text.textContent = saved.content;
+            preview.append(label, text);
+            const result = document.createElement('p');
+            result.setAttribute('role', 'status');
+            result.textContent = saved.state === 'blocked' ? `${reasons[saved.reason] || 'Delivery is unavailable.'} The saved text is retained for history.` :
+                saved.state === 'admitted' ? 'Already admitted. You can recheck whether the original seat has been released.' :
+                'Saved and ready to deliver to its original turn.';
+            row.append(preview, result);
+            if (saved.can_deliver) {
+                const deliver = document.createElement('button');
+                deliver.className = 'session-saved-deliver';
+                deliver.textContent = saved.state === 'admitted' ? 'Check worker release' : 'Deliver saved answer';
+                deliver.onclick = async () => {
+                    deliver.disabled = true;
+                    deliver.setAttribute('aria-busy', 'true');
+                    result.textContent = 'Checking this saved answer and its original worker…';
+                    try {
+                        const posted = await fetch(`/api/sessions/${sessionId}/deliver-saved-result`, {
+                            method: 'POST', headers: {'X-Session-Token': window.SESSION_TOKEN, 'Content-Type': 'application/json'},
+                            body: JSON.stringify({result_id: saved.result_id})});
+                        const receipt = await posted.json();
+                        if (request !== savedResultRequest) return;
+                        if (!posted.ok) throw new Error(receipt.error || 'Delivery could not be confirmed. Refresh before retrying.');
+                        result.textContent = receipt.transport_settled ? 'Answer delivered. The original seat is released.' :
+                            'Answer delivered. Worker release is not confirmed by this check. Check again after the original worker ends.';
+                        deliver.textContent = receipt.transport_settled ? 'Seat released' : 'Check worker release';
+                        deliver.disabled = receipt.transport_settled;
+                        await fetchActiveSession();
+                    } catch (error) {
+                        if (request === savedResultRequest) { result.textContent = error.message; deliver.disabled = false; }
+                    } finally {
+                        deliver.removeAttribute('aria-busy');
+                    }
+                };
+                row.appendChild(deliver);
+            }
+            answers.appendChild(row);
+        }
+    } catch (error) {
+        if (request === savedResultRequest) status.textContent = error.message;
     }
 }
 
@@ -1648,6 +1760,7 @@ Hub.on('channel_renamed', function (event) {
 // ---------------------------------------------------------------------------
 
 Store.watch('activeChannel', function (newChannel) {
+    closeSavedSessionResults();
     activeSession = activeSessionsByChannel[newChannel] || null;
     updateSessionBar();
     fetchActiveSession(newChannel);
