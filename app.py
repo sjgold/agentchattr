@@ -3057,6 +3057,45 @@ async def session_recovery_status(session_id: int):
         return _restart_error(exc)
 
 
+@app.get('/api/sessions/{session_id}/cli-message-candidate/{message_id}')
+async def get_cli_message_candidate(session_id: int, message_id: int):
+    from turn_events import EventConflict, EventValidationError
+    try:
+        if session_engine is None:
+            return JSONResponse({'error': 'Session recovery is unavailable.'}, status_code=503)
+        value = await asyncio.to_thread(session_engine.cli_message_candidate, session_id, message_id)
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, OSError) as exc:
+        return _session_event_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/attach-cli-message')
+async def attach_selected_cli_message(session_id: int, request: Request):
+    from turn_events import EventConflict, EventValidationError, EventAccessError
+    try:
+        raw = await request.body()
+        if len(raw) > 8192:
+            raise EventValidationError('Selected-message attachment requires bounded decision metadata.')
+        def unique(pairs):
+            value = dict(pairs)
+            if len(value) != len(pairs):
+                raise ValueError('Duplicate decision fields.')
+            return value
+        try:
+            body = json.loads(raw, object_pairs_hook=unique)
+        except (ValueError, UnicodeError):
+            raise EventValidationError('Selected-message attachment requires valid JSON metadata.') from None
+        if not isinstance(body, dict) or set(body) != {'request_id', 'message_id', 'message_uid',
+                'snapshot_hash', 'kind', 'checkpoint', 'confirm_operator_attribution'}:
+            raise EventValidationError('Use only the reviewed message identity and explicit recovery decision.')
+        if session_engine is None:
+            return JSONResponse({'error': 'Session recovery is unavailable.'}, status_code=503)
+        value = await asyncio.to_thread(session_engine.attach_cli_message, session_id, body, submitted_by='operator')
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, EventAccessError, OSError) as exc:
+        return _session_event_error(exc)
+
+
 @app.get('/api/sessions/{session_id}/saved-results')
 async def get_saved_session_results(session_id: int):
     from turn_events import EventConflict, EventValidationError

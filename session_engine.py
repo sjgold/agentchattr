@@ -1065,6 +1065,10 @@ class SessionEngine:
         from cli_result_recovery import cli_message_candidate
         return cli_message_candidate(self, session_id, message_id)
 
+    def attach_cli_message(self, session_id, decision, *, submitted_by='operator'):
+        from cli_result_recovery import attach_cli_message
+        return attach_cli_message(self, session_id, decision, submitted_by=submitted_by)
+
     def deliver_saved_result(self, session_id, result_id, *, submitted_by='operator'):
         from result_recovery import deliver_saved_result
         return deliver_saved_result(self, session_id, result_id, submitted_by=submitted_by)

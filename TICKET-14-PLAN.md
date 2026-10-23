@@ -1,6 +1,6 @@
 # Ticket14: recover an operator-selected CLI message
 
-State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage, candidate and admission-store checkpoints independently bounded-PASS. Transport/CLI proof components implemented and tested, pending bounded review. No engine attachment/HTTP/UI integration or final acceptance yet.
+State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage, candidate and admission-store checkpoints independently bounded-PASS. Transport/CLI proof checkpoint2e10812 independently bounded-PASS. Engine attachment/operator HTTP routes implemented and tested (full802/four expected skips70.279s), pending bounded review. UI/actual CLI integration and final acceptance remain pending.
 
 Base: published main `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Scope: issue14, specification v1.7 SC-5 and CLI AT-21c, standing autonomous policy in STATUS.md. Ticket12 blocker and Ticket13 are closed. Independent review: [contract settlement](epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-14-contract-review/index.md). Same AGY remains final reviewer.
 
@@ -82,6 +82,20 @@ settle_recovered accepts new CLI-only durable_receipt_and_observed_absent and re
 SeatManager.selected_cli_exit_proof(frozen_provenance_or_instance, dispatch_id) validates exact managed CLI launch, approved server/root/effective settings, fingerprint, stored authenticated birth and receipt identity. Warm true-worker retained handle must match actual birth PID and have genuine integer exit; matching receipt must contain integer native-child exit. It never uses a launcher shim's exit as worker proof. Cold fallback reuses Ticket9 runtime_exit_proof. No handle close/control, worker adoption from this query or auth lease extension.
 
 Root proof tests exercise real owned toy supervisor self-birth/retained native handles; child-exit receipts are explicitly supplied protocol fixtures and cold absence uses an algorithm seam. They do not claim a real CLI child ran or native cold absence acceptance. Actual CLI/MCP end-to-end verification remains required later.
+
+## Engine attachment and operator HTTP tranche
+
+SessionEngine.attach_cli_message(session_id, decision, *, submitted_by='operator') accepts exactly seven decision keys: request_id, message_id, message_uid, snapshot_hash, kind, checkpoint, confirm_operator_attribution. Actor label is a separate operator parameter. Content is loaded from MessageStore; no text override or worker principal is accepted.
+
+Under coordinator RLock, validate decision and find exact prior selected_request before source lookup/current fences. Changed reuse conflicts. For a new decision, revalidate candidate/source copy/checkpoint and commit store admission/fence first. Reconcile holds/cancellation next, query exact frozen selected_transport provenance/dispatch with selected_cli_exit_proof, and clear ledger/session audit only after genuine proof and successful writes. Missing dispatch resolves via session audit without a fabricated queue record.
+
+For a selected cancelling transport, confirm_local_exit permits retained_native_handle_observed_end only on its exact selected_cli hold with dispatch/identity binding. If Stop created the cancellation without cancellation_id, use exact persisted stop_id. Its internal source remains runtime_reconciliation; this is not a worker ACK. Then clear the held cancelled record and resolve session audit. Default API/ordinary Retry behavior remains unchanged.
+
+ACK fields: status='admitted', session_id, accepted_event_id, kind, source_message_id, source_message_uid, attribution, transport_settled. Queue/proof settlement IO after content acceptance yields transport_settled=False, never a false success or lost content. First normally coordinated attachment projects once and permits eligible peer successor work. Exact replay/IO projection repair uses dispatch=False and never triggers another successor. Source deletion/edit or Stop after acceptance cannot invalidate exact ACK. Projection-before-backlink failure repairs by stable UID.
+
+Operator-only GET /api/sessions/{session_id}/cli-message-candidate/{message_id} and POST /api/sessions/{session_id}/attach-cli-message use real existing security middleware. Successful responses are no-store. POST accepts at most8192 bytes, strict decision fields, unique JSON keys including nested checkpoint, and no content/authority overrides. Worker bearer alone is insufficient. Errors use existing sanitized event error mapping.
+
+Evidence before full regression: helper engine initial2 missing-method RED0.108s; expanded12 had11PASS/1 active warm-proof failure0.856s (root0.864s), then scoped confirmation fix and final12PASS0.914s including Stop-ID fallback. Root HTTP initial2 missing-handler RED0.090s; expanded4 routes plus engine12/API routes4/cold settlement4 PASS24/1.897s. Root full802 tests OK/four expected skips70.279s, Python syntax/diff clean. No real server/CLI/browser acceptance claimed yet.
 
 ## Implementation and verification sequence
 

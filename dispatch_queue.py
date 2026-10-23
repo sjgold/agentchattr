@@ -289,7 +289,7 @@ class QueueStore:
         _identifier(cancellation_id, 'Cancellation ID')
         allowed = {'durable_receipt_and_observed_absent', 'all_bound_invocations_ended',
                    'protocol_one_no_invocations', 'bound_invocation_birth_and_observed_absent',
-                   'observed_child_exit_and_ipc'}
+                   'observed_child_exit_and_ipc', 'retained_native_handle_observed_end'}
         if (not isinstance(evidence, dict) or evidence.get('local_ended') is not True
                 or not isinstance(evidence.get('verification_basis'), str)
                 or evidence['verification_basis'] not in allowed):
@@ -299,7 +299,18 @@ class QueueStore:
             raise QueueConflict('The exact launch attempt is required.')
         with self._transaction() as ledger:
             record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
-            if not record or record.get('cancellation_id') != cancellation_id:
+            hold = (record or {}).get('recovery_hold') or {}
+            selected = (hold.get('selected_cli') is True and hold.get('result_id') == dispatch_id
+                        and hold.get('seat_identity_id') == (record or {}).get('envelope', {}).get('target_identity_id'))
+            if (evidence['verification_basis'] == 'retained_native_handle_observed_end' and not selected):
+                raise QueueConflict('CLI exit evidence requires an explicitly selected CLI hold.')
+            if selected and (evidence.get('dispatch_id') != dispatch_id
+                             or evidence.get('seat_identity_id') != hold['seat_identity_id']):
+                raise QueueConflict('Exact selected CLI transport exit evidence is required.')
+            intent = (record or {}).get('cancellation_id')
+            if intent is None and selected:
+                intent = record.get('stop_id')
+            if not record or intent != cancellation_id:
                 raise QueueConflict('The exact persisted cancellation request is required.')
             previous = record.get('cancellation', {})
             if (record['state'] == 'cancelled' and previous.get('status') == 'local_ended'
