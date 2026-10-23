@@ -1,6 +1,6 @@
 # Ticket15: replace or skip a missing participant
 
-State: same-AGY contract and all five precision amendments RATIFIED. Skip storage8834a8d and initial clone/replay964d3af independently bounded-PASS. Tranche3a identity holds/audit interface proposed below for reviewer settlement and observed-red tests. No transport, HTTP, projection/export or UI behavior implemented yet. Standing autonomous policy replaces routine human gates; material scope changes and live usage still require Seth.
+State: same-AGY contract and five precision amendments RATIFIED. Skip storage8834a8d and initial clone/replay964d3af independently bounded-PASS. Tranche3a hold/audit and narrow cancellation-poll guard implemented/tested, pending bounded review. Native proof collection, cancellation completion, engine/routes, projection/export and UI remain unimplemented. Seth's2026-10-23 stop instruction: complete Ticket15, publish/close after review and checks, then stop; no next ticket.
 
 Base: published main `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Owner: Codex, claim `a99548d9-49eb-4f70-9cf1-d185414cbad5`. Independent reviewer: same AGY. Scope: issue15, specification v1.7 SC-5 and AT-21d/22. Ticket12 blocker and Tickets13/14 recovery are delivered.
 
@@ -105,9 +105,7 @@ Tranche1 independent review: same AGY bounded-PASS8834a8d, dedicated12/0.805s, f
 
 Tranche2 evidence: helper2 tests/10 missing-method AttributeError observations0.083s; root independently reproduced2/10 observations0.363s before implementation. Initial unchanged2 pass0.109s after manager clone/replay plus replacement_source adoption whitelist. Existing47 regressions pass5.266s. Helper12 final pass0.799s; its first expanded run had10 pass and2 fixture assumptions, corrected to accept the existing safe failed view on pre-spawn write failure and use the public context key rather than an absent internal key field. No production assertion weakened. Root unchanged12 plus launch/owner/native/adoption/ownership/cold replay63 pass7.640s; full830 total tests OK/four expected skips72.847s. Python syntax/diff clean. Cold incomplete pending/birth or ambiguous records use existing safe SeatError refusal, never Popen; synchronous failed preparation returns the same failed attempt. New clone tests use explicit process/readiness doubles, no native replacement acceptance. Same AGY bounded source/execution review next.
 
-## Verification tranches
-
-## Proposed tranche3a: old identity hold and strict audit resolution
+## Ratified tranche3a: old identity hold and strict audit resolution
 
 Same AGY independently bounded-PASS964d3af: dedicated12/0.780s, focused68/7.586s and full830 total/four expected skips73.581s. Initial cloning only; explicit repair remains unwritten.
 
@@ -117,9 +115,11 @@ NEW `SessionStore.resolve_old_transport(session_id, request_id, evidence) -> cop
 
 Under the store lock persist resolvedTrue/resolved_at(first only) and an allowlisted deepcopy exit_proof excluding variable probe timestamps. Exact same proof replay is byte/time/callback stable; changed evidence conflicts. Resolution after Stop is permitted because it changes no content/fences/cursor or cancellation history. Atomic write failure keeps the identity held. Missing/manual launch provenance cannot grant process-exit authority. Manager native proof production and calling this resolver only after necessary queue completion remain tranche3b/engine work.
 
-Source-grounded edge awaiting ratification: QueueStore.claim currently checks blocked_run_ids before returning an existing consumer record. In a cold interrupted run (dispatch_eligibleFalse), a newly cancelling old dispatch must still reach its exact authenticated owner. Proposed narrow exception only for statecancelling and the existing exact consumer/seat. Existing dispatched/acknowledged/uncertain tasks in blocked runs remain unavailable; different consumers and all new claims remain blocked. Observe this case red before changing that guard.
+Same AGY ratified the source-grounded cold edge: QueueStore.claim checks blocked_run_ids before returning an existing consumer record. A newly cancelling old dispatch must still reach its exact owner despite dispatch_eligibleFalse. Narrow exception only for statecancelling and the existing exact consumer/seat. Existing dispatched/acknowledged/uncertain tasks in blocked runs remain unavailable; different consumers and all new claims remain blocked. The genuine failure was observed before the guard changed.
 
 Helper owns only new tests/test_participant_transport_hold.py, bounded12. Evidence dictionaries/consumer receipts are explicit algorithm inputs, not native exit proof. Capture early published-oldidentity-block/missing resolver errors plus cold-owner cancellation failure before production. Cover missing ledger, same seat unrelated job retention versus peers/new identity, restart/reload, Stop and release/cancellation receipts preserving unresolved hold, strict adapter/scope/bool/code proof, exact/changed replay and atomic resolver rollback. In3a, an active cancelling ledger still blocks after a synthetic internal audit resolution until existing cancellation completes; native internal completion is deliberately not claimed.
+
+Actual3a evidence: initial helper3RED0.193s and root3RED0.183s each had1FAIL/2ERROR (old identity claimed another job, missing resolver, cold cancellation poll denied). Initial unchanged3 pass0.186s after the minimal source changes. Final helper12 pass0.935s; first expanded11PASS/1 fixture error used different reloaded store instances for resolver and coordinator, corrected to one shared reloaded store. Root unchanged12 plus queue/API/CLI/restart/skip75 pass5.219s, full842 total tests OK/four expected platform skips80.047s. Compile/diff clean. New exit dictionaries are algorithm inputs only; native collection/internal completion/engine calls remain3b and later work. Same AGY bounded source/execution review next.
 
 ## Verification work list
 

@@ -13,6 +13,9 @@ class CoordinatedQueue:
             if run.get('stop_id'):
                 self._queue.cancel_run(run['run_id'], run['stop_id'])
             for attempt in run.get('superseded_attempts', []):
+                if (attempt.get('reason') in ('participant_replacement', 'participant_skipped')
+                        and (attempt.get('old_transport') or {}).get('resolved') is not True):
+                    unpublished_holds.add(attempt['old_transport']['seat_identity_id'])
                 if attempt.get('reason') == 'superseded_by_operator_recovery':
                     record = self._queue.hold_recovered(attempt['dispatch_id'], attempt['expected_identity_id'],
                                                         attempt['dispatch_id'], selected_cli=True)

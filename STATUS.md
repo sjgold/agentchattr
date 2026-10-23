@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 (#1-14 and #16 published/closed; #15 clone bounded-PASS, old-identity transport hold tests next)
+**Updated:** 2026-10-23 (#1-14 and #16 published/closed; #15 old-identity hold/audit tested, bounded review next; stop after15)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -9,6 +9,8 @@
 - Latest resume note: [2026-10-18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md). The October 12 handoff describes an earlier checkpoint; use this status and the latest handoff on resume.
 
 ## Autonomous execution policy (2026-10-22)
+
+- Stop condition added by Seth on2026-10-23: finish the current Ticket15 through verified/reviewed publication and closure, then stop. Do not start another ticket. This supersedes backlog continuation after15.
 
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
 - Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
@@ -334,4 +336,6 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Initial clone/replay now on disk after helper2 tests/10 missing-method AttributeErrors0.083s and root reproduction0.363s. Initial unchanged2PASS0.109s; existing launch/ownership/same-boot native/adoption47PASS5.266s. Clone uses existing launch journal/resource/hidden-console path; source never enters retry/cleanup; separate native readiness gates clean clone status. Adoption retains replacement_source metadata. New manager tests use explicit readiness/process doubles, not native clone acceptance.
 - Final helper12PASS0.799s, root unchanged manager/launch/owner/native/adoption/ownership/cold replay63PASS7.640s. Helper first expanded run had10 pass and2 fixture assumptions: pre-spawn write failure may return a safe failed view, and internal attempts have no key field; corrected only those fixtures. Full830 total tests OK/four expected skips72.847s, Python syntax/diff clean. New manager proofs are explicit component seams, not native replacement acceptance.
 - Same AGY independently bounded-PASS964d3af: dedicated12/0.780s, focused68/7.586s, full830 total/four expected skips73.581s. Clone/replay only, not final15 acceptance.
-- Next owner/action: freeze tranche3a old-identity claim hold and strict internal old_transport audit resolver for observed-red helper tests. Same AGY is settling exact adapter proof schema and the narrow cold-run cancellation-poll exception. Native proof collection/internal cancellation completion are separate3b; explicit repair, replacement store/engine/routes, projection/export and UI remain unimplemented. No production change before early red/settlement. Final whole-ticket review/publication remains required; no live AI/Omarchy/global changes.
+- Same AGY ratified3a proof schema and narrow blocked-run cancellation-poll exception. Now implemented: old_transport unresolved identities block new claims while preserving peers/unrelated jobs, strict internal resolver checks exact scope and genuine adapter evidence shape, and only exact existing consumer may receive a cancelling record in a blocked run. No default API/selected_cli authority changes or process control.
+- Initial helper3RED0.193s/root3RED0.183s captured1FAIL/2ERROR before source (wrong new claim, absent resolver, denied cold cancellation). Final helper12PASS0.935s; first extended fixture mistakenly used separate reloaded store objects, corrected to shared store. Root combined75PASS5.219s; full842 total tests OK/four expected skips80.047s, syntax/diff clean. Evidence/receipts explicitly algorithm dictionaries, no native exit acceptance claim.
+- Next owner/action: freeze3a for same AGY bounded source/execution review; reviewer also settling native proof/internal completion3b interface. Helper idle. Explicit repair, replacement store/engine/routes, projection/export and UI remain unimplemented. Finish Ticket15 through verified/reviewed publication and closure, then STOP; no next ticket. No live AI/Omarchy/global changes.
