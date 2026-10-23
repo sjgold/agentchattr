@@ -28,6 +28,9 @@ const recoveryOffers = new Map();
 let savedResultRequest = 0;
 let cliMessageRequest = 0;
 let cliRecoveryReturnFocus = null;
+let participantRecoveryRequest = 0;
+let participantRecoveryReturnFocus = null;
+const participantRecoveryIntents = new Map();
 
 // ---------------------------------------------------------------------------
 // Message Renderers
@@ -69,8 +72,13 @@ window._messageRenderers['session_start'] = function (el, msg) {
 window._messageRenderers['session_end'] = function (el, msg) {
     el.classList.add('system-msg', 'session-banner', 'session-banner-end');
     const outputId = msg.metadata?.output_message_id;
-    const jumpLink = outputId ? ` <span class="session-output-link" onclick="scrollToSessionOutput(${outputId})">View output</span>` : '';
+    const jumpLink = Number.isInteger(outputId) ? ` <span class="session-output-link" onclick="scrollToSessionOutput(${outputId})">View output</span>` : '';
     el.innerHTML = `<span class="session-banner-icon">&#9632;</span> <strong>${window.escapeHtml(msg.text)}</strong>${jumpLink}`;
+};
+
+window._messageRenderers['session_skip'] = function (el, msg) {
+    el.classList.add('system-msg', 'session-banner');
+    el.textContent = msg.text;
 };
 
 window._messageRenderers['session_phase'] = function (el, msg) {
@@ -296,7 +304,7 @@ function handleSessionEvent(action, session) {
             activeSession = null;
         }
         // Highlight the output message
-        if (channel === window.activeChannel && action === 'complete' && session.output_message_id) {
+        if (channel === window.activeChannel && action === 'complete' && Number.isInteger(session.output_message_id)) {
             highlightSessionOutput(session.output_message_id);
         }
     }
@@ -383,7 +391,7 @@ function updateSessionBar() {
         waitingEl.textContent = s.state === 'stopped' ? 'Stopped locally' : s.state === 'unresolved' ? 'Cancellation unresolved' : 'Stopping';
         waitingEl.style.display = '';
     } else if (s.state === 'retrying') {
-        waitingEl.textContent = 'Retry preparing, previous attempt retired';
+        waitingEl.textContent = s.pending_replacement ? 'Fresh participant preparing' : 'Retry preparing, previous attempt retired';
         waitingEl.style.display = '';
     } else if (s.state === 'stalled') {
         waitingEl.textContent = 'Turn needs attention';
@@ -489,6 +497,11 @@ function renderRecoveryControls(panel, s) {
         checkSaved.textContent = cli ? 'Recover a CLI message' : 'Check saved answers';
         checkSaved.onclick = () => cli ? showCliMessageRecovery(s.id) : showSavedSessionResults(s.id);
         panel.appendChild(checkSaved);
+        const participant = document.createElement('button');
+        participant.className = 'session-saved-link';
+        participant.textContent = 'Replace or skip participant';
+        participant.onclick = () => showParticipantRecovery(s.id);
+        panel.appendChild(participant);
         const perform = async (action, body) => {
             panel.dataset.busy = 'true';
             panel.querySelectorAll('button').forEach(button => { button.disabled = true; });
@@ -691,6 +704,7 @@ function closeSavedSessionResults() {
 
 async function showSavedSessionResults(sessionId) {
     if (!Number.isInteger(sessionId) || sessionId <= 0) return;
+    closeParticipantRecovery(false);
     closeCliMessageRecovery(false);
     const request = ++savedResultRequest;
     let panel = document.getElementById('session-saved-controls');
@@ -800,6 +814,7 @@ function closeCliMessageRecovery(restoreFocus = true) {
 
 async function showCliMessageRecovery(sessionId) {
     if (!Number.isInteger(sessionId) || sessionId <= 0) return;
+    closeParticipantRecovery(false);
     cliRecoveryReturnFocus = document.activeElement;
     closeSavedSessionResults();
     const request = ++cliMessageRequest;
@@ -1002,6 +1017,172 @@ async function showCliMessageRecovery(sessionId) {
     } catch (error) { if (alive()) status.textContent = error.message; }
 }
 
+function closeParticipantRecovery(restoreFocus = true) {
+    participantRecoveryRequest += 1;
+    const panel = document.getElementById('session-participant-controls');
+    if (panel) panel.hidden = true;
+    updateSessionBar();
+    if (restoreFocus) {
+        const answer = document.getElementById('session-turn-answer');
+        const origin = participantRecoveryReturnFocus;
+        const target = answer?.getClientRects().length ? answer :
+            origin?.isConnected && origin.getClientRects().length ? origin :
+            document.querySelector('#session-turn-controls:not([hidden]) button');
+        target?.focus();
+    }
+}
+
+async function showParticipantRecovery(sessionId) {
+    if (!Number.isInteger(sessionId) || sessionId <= 0) return;
+    if (!document.getElementById('session-participant-controls')?.contains(document.activeElement)) {
+        participantRecoveryReturnFocus = document.activeElement;
+    }
+    closeSavedSessionResults();
+    closeCliMessageRecovery(false);
+    const request = ++participantRecoveryRequest;
+    let panel = document.getElementById('session-participant-controls');
+    if (!panel) {
+        panel = document.createElement('section');
+        panel.id = 'session-participant-controls';
+        panel.className = 'session-turn-controls session-saved-controls session-participant-controls';
+        panel.setAttribute('aria-label', 'Replace or skip a review participant');
+        document.getElementById('session-turn-controls').after(panel);
+        panel.addEventListener('keydown', event => {
+            if (event.key === 'Escape') { event.preventDefault(); closeParticipantRecovery(); }
+        });
+    }
+    panel.hidden = false;
+    panel.dataset.sessionId = String(sessionId);
+    updateSessionBar();
+    const heading = document.createElement('div');
+    heading.className = 'session-saved-heading';
+    const title = document.createElement('strong');
+    title.textContent = 'Keep the review moving';
+    const close = document.createElement('button');
+    close.textContent = 'Close'; close.onclick = () => closeParticipantRecovery();
+    heading.append(title, close);
+    const status = document.createElement('p');
+    status.setAttribute('role', 'status');
+    status.textContent = 'Checking this participant and its saved checkpoint…';
+    const content = document.createElement('div');
+    panel.replaceChildren(heading, status, content);
+    const alive = () => request === participantRecoveryRequest;
+    let busy = false;
+    const perform = async (action, body) => {
+        if (busy) return;
+        busy = true;
+        const priorDisabled = new Map([...panel.querySelectorAll('button, input, select, textarea')].map(node => [node, node.disabled]));
+        panel.querySelectorAll('button, input, select, textarea').forEach(node => { node.disabled = true; });
+        status.textContent = 'Saving your recovery decision…';
+        try {
+            const ack = await restartRequest(sessionId, action, body);
+            if (!alive()) return;
+            status.textContent = ack.status === 'skipped' ? 'Contribution marked missing. Earlier accepted work is retained.' :
+                ack.status === 'dispatched' ? 'Fresh participant ready. The replacement turn is queued.' :
+                ack.status === 'stopped' ? 'This review is stopped. No replacement was started.' : 'Replacement preparation saved. Earlier accepted work is retained.';
+            content.replaceChildren();
+            const refresh = document.createElement('button');
+            refresh.textContent = 'Check recovery status';
+            refresh.onclick = () => showParticipantRecovery(sessionId);
+            content.appendChild(refresh);
+            await refreshRecoveryStatus();
+        } catch (error) {
+            if (alive()) {
+                status.textContent = `${error.message} Your decision ID is retained for a safe repeat.`;
+                priorDisabled.forEach((disabled, node) => { node.disabled = disabled; });
+                content.dispatchEvent(new Event('input', {bubbles: true}));
+            }
+        } finally { busy = false; if (alive()) close.disabled = false; }
+    };
+    const profile = value => `${value?.name || 'Disconnected seat'} · ${value?.provider ? value.provider + ' / ' : ''}${value?.model || 'Provider default'}${value?.reasoning ? ' · ' + value.reasoning : ''}`;
+    try {
+        const view = await restartRequest(sessionId, 'participant-recovery');
+        if (!alive()) return;
+        title.textContent = `Recover ${view.role || 'participant'}`;
+        status.textContent = `Current assignment: ${profile(view.current)}. Earlier accepted results, source and rules stay in this review.`;
+        if (view.pending) {
+            const note = document.createElement('p');
+            note.textContent = view.pending.status === 'interrupted_pending_recovery' ?
+                'The server restarted during preparation. Nothing will restart until you resume this saved decision.' :
+                `Replacement status: ${view.pending.status.replaceAll('_', ' ')}.`;
+            const resume = document.createElement('button');
+            resume.textContent = view.pending.status === 'interrupted_pending_recovery' ? 'Resume saved replacement' : 'Check saved replacement';
+            resume.onclick = () => perform('replace-participant', view.pending.decision);
+            content.append(note, resume);
+            if (view.pending.can_repair && view.pending.preparation_attempt) {
+                const label = document.createElement('label');
+                label.className = 'session-participant-consent';
+                const consent = document.createElement('input');
+                consent.type = 'checkbox';
+                label.append(consent, document.createTextNode('End only this failed prepared context and create a fresh one. The selected profile-source seat keeps running.'));
+                label.hidden = !view.pending.worker_alive;
+                const repair = document.createElement('button');
+                repair.textContent = 'Repair failed preparation';
+                repair.disabled = !!view.pending.worker_alive;
+                consent.onchange = () => { repair.disabled = !!view.pending.worker_alive && !consent.checked; };
+                repair.onclick = () => perform('repair-replacement', {request_id: view.pending.request_id,
+                    preparation_attempt: view.pending.preparation_attempt,
+                    ...(view.pending.worker_alive ? {confirmation: {confirm: true, launch_attempt: view.pending.preparation_attempt}} : {})});
+                content.append(label, repair);
+            }
+            if (!view.eligible) return;
+        }
+        if (!view.eligible) { status.textContent += ' This turn has no eligible replacement or skip checkpoint.'; return; }
+        const fields = document.createElement('div');
+        fields.className = 'session-participant-fields';
+        const label = document.createElement('label');
+        label.textContent = 'Fresh replacement profile'; label.htmlFor = 'session-replacement-profile';
+        const select = document.createElement('select');
+        select.id = label.htmlFor;
+        select.add(new Option('Choose a currently owned profile…', ''));
+        view.choices.forEach(choice => select.add(new Option(profile(choice), choice.identity_id)));
+        const preview = document.createElement('p');
+        preview.className = 'session-participant-preview';
+        preview.textContent = 'A fresh instance receives the approved source and accepted results. The selected profile-source seat stays running.';
+        const reasonLabel = document.createElement('label');
+        reasonLabel.textContent = 'Reason for this recovery decision'; reasonLabel.htmlFor = 'session-participant-reason';
+        const reason = document.createElement('textarea');
+        reason.id = reasonLabel.htmlFor; reason.rows = 2; reason.maxLength = 256;
+        reason.placeholder = 'e.g. The reviewer disconnected; continue with a fresh participant.';
+        const replaceLabel = document.createElement('label');
+        replaceLabel.className = 'session-participant-consent';
+        const replaceConsent = document.createElement('input'); replaceConsent.type = 'checkbox';
+        replaceLabel.append(replaceConsent, document.createTextNode(`Replace this and future ${view.role} assignments. Keep earlier accepted contributions.`));
+        const replace = document.createElement('button'); replace.textContent = 'Replace participant'; replace.disabled = true;
+        const skipLabel = document.createElement('label'); skipLabel.className = 'session-participant-consent';
+        const skipConsent = document.createElement('input'); skipConsent.type = 'checkbox';
+        skipLabel.append(skipConsent, document.createTextNode('Skip only this contribution and label it missing in the transcript, synthesis and export.'));
+        const skip = document.createElement('button'); skip.textContent = 'Skip contribution'; skip.disabled = true;
+        skipLabel.hidden = !view.can_skip;
+        skip.hidden = !view.can_skip;
+        const update = () => {
+            const choice = view.choices.find(item => item.identity_id === select.value);
+            replace.disabled = !choice || !replaceConsent.checked;
+            skip.disabled = !view.can_skip || !skipConsent.checked || !reason.value.trim();
+            preview.textContent = choice ? `New ${view.role}: ${profile(choice)}. A fresh context will replace current and future assignments for this role. The source seat remains running.` :
+                'Choose a profile to preview its model and reasoning before replacing this participant.';
+        };
+        fields.addEventListener('input', update);
+        fields.addEventListener('change', update);
+        const decision = action => {
+            const choice = view.choices.find(item => item.identity_id === select.value);
+            const body = {checkpoint_id: view.checkpoint_id, attempt_id: view.attempt_id, reason: reason.value};
+            if (action === 'replace-participant') Object.assign(body, {target_identity_id: choice.identity_id, target_fingerprint: choice.fingerprint});
+            else body.confirm_skip = true;
+            const key = JSON.stringify([sessionId, action, body]);
+            if (!participantRecoveryIntents.has(key)) participantRecoveryIntents.set(key, crypto.randomUUID().replaceAll('-', ''));
+            body.request_id = participantRecoveryIntents.get(key);
+            return body;
+        };
+        replace.onclick = () => perform('replace-participant', decision('replace-participant'));
+        skip.onclick = () => perform('skip-participant', decision('skip-participant'));
+        fields.append(label, select, preview, reasonLabel, reason, replaceLabel, replace, skipLabel, skip);
+        content.appendChild(fields);
+        content.addEventListener('input', update);
+        select.focus();
+    } catch (error) { if (alive()) status.textContent = error.message; }
+}
+
 function renderSessionTurnControls(bar) {
     let panel = document.getElementById('session-turn-controls');
     if (!panel) {
@@ -1012,8 +1193,22 @@ function renderSessionTurnControls(bar) {
     }
     const saved = document.getElementById('session-saved-controls');
     const selected = document.getElementById('session-cli-controls');
-    if ((saved && !saved.hidden) || (selected && !selected.hidden)) { panel.hidden = true; return; }
+    const participant = document.getElementById('session-participant-controls');
+    if ((saved && !saved.hidden) || (selected && !selected.hidden) || (participant && !participant.hidden)) { panel.hidden = true; return; }
     const s = activeSession;
+    if (s?.pending_replacement && !s.stop_id) {
+        panel.hidden = false;
+        const key = `replacement:${s.id}:${s.pending_replacement.status}`;
+        if (panel.dataset.key !== key) {
+            panel.dataset.key = key;
+            const title = document.createElement('strong'); title.textContent = 'Replacement preparation';
+            const status = document.createElement('p'); status.textContent = 'Your saved choice and earlier results are retained. Check preparation or explicitly resume after a restart.';
+            const open = document.createElement('button'); open.textContent = 'Check replacement';
+            open.onclick = () => showParticipantRecovery(s.id);
+            panel.replaceChildren(title, status, open);
+        }
+        return;
+    }
     if (s?.stop_id) {
         renderStopControls(panel, s);
         return;
@@ -1147,7 +1342,8 @@ function renderRestartControls(bar) {
     }
     const saved = document.getElementById('session-saved-controls');
     const selected = document.getElementById('session-cli-controls');
-    if ((saved && !saved.hidden) || (selected && !selected.hidden)) { panel.hidden = true; return; }
+    const participant = document.getElementById('session-participant-controls');
+    if ((saved && !saved.hidden) || (selected && !selected.hidden) || (participant && !participant.hidden)) { panel.hidden = true; return; }
     const s = activeSession;
     const prepared = s?.state === 'prepared' && !s.stop_id;
     panel.hidden = !s || (!s.stop_id && !prepared) || !!s.legacy;
@@ -1996,6 +2192,7 @@ Hub.on('channel_renamed', function (event) {
 // ---------------------------------------------------------------------------
 
 Store.watch('activeChannel', function (newChannel) {
+    closeParticipantRecovery(false);
     closeSavedSessionResults();
     closeCliMessageRecovery(false);
     activeSession = activeSessionsByChannel[newChannel] || null;

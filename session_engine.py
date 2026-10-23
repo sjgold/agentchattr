@@ -1091,6 +1091,10 @@ class SessionEngine:
         from participant_recovery import repair_replacement
         return repair_replacement(self, session_id, decision)
 
+    def skip_participant(self, session_id, decision, *, submitted_by='operator'):
+        from participant_skip import skip_participant
+        return skip_participant(self, session_id, decision, submitted_by=submitted_by)
+
     def cli_message_candidate(self, session_id, message_id):
         from cli_result_recovery import cli_message_candidate
         return cli_message_candidate(self, session_id, message_id)
@@ -1131,6 +1135,8 @@ class SessionEngine:
     def _project_session(self, session_id, *, dispatch=True):
         from turn_events import IDENTITY_FIELDS
         session = self._store.get(session_id)
+        from participant_skip import project_skips, footer
+        project_skips(self, session)
         for context in session.get('continuation_context', []):
             if context.get('projected_message_id') is not None:
                 continue
@@ -1148,14 +1154,19 @@ class SessionEngine:
                 metadata['submitted_by'] = event['submitted_by']
             if event.get('is_output') and session['state'] == 'complete':
                 metadata['session_output'] = True
+                if session.get('skipped_turns'):
+                    from review_brief import missing_contributions
+                    metadata['missing_contributions'] = missing_contributions(session)
             message = self._messages.add_once('session-event:' + event['event_id'], event['sender'],
-                event['content'], msg_type='session_result' if event['kind'] == 'final' else 'session_question',
+                event['content'] + (footer(session) if metadata.get('session_output') else ''),
+                msg_type='session_result' if event['kind'] == 'final' else 'session_question',
                 channel=session['channel'], metadata=metadata)
             self._store.link_event_projection(session_id, event['event_id'], message['id'])
         session = self._store.get(session_id)
         if session['state'] == 'complete':
             self._messages.add_once('session-end:' + session['run_id'], 'system',
-                session['template_name'] + ' complete.', msg_type='session_end', channel=session['channel'],
+                session['template_name'] + (' complete, with missing output.' if session.get('missing_output') else ' complete.'),
+                msg_type='session_end', channel=session['channel'],
                 metadata={'session_id': session_id, 'output_message_id': session.get('output_message_id')})
         elif dispatch and session['state'] == 'active' and not session.get('active_invocation'):
             self.emit_current_phase_banner(session)
@@ -1172,6 +1183,9 @@ class SessionEngine:
         """Trigger the agent whose turn it is."""
         if session.get('completion_protocol') != 1:
             return False
+        if retry is None:
+            from participant_skip import successor
+            retry = successor(session)
         tmpl = self._template(session)
         if not tmpl:
             return

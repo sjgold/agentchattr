@@ -66,11 +66,14 @@ def recovery_options(engine, session_id):
         binding = session.get('participant_bindings', {}).get(role, {})
         request = session.get('replacement_requests', {}).get((pending or {}).get('request_id'), {})
         context = (pending or {}).get('context') or {}
-        return {'session_id': session_id, 'eligible': eligible, 'role': role,
+        return {'session_id': session_id, 'eligible': eligible, 'can_skip': eligible and not pending, 'role': role,
                 'checkpoint_id': checkpoint.get('checkpoint_id'), 'attempt_id': invocation.get('attempt_id'),
                 'current': _summary(binding.get('launch_provenance'), binding.get('identity_id'), session['cast'].get(role)),
                 'choices': choices, 'pending': ({'request_id': pending['request_id'], 'status': pending['status'],
                     'preparation_attempt': context.get('launch_attempt'),
+                    'worker_alive': context.get('worker_alive'),
+                    'decision': {key: deepcopy(request['intent'][key]) for key in
+                        ('request_id', 'checkpoint_id', 'attempt_id', 'target_identity_id', 'target_fingerprint', 'reason')},
                     'can_repair': pending['status'] == 'preparation_failed' and not request.get('bound_context')
                                   and not _brief_exists(engine, pending['new_brief_id'])} if pending else None)}
 

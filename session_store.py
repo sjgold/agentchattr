@@ -840,6 +840,19 @@ class SessionStore:
         else:
             session['state'] = 'complete'
 
+    def link_skip_projection(self, session_id, projection_id, message_id):
+        from turn_events import EventConflict, EventValidationError
+        if type(message_id) is not int or message_id < 0:
+            raise EventValidationError('Projected message ID must be a nonnegative integer.')
+        def link(session):
+            record = next((item for item in session.get('skipped_turns', []) if item['projection_id'] == projection_id), None)
+            if record is None or record['projected_message_id'] not in (None, message_id):
+                raise EventConflict('Skipped-turn projection does not match.')
+            record['projected_message_id'] = message_id
+            if session.get('missing_output') and record == session['skipped_turns'][-1]:
+                session['output_message_id'] = message_id
+        return self._event_update(session_id, link, skip_if_unchanged=True)
+
     def link_event_projection(self, session_id, event_id, message_id):
         from turn_events import EventConflict
         def link(session):

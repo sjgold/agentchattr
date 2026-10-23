@@ -3057,6 +3057,62 @@ async def session_recovery_status(session_id: int):
         return _restart_error(exc)
 
 
+@app.get('/api/sessions/{session_id}/participant-recovery')
+async def get_participant_recovery(session_id: int):
+    from turn_events import EventConflict, EventValidationError
+    try:
+        if session_engine is None:
+            return JSONResponse({'error': 'Participant recovery is unavailable.'}, status_code=503)
+        value = await asyncio.to_thread(session_engine.participant_recovery_options, session_id)
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, OSError) as exc:
+        return _session_event_error(exc)
+
+
+async def _participant_recovery_action(session_id, request, action, required, optional=()):
+    from api_seats import SeatError
+    from turn_events import EventConflict, EventValidationError
+    try:
+        raw = await request.body()
+        if len(raw) > 8192:
+            raise EventValidationError('Participant recovery requires bounded decision metadata.')
+        def unique(pairs):
+            value = dict(pairs)
+            if len(value) != len(pairs):
+                raise ValueError('Duplicate decision fields.')
+            return value
+        try:
+            body = json.loads(raw, object_pairs_hook=unique)
+        except (ValueError, UnicodeError):
+            raise EventValidationError('Participant recovery requires valid unique-key JSON.') from None
+        if not isinstance(body, dict) or not required <= body.keys() or body.keys() - required - set(optional):
+            raise EventValidationError('Use only the displayed checkpoint and explicit recovery decision.')
+        if session_engine is None:
+            return JSONResponse({'error': 'Participant recovery is unavailable.'}, status_code=503)
+        value = await asyncio.to_thread(getattr(session_engine, action), session_id, body)
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (EventConflict, EventValidationError, SeatError, OSError) as exc:
+        return _session_event_error(exc)
+
+
+@app.post('/api/sessions/{session_id}/replace-participant')
+async def replace_session_participant(session_id: int, request: Request):
+    return await _participant_recovery_action(session_id, request, 'replace_participant',
+        {'request_id', 'checkpoint_id', 'attempt_id', 'target_identity_id', 'target_fingerprint'}, {'reason'})
+
+
+@app.post('/api/sessions/{session_id}/repair-replacement')
+async def repair_session_replacement(session_id: int, request: Request):
+    return await _participant_recovery_action(session_id, request, 'repair_replacement',
+        {'request_id', 'preparation_attempt'}, {'confirmation'})
+
+
+@app.post('/api/sessions/{session_id}/skip-participant')
+async def skip_session_participant(session_id: int, request: Request):
+    return await _participant_recovery_action(session_id, request, 'skip_participant',
+        {'request_id', 'checkpoint_id', 'attempt_id', 'reason', 'confirm_skip'})
+
+
 @app.get('/api/sessions/{session_id}/cli-message-candidate/{message_id}')
 async def get_cli_message_candidate(session_id: int, message_id: int):
     from turn_events import EventConflict, EventValidationError
