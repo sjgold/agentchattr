@@ -2852,7 +2852,10 @@ async def get_review_brief(brief_id: str, request: Request):
     instance = _resolve_authenticated_agent(request)
     operator = bool(session_token and request.headers.get('x-session-token') == session_token)
     try:
-        value = await asyncio.to_thread(session_store.briefs.get, brief_id, instance, operator=operator and instance is None)
+        if instance is not None:
+            value = await asyncio.to_thread(session_store.briefs.get_delivery, brief_id, instance)
+        else:
+            value = await asyncio.to_thread(session_store.briefs.get, brief_id, operator=operator)
         return JSONResponse(value, headers={'Cache-Control': 'no-store'})
     except BriefAccessError:
         return JSONResponse({'error': 'Review brief is scoped to another authenticated seat.'}, status_code=403)

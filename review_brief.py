@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import secrets
 import time
 import uuid
 
@@ -133,28 +134,66 @@ class BriefStore:
         if hashlib.sha256(source).hexdigest() != value['input_revision']:
             raise BriefError('Review source revision does not match its saved text.')
         _text(value['goal'], MAX_BRIEF_BYTES, 'Task brief')
+        if '_result_seal' in value:
+            private = value['_result_seal']
+            if (not isinstance(private, dict) or set(private) != {'version', 'seal_secret', 'owner'}
+                    or type(private['version']) is not int or private['version'] != 1
+                    or not isinstance(private['seal_secret'], str)
+                    or not re.fullmatch(r'[0-9a-f]{64}', private['seal_secret'])):
+                raise BriefError('Private result authority is malformed.')
+            self._result_owner(private['owner'], value)
         return value
 
-    def put(self, envelope):
+    @staticmethod
+    def _result_owner(owner, envelope):
+        fields = {'adapter', 'dispatch_id', 'seat_identity_id', 'launch_attempt', 'launch_nonce', 'fingerprint'}
+        if (not isinstance(owner, dict) or set(owner) != fields
+                or owner['adapter'] != 'openai-compatible'
+                or type(envelope.get('completion_protocol')) is not int or envelope['completion_protocol'] != 1
+                or owner['seat_identity_id'] != envelope.get('expected_identity_id')):
+            raise BriefError('Result authority requires the exact managed API participant.')
+        for field in fields - {'adapter'}:
+            size = 64 if field == 'fingerprint' else 32
+            if not isinstance(owner[field], str) or not re.fullmatch('[0-9a-f]{' + str(size) + '}', owner[field]):
+                raise BriefError('Result authority requires exact immutable launch references.')
+        return deepcopy(owner)
+
+    @staticmethod
+    def _public(value):
+        result = deepcopy(value)
+        result.pop('_result_seal', None)
+        return result
+
+    def put(self, envelope, *, result_owner=None):
+        if not isinstance(envelope, dict) or set(envelope) & {'_result_seal', 'seal_secret', 'result_owner'}:
+            raise BriefError('Public brief input cannot provide private result authority.')
         path = self._path(envelope.get('brief_id'))
         # Roundtrip before any persistence; no mutable aliases or non-JSON data.
         value = json.loads(json.dumps(envelope, allow_nan=False))
         self._validate(value, value['brief_id'])
+        owner = self._result_owner(result_owner, value) if result_owner is not None else None
         with startup_lock(path.with_suffix('.lock'), time.monotonic() + 10):
             if path.exists():
-                if json.loads(path.read_text(encoding='utf-8')) != value:
+                prior = self._load(value['brief_id'])
+                if (self._public(prior) != value or (owner is not None
+                        and prior.get('_result_seal', {}).get('owner') != owner)):
                     raise BriefError('Review briefs are immutable; create a new attempt instead.')
             else:
+                if owner is not None:
+                    value['_result_seal'] = {'version': 1, 'seal_secret': secrets.token_hex(32), 'owner': owner}
                 atomic_json(path, value)
         return value['brief_id']
 
-    def get(self, brief_id, instance=None, *, operator=False):
+    def _load(self, brief_id):
         path = self._path(brief_id)
         try:
             value = json.loads(path.read_text(encoding='utf-8'))
         except (OSError, ValueError):
             raise BriefError('Review brief is unavailable; no chat-only fallback is permitted.') from None
-        self._validate(value, brief_id)
+        return self._validate(value, brief_id)
+
+    @staticmethod
+    def _authorize(value, instance, operator):
         if not operator:
             if not isinstance(instance, dict):
                 raise BriefAccessError('An authenticated seat is required for this review brief.')
@@ -163,4 +202,32 @@ class BriefStore:
                 raise BriefAccessError('This human-participant brief requires operator authentication.')
             if (identity and identity != instance.get('identity_id')) or (not identity and value['expected_agent'] != instance.get('name')):
                 raise BriefAccessError('This review brief belongs to another seat identity.')
-        return deepcopy(value)
+
+    def get(self, brief_id, instance=None, *, operator=False):
+        value = self._load(brief_id)
+        self._authorize(value, instance, operator)
+        return self._public(value)
+
+    def get_delivery(self, brief_id, instance):
+        value = self._load(brief_id)
+        self._authorize(value, instance, False)
+        result = self._public(value)
+        if '_result_seal' in value:
+            private = value['_result_seal']
+            result.update(seal_secret=private['seal_secret'], result_owner=deepcopy(private['owner']))
+        return result
+
+    def verify_saved_result(self, record):
+        from result_outbox import verify_result, OutboxError
+        try:
+            value = self._load(record['payload']['brief_id'])
+            private = value['_result_seal']
+            payload = verify_result(record, private['seal_secret'])
+            if (any(payload[field] != value[field] for field in (
+                    'session_id', 'brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision'))
+                    or any(payload[field] != private['owner'][field] for field in (
+                        'dispatch_id', 'seat_identity_id', 'launch_attempt', 'launch_nonce', 'fingerprint'))):
+                raise BriefError('Saved result does not match its immutable brief and launch.')
+            return payload
+        except (KeyError, TypeError, OutboxError):
+            raise BriefError('Saved result has no valid private brief authority.') from None

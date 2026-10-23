@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 (#1-12 and #16 published/closed; #13 contract ratified, core outbox red tests next)
+**Updated:** 2026-10-23 (#1-12 and #16 published/closed; #13 storage/private-brief foundation654 tests pass; delivery remains unwired)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -208,10 +208,13 @@
 
 ## Ticket #13 planning
 
-- Branch codex/ticket-13-api-result-outbox starts from published closure2bdbc777b5ab8e254b36e54cd784a469d02720b4. Issue13 is open and its blocker12 is closed;9 is also complete. TICKET-13-PLAN.md is a proposed contract with explicit open choices, not settled implementation.
+- Branch codex/ticket-13-api-result-outbox starts from published closure2bdbc777b5ab8e254b36e54cd784a469d02720b4. Issue13 is open and its blocker12 is closed;9 is also complete. TICKET-13-PLAN.md records the ratified contract and frozen bounded interfaces.
 - Scope: atomic saved API review result before posting, exact stable result/seat/run/turn/attempt/input identities, idempotent recovery after post/ack failure or restart without another model call, and durable Stop/Retry/correction fences. No CLI selected-message recovery, live providers or native credential edits.
-- Same AGY critique approved managed frozen API scope, HMAC seal using a private per-brief secret on the existing authenticated fetch (no extra ticket endpoint/store), stable result=dispatch=event IDs, explicit cold Deliver saved answer,3 in-process retries and separate proven transport settlement. Root verified shared BriefStore.get/MCP call paths and requested refinements: default key redaction/exact API-only delivery, no model/export leakage, per-seat transport hold rather than global unrelated-seat gating, exact supervisor+model end proof, and read-only duplicate acknowledgement after a later fence. All five refinements were ratified in the same-AGY artifact; no implementation or cryptographic recovery pass is claimed.
-- No13 production implementation or red tests yet. Codex claimed implementation-owner for13 (claim087f6a49-75de-4664-bdab-9485b97a4115);9 role relinquished after verified publication/closure. Same AGY retains independent-reviewer. Core result_outbox interface/payload/HMAC/ack contract is frozen in TICKET-13-PLAN.md. Next: helper observed-red storage tranche, then minimal root implementation; brief isolation and engine admission remain separate later tranches.
+- Same AGY critique approved managed frozen API scope, HMAC seal using a private per-brief secret on the existing authenticated fetch (no extra ticket endpoint/store), stable result=dispatch=event IDs, explicit cold Deliver saved answer,3 in-process retries and separate proven transport settlement. Root verified shared BriefStore.get/MCP call paths and requested refinements: default key redaction/exact API-only delivery, no model/export leakage, per-seat transport hold rather than global unrelated-seat gating, exact supervisor+model end proof, and read-only duplicate acknowledgement after a later fence. All five refinements were ratified in the same-AGY artifact. Storage/private-authority component checks now pass; no end-to-end recovery pass is claimed.
+- Codex claimed implementation-owner for13 (claim087f6a49-75de-4664-bdab-9485b97a4115);9 role relinquished after verified publication/closure. Same AGY retains independent-reviewer. Core result_outbox and private BriefStore interfaces are frozen in TICKET-13-PLAN.md.
+- Helper storage18 tests pass after missing-module initial3/3red and extended16pass/2errors. Root reproduced peer-locked Windows Path.resolve returning equivalent extended prefix and normalized spelling while native symlink escapes remain rejected. Read-only missing result/ack returnsNone; ack writes still require an exact existing result. Independent HMAC/UTF8, snapshot binding, real atomic-replace failure,6 threads and3 subprocesses pass, no native adoption/provider claim.
+- Root private BriefStore6 tests pass after observed missing-interface and HTTP-redaction red. Private key generation/persistence is stable, generic/MCP/operator views redact it, exact authenticated HTTP owner receives it, model prompt fields exclude it, and saved record verification binds original brief/launch references without fabricating a live principal. Engine does not yet issue result_owner for managed turns, so no generated result is yet persisted by a worker.
+- Full654 tests OK/four expected skips53.118s; focused storage18 and private+prior endpoint8 pass; diff whitespace clean. Next: bounded foundation review and managed launch/engine key issuance tests, then worker save-before-post, recovery ingress/transport and actual integration/UI tranches. No13 publication/final review/recovery acceptance.
 
 ## Ticket execution and review
 

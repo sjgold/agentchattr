@@ -18,7 +18,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #12 stalled turns/retry | Published and closed | Publication8297bc1, same AGY PASS |
 | #16 | Published and closed | Publication08fcee2, final same-AGY PASS including hidden windows |
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
-| #13 | Contract ratified | Frozen core storage interface; helper observed-red tests next |
+| #13 | Foundation implemented/tested |654 full/four skips; managed issuance/delivery/recovery next |
 | #14-15, #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -43,3 +43,5 @@ Ticket9 source published on origin/main2047834e7092553be2bff56e32bc3d409a400a1c;
 Ticket13 proposed plan written on codex/ticket-13-api-result-outbox from closure2bdbc77. Outbox authority after bearer revocation and separate transport settlement remain OPEN for same-AGY critique; no implementation/tests yet. Implementation-owner moved from completed9 to13.
 
 Ticket13 same-AGY HMAC-in-private-brief mechanism and five source-grounded refinements ratified. Core ResultOutbox/payload/HMAC/ack interfaces frozen; helper storage red tranche next. No production implementation yet.
+
+Ticket13 bounded foundation: sealed ResultOutbox18 and private BriefStore6 tests pass, full654/four skips53.118s. Initial missing module/interface red, real Windows extended-prefix concurrency failure and HTTP private-delivery red retained. No worker outbox/delivery/recovery admission/UI wired yet. SameAGY bounded source review and managed-launch issuance tests next; no final13 acceptance.

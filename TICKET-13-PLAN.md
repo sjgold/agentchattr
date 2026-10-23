@@ -1,6 +1,6 @@
 # Ticket #13: recover saved API results without regeneration
 
-State: same-AGY contract and all five source-grounded refinements ratified. Core storage interfaces frozen below; observed-red tests next. No production implementation yet.
+State: same-AGY contract and all five source-grounded refinements ratified. Core storage and private-brief interfaces frozen below; bounded storage/private-authority implementation and unit checks pass. Managed launch issuance, worker persistence/delivery, recovery admission and UI remain unwired.
 
 Base: published main2bdbc777b5ab8e254b36e54cd784a469d02720b4. Branch: codex/ticket-13-api-result-outbox. Scope authority: issue13, specificationv1.7 SC-5/AT-21c, standing autonomous execution policy in STATUS.md. Same Antigravity independent reviewer remains assigned.
 
@@ -111,16 +111,34 @@ seal_secret is64 lowercase hex encoding32 random bytes. HMAC key is bytes.fromhe
 
 ResultOutbox validates existing runtime config through runtime_ownership._validate and accepts only managed openai-compatible snapshots. save additionally binds launch_attempt/nonce/fingerprint to that snapshot. This is structural storage validation, never runtime adoption or result authenticity by itself. get/list perform schema and launch checks; authentication is explicit verify_result with the trusted brief key. Legacy/unmanaged/CLI paths fail closed without mutation.
 
-Result file is runtime_path/outbox/<result_id>.json. Separate acknowledgement at runtime_path/outbox_ack/<result_id>.json contains exactly version, result_id, accepted_event_id and acknowledged_at (finite positive timestamp). IDs must match an existing valid result; repeat ack retains the original ack bytes/time. One shared per-result kernel lock serializes save/ack. Use existing atomic_json; failed writes preserve prior immutable result/ack and do not leak a failed record into a later save. Identical saves return original bytes; changed payload under the same ID raises OutboxConflict. Read/list do not create files. Reject invalid IDs/path escape/symlink targets; temporary/lock files are not recoverable results and remain ignored/preserved.
+Result file is runtime_path/outbox/<result_id>.json. Separate acknowledgement at runtime_path/outbox_ack/<result_id>.json contains exactly version, result_id, accepted_event_id and acknowledged_at (finite positive timestamp). Acknowledgement writes require an existing valid result; repeat ack retains the original ack bytes/time. Read-only get_ack(validID) returnsNone when both result and ack are absent; orphan/malformed ack fails closed. One shared per-result kernel lock serializes save/ack. Use existing atomic_json; failed writes preserve prior immutable result/ack and do not leak a failed record into a later save. Identical saves return original bytes; changed payload under the same ID raises OutboxConflict. Read/list do not create files. Reject invalid IDs/path escape/symlink targets; temporary/lock files are not recoverable results and remain ignored/preserved.
 
 No arbitrary directory scan or native process is needed for tranche1. Use structurally valid isolated ownership snapshots; no fake OS ownership claim. Test helper owns only tests/test_result_outbox.py. Root writes private brief delivery and later engine/HTTP tests separately after their own frozen interface tranche.
 
 ## Implementation sequence
 
-- [ ] Helper captures missing-module/core-storage red, then extends bounded atomicity/HMAC/schema/identity/path/concurrency tests. Root waits for early red before creating result_outbox.py.
-- [ ] Root implements minimal storage/sealing against that tranche, runs focused and appropriate regressions; no delivery/recovery claim yet.
+- [x] Helper captured missing-module/core-storage red, then18 bounded atomicity/HMAC/schema/identity/path/concurrency tests pass. Root waits for early red before creating result_outbox.py.
+- [x] Root implements minimal storage/sealing:18 tests pass, including actual6 threads/3 subprocesses and native symlink refusal. No delivery/recovery claim yet.
 - [ ] Root freezes BriefStore key issuance/redaction/HTTP-only delivery interface, captures red leak/identity/immutable retry tests, implements and checks prompt/child/outbox exclusion.
 - [ ] Freeze engine recovery/discovery and operator routes: exact sealed result provenance, duplicate acknowledgement versus pending stale409, transport settlement only with original supervisor+exact model end proof. Helper authors bounded red cases; root owns authority/race tests.
 - [ ] Wire worker save-before-first-post and durable ack, bounded3 delivery attempts and explicit cold recovery; generation/persistence failures never claim a saved answer. No automatic cold model invocation or result admission.
 - [ ] Actual isolated fake-provider/worker integration exercises post outage, lost ack, explicit wrapper/server restart with revoked original bearer, real end proof/held transport, Stop/Retry/corrected source and peer isolation. Complete retained-handle cleanup on failure. Browser explicit saved-answer delivery/preview/refresh distinct from Retry.
 - [ ] Freeze final target, full suite/appropriate prior tools/static checks and same-AGY independent reproduction/recheck. Publish/close only after PASS under standing authorization.
+
+
+## Frozen private-brief interface, root tranche2
+
+BriefStore.put(envelope, *, result_owner=None) may seal only when the internal result_owner exactly contains adapter='openai-compatible', dispatch_id, seat_identity_id, launch_attempt, launch_nonce and fingerprint. IDs/fingerprint follow tranche1 format; seat_identity_id must equal expected_identity_id, and completion_protocol must be literal int1. The engine derives this internal owner from the actual managed launch's runtime ownership, not from request-provided IDs or the distinct launch-provenance fingerprint. Generic plain/legacy/CLI/human briefs get no private key. Incoming public envelopes cannot set reserved seal fields.
+
+Persist private _result_seal={version:1, seal_secret:64hex, owner:result_owner} once, under the existing brief lock. Identical put preserves exact file bytes and key; changed owner/public context conflicts. Never add a key to an existing unsealed legacy brief by replay. Default get (including operator=True) strips private metadata. A public-envelope replay with no result_owner cannot downgrade an already sealed record.
+
+BriefStore.get_delivery(brief_id, instance) authorizes the exact expected identity and returns the normal envelope plus seal_secret/result_owner only when the private managed API metadata exists. This is used only by the existing authenticated HTTP handler for an actual resolved bearer; operator-only reads and MCP keep calling default get. The key is not copied into model messages or child invocation packets.
+
+BriefStore.verify_saved_result(record) is an internal server method: validate strict sealed record, read its private brief key, verify HMAC, compare session/brief/run/turn/attempt/input identities plus exact owner dispatch/seat/launch/nonce/fingerprint, and return only a verified payload. It does not admit, check live principal, settle transport or return the key. Missing/private malformed/legacy records fail closed. Recovery engine later checks current authority/fences under its lock. These methods alone do not grant process control.
+
+
+## Foundation evidence, not Ticket13 acceptance
+
+- Helper initial3/3 errors0.005s were missing result_outbox before implementation. Extended18 initially16 pass/2 errors: true concurrent peer-locked Windows resolve returned equivalent extended path spelling and triggered a false redirect guard; get_ack absent-result query semantics needed clarification. Root reproduced the exact extended-prefix mismatch, normalized equivalent Windows/UNC path spellings without accepting symlink escapes, and kept absence read-only while requiring existing results for ack writes. Unchanged18 PASS1.144s. All owned child processes bounded/waited; no provider/native ownership claim.
+- Root private-brief initial3 and expanded4 errors before implementation (missing put keyword/get_delivery). Private key/stable immutable retries, exact matching identity, legacy non-upgrade, sealed saved-result scope verification pass. Actual authenticated HTTP test then failed because handler used redacted get; after exact-owner get_delivery wiring,6 private tests plus2 prior endpoint tests PASS0.450s. MCP and operator reads stay redacted; brief_messages excludes the key. Production engine does not issue result_owner yet, so no current managed turn is advertised as saved/recoverable.
+- Full654 tests OK/four expected platform skips53.118s; diff whitespace clean. No actual outbox save-before-post/restart delivery, provenance admission, transport settlement or browser recovery pass claimed. Those remain next tranches.
