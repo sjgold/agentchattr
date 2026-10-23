@@ -247,7 +247,7 @@ Give the synthesizer the findings and their quote-check flags. Instruct it: pres
 
 Show and export the original serious findings and quote-check flags alongside the synthesis through the shared artifact feature, so the user can inspect omissions or disagreement. No every-peer-must-dispute rule, derived APPROVED/INCONCLUSIVE/CHANGES NEEDED status, automatic synthesis repair, or separate verdict engine. The coordinator can provide a recommendation in ordinary prose. Actual rounds remain available through the existing planned transcript export.
 
-This replaces the p2arts of Tribunal the user wants in daily use, not its entire feature set. Existing Tribunal records remain untouched.
+This replaces the parts of Tribunal the user wants in daily use, not its entire feature set. Existing Tribunal records remain untouched.
 
 ## 9. Implementation boundaries
 

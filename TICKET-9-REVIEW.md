@@ -1,6 +1,6 @@
 # Ticket #9 final review pack
 
-State: builder verification complete; final independent review pending. No publication or issue closure yet.
+State: final same-AGY independent PASS received for the frozen target. Post-merge publication checks pending; see REVIEW-GEMINI-TICKET-9.md.
 
 Base: `139e2dee00b2d803fbe8e31f5bd680d7f16df728` (published main).
 Frozen target: `7777f8173ee9109e8c78120b57ec5f9ec55c5237`. Later review-pin changes are documentation only.

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 (#1-8, #10-12 and #16 published/closed; #9 bounded crash matrix passes, final frozen independent review next)
+**Updated:** 2026-10-23 (#1-8, #10-12 and #16 published/closed; #9 final independent PASS, publication checks in progress)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -201,7 +201,8 @@
 - Unchanged long-downdnj0w5b0 PASS: actual downtime22005.117ms; both true workers, held model and native client individually observed exited before reboot, while provider body remained withheld. Cold startup/3 reconciliations preserve original invocation/timing/source/prior accepted event and queue envelope/consumer, with interrupted/ineligible runs and no invented Stop. Zero automatic managed spawns,2 provider calls,1 CLI injection. Cleanup2 servers/2 workers/model/native client exits, unresolved[]. All three matrix cases passed individually; combined all mode is unverified.
 - Usage RESTART-RECOVERY.md and final reproduction pack TICKET-9-REVIEW.md record scope, failures and platform limits. Both generated server tools compile-only, sessions/chat JS syntax and diff whitespace pass. Visibility endpoint serialization extension passes focused3 tests1.016s after the full630 run; production source unchanged by that test extension.
 - Frozen integrated source target7777f8173ee9109e8c78120b57ec5f9ec55c5237 (base139e2de) is pinned in TICKET-9-REVIEW.md; subsequent pin changes are documentation only.
-- Next owner: same AGY performs final independent review/reproduction of the integrated frozen target, with Codex available for findings and substantive rechecks. #9 remains unpublished and has no final PASS yet; bounded checkpoint passes do not close it. Codex holds implementation-owner responsibility; AGY retains independent-reviewer.
+- Final same-AGY PASS received for7777f81/reviewed pinf3c5966: independent630 tests OK/four expected skips52.504s, focused3/4/11 pass, all Ticket9 real process/crash tools and all10 prior integrations PASS. Independent long downtime19.841s observed every worker/model/native client ended before reboot; all cleanup unresolved lists empty. Review report precision corrections requested, with no source finding or changed verdict. Receipt REVIEW-GEMINI-TICKET-9.md. The separately flagged spec spelling is corrected in a documentation-only receipt commit.
+- Next owner: Codex fast-forward merges, runs post-merge checks, publishes and closes9 under standing authorization, then begins13 saved-answer/outbox planning with the same AGY reviewer. No publication/closure claimed until remote verification. Codex holds implementation-owner responsibility; AGY retains independent-reviewer.
 
 ## Ticket execution and review
 
