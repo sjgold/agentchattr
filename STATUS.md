@@ -166,6 +166,12 @@
 - Seth asked that terminal windows come up hidden. Managed Windows CLI now adds STARTUPINFO STARTF_USESHOWWINDOW/SW_HIDE while retaining CREATE_NEW_CONSOLE/native console input. API workers/model children already use CREATE_NO_WINDOW. Explicit manual launchers/global terminal settings unchanged.
 - Unit regression observed missing startupinfo red, then green. Full494 tests OK/four expected skips25.649s. Actual CLI integration verified real console existence and invisible window state for initial/restarted clients, real input isolation, Stop/peer survival and exact child exit23. Actual mixed turn-retry and corrected-restart integrations also PASS with hidden launches, preserving observed old exit/new identity/MCP results and peer survival. Same AGY final recheck PASS on5f458089f69b5732345a999a5fb3706468d2bc41:494 tests/four expected skips25.415s, actual CLI/turn-recovery/corrected-restart integrations and JS/diff clean. Fast-forward merged locally; post-merge494 tests OK/four expected skips25.349s, JS/diff clean. Published on origin/main08fcee2f78c626f4fccb72f8ed894e44c46f2bf9; issue#16 confirmed closed as completed. #9 planning next. CLI-SEATS.md records behavior.
 
+## Ticket #9 planning
+
+- Branch codex/ticket-9-restart-reconciliation, base139e2de. Proposal TICKET-9-PLAN.md requests same-AGY critique of startup eligibility, OS birth/adapter ownership proof, late admission authority, explicit Retry/Stop and platform limits. No #9 production/test changes yet.
+- Current manager has no adopted process handles after restart; reclaimable registry tokens and old ready receipts cannot alone justify OS control. Existing projection/Stop/fence durability stays authoritative. Proposed reconciliation preserves held envelopes, old deadlines and accepted work, never blindly dispatches, and visibly interrupts uncertainty.
+- Next owner: same AGY settles contract before Codex/test helper write red tests. No human gate pending; runtime adoption remains unimplemented at this checkpoint.
+
 ## Ticket execution and review
 
 - [26 approved tickets](https://github.com/sjgold/agentchattr/issues) are published with native blocking relationships. [#1: Establish the launcher baseline](https://github.com/sjgold/agentchattr/issues/1) is closed after Meta source/plan review, documentation corrections and Seth's final sign-off. Ticket #2 passed independent review and received Seth's final sign-off; reviewed branch is fast-forward merged and published on origin/main; GitHub issue #2 is confirmed closed as completed.
@@ -182,7 +188,7 @@
 
 - **Repository:** https://github.com/sjgold/agentchattr (public fork of bcurts/agentchattr).
 - **Checkout:** Documents/CodePlayground/agentchattr (local checkout).
-- **Branch:** main, #16 source published at08fcee2, preparing #9 branch. Previous #16 base mainee52c32. Prior #12 base main `0d247d5`. Published #11 source `f403b59` (frozen implementation `78b418d`, base `83aa04a`), closure/status published. Same AGY PASS and post-merge401 tests/four skips pass.
+- **Branch:** codex/ticket-9-restart-reconciliation, base published main139e2de. #16 source published at08fcee2. Previous #16 base mainee52c32. Prior #12 base main `0d247d5`. Published #11 source `f403b59` (frozen implementation `78b418d`, base `83aa04a`), closure/status published. Same AGY PASS and post-merge401 tests/four skips pass.
 - **Remotes:** origin = sjgold/agentchattr; upstream = bcurts/agentchattr.
 - **Current build:** published #1-8, #10-12 and #16, including whole-team capacity and user-requested hidden managed Windows terminals. Same AGY final PASS, post-merge494 tests OK/four skips, all ten integrations independently passed on capacity target and hidden amendment rechecked. No live providers, native-client/Omarchy or Desktop changes.
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
