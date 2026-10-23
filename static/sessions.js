@@ -17,6 +17,7 @@
 
 let activeSession = null;
 let sessionTemplates = [];
+let sessionCapacity = null;
 let activeSessionsByChannel = {};
 let sessionIndicatorTargetChannel = null;
 let stopStatusBusy = false;
@@ -103,8 +104,14 @@ window._messageRenderers['session_draft'] = function (el, msg) {
                 </div>
                 <div class="proposal-title">Invalid session draft</div>
                 <div class="proposal-body session-proposal-desc">This draft needs changes before it can be run or saved.</div>
+                ${capacitySummary()}
                 <ul class="session-draft-errors">${errorList}</ul>
+                <details class="session-invalid-design">
+                    <summary>Read the unchanged proposal</summary>
+                    <pre>${window.escapeHtml(JSON.stringify(tmpl, null, 2))}</pre>
+                </details>
                 <div class="proposal-actions">
+                    <button class="proposal-request-changes" onclick="recheckSessionDraft(${msg.id}, this)">Check current limits</button>
                     <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(proposedBy)}', ${msg.id})">Request Changes</button>
                     <button class="proposal-dismiss" onclick="dismissDraft(${msg.id})">Dismiss</button>
                 </div>
@@ -138,6 +145,7 @@ window._messageRenderers['session_draft'] = function (el, msg) {
                     ${metaLabel ? `<span class="session-draft-meta">${metaLabel}</span>` : ''}
                 </div>
                 <div class="proposal-title">${window.escapeHtml(tmpl.name || '?')}</div>
+                ${capacitySummary()}
                 ${tmpl.description ? `<div class="proposal-body session-proposal-desc">${window.escapeHtml(tmpl.description)}</div>` : ''}
                 <div class="session-draft-details">
                     ${phasesDetailHtml}
@@ -161,11 +169,55 @@ window._messageRenderers['session_draft'] = function (el, msg) {
 // ---------------------------------------------------------------------------
 
 async function fetchSessionTemplates() {
+    await fetchSessionCapacity();
     try {
         const res = await fetch('/api/sessions/templates', { headers: { 'X-Session-Token': window.SESSION_TOKEN } });
         if (res.ok) sessionTemplates = await res.json();
     } catch (e) {
         console.warn('Failed to fetch session templates', e);
+    }
+}
+
+async function recheckSessionDraft(messageId, button) {
+    const card = button.closest('.session-draft-card');
+    if (!card) return;
+    button.disabled = true;
+    try {
+        const response = await fetch('/api/sessions/validate-draft', {
+            method: 'POST', headers: {'X-Session-Token': window.SESSION_TOKEN, 'Content-Type': 'application/json'},
+            body: JSON.stringify({message_id: messageId}),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Draft could not be checked');
+        sessionCapacity = result.capacity;
+        card.classList.remove('session-draft-invalid');
+        window._messageRenderers.session_draft(card, {id: messageId, metadata: {
+            draft_id: card.dataset.draftId, revision: Number(card.dataset.draftRevision),
+            proposed_by: card.querySelector('.proposal-author')?.textContent || 'coordinator',
+            template: result.template, valid: result.valid, errors: result.errors,
+        }});
+    } catch (error) {
+        button.textContent = error.message + '. Check again';
+    } finally { if (button.isConnected) button.disabled = false; }
+}
+
+function capacitySummary() {
+    return `<p class="session-capacity-note" data-session-capacity aria-live="polite">${window.escapeHtml(
+        sessionCapacity?.limits_text || 'Loading shared design limits…')}</p>`;
+}
+
+async function fetchSessionCapacity() {
+    try {
+        const response = await fetch('/api/session-capacity', {headers: {'X-Session-Token': window.SESSION_TOKEN}});
+        if (!response.ok) throw new Error('Capacity policy unavailable');
+        sessionCapacity = await response.json();
+        document.querySelectorAll('[data-session-capacity]').forEach(node => {
+            node.textContent = sessionCapacity.limits_text;
+        });
+    } catch (_) {
+        document.querySelectorAll('[data-session-capacity]').forEach(node => {
+            node.textContent = 'Design limits could not load. Reopen this editor to retry. Start still validates the complete design on the server.';
+        });
     }
 }
 
@@ -1082,6 +1134,7 @@ function showSessionLauncher() {
             <div class="session-launcher-goal">
                 <input id="session-goal-input" type="text" placeholder="Goal (optional) -- what should this session achieve?" />
             </div>
+            ${capacitySummary()}
             <div class="session-source-editor">
                 <label for="session-source-input">Pasted review source (optional)</label>
                 <textarea id="session-source-input" rows="6" placeholder="Paste the text every participant should review."></textarea>
@@ -1095,6 +1148,7 @@ function showSessionLauncher() {
         </div>
     `;
     document.body.appendChild(modal);
+    fetchSessionCapacity();
     document.getElementById('session-goal-input')?.focus();
 }
 
@@ -1326,6 +1380,7 @@ function showDraftCastPreview(tmpl, draftMsgId) {
             <div class="session-launcher-goal">
                 <input id="session-goal-input" type="text" placeholder="Goal (optional)" />
             </div>
+            ${capacitySummary()}
             <div class="session-source-editor">
                 <label for="session-source-input">Pasted review source (optional)</label>
                 <textarea id="session-source-input" rows="6" placeholder="Paste the text every participant should review."></textarea>
@@ -1339,6 +1394,7 @@ function showDraftCastPreview(tmpl, draftMsgId) {
         </div>
     `;
     document.body.appendChild(modal);
+    fetchSessionCapacity();
 }
 
 async function launchDraftSession(draftMsgId) {

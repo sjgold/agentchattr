@@ -13,7 +13,9 @@ log = logging.getLogger(__name__)
 
 
 class SessionStore:
-    def __init__(self, path: str, templates_dir: str | None = None):
+    def __init__(self, path: str, templates_dir: str | None = None, capacity_policy=None):
+        from session_capacity import capacity_policy as validate_capacity
+        self._capacity_policy = validate_capacity(capacity_policy)
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._sessions: list[dict] = []
@@ -84,10 +86,18 @@ class SessionStore:
     def get_templates(self) -> list[dict]:
         return list(self._templates.values())
 
+    @property
+    def capacity_policy(self):
+        return deepcopy(self._capacity_policy)
+
     def get_template(self, template_id: str) -> dict | None:
         return self._templates.get(template_id)
 
     def save_custom_template(self, tmpl: dict) -> dict:
+        from review_brief import BriefError
+        errors = validate_session_template(tmpl, self._capacity_policy)
+        if errors:
+            raise BriefError('; '.join(errors))
         custom_path = self._path.parent / "custom_templates.json"
         custom = []
         if custom_path.exists():
@@ -150,7 +160,7 @@ class SessionStore:
         from review_brief import BriefError, freeze_inputs
         from turn_recovery import recovery_policy as validate_policy
         policy = validate_policy(recovery_policy)
-        frozen = freeze_inputs(tmpl, goal, input_text, rules_snapshot)
+        frozen = freeze_inputs(tmpl, goal, input_text, rules_snapshot, capacity_policy=self._capacity_policy)
         if (not isinstance(cast, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not v for k, v in cast.items())
                 or set(cast) != set(tmpl['roles'])):
             raise BriefError('Assign every design role to a named participant before Start.')
@@ -304,7 +314,9 @@ class SessionStore:
             if (not parent or parent.get('completion_protocol') != 1 or not parent.get('stop_id')
                     or parent['state'] not in ('stopped', 'unresolved')):
                 raise EventConflict('Stop the original run and resolve its stopping state before preparing a replacement.')
-            frozen = freeze_inputs(parent['design_snapshot'], parent['goal'], input_text, parent['rules_snapshot'])
+            from session_capacity import LEGACY_POLICY
+            frozen = freeze_inputs(parent['design_snapshot'], parent['goal'], input_text, parent['rules_snapshot'],
+                                   capacity_policy=parent.get('capacity_policy') or LEGACY_POLICY)
             if frozen['input_revision'] == parent['input_revision']:
                 raise BriefError('The source is unchanged. Use turn Retry for the same document; correct the source before restarting.')
             bindings = deepcopy(parent['participant_bindings'] if participant_bindings is None else participant_bindings)
@@ -616,8 +628,10 @@ class SessionStore:
         return None
 
 
-def validate_session_template(tmpl: dict) -> list[str]:
+def validate_session_template(tmpl: dict, capacity_policy=None) -> list[str]:
     """Validate a session template dict. Returns list of errors (empty = valid)."""
+    from session_capacity import capacity_policy as validate_capacity
+    limits = validate_capacity(capacity_policy)
     errors = []
 
     if not isinstance(tmpl, dict):
@@ -629,8 +643,8 @@ def validate_session_template(tmpl: dict) -> list[str]:
     roles = tmpl.get("roles", [])
     if not isinstance(roles, list) or len(roles) == 0:
         errors.append("'roles' must be a non-empty array")
-    elif len(roles) > 6:
-        errors.append(f"Too many roles ({len(roles)}, max 6)")
+    elif len(roles) > limits['max_roles']:
+        errors.append(f"Too many roles ({len(roles)}, max {limits['max_roles']})")
     if isinstance(roles, list) and any(not isinstance(role, str) or not role.strip() for role in roles):
         errors.append('Each role must be a nonempty string')
     if isinstance(roles, list) and all(isinstance(role, str) for role in roles) and len(set(roles)) != len(roles):
@@ -639,11 +653,12 @@ def validate_session_template(tmpl: dict) -> list[str]:
     phases = tmpl.get("phases", [])
     if not isinstance(phases, list) or len(phases) == 0:
         errors.append("'phases' must be a non-empty array")
-    elif len(phases) > 6:
-        errors.append(f"Too many phases ({len(phases)}, max 6)")
+    elif len(phases) > limits['max_phases']:
+        errors.append(f"Too many phases ({len(phases)}, max {limits['max_phases']})")
 
     roles_set = {role for role in roles if isinstance(role, str)} if isinstance(roles, list) else set()
     output_count = 0
+    total_turns = 0
 
     for i, phase in enumerate(phases if isinstance(phases, list) else []):
         if not isinstance(phase, dict):
@@ -652,18 +667,20 @@ def validate_session_template(tmpl: dict) -> list[str]:
         if not isinstance(phase.get("name"), str) or not phase['name'].strip():
             errors.append(f"Phase {i + 1}: missing 'name'")
         participants = phase.get("participants", [])
+        if isinstance(participants, list):
+            total_turns += len(participants)
         if not isinstance(participants, list) or len(participants) == 0:
             errors.append(f"Phase {i + 1}: 'participants' must be a non-empty array")
-        elif len(participants) > 4:
-            errors.append(f"Phase {i + 1}: too many participants ({len(participants)}, max 4)")
+        elif len(participants) > limits['max_participants_per_phase']:
+            errors.append(f"Phase {i + 1}: too many participants ({len(participants)}, max {limits['max_participants_per_phase']})")
         for p in (participants if isinstance(participants, list) else []):
             if not isinstance(p, str) or p not in roles_set:
                 errors.append(f"Phase {i + 1}: participant '{p}' not in roles list")
         prompt = phase.get("prompt", "")
         if not isinstance(prompt, str):
             errors.append(f'Phase {i + 1}: prompt must be text')
-        elif len(prompt) > 200:
-            errors.append(f"Phase {i + 1}: prompt too long ({len(prompt)} chars, max 200)")
+        elif len(prompt) > limits['max_prompt_chars']:
+            errors.append(f"Phase {i + 1}: prompt too long ({len(prompt)} chars, max {limits['max_prompt_chars']})")
         if phase.get("is_output"):
             output_count += 1
 
@@ -672,4 +689,6 @@ def validate_session_template(tmpl: dict) -> list[str]:
     elif output_count > 1:
         errors.append(f"Multiple phases marked as output ({output_count}, expected 1)")
 
+    if total_turns > limits['max_total_turns']:
+        errors.append(f"Too many total turns ({total_turns}, max {limits['max_total_turns']})")
     return errors

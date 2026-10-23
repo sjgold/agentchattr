@@ -220,18 +220,17 @@ class FrozenSessionTests(unittest.TestCase):
             frozen = importlib.import_module('review_brief').freeze_inputs(template)
             self.assertEqual(frozen['design_snapshot'], template)
         invalid = deepcopy(alternative)
-        invalid['phases'][0]['prompt'] = 'x' * 201
-        self.assertTrue(validate_session_template(invalid), 'numeric capacity policy remains until #16')
+        invalid['phases'][0]['prompt'] = 'x' * 1001
+        self.assertTrue(validate_session_template(invalid), 'declared prompt capacity remains enforced')
         invalid = deepcopy(alternative)
-        invalid['roles'] = [f'role-{i}' for i in range(7)]
+        invalid['roles'] = [f'role-{i}' for i in range(17)]
         self.assertTrue(validate_session_template(invalid))
         invalid = deepcopy(alternative)
-        invalid['phases'] = [deepcopy(alternative['phases'][0]) for _ in range(7)]
+        invalid['phases'] = [deepcopy(alternative['phases'][0]) for _ in range(13)]
         invalid['phases'][-1]['is_output'] = True
         self.assertTrue(validate_session_template(invalid))
         invalid = deepcopy(alternative)
-        invalid['roles'] = [f'role-{i}' for i in range(5)]
-        invalid['phases'] = [{'name': 'All', 'participants': list(invalid['roles']), 'is_output': True}]
+        invalid['phases'] = [{'name': 'All', 'participants': ['for'] * 17, 'is_output': True}]
         self.assertTrue(validate_session_template(invalid))
 
     def test_real_queued_brief_survives_chat_rollover_and_live_design_changes(self):

@@ -41,10 +41,12 @@ def _revision(value):
                                      separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
 
 
-def freeze_inputs(template, goal='', input_text='', rules=None):
+def freeze_inputs(template, goal='', input_text='', rules=None, capacity_policy=None):
     from session_store import validate_session_template
+    from session_capacity import capacity_policy as validate_capacity
+    limits = validate_capacity(capacity_policy)
     try:
-        errors = validate_session_template(template)
+        errors = validate_session_template(template, limits)
         if errors:
             raise BriefError('; '.join(errors))
         design = json.loads(json.dumps(template, allow_nan=False))
@@ -58,7 +60,7 @@ def freeze_inputs(template, goal='', input_text='', rules=None):
         raise BriefError('Frozen rules must contain a list of text rules.')
     _text(json.dumps(rules, ensure_ascii=False, allow_nan=False), MAX_RULES_BYTES, 'Frozen rules')
     revision = hashlib.sha256(source).hexdigest()
-    return {'run_id': uuid.uuid4().hex, 'goal': goal, 'design_snapshot': design,
+    return {'run_id': uuid.uuid4().hex, 'goal': goal, 'design_snapshot': design, 'capacity_policy': limits,
             'design_revision': _revision(design), 'input_revision': revision,
             'input_snapshot': {'text': input_text, 'revision': revision, 'encoding': 'utf-8'},
             'rules_snapshot': rules, 'rules_revision': _revision(rules)}

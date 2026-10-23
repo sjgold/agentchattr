@@ -8,6 +8,7 @@ import queue
 import re
 import threading
 import time
+import traceback
 
 
 async def release(settings, dispatch_id, phase):
@@ -89,6 +90,8 @@ def main():
                     record['released'].append({'dispatch_id': match.group(1), 'reply': reply})
                     save()
             except Exception as exc:
+                with (directory / 'cli-exceptions.log').open('a', encoding='utf-8') as diagnostic:
+                    diagnostic.write(''.join(traceback.format_exception(exc)))
                 with lock:
                     record['error'] = type(exc).__name__ + ': ' + str(exc)
                     save()

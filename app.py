@@ -529,6 +529,7 @@ def configure(cfg: dict, session_token: str = ""):
     session_store = SessionStore(
         str(Path(data_dir) / "session_runs.json"),
         templates_dir=str(ROOT / "session_templates"),
+        capacity_policy=cfg.get('session_capacity'),
     )
     session_engine = SessionEngine(session_store, store, agents, registry, rules_store=rules,
                                    seat_manager=api_seat_manager, recovery_policy=cfg.get('session_recovery'),
@@ -1041,7 +1042,7 @@ async def _handle_new_message(msg: dict):
 
         try:
             draft_json = json.loads(draft_match.group(1))
-            errors = validate_session_template(draft_json)
+            errors = validate_session_template(draft_json, session_store.capacity_policy)
             if errors:
                 store.add(
                     "system",
@@ -2704,6 +2705,14 @@ async def open_path(body: dict):
 # Serve uploaded images
 # --- Sessions API ---
 
+@app.get('/api/session-capacity')
+async def get_session_capacity():
+    if not session_store:
+        return JSONResponse({'error': 'sessions not configured'}, status_code=503)
+    from session_capacity import public_capacity
+    return JSONResponse(public_capacity(session_store.capacity_policy))
+
+
 @app.get("/api/sessions/templates")
 async def get_session_templates():
     if not session_store:
@@ -2764,23 +2773,29 @@ async def start_session(request: Request):
         if not draft_msg:
             return JSONResponse({"error": "draft message not found"}, status_code=404)
         meta = draft_msg.get("metadata", {})
-        if not meta.get("valid"):
-            return JSONResponse({"error": "draft is not valid"}, status_code=400)
         from copy import deepcopy
         tmpl = deepcopy(meta.get("template"))
         if not tmpl:
             return JSONResponse({"error": "draft has no template"}, status_code=400)
+        errors = validate_session_template(tmpl, session_store.capacity_policy)
+        if errors:
+            return JSONResponse({'error': '; '.join(errors), 'errors': errors}, status_code=400)
         # Register as a temporary template
         template_id = tmpl.get("id", f"draft-{draft_message_id}")
         tmpl["id"] = template_id
         tmpl["is_custom"] = True
-        session_store._templates[template_id] = tmpl
 
     # Validate template exists
     if not tmpl:
         tmpl = session_store.get_template(template_id)
     if not tmpl:
         return JSONResponse({"error": f"unknown template: {template_id}"}, status_code=400)
+
+    errors = validate_session_template(tmpl, session_store.capacity_policy)
+    if errors:
+        return JSONResponse({'error': '; '.join(errors), 'errors': errors}, status_code=400)
+    if draft_message_id:
+        session_store._templates[template_id] = tmpl
 
     # Auto-fill cast from available agents if not fully provided
     if not cast:
@@ -3143,6 +3158,9 @@ async def request_session_draft(request: Request):
     if not agent_name or not description:
         return JSONResponse({"error": "agent and description required"}, status_code=400)
 
+    from session_capacity import policy_description
+    limits_text = policy_description(session_store.capacity_policy if session_store else None)
+
     mention_str = f"@{agent_name}"
     store.add(
         "system",
@@ -3157,7 +3175,7 @@ async def request_session_draft(request: Request):
         '{"name": "...", "description": "...", "roles": ["role1", "role2", ...], '
         '"phases": [{"name": "...", "participants": ["role1"], "prompt": "...", "is_output": false}, ...]}\n'
         "```\n"
-        "Rules: max 6 roles, max 6 phases, max 4 participants per phase, max 200 chars per prompt. "
+        f"{limits_text} "
         "Mark exactly one phase as `is_output: true` (the final deliverable). "
         f"Keep it focused and sequential. Use the chat_send tool to post your response in the #{channel} channel. "
         "Do NOT respond only in your terminal.",
@@ -3166,6 +3184,26 @@ async def request_session_draft(request: Request):
         metadata={"session_request": True, "mentions": [f"@{agent_name}"], "request": description},
     )
     return JSONResponse({"ok": True})
+
+
+@app.post('/api/sessions/validate-draft')
+async def validate_session_draft(request: Request):
+    if not session_store:
+        return JSONResponse({'error': 'sessions not configured'}, status_code=503)
+    body = await request.json()
+    message_id = body.get('message_id') if isinstance(body, dict) else None
+    if type(message_id) is not int:
+        return JSONResponse({'error': 'message_id must be an integer'}, status_code=400)
+    message = store.get_by_id(message_id)
+    if not message:
+        return JSONResponse({'error': 'message not found'}, status_code=404)
+    template = message.get('metadata', {}).get('template')
+    if template is None:
+        return JSONResponse({'error': 'no template in draft'}, status_code=400)
+    errors = validate_session_template(template, session_store.capacity_policy)
+    from session_capacity import public_capacity
+    return JSONResponse({'template': template, 'valid': not errors, 'errors': errors,
+                         'capacity': public_capacity(session_store.capacity_policy)})
 
 
 @app.post("/api/sessions/save-draft")
@@ -3180,11 +3218,14 @@ async def save_draft(request: Request):
     if not msg:
         return JSONResponse({"error": "message not found"}, status_code=404)
     meta = msg.get("metadata", {})
-    if not meta.get("valid"):
-        return JSONResponse({"error": "draft is not valid"}, status_code=400)
-    tmpl = meta.get("template")
+    from copy import deepcopy
+    tmpl = deepcopy(meta.get("template"))
     if not tmpl:
         return JSONResponse({"error": "no template in draft"}, status_code=400)
+
+    errors = validate_session_template(tmpl, session_store.capacity_policy)
+    if errors:
+        return JSONResponse({'error': '; '.join(errors), 'errors': errors}, status_code=400)
 
     tmpl.setdefault("id", f"custom-{msg_id}")
     session_store.save_custom_template(tmpl)

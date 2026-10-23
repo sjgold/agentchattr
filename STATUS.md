@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; next #16 whole selected team)
+**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; #16 builder-tested, frozen review next)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -152,11 +152,14 @@
 - **Recorded verification limitation:** final prior-integration run stopped in verify_dispatch_queue.py waiting for the second MCP call to return. Both exact ledger records are released and both prompts recorded, but fixture records only the first returned reply. An unchanged helper reproduction passed with both actual MCP replies; the exact failed return location remains unproven. The bounded instrumented run also passed: both actual MCP calls traversed initialize/call/session exit/transport exit/asyncio.run return, with no20s stack watchdog firing. Diagnostic instrumentation is retained; it is not a proven fix. Both failed-run and subsequent-run workers were stopped. The other eight integrations passed on the final backend, including API/CLI/corrected-restart. Keep the transient failure visible for independent review; no claimed fix for the transient return stall. Same AGY later independently passed and judged it nonblocking as recorded below.
 - **Independent PASS:** same AGY reviewed frozen ebc85aedafbef4c53d70ebdaad37f553ddcbe683 (base0d247d5; docs-only reviewed HEAD154412b). Independently467 tests OK/four skips24.367s, all nine integrations PASS, JS/diff checks clean. Reviewer assessed transient MCP teardown/file-lock failures followed by passing reruns as nonblocking. Reviewer verified/applied count/scope/causality wording corrections; PASS unchanged, source unchanged. Local fast-forward merge completed; post-merge467 tests OK/four skips25.863s, JS/diff clean. Receipt REVIEW-GEMINI-TICKET-12.md. **Published:** origin/main8297bc1bd15468540328df2b7364fc505989f9d2; issue#12 confirmed closed as completed. **Next:** #16 whole selected team planning and same-AGY contract critique. #16 follows reviewed publication; #9 and saved-answer/replacement features remain deferred.
 
-## Ticket #16 planning
+## Ticket #16 implementation and builder verification
 
-- Branch codex/ticket-16-whole-team, base mainee52c32. TICKET-16-PLAN.md proposes a central server-owned capacity policy shared with coordinator/editor/backend, frozen into accepted runs. Defaults and low-capacity configuration behavior remain open for same-AGY critique. No #16 production or test changes yet.
-- Confirmed current hidden ceilings: backend six roles/six phases/four participants/200 prompt chars, independently repeated in coordinator instructions. Brief freezing invokes the same old validator; direct template save lacks equivalent validation. Seven-seat package schema is already representable and must remain so. Sequential scheduling will be preserved and explicitly exercised with all six identities.
-- Next owner: same AGY critiques defaults, turn counting, snapshot inheritance and API/editor policy publication. Codex settles contract, then assigns observed-red tests to the existing helper. No human approval pending; no six-seat execution claimed yet.
+- Branch codex/ticket-16-whole-team, base mainee52c32. Same AGY ratified TICKET-16-PLAN.md defaults16roles/16participants/12phases/1000prompt/128logical turns, explicit low configured caps, sanity ceilings and immutable/legacy inheritance. Core policy/config/API/UI implemented. Sequential execution retained, no concurrency-based pruning.
+- Every template validation path uses the same policy: coordinator instructions, incoming draft, direct save, Start and frozen briefs. GET /api/session-capacity supplies exact UI limits; accepted runs freeze settings. Corrected children/Retry/Continue inherit policy. Explicit old-invalid draft recheck leaves original metadata unchanged; over-cap JSON remains readable. Old numeric tests now enforce new declared boundaries.
+- Test helper20 and root config2/route4 tests pass after observed red. Final full discovery493 tests OK/four expected skips25.909s. Malformed non-object draft was observed AttributeError red, then correctly rejected before cache/dispatch. Actual normal plus --serve team integration PASS: seven saved/launched seats, one coordinator call, six review calls and six distinct sequential identity/brief/attempt/dispatch contexts/results; seventh excluded from review; five intact over-cap drafts rejected without extra work. All seven actual retained worker handles exited; server exited.
+- Browser desktop/phone policy/cast verified exact shared text, six selectors and14px type. First pass found select overflow, one scoped flex fix confirmed all selects fit349px dialog on390px viewport. Screenshots visually inspected; browser stopped. Native old-invalid recheck became runnable with all six roles, leaving original metadata unchanged; separate no-client/provider server/browser stopped. Existing whole-page header/composer overflow remains standing. No new suppressions or whole-app mobile claim.
+- Prior recovery/Stop/events/brief regressions pass. Queue fixture ExceptionGroup recurred after call_returned; one bounded diagnostic rerun passed without reproducing nested cause. Private traceback capture retained, no production mitigation/assertion weakening. All other prior scripts pass, as does one bounded diagnostic queue rerun. JS/diff/scoped detector checks pass; frozen independent review remains pending. Same AGY must assess transient limitation; no #16 push/independent implementation PASS.
+- Next owner: Codex final verification/docs/freeze, same AGY independent review/recheck. #9 follows reviewed #16 publication. No human approval pending.
 
 ## Ticket execution and review
 
@@ -166,8 +169,8 @@
 
 ## Next step
 
-**Action:** Plan #16 whole selected team against SD-1/AT-20, with central capacity policy, six-member scheduling and seven-seat representation. Same AGY critiques the contract before red tests/implementation. #16 follows reviewed publication; #9 remains deferred.
-**Who:** Codex owns publication and next-ticket planning; same AGY remains independent reviewer. No human approval is pending.
+**Action:** Same AGY independently reviews frozen #16; Codex handles substantive fixes/recheck before publication. #16 follows reviewed publication; #9 remains deferred.
+**Who:** Codex owns verification/freeze/fixes; same AGY remains independent reviewer. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
@@ -180,7 +183,7 @@
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #12 published/closed; #16 whole-team capacity planning next. TICKET-12-PLAN.md and TICKET-12-REVIEW.md record scope/evidence. #1-8 and #10-11 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #12 published/closed; #16 whole-team capacity implemented, builder verification/review pending. TICKET-12-PLAN.md and TICKET-12-REVIEW.md record scope/evidence. #1-8 and #10-11 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 
