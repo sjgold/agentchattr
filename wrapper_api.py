@@ -46,6 +46,20 @@ def _auth_headers(token: str, *, include_json: bool = False) -> dict[str, str]:
     return headers
 
 
+def _cancellation_requested(queue, dispatch_id, shutdown):
+    if shutdown.is_set():
+        return True
+    try:
+        current = queue.claim()
+    except (OSError, ValueError):
+        # A server restart makes this observation unavailable, not cancelled.
+        # The existing heartbeat lease, local Stop and provider deadline still
+        # bound execution; the server's durable fence decides publication.
+        return shutdown.is_set()
+    return bool(current and current['envelope']['dispatch_id'] == dispatch_id
+                and current['state'] == 'cancelling')
+
+
 def main():
     from config_loader import apply_cli_overrides, load_config
     from wrapper import _register_instance
@@ -286,11 +300,7 @@ def main():
     def call_model(messages, dispatch_id):
         from api_invocation import run_completion, InvocationFailure
         def cancelled():
-            if shutdown.is_set():
-                return True
-            current = queue.claim()
-            return bool(current and current['envelope']['dispatch_id'] == dispatch_id
-                        and current['state'] == 'cancelling')
+            return _cancellation_requested(queue, dispatch_id, shutdown)
         if managed:
             try:
                 evidence = None

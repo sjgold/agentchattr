@@ -29,6 +29,7 @@ class SeatManager:
         self.package_selections = {}
         self.runtime_candidates = {}
         self.runtime_history = {}
+        self.runtime_inventory = []
         self.retired_attempts = set()
         self.lock = threading.RLock()
         self.closed = threading.Event()
@@ -302,13 +303,36 @@ class SeatManager:
         with self.lock:
             key = package_id + '/' + seat_id
             if key not in self.attempts:
+                observed = self._inventory_views().get(key)
+                if observed:
+                    return observed
                 return {'state': 'not_started', 'requested_model': self.store.seat(package_id, seat_id)['model'],
                         'confirmed_model': None, 'authentication': 'unknown', 'adapter_connected': False}
             return self._inspect(key)
 
     def snapshot(self):
         with self.lock:
-            return {key: self._inspect(key) for key in list(self.attempts)}
+            return {**self._inventory_views(), **{key: self._inspect(key) for key in list(self.attempts)}}
+
+    def _inventory_views(self):
+        """Public observations are distinct from owned attempts and handles."""
+        grouped = {}
+        for item in self.runtime_inventory:
+            if item.get('key'):
+                grouped.setdefault(item['key'], []).append(item)
+        views = {}
+        for key, items in grouped.items():
+            unresolved = [item for item in items if item['state'] == 'unverified']
+            selected = unresolved or items
+            item = selected[0] if len(selected) == 1 else None
+            state = 'unverified' if unresolved else 'exited'
+            reason = item['reason'] if item else ('conflicting_runtime_evidence' if unresolved else 'historical_launches_ended')
+            views[key] = {'state': item['state'] if item else state, 'reason': reason,
+                          'process_verified': False, 'authentication': 'unknown', 'adapter_connected': False,
+                          'ready_capability': None, 'runtime_attempts': [value['attempt'] for value in selected],
+                          'error': ('An earlier launch is recorded. Worker ownership is not verified; no process control is available.'
+                                    if unresolved else 'Earlier local launch ended. Launch explicitly to start this seat.')}
+        return views
 
     def _release(self, attempt):
         if attempt.get('released'):

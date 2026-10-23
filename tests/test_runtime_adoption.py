@@ -68,11 +68,14 @@ class RuntimeAdoptionTests(unittest.TestCase):
         self.addCleanup(cleanup_child)
         record_spawn_outcome(self.path, self.snapshot, 'spawned')
         deadline = time.monotonic() + 10
-        while not self.path.with_name('birth.json').exists():
-            if self.child.poll() is not None or time.monotonic() > deadline:
-                self.fail('owned fixture child failed to write actual birth')
-            time.sleep(.02)
-        self.birth = json.loads(self.path.with_name('birth.json').read_text('utf-8'))
+        while True:
+            try:
+                self.birth = json.loads(self.path.with_name('birth.json').read_text('utf-8'))
+                break
+            except (FileNotFoundError, PermissionError):
+                if self.child.poll() is not None or time.monotonic() > deadline:
+                    raise
+                time.sleep(.02)
         self.registry.seed({self.base: {'type': 'api', 'label': 'Actual fixture worker'}})
         self.principal = self.registry.register(self.base)
         self.assertEqual(self.registry.resolve_token(self.principal['token'])['identity_id'], self.principal['identity_id'])

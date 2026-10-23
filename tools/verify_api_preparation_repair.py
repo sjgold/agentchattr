@@ -1,8 +1,10 @@
 """Real isolated cold API Retry and cooperative failed-preparation repair.
 
-Draft-only until coordinator readiness. --compile-only validates this script's
-generated server without starting processes or accessing a provider. All model
-requests go to the parent's local fake HTTP server. No native CLI or UI.
+Scope: one fast server restart, a surviving idle peer, and one repaired turn.
+Run with the repository Windows Python; all providers are local fake HTTP.
+--compile-only validates the generated server without starting processes.
+--serve pauses twice for inspection only; the script owns Retry and repair.
+Inspection uses the printed stage/URL and the browser-stop sentinel. No CLI.
 """
 from copy import deepcopy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,6 +27,7 @@ sys.path.insert(0, str(ROOT))
 from api_seats import atomic_json
 from invocation_evidence import classify_history
 from process_identity import open_verified_process
+from runtime_ownership import _validate, _manifest
 
 TEMPLATE = {'id': 'api-cold-repair', 'name': 'API preparation repair', 'roles': ['reviewer', 'editor'],
     'phases': [{'name': 'Evidence', 'participants': ['reviewer'], 'prompt': 'Read exact source.'},
@@ -37,7 +40,7 @@ POLICY = {'ack_timeout': 3, 'response_timeout': 20, 'monitor_interval': .1}
 
 def server_code(temporary, provider_port):
     """Fixture faults are bound to one generated preparation, never production."""
-    return f'''import json,os,sys,time,asyncio,config_loader
+    return f'''import json,os,sys,time,asyncio,config_loader,ctypes
 from copy import deepcopy
 from pathlib import Path
 from api_seats import atomic_json
@@ -45,7 +48,40 @@ from process_identity import capture_birth,OwnedProcessHandle
 scratch=Path({str(temporary)!r})
 atomic_json(scratch/('server-'+os.environ['API_REPAIR_STAGE']+'.json'),capture_birth())
 spawns=[]
-sys.addaudithook(lambda event,args:spawns.append(True) if event=='subprocess.Popen' else None)
+parse_argv=ctypes.WinDLL('shell32',use_last_error=True).CommandLineToArgvW
+parse_argv.argtypes=[ctypes.c_wchar_p,ctypes.POINTER(ctypes.c_int)]
+parse_argv.restype=ctypes.POINTER(ctypes.c_wchar_p)
+free_argv=ctypes.WinDLL('kernel32',use_last_error=True).LocalFree
+free_argv.argtypes=[ctypes.c_void_p]
+free_argv.restype=ctypes.c_void_p
+managed_scripts={{str((Path({str(ROOT)!r})/name).resolve()).casefold():name
+    for name in ('wrapper_api.py','cli_worker.py')}}
+def audit(event,args):
+    if event!='subprocess.Popen':
+        return
+    argv=args[1]
+    if isinstance(argv,str):
+        count=ctypes.c_int()
+        pointer=parse_argv(argv,ctypes.byref(count))
+        if not pointer:
+            raise OSError('Fixture could not classify subprocess argv')
+        try:
+            argv=[pointer[index] for index in range(count.value)]
+        finally:
+            free_argv(ctypes.cast(pointer,ctypes.c_void_p))
+    script=None
+    for value in argv:
+        if Path(str(value)).name.casefold() in ('wrapper_api.py','cli_worker.py'):
+            script=managed_scripts.get(str(Path(value).resolve()).casefold())
+            if script:
+                break
+    executable=Path(str(argv[0])).name.casefold() if argv else ''
+    category=script or ('git' if executable in ('git','git.exe') else
+                       'python' if executable in ('python','python.exe','pythonw.exe') else 'other')
+    # No raw argv, working directory, environment or token in diagnostics.
+    spawns.append({{'managed':bool(script),'category':category,'has_seat_file':'--seat-file' in argv}})
+    atomic_json(scratch/('spawns-'+os.environ['API_REPAIR_STAGE']+'.json'),spawns)
+sys.addaudithook(audit)
 load=config_loader.load_config
 def isolated(root=None):
     cfg=load(root)
@@ -57,6 +93,7 @@ config_loader.load_config=isolated
 import app
 configure=app.configure
 fault={{'attempt':None,'view':None,'proof':None,'writes':0}}
+control={{'cli_termination_calls':0,'native_force_calls':0}}
 def configured(*args,**kwargs):
     configure(*args,**kwargs)
     app.room_settings['channels']=['general','repair-run']
@@ -65,13 +102,19 @@ def configured(*args,**kwargs):
         rule=app.rules.propose({RULE!r},'fixture')
         app.rules.activate(rule['id'])
     manager=app.api_seat_manager
+    def forbidden_cli(*args,**kwargs):
+        control['cli_termination_calls']+=1
+        raise AssertionError('API preparation repair must not enter CLI termination')
+    manager.terminate_owned=forbidden_cli
+    native_terminate=OwnedProcessHandle.terminate
+    def traced_terminate(handle):
+        control['native_force_calls']+=1
+        return native_terminate(handle)
+    OwnedProcessHandle.terminate=traced_terminate
     prepare=manager.prepare_retry_context
     def gated(provenance,context_key,**kw):
-        if fault['attempt'] and kw.get('retry_attempt') is None:
-            # Replaying the original request must not replace this live failure.
-            return deepcopy(fault['view'])
         view=prepare(provenance,context_key,**kw)
-        if kw.get('retry_attempt') is not None:
+        if fault['attempt'] or kw.get('retry_attempt') is not None:
             return view
         if view.get('launch_attempt')==provenance['launch_attempt']:
             raise AssertionError('fixture requires the original cold worker to be proven ended')
@@ -89,7 +132,7 @@ def configured(*args,**kwargs):
             receipt.update(state='failed',error='Fixture-only preparation failure before turn binding.',updated_at=time.time())
             atomic_json(attempt['receipt'],receipt)
             attempt.update(state='failed',error=receipt['error'])
-            fault.update(attempt=view['launch_attempt'],view=dict(view,state='failed',reason='fixture_preparation_failure'),
+            fault.update(attempt=view['launch_attempt'],view=manager._context_view(view['key']),
                          proof=proof,writes=1)
             atomic_json(scratch/'fault.json',fault)
             return deepcopy(fault['view'])
@@ -107,7 +150,10 @@ def fixture_state():
                 'process_pid':value['process'].pid if value.get('process') else None,
                 'readiness':manager.restart_readiness(instance['identity_id'],manager.boot_id) if instance else None,
                 'verified_api_exit':deepcopy(value.get('verified_api_exit'))}}
-        return {{'boot_id':manager.boot_id,'server_birth':capture_birth(),'spawns':len(spawns),'workers':workers}}
+        return {{'boot_id':manager.boot_id,'server_birth':capture_birth(),
+                'spawns':sum(value['managed'] for value in spawns),'workers':workers,
+                'auxiliary_spawns':{{category:sum(not v['managed'] and v['category']==category for v in spawns)
+                    for category in ('git','python','other')}},'control':deepcopy(control)}}
 @app.app.post('/api/fixture/drift')
 def fixture_drift():
     app.api_seat_store.providers['fixture-api'].update(system_prompt='EDITED_SYSTEM_MUST_NOT_ENTER',temperature=0.9)
@@ -189,7 +235,10 @@ def main():
     code = server_code(temporary, provider.server_port)
     compile(code, '<isolated-server>', 'exec')
     servers, workers = [], {}
-    api, result = None, None
+    api, result, session_id = None, None, None
+    serve = '--serve' in sys.argv
+    url_marker = scratch / 'ticket9-api-repair-browser-url.txt'
+    stop_marker = scratch / 'ticket9-api-repair-browser-stop.txt'
 
     def wait_for(check, label, timeout=40):
         deadline = time.monotonic() + timeout
@@ -252,6 +301,27 @@ def main():
         view = state['workers'].get(key)
         return state if view and view['readiness'] and view['readiness']['state'] == 'ready' and view['readiness']['process_verified'] is True else None
 
+    def inspect_pause(stage):
+        if not serve:
+            return
+        stop_marker.unlink(missing_ok=True)
+        details = {'stage': stage, 'url': base + '/?channel=repair-run', 'session_id': session_id,
+                   'channel': 'repair-run', 'inspection_only': True, 'stop_sentinel': str(stop_marker),
+                   'scratch': str(temporary)}
+        atomic_json(temporary / ('browser-' + stage + '.json'), details)
+        atomic_json(url_marker, details)
+        print(json.dumps(details), flush=True)
+        deadline = time.monotonic() + 600
+        while time.monotonic() < deadline:
+            assert servers[-1]['handle'].poll() is None, 'server exited during inspection'
+            assert all(value['handle'] is None or value['handle'].poll() is None for value in workers.values()), 'live fixture worker exited during inspection'
+            if stop_marker.exists():
+                stop_marker.unlink()
+                url_marker.unlink(missing_ok=True)
+                return
+            time.sleep(.2)
+        raise AssertionError('600s inspection deadline: ' + stage + '; scratch: ' + str(temporary))
+
     try:
         first, api = start_server('first')
         common = {'adapter': 'openai-compatible', 'provider': 'fixture-api', 'reasoning': 'high',
@@ -305,7 +375,8 @@ def main():
         assert restored['workers']['repair-team/peer']['process_pid'] == peer_process['handle'].pid
         interrupted = wait_for(lambda: value if (value := saved(session_id))['state'] == 'interrupted' else None, 'cold run interruption')
         assert interrupted['active_invocation'] == old
-        assert interrupted['stop_id'] is None
+        assert interrupted.get('stop_id') is None
+        inspect_pause('cold_interrupted_before_retry')
         api('/api/fixture/drift', {})
         edited = deepcopy(package)
         edited['seats'][0].update(model='EDITED_MODEL', reasoning=None)
@@ -329,12 +400,13 @@ def main():
         assert replay['pending_retry'] == pending
         assert len({path.name for path in (data / 'api_seat_runtime').iterdir() if path.is_dir()} - before_dirs) == 1
         assert api('/api/fixture/state')['spawns'] == 1 and len(captures) == 2
-        reject(f'/api/sessions/{session_id}/event', {'brief_id': old['brief_id'], 'kind': 'final', 'content': 'REVOKED_OLD_BEARER'}, headers=old_bearer)
+        reject(f'/api/sessions/{session_id}/event', {'brief_id': old['brief_id'], 'kind': 'final', 'content': 'REVOKED_OLD_BEARER'}, expected=403, headers=old_bearer)
         reject('/api/fixture/late-old', {})
         quarantined = saved(session_id)
         assert any(event['content'] == 'CONTROLLED_OLD_CALLBACK' and event['attempt_id'] == old['attempt_id']
                    for event in quarantined['quarantined_events'])
         assert quarantined['admitted_events'] == stalled['admitted_events'] and len(captures) == 2
+        inspect_pause('failed_preparation_before_repair')
         repair = {'request_id': request['request_id'], 'preparation_attempt': context['launch_attempt'],
                   'confirmation': {'confirm': True, 'launch_attempt': context['launch_attempt']}}
         api(f'/api/sessions/{session_id}/repair-retry', repair)
@@ -347,6 +419,7 @@ def main():
         assert [event['content'] for event in complete['admitted_events']] == ['ACCEPTED_EVIDENCE', 'REPAIRED_FINAL']
         final = complete['admitted_events'][-1]
         assert final['attempt_id'] == pending['new_attempt_id'] and final['turn_id'] == old['turn_id']
+        assert final['brief_id'] == pending['new_brief_id']
         assert final['attempt_id'] != old['attempt_id']
         assert len(captures) == 3
         binding = complete['participant_bindings']['editor']
@@ -370,7 +443,9 @@ def main():
         assert 'EDITED_' not in json.dumps(payload) and 'CONTROLLED_OLD_CALLBACK' not in json.dumps(payload)
         api(f'/api/sessions/{session_id}/repair-retry', repair)
         api(f'/api/sessions/{session_id}/retry', request)
-        assert len(captures) == 3 and api('/api/fixture/state')['spawns'] == 2
+        final_state = api('/api/fixture/state')
+        assert len(captures) == 3 and final_state['spawns'] == 2
+        assert final_state['control'] == {'cli_termination_calls': 0, 'native_force_calls': 0}
         assert len({path.name for path in (data / 'api_seat_runtime').iterdir() if path.is_dir()} - before_dirs) == 2
         assert all((peer_process['path'] / name).read_bytes() == content for name, content in immutable_peer.items())
         assert peer_process['handle'].poll() is None and ready('repair-team/peer')
@@ -381,17 +456,51 @@ def main():
             'old_bearer_revoked': True, 'controlled_superseded_callback_rejected': True,
             'scope': 'fast_cold_api_preparation_repair_only', 'scratch': str(temporary)}
     finally:
+        if serve:
+            url_marker.unlink(missing_ok=True)
+            stop_marker.unlink(missing_ok=True)
         unresolved = []
+        known_attempts = set(workers)
+        excluded_failed = set()
+        # Reconcile every private fixture runtime, including overwritten manager
+        # history and an attempt that failed before we retained its birth.
+        for path in (data / 'api_seat_runtime').glob('*/config.json'):
+            attempt = path.parent.name
+            known_attempts.add(attempt)
+            if attempt in workers:
+                continue
+            try:
+                snapshot = json.loads(path.read_text('utf-8'))
+                validated = _validate(path, snapshot)
+                assert validated is not None
+                manifest = _manifest(path.with_name('launch.json'), validated[0])
+                if manifest['spawn_outcome'] == 'failed' and not path.with_name('birth.json').exists():
+                    excluded_failed.add(attempt)
+                    continue  # Validated synchronous Popen refusal, no worker.
+                retain_worker(attempt)
+            except (OSError, ValueError, KeyError, AssertionError):
+                unresolved.append(attempt + ': worker birth/exit unproven; no process actuation')
         # Endpoints first; dynamically prepared keys are launch keys, not new
         # saved packages. Every fallback is bound to our exact retained birth.
         if api is not None:
             try:
+                if session_id is not None:
+                    api(f'/api/sessions/{session_id}/stop', {})
                 state = api('/api/fixture/state')
                 for key, value in state['workers'].items():
                     try:
-                        if value['identity_id'] and value['attempt'] not in workers:
-                            retain_worker(value['attempt'])
-                        api('/api/preflight/seats/' + key + '/stop', {})
+                        if value['attempt'] not in workers:
+                            if value['attempt'] not in excluded_failed and value['attempt'] not in known_attempts:
+                                unresolved.append(value['attempt'] + ': unretained manager attempt; preserved')
+                            continue
+                        directory = data / 'api_seat_runtime' / value['attempt']
+                        # Manager stop can escalate after its bounded grace.
+                        # Gate it on genuine per-model exit evidence first.
+                        atomic_json(directory / 'stop.json', {'attempt': value['attempt']})
+                        proof = wait_for(lambda: item if (item := classify_history(directory)).get('local_ended') is True else None,
+                                         'cleanup model lifecycle proof', 8)
+                        if proof['local_ended'] is True:
+                            api('/api/preflight/seats/' + key + '/stop', {})
                     except (OSError, AssertionError):
                         pass
             except OSError:
@@ -427,6 +536,7 @@ def main():
         provider.server_close()
         assert not unresolved, 'Unresolved exact owned cleanup: ' + '; '.join(unresolved)
         if result:
+            assert len(workers) == 4 and known_attempts == set(workers)
             assert all(value['observed_exit'] is not None for value in workers.values())
             assert all(classify_history(value['path'])['local_ended'] is True for value in workers.values())
             result['actual_worker_exits_observed'] = len(workers)

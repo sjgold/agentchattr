@@ -263,7 +263,7 @@ async function fetchActiveSession(channelName) {
 function handleSessionEvent(action, session) {
     if (!session) return;
     if (session.state === 'complete' && !session.projection_pending) action = 'complete';
-    if (session.state === 'interrupted') action = 'interrupt';
+    if (session.state === 'interrupted') action = session.restart_recovery && !session.stop_id ? 'update' : 'interrupt';
     const channel = session.channel || 'general';
     // A delayed parent Stop update must not replace its newer prepared child.
     if (activeSessionsByChannel[channel]?.id > session.id) return;
@@ -373,6 +373,9 @@ function updateSessionBar() {
     } else if (s.state === 'stalled') {
         waitingEl.textContent = 'Turn needs attention';
         waitingEl.style.display = '';
+    } else if (s.state === 'interrupted' && s.restart_recovery) {
+        waitingEl.textContent = 'Interrupted after server restart';
+        waitingEl.style.display = '';
     } else if (s.legacy) {
         waitingEl.textContent = 'Legacy run, explicit restart required';
         waitingEl.style.display = '';
@@ -429,6 +432,7 @@ async function refreshRecoveryStatus() {
 setInterval(refreshRecoveryStatus, 1000);
 
 const recoveryReasons = {
+    restart_unverified: 'The server restarted; worker ownership is not yet verified',
     missing_ack: 'Delivery was not acknowledged', response_timeout: 'The response deadline passed',
     disconnected: 'The expected seat is disconnected', provider_timeout: 'The provider request timed out',
     http_error: 'The provider returned an HTTP error', provider_failure: 'The provider request failed',
@@ -444,13 +448,14 @@ function renderRecoveryControls(panel, s) {
     const context = pending?.context;
     if (s.retry_offer) recoveryOffers.set(checkpoint.checkpoint_id, s.retry_offer);
     const offer = s.retry_offer || recoveryOffers.get(checkpoint.checkpoint_id);
-    const key = `${s.id}:recovery:${checkpoint.checkpoint_id}:${pending ? pending.status + ':' + (context?.launch_attempt || '') : 'choices:' + (offer?.launch_attempt || '')}`;
+    const key = `${s.id}:${s.state}:recovery:${checkpoint.checkpoint_id}:${pending ? pending.status + ':' + (context?.launch_attempt || '') : 'choices:' + (offer?.launch_attempt || '')}`;
     panel.hidden = false;
     if (panel.dataset.key !== key) {
         panel.dataset.key = key;
         panel.replaceChildren();
         const title = document.createElement('strong');
-        title.textContent = pending ? 'Retry preparing. Earlier accepted work is retained.' : 'This turn needs attention';
+        title.textContent = s.state === 'interrupted' ? 'Review interrupted after server restart' :
+            pending ? 'Retry preparing. Earlier accepted work is retained.' : 'This turn needs attention';
         const status = document.createElement('p');
         status.className = 'session-recovery-status';
         status.setAttribute('role', 'status');
@@ -488,13 +493,21 @@ function renderRecoveryControls(panel, s) {
             yes.textContent = 'Confirm termination and retry';
             const no = document.createElement('button');
             no.textContent = 'Keep context running';
-            open.onclick = () => { confirmation.hidden = false; yes.focus(); yes.scrollIntoView({block: 'nearest', inline: 'nearest'}); };
+            open.onclick = () => { confirmation.hidden = false; yes.focus(); confirmation.scrollIntoView({block: 'nearest', inline: 'nearest'}); };
             no.onclick = () => { confirmation.hidden = true; open.focus(); };
             yes.onclick = () => submit({confirm: true, launch_attempt: attempt});
             confirmation.append(impact, yes, no);
             panel.append(open, confirmation);
         };
         if (pending) {
+            if (s.state === 'interrupted' && pending.status !== 'preparation_failed') {
+                const resume = document.createElement('button');
+                resume.textContent = 'Resume saved retry';
+                resume.onclick = () => perform('retry', {
+                    checkpoint_id: pending.checkpoint_id, attempt_id: pending.old_invocation.attempt_id,
+                    request_id: pending.request_id, ...(pending.confirmation ? {confirmation: pending.confirmation} : {})});
+                panel.appendChild(resume);
+            }
             if (pending.status === 'preparation_failed') {
                 const repair = confirmation => perform(context?.launch_attempt ? 'repair-retry' : 'retry', context?.launch_attempt ?
                     {request_id: pending.request_id, preparation_attempt: context.launch_attempt, ...(confirmation ? {confirmation} : {})} :
@@ -551,8 +564,9 @@ function renderRecoveryControls(panel, s) {
         }
     }
     const status = panel.querySelector('.session-recovery-status');
-    const seatLabel = window.agentConfig?.[s.current_agent]?.label || s.current_agent || s.waiting_on || 'Participant';
-    const model = s.participant_bindings?.[s.active_invocation?.role]?.launch_provenance?.effective.seat.model;
+    const frozenSeat = s.participant_bindings?.[s.active_invocation?.role]?.launch_provenance?.effective?.seat;
+    const seatLabel = window.agentConfig?.[s.current_agent]?.label || frozenSeat?.name || s.current_agent || s.waiting_on || 'Participant';
+    const model = frozenSeat?.model;
     status.textContent = pending ? (context?.state === 'starting' ? 'Starting the owned retry context. No new turn is dispatched until readiness is confirmed.' :
         pending.status === 'awaiting_local_end' ? 'Waiting for proof that the old local invocation ended. No new prompt is sent yet.' :
         recoveryReasons[context?.reason] || 'Preparation needs attention. Its reserved turn and source are retained.') :
@@ -659,8 +673,8 @@ function renderSessionTurnControls(bar) {
         renderStopControls(panel, s);
         return;
     }
-    if (s?.turn_recovery && (s.state === 'retrying' ||
-        (['stalled', 'waiting'].includes(s.state) && ['stalled', 'waiting'].includes(s.turn_recovery.status) &&
+    if (s?.turn_recovery && (s.state === 'retrying' || (s.state === 'interrupted' && s.pending_retry) ||
+        (['stalled', 'waiting', 'interrupted'].includes(s.state) && ['stalled', 'waiting'].includes(s.turn_recovery.status) &&
          s.active_invocation?.attempt_id === s.turn_recovery.attempt_id))) {
         renderRecoveryControls(panel, s);
         return;

@@ -188,6 +188,23 @@ def _historical_exit(item):
     return {'state': 'unverified', 'reason': 'unproven_worker_exit'}
 
 
+def _display_key(manager, path):
+    """Recognize a configured seat for display only, never for adoption."""
+    import hashlib
+    try:
+        snapshot = _read(path)
+        base = snapshot.get('base', '')
+        for package in manager.store.list():
+            for seat in package['seats']:
+                key = package['id'] + '/' + seat['id']
+                marker = hashlib.sha256(key.encode()).hexdigest()[:8] + '-'
+                if isinstance(base, str) and any(base.startswith(prefix + marker) for prefix in ('api-', 'cli-')):
+                    return key
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return None
+
+
 def reconcile_runtime(manager, *, now=None):
     with manager.lock:
         candidates, public = {}, []
@@ -211,10 +228,12 @@ def reconcile_runtime(manager, *, now=None):
                 else:
                     candidates[attempt_id] = item
                 public.append({'attempt': attempt_id, 'key': item['key'], **classification})
-            except (OSError, ValueError, KeyError, TypeError):
-                public.append({'attempt': path.parent.name, 'state': 'unverified',
-                               'reason': 'runtime_evidence_unverified'})
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                public.append({'attempt': path.parent.name, 'key': _display_key(manager, path),
+                               'state': 'unverified', 'reason': 'legacy_unverified' if
+                               str(exc) == 'legacy_unverified' else 'runtime_evidence_unverified'})
         manager.runtime_candidates = candidates
+        manager.runtime_inventory = deepcopy(public)
         return public
 
 
