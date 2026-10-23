@@ -253,7 +253,7 @@ class SessionStore:
         self._fire("update", result)
         return result
 
-    def _event_update(self, session_id, change, action='update'):
+    def _event_update(self, session_id, change, action='update', *, skip_if_unchanged=False):
         """Commit one admission transaction, rolling back memory on any failure."""
         from turn_events import EventConflict
         with self._lock:
@@ -263,6 +263,8 @@ class SessionStore:
             before = deepcopy(self._sessions)
             try:
                 change(session)
+                if skip_if_unchanged and self._sessions == before:
+                    return deepcopy(session)
                 session['updated_at'] = time.time()
                 self._save()
                 result = deepcopy(session)
@@ -458,6 +460,75 @@ class SessionStore:
     def admit_event(self, session_id, event, instance, *, human=False):
         return self._admit_event(session_id, event, instance, human=human)
 
+    def admit_selected_cli_event(self, session_id, snapshot, *, request_id, message_uid,
+                                 snapshot_hash, checkpoint, kind='final',
+                                 confirm_operator_attribution=False, submitted_by='operator'):
+        """Internal selected-content admission and attempt fence in one transaction."""
+        import re
+        import uuid
+        from cli_result_recovery import _current_session, _source, _snapshot_identity
+        from turn_events import EventConflict, EventValidationError, event_id, validate_content, IDENTITY_FIELDS
+        if type(session_id) is not int or session_id <= 0:
+            raise EventValidationError('Session ID must be a positive integer.')
+        event_id(request_id)
+        checkpoint, snapshot = deepcopy(checkpoint), deepcopy(snapshot)
+        if (not isinstance(checkpoint, dict)
+                or set(checkpoint) != {'session_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision'}
+                or type(checkpoint['session_id']) is not int or checkpoint['session_id'] != session_id
+                or not isinstance(checkpoint['turn_id'], str)
+                or not isinstance(checkpoint['input_revision'], str)
+                or not re.fullmatch('[0-9a-f]{64}', checkpoint['input_revision'])
+                or not isinstance(snapshot_hash, str) or not re.fullmatch('[0-9a-f]{64}', snapshot_hash)
+                or not isinstance(message_uid, str) or not message_uid
+                or type(confirm_operator_attribution) is not bool
+                or not isinstance(submitted_by, str) or not submitted_by.strip() or len(submitted_by) > 80):
+            raise EventValidationError('Selected message decision is malformed.')
+        event_id(checkpoint['run_id'])
+        event_id(checkpoint['attempt_id'])
+        uid, digest = _snapshot_identity(snapshot)
+        validate_content(kind, snapshot.get('text'))
+        if uid != message_uid or digest != snapshot_hash:
+            raise EventConflict('Selected message changed since preview.')
+        intent = {'request_id': request_id, 'checkpoint': checkpoint,
+                  'message_id': snapshot['id'], 'message_uid': message_uid,
+                  'snapshot_hash': snapshot_hash, 'kind': kind,
+                  'confirm_operator_attribution': confirm_operator_attribution,
+                  'submitted_by': submitted_by}
+
+        def admit(session):
+            previous = next((e for e in session.get('admitted_events', [])
+                             if e.get('selected_request', {}).get('request_id') == request_id), None)
+            if previous is not None:
+                if previous['selected_request'] != intent:
+                    raise EventConflict('Recovery request ID was already used for a different decision.')
+                return
+            _, invocation = _current_session(session, session_id)
+            actual = {'session_id': session_id, 'run_id': session['run_id'],
+                      **{key: invocation[key] for key in ('turn_id', 'attempt_id', 'input_revision')}}
+            if actual != checkpoint:
+                raise EventConflict('Session checkpoint has changed since preview.')
+            attribution, source_attempt = _source(session, invocation, snapshot)
+            if attribution == 'operator_attributed' and confirm_operator_attribution is not True:
+                raise EventConflict('Confirm operator attribution for a message without complete turn metadata.')
+            if any(e.get('source_message_uid') == uid for run in self._sessions
+                   for e in run.get('admitted_events', [])):
+                raise EventConflict('Message has already been used to complete a review turn.')
+            now = time.time()
+            session.setdefault('superseded_attempts', []).append({
+                **{key: invocation[key] for key in ('attempt_id', 'turn_id', 'dispatch_id', 'expected_identity_id')},
+                'run_id': session['run_id'], 'input_revision': session['input_revision'],
+                'superseded_at': now, 'reason': 'superseded_by_operator_recovery', 'request_id': request_id})
+            record = {key: invocation[key] for key in IDENTITY_FIELDS}
+            record.update(session_id=session_id, event_id=uuid.uuid4().hex, kind=kind,
+                content=snapshot['text'], projected_message_id=None, accepted_at=now,
+                sender=snapshot.get('sender'), expected_identity_id=invocation['expected_identity_id'],
+                provenance='operator_selected_cli_result', submitted_by=submitted_by,
+                source_message_id=snapshot['id'], source_message_uid=uid, snapshot_hash=digest,
+                source_identity_id=snapshot['metadata']['seat_identity_id'], source_attempt_id=source_attempt,
+                attribution=attribution, recovered_at=now, selected_request=deepcopy(intent))
+            self._append_admission(session, record)
+        return self._event_update(session_id, admit, skip_if_unchanged=True)
+
     def admit_verified_saved_event(self, session_id, payload, *, submitted_by='operator'):
         """Internal ingress after private brief seal verification by the engine."""
         from result_outbox import _payload
@@ -500,36 +571,42 @@ class SessionStore:
             elif (invocation.get('human') or not isinstance(instance, dict)
                     or instance.get('identity_id') != invocation['expected_identity_id']):
                 raise EventAccessError('This event belongs to another seat identity.')
-            invocation['consumed'] = True
-            if session.get('turn_recovery'):
-                session['turn_recovery'].update(status='resolved', resolved_by=event['event_id'])
             record = deepcopy(event)
             record.update(projected_message_id=None, accepted_at=time.time(),
                           sender=invocation['expected_agent'],
                           provenance=('verified_saved_api_result' if saved_payload is not None else
                                       'human_operator' if human else 'authenticated_seat'),
                           expected_identity_id=invocation['expected_identity_id'])
-            phases = session['design_snapshot']['phases']
-            phase = phases[session['current_phase']]
-            record['is_output'] = bool(phase.get('is_output'))
-            session['admitted_events'].append(record)
-            if event['kind'] == 'question':
-                session['state'] = 'awaiting_input'
-                session['current_question'] = {'event_id': event['event_id'], 'text': event['content'],
-                    'asked_by': invocation['expected_agent'], 'attempt_id': invocation['attempt_id']}
-                return
-            session['active_invocation'] = None
-            session.pop('current_question', None)
-            if session['current_turn'] + 1 < len(phase['participants']):
-                session['current_turn'] += 1
-                session['state'] = 'active'
-            elif session['current_phase'] + 1 < len(phases):
-                session['current_phase'] += 1
-                session['current_turn'] = 0
-                session['state'] = 'active'
-            else:
-                session['state'] = 'complete'
+            self._append_admission(session, record)
         return self._event_update(session_id, admit)
+
+    @staticmethod
+    def _append_admission(session, record):
+        """Apply shared final/question progression after the ingress has authorized it."""
+        invocation = session['active_invocation']
+        invocation['consumed'] = True
+        if session.get('turn_recovery'):
+            session['turn_recovery'].update(status='resolved', resolved_by=record['event_id'])
+        phases = session['design_snapshot']['phases']
+        phase = phases[session['current_phase']]
+        record['is_output'] = bool(phase.get('is_output'))
+        session['admitted_events'].append(record)
+        if record['kind'] == 'question':
+            session['state'] = 'awaiting_input'
+            session['current_question'] = {'event_id': record['event_id'], 'text': record['content'],
+                'asked_by': record['sender'], 'attempt_id': invocation['attempt_id']}
+            return
+        session['active_invocation'] = None
+        session.pop('current_question', None)
+        if session['current_turn'] + 1 < len(phase['participants']):
+            session['current_turn'] += 1
+            session['state'] = 'active'
+        elif session['current_phase'] + 1 < len(phases):
+            session['current_phase'] += 1
+            session['current_turn'] = 0
+            session['state'] = 'active'
+        else:
+            session['state'] = 'complete'
 
     def link_event_projection(self, session_id, event_id, message_id):
         from turn_events import EventConflict

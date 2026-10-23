@@ -59,6 +59,18 @@ Only managed CLI agent bindings, protocol1, unconsumed active/waiting/stalled/in
 
 This tranche adds inspection only. It does not admit content, mutate stores/queue, trigger dispatch, query exit proof, adopt workers or extend leases. It does not expose the HTTP endpoint yet.
 
+## Frozen admission store tranche
+
+SessionStore.admit_selected_cli_event(session_id, snapshot, *, request_id, message_uid, snapshot_hash, checkpoint, kind='final', confirm_operator_attribution=False, submitted_by='operator') returns the updated session. This internal method takes a copied full source snapshot; it recomputes reviewed source UID/hash and validates source lineage/current checkpoint inside the session transaction. Malformed inputs or conflicting intent fail closed without writes.
+
+The accepted event retains current brief/run/turn/attempt/input IDs, source_identity_id/source_attempt_id and original snapshot sender separately, source_message_id/source_message_uid/snapshot_hash, exact copied content, attribution, provenance='operator_selected_cli_result', submitted_by and recovered_at. It stores selected_request binding request_id, checkpoint, source ID/UID/hash, kind, literal confirmation and operator label. A generated UUID-hex event_id remains stable across replay.
+
+One transaction fences current target attempt with reason='superseded_by_operator_recovery' and the same request_id, then records content/progression. No live principal is fabricated. Global UID single-use and first-writer checks execute under SessionStore lock. Final/question follow existing progression and recovery resolution; pending retry, Stop, replaced run, consumed turn or stale checkpoint reject.
+
+An exact admitted request replay precedes current fences and returns the stored decision without writing, timestamp changes, callbacks or progression. Changed reuse of request_id conflicts. Later MessageStore edits cannot alter accepted text. Failed persistence rolls back both in-memory fence and admission, preserving disk bytes.
+
+Implemented and component-tested: helper12 PASS0.754s; root combined56 PASS4.653s and full768/four expected skips65.477s. Initial missing-method red preceded implementation. Shared final/question progression retains existing admission behavior; exact selected replay uses an explicit unchanged-transaction path without callbacks or writes. This tranche has no queue writes, projection, process proof or HTTP handler. Coordinator hold/cancel/reconciliation follows separately, preserving durable fence ordering.
+
 ## Implementation and verification sequence
 
 1. Observed-red copied snapshot/import tests, minimal storage hardening, focused existing archive/message verification.

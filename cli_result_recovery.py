@@ -11,7 +11,10 @@ _SOURCE_FIELDS = ('run_id', 'turn_id', 'attempt_id', 'dispatch_id', 'input_revis
 def _current(engine, session_id):
     if type(session_id) is not int or session_id <= 0:
         raise EventValidationError('Session ID must be a positive integer.')
-    session = engine._store.get(session_id)
+    return _current_session(engine._store.get(session_id), session_id)
+
+
+def _current_session(session, session_id):
     if not session or session.get('completion_protocol') != 1:
         raise EventConflict('No explicit review turn is available for recovery.')
     invocation = session.get('active_invocation') or {}
@@ -56,6 +59,22 @@ def _source(session, invocation, snapshot):
             next(iter(attempts)) if machine else None)
 
 
+def _snapshot_identity(snapshot):
+    if not isinstance(snapshot, dict) or type(snapshot.get('id')) is not int or snapshot['id'] < 0:
+        raise EventValidationError('A complete source message snapshot is required.')
+    try:
+        digest = hashlib.sha256(json.dumps(snapshot, ensure_ascii=False, sort_keys=True,
+            separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+    except (TypeError, ValueError, UnicodeError):
+        raise EventValidationError('Message snapshot cannot be verified.') from None
+    uid = snapshot.get('uid')
+    if uid is None or uid == '':
+        uid = f"legacy-{snapshot['id']}-{digest[:16]}"
+    if not isinstance(uid, str) or not uid:
+        raise EventConflict('Message source identity is invalid.')
+    return uid, digest
+
+
 def cli_message_candidate(engine, session_id, message_id):
     if type(message_id) is not int or message_id < 0:
         raise EventValidationError('Message ID must be a nonnegative integer.')
@@ -66,16 +85,7 @@ def cli_message_candidate(engine, session_id, message_id):
             raise EventConflict('The selected message is no longer available.')
         attribution, source_attempt = _source(session, invocation, snapshot)
         validate_content('final', snapshot.get('text'))
-        try:
-            digest = hashlib.sha256(json.dumps(snapshot, ensure_ascii=False, sort_keys=True,
-                separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
-        except (TypeError, ValueError, UnicodeError):
-            raise EventValidationError('Message snapshot cannot be verified.') from None
-        uid = snapshot.get('uid')
-        if uid is None or uid == '':
-            uid = f'legacy-{message_id}-{digest[:16]}'
-        if not isinstance(uid, str) or not uid:
-            raise EventConflict('Message source identity is invalid.')
+        uid, digest = _snapshot_identity(snapshot)
         if any(event.get('source_message_uid') == uid for run in engine._store.list_all()
                for event in run.get('admitted_events', [])):
             raise EventConflict('Message has already been used to complete a review turn.')
