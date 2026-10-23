@@ -1,6 +1,6 @@
 # Ticket #13: recover saved API results without regeneration
 
-State: proposed contract for same-AGY critique. No implementation or red tests yet. Open choices below are not settled.
+State: same-AGY critique approved the bounded direction. Brief-key isolation, exact transport scoping and duplicate-ack refinements are pending ratification. No implementation or red tests yet.
 
 Base: published main2bdbc777b5ab8e254b36e54cd784a469d02720b4. Branch: codex/ticket-13-api-result-outbox. Scope authority: issue13, specificationv1.7 SC-5/AT-21c, standing autonomous execution policy in STATUS.md. Same Antigravity independent reviewer remains assigned.
 
@@ -8,7 +8,7 @@ Base: published main2bdbc777b5ab8e254b36e54cd784a469d02720b4. Branch: codex/tick
 
 Before a completed API review result is posted, save it atomically with stable result, seat/instance, run/turn/attempt/input and brief/dispatch identities, kind/content and creation time. Posting failure, lost acknowledgement and restart must permit delivery of that same result without calling the model again or advancing twice. If generation, strict response validation or durable persistence fails, report that no saved answer is recoverable. Never accept stopped, corrected-source or superseded work as a current result.
 
-Proposed bounded scope is managed frozen API review turns, including typed questions. Ordinary API chat/jobs and unmanaged compatibility wrappers retain existing behavior and make no new outbox claim. CLI selected-message recovery belongs to14, participant replacement/skip to15 and later tickets. Ask the reviewer to challenge this scope if issue13 requires broader delivery.
+Ratified bounded scope is managed frozen API review turns, including typed questions. Ordinary API chat/jobs and unmanaged compatibility wrappers retain existing behavior and make no new outbox claim. CLI selected-message recovery belongs to14, participant replacement/skip to15 and later tickets. Same-AGY critique explicitly ratified this scope.
 
 ## Current mechanisms and gaps
 
@@ -18,37 +18,29 @@ Proposed bounded scope is managed frozen API review turns, including typed quest
 - A targeted worker restart revokes its bearer. A new identity cannot post an old brief as if it were the original seat. Native process metadata alone does not authenticate result content.
 - Ticket9 now provides exact launch/model-child evidence and internal cancellation settlement, but that settlement is bound to a Stop/Retry cancellation ID. It cannot be repurposed as a fictional worker acknowledgement.
 
-## Candidate approaches
+## Settled mechanism and pending refinements
 
-| Approach | Benefit | Cost or risk |
-| --- | --- | --- |
-| Worker outbox plus current original bearer only | Smallest change; preserves existing admission API | Cannot recover after explicit worker replacement revokes that bearer; incomplete restart acceptance |
-| Treat local outbox files as trusted original-seat assertions | Simple operator-driven recovery | Cannot distinguish edited content/seat metadata from the original worker output; weaker provenance boundary |
-| Scoped pre-generation result ticket plus authenticated/sealed worker outbox (proposed) | Preserves original result authority across worker exit without reviving a bearer or granting process control | Adds a narrow durable ticket/key record and recovery ingress; needs explicit review |
+The reviewer rejected a separate pre-generation ticket endpoint/store as unnecessary. Reuse the existing authenticated brief fetch instead: generate one random256-bit symmetric seal_secret with the durable managed API brief, retain the key privately on the server, and deliver it to the exact authenticated expected API worker during its existing HTTP GET. No asymmetric signing or extra request/key database is required. Stable result_id == dispatch_id == event_id.
 
-## Choice1, OPEN: durable result authority after worker death
+The worker holds the key in memory, validates final/question output, computes HMAC-SHA256 over deterministic UTF-8 payload bytes (sorted keys, compact separators, finite JSON), and atomically writes the sealed outbox before posting. Outbox content includes the seal, never the key, seat bearer or provider credential. Recovery verifies the original saved result without reviving a bearer or fabricating a live principal.
 
-Propose a server-issued, per-dispatch result ticket obtained over the existing authenticated connection before generation. Server resolves the actual queue owner and immutable active invocation, assigns one stable result_id and a scoped signing key, and persists that binding atomically. Identical ticket requests return the same binding; changed scope conflicts.
+Pending source-grounded refinement: BriefStore.get is also used by MCP, operator views and admission. Its default result must redact private keys. Only the existing authenticated HTTP delivery to the exact managed API owner may expose the key. No key in CLI/human briefs, model messages, API model-child packet, outbox, receipts, logs, exports or public provenance. Identical immutable put retries retain the original key; legacy briefs are not silently rewritten. Existing brief_messages allowlists prompt fields, but this gets an explicit leak regression.
 
-The worker keeps the signing key in memory only, validates the provider result, signs a canonical exact record and writes it atomically under that launch's outbox before attempting delivery. The outbox contains the signature, never the signing key, seat bearer or provider credentials. A private app-data ticket store retains the verifier key; it is not a public endpoint or launch-provenance export. No global/native credential changes.
+HMAC proves payload integrity relative to a trusted server-held key. It does not protect against an actor who can rewrite the trusted brief/key store. Actual runtime path remains data/api_seat_runtime/<launch_attempt>/outbox/<dispatch_id>.json.
 
-After the original identity is gone, an operator-only recovery endpoint can verify the stored ticket/signature and exact immutable references. It records explicit saved-API-result provenance with original identity and operator recovery attribution. It never calls the live-bearer admission path using a fabricated principal and never reactivates an old bearer.
+## Separate content admission and transport settlement
 
-Critique request: is this ticket boundary necessary, or does an existing narrower authenticated durable capability suffice? If using a signature, settle canonical bytes, key storage/issuance, ticket lifetime and the exact relationship between result_id and event_id before tests. No cryptographic claims should be made for unhashed local-file metadata alone.
+Ratified: admission alone cannot release transport or prove worker/model exit. A distinct internal settled_recovered operation requires exact original launch/dispatch lifecycle evidence from Ticket9, stores source=result_recovery and a genuine verification basis, and never forges consumer acknowledgement, exit codes or Stop/Retry cancellation IDs.
 
-## Choice2, OPEN: result admission versus old transport ownership
+Pending refinement: hold only the occupied seat/dispatch. Do not globally disable an unrelated verified successor seat after content is accepted. Existing queue ownership and cold readiness boundaries still prevent execution in the occupied seat. If the original lifecycle remains unproven, preserve transport ownership visibly; its live original worker may send its real release.
 
-Admission and release must remain separate operations. A saved result can be valid while transport is still held. Recovering content must not automatically assert that a live or unproven worker/model ended.
-
-Propose a distinct internal exact-dispatch transport settlement after recovery only when existing Ticket9 runtime_exit_proof proves the original supervisor/model lifecycle ended, bound to the original launch/dispatch. Record source=result_recovery and the genuine verification basis. Never forge consumer/bearer acknowledgement, invent an exit code or reuse Stop/Retry cancellation IDs.
-
-If local end remains unproven, the result may be accepted under normal unfenced authority but the old transport stays held and visible; a dependent turn cannot execute in that occupied seat. The live original wrapper may still send its normal release. Critique the minimal safe settlement interface and whether additional dispatch readiness gating is needed.
+Pending refinement: an exact already-admitted result remains idempotently acknowledgeable after a later Stop/Retry because no new admission occurs. An unadmitted pending result for stopped/superseded/corrected work rejects409. Recovery must validate the original stable identity and immutable fields before either disposition.
 
 ## Proposed data and failure boundaries
 
 One immutable outbox record per result_id under a validated managed runtime path. Use current kernel-lock/atomic-replace patterns; reject path traversal, schema drift, duplicate IDs with changed content and malformed/tampered records without rewriting them. Preserve exact Unicode/newlines and enforce existing event byte limits without truncation.
 
-Immutable payload: version, result_id, dispatch_id, session_id, brief_id, run_id, turn_id, attempt_id, input_revision, seat_identity_id, launch_attempt/nonce/fingerprint, kind, content, created_at and ticket reference/signature. No whole prompt/source snapshot, credentials, raw provider errors or unrelated context. Precise allowlist is proposed, not frozen yet.
+Immutable payload: version, result_id, dispatch_id, session_id, brief_id, run_id, turn_id, attempt_id, input_revision, seat_identity_id, launch_attempt/nonce/fingerprint, kind, content, created_at and HMAC seal. No whole prompt/source snapshot, credentials, raw provider errors or unrelated context. Precise allowlist is proposed, not frozen yet.
 
 Delivery acknowledgement is separate mutable bookkeeping. A crash after server admission but before local ack persistence leaves a pending record; retry must identify the exact already-accepted result and mark acknowledged without another admission or model call. Changing content/kind/scope under the same ID must conflict. Local acknowledgement-write failure must remain truthful even when the server already accepted.
 
@@ -60,7 +52,7 @@ Do not delete pending or rejected saved content as cleanup. Preserve blocked sta
 
 After3 bounded normal delivery attempts fail, show Saved answer available and Deliver saved answer, distinct from Generate again. An explicit delivery action never calls the provider. Repeated actions are idempotent. During normal operation, duplicate successful-post acknowledgements may resolve automatically under the current existing retry budget.
 
-Cold discovery validates existing outbox records without spawning a worker or re-invoking the model. Proposed default is visible operator-directed delivery after cold discovery, preserving the spec's user-directed recovery posture. Critique whether the acceptance contract requires additional automatic bounded delivery on wrapper startup. Old outboxes must remain discoverable after explicit wrapper replacement, even if the old bearer is revoked.
+Cold discovery validates existing outbox records without spawning a worker or re-invoking the model. Ratified default is visible operator-directed delivery after cold discovery, preserving the spec's user-directed recovery posture. No automatic cold conversation advancement. Old outboxes must remain discoverable after explicit wrapper replacement, even if the old bearer is revoked.
 
 UI shows pending/saved/delivered/blocked state and safe reason, original seat/turn and exact result preview. Content is rendered as text. Stopped or superseded attempts have no enabled delivery action; a new generation remains a separate explicit Retry with fresh IDs. Wrong-seat/cross-run/corrected-source substitutions are rejected.
 
@@ -68,7 +60,7 @@ UI shows pending/saved/delivered/blocked state and safe reason, original seat/tu
 
 Use the existing coordinator RLock for recovery versus Stop/Retry/Continue/admission. Store locks remain sequential and non-nested; no cross-store calls under another store's lock. Avoid a distributed transaction:
 
-1. Persist ticket/binding before generation.
+1. Persist private per-brief key/binding and fetch through the existing authenticated brief route before generation.
 2. Generate once, parse/validate, atomically save signed immutable outbox.
 3. Attempt exact typed result delivery with stable result_id.
 4. Server durably admits once, projects via existing journal/add_once and returns acknowledgement.
@@ -82,7 +74,7 @@ If Stop or Retry wins the coordinator lock first, saved-result delivery cannot b
 Tests must precede production implementation. Existing helper authors bounded outbox/delivery cases against frozen interfaces, root covers authority/routes/concurrency; same AGY supplies final independent review.
 
 - Atomic initial save and ack failures preserve disk/memory, no first post on save failure, no fake recoverable flag.
-- Exact Unicode result, strict schema/path limits, signing/ticket tamper, wrong seat/run/brief/input and changed same-ID content.
+- Exact Unicode result, strict schema/path limits, seal/key-exposure and payload tamper, wrong seat/run/brief/input and changed same-ID content.
 - Post outage leaves one saved answer and one generation. Actual wrapper restart/server crash recovery delivers it without another call.
 - Successful admission followed by lost HTTP acknowledgement and failed local ack persistence produces one result/phase advancement/chat projection across reload.
 - Stop, Retry, corrected source and concurrent delivery retain durable fencing; no implicit old-result recovery or peer interference.
