@@ -288,8 +288,12 @@ def observe_runtime_heartbeat(manager, instance, payload, *, now=None):
                 process.close()
             return dict(reply, reason=observed.get('reason', 'worker_not_live'))
         if previous and previous.get('process') is not None:
-            # A same-boot launch already has the original Popen authority.
-            process.close()
+            # Keep original launcher authority, and retain the verified true
+            # worker separately when Windows venv Popen returned a shim PID.
+            if previous['process'].pid != birth['pid'] and previous.get('worker_process') is None:
+                previous['worker_process'] = process
+            else:
+                process.close()
             process = previous['process']
             attempt = previous
         else:

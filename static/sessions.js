@@ -26,6 +26,8 @@ const recoveryRequests = new Map();
 const recoveryWaitDrafts = new Map();
 const recoveryOffers = new Map();
 let savedResultRequest = 0;
+let cliMessageRequest = 0;
+let cliRecoveryReturnFocus = null;
 
 // ---------------------------------------------------------------------------
 // Message Renderers
@@ -56,6 +58,11 @@ window._messageRenderers['session_start'] = function (el, msg) {
         saved.textContent = 'Saved answers';
         saved.onclick = () => showSavedSessionResults(msg.metadata.session_id);
         el.appendChild(saved);
+        const recover = document.createElement('button');
+        recover.className = 'session-saved-link';
+        recover.textContent = 'Recover CLI message';
+        recover.onclick = () => showCliMessageRecovery(msg.metadata.session_id);
+        el.appendChild(recover);
     }
 };
 
@@ -471,14 +478,16 @@ function renderRecoveryControls(panel, s) {
         evidence.className = 'session-recovery-evidence';
         const saved = document.createElement('p');
         const accepted = s.admitted_events?.filter(e => e.kind === 'final').length || 0;
-        saved.textContent = `${accepted} accepted ${accepted === 1 ? 'result' : 'results'} retained. Check for a saved API answer before generating another.`;
+        const cli = s.participant_bindings?.[s.active_invocation?.role]?.launch_provenance?.effective?.seat?.adapter === 'cli';
+        saved.textContent = `${accepted} accepted ${accepted === 1 ? 'result' : 'results'} retained. ${cli ?
+            'You can attach an existing CLI message instead of repeating this turn.' : 'Check for a saved API answer before generating another.'}`;
         const error = document.createElement('p');
         error.setAttribute('role', 'alert');
         panel.append(title, status, evidence, saved, error);
         const checkSaved = document.createElement('button');
         checkSaved.className = 'session-saved-link';
-        checkSaved.textContent = 'Check saved answers';
-        checkSaved.onclick = () => showSavedSessionResults(s.id);
+        checkSaved.textContent = cli ? 'Recover a CLI message' : 'Check saved answers';
+        checkSaved.onclick = () => cli ? showCliMessageRecovery(s.id) : showSavedSessionResults(s.id);
         panel.appendChild(checkSaved);
         const perform = async (action, body) => {
             panel.dataset.busy = 'true';
@@ -682,6 +691,7 @@ function closeSavedSessionResults() {
 
 async function showSavedSessionResults(sessionId) {
     if (!Number.isInteger(sessionId) || sessionId <= 0) return;
+    closeCliMessageRecovery(false);
     const request = ++savedResultRequest;
     let panel = document.getElementById('session-saved-controls');
     if (!panel) {
@@ -775,6 +785,218 @@ async function showSavedSessionResults(sessionId) {
     }
 }
 
+function closeCliMessageRecovery(restoreFocus = true) {
+    cliMessageRequest += 1;
+    const panel = document.getElementById('session-cli-controls');
+    if (panel) panel.hidden = true;
+    updateSessionBar();
+    if (restoreFocus && cliRecoveryReturnFocus?.isConnected) cliRecoveryReturnFocus.focus();
+}
+
+async function showCliMessageRecovery(sessionId) {
+    if (!Number.isInteger(sessionId) || sessionId <= 0) return;
+    cliRecoveryReturnFocus = document.activeElement;
+    closeSavedSessionResults();
+    const request = ++cliMessageRequest;
+    let panel = document.getElementById('session-cli-controls');
+    if (!panel) {
+        panel = document.createElement('section');
+        panel.id = 'session-cli-controls';
+        panel.className = 'session-turn-controls session-saved-controls session-cli-controls';
+        panel.setAttribute('aria-label', 'Recover a CLI review message');
+        document.getElementById('session-turn-controls').after(panel);
+        panel.addEventListener('keydown', event => {
+            if (event.key === 'Escape') { event.preventDefault(); closeCliMessageRecovery(); }
+        });
+    }
+    panel.hidden = false;
+    updateSessionBar();
+    const heading = document.createElement('div');
+    heading.className = 'session-saved-heading';
+    const title = document.createElement('strong');
+    title.textContent = 'Recover a CLI message';
+    const close = document.createElement('button');
+    close.textContent = 'Close';
+    close.onclick = () => closeCliMessageRecovery();
+    heading.append(title, close);
+    const explanation = document.createElement('p');
+    explanation.textContent = 'Use the #number beside a message. Preview its exact text, then choose how it completes this turn. No new model call is made.';
+    const status = document.createElement('p');
+    status.setAttribute('role', 'status');
+    status.textContent = 'Checking this review…';
+    const form = document.createElement('form');
+    const label = document.createElement('label');
+    label.textContent = 'Message number';
+    label.htmlFor = 'session-cli-message-id';
+    const row = document.createElement('div');
+    row.className = 'session-cli-id-row';
+    const input = document.createElement('input');
+    input.id = label.htmlFor;
+    input.type = 'text';
+    input.inputMode = 'numeric';
+    input.autocomplete = 'off';
+    input.placeholder = 'e.g. 42';
+    input.required = true;
+    input.disabled = true;
+    const inspect = document.createElement('button');
+    inspect.type = 'submit';
+    inspect.textContent = 'Preview message';
+    inspect.disabled = true;
+    row.append(input, inspect);
+    const preview = document.createElement('div');
+    const history = document.createElement('div');
+    form.append(label, row, preview);
+    panel.replaceChildren(heading, explanation, status, form, history);
+    let candidate = null;
+    let decision = null;
+    let selectionRequest = 0;
+    const headers = {'X-Session-Token': window.SESSION_TOKEN};
+    const alive = () => request === cliMessageRequest;
+
+    async function submitDecision(body, note, button) {
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+        note.textContent = 'Attaching the selected text and checking the original worker…';
+        try {
+            const response = await fetch(`/api/sessions/${sessionId}/attach-cli-message`, {
+                method: 'POST', headers: {...headers, 'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+            const value = await response.json();
+            if (!alive()) return null;
+            if (!response.ok) {
+                const error = new Error(value.error || 'Attachment could not be confirmed. Retry the same attachment.');
+                error.rejected = response.status === 400 || response.status === 409;
+                throw error;
+            }
+            note.textContent = value.transport_settled ? 'Message attached. The original seat is released.' :
+                'Message attached. Worker exit is not yet confirmed. Check again after the original worker ends.';
+            if (value.kind === 'question') note.textContent += ' Close this panel to answer the question.';
+            button.textContent = value.transport_settled ? 'Seat released' : 'Check worker release';
+            button.disabled = value.transport_settled;
+            await fetchActiveSession();
+            return value;
+        } finally { button.removeAttribute('aria-busy'); }
+    }
+
+    input.addEventListener('input', () => {
+        selectionRequest += 1;
+        candidate = null;
+        decision = null;
+        preview.replaceChildren();
+        if (!input.disabled) inspect.disabled = false;
+    });
+    form.onsubmit = async event => {
+        event.preventDefault();
+        const id = Number(input.value);
+        if (!/^(0|[1-9][0-9]*)$/.test(input.value) || !Number.isSafeInteger(id)) {
+            status.textContent = 'Enter the message number shown beside the answer. Message 0 is valid.';
+            return;
+        }
+        const selection = ++selectionRequest;
+        inspect.disabled = true;
+        preview.replaceChildren();
+        status.textContent = 'Verifying the message, its author, and this turn…';
+        try {
+            const response = await fetch(`/api/sessions/${sessionId}/cli-message-candidate/${id}`, {headers});
+            const value = await response.json();
+            if (!alive() || selection !== selectionRequest) return;
+            if (!response.ok) throw new Error(value.error || 'This message cannot be attached. Choose another message.');
+            candidate = value;
+            decision = null;
+            status.textContent = `Message #${value.message_id} from ${value.sender} in #${value.channel}.`;
+            const attribution = document.createElement('p');
+            attribution.textContent = value.requires_operator_confirmation ?
+                'The author is authenticated, but this message has no complete turn tags. You must confirm its association with this turn.' :
+                'Verified against this turn and its frozen input.';
+            if (value.source_attempt_id && value.source_attempt_id !== value.checkpoint.attempt_id) {
+                attribution.textContent += ' This came from the earlier attempt. Attaching it retires the replacement attempt.';
+            }
+            const text = document.createElement('pre');
+            text.className = 'session-cli-preview';
+            text.tabIndex = 0;
+            text.textContent = value.text;
+            const confirmLabel = document.createElement('label');
+            confirmLabel.className = 'session-cli-confirm';
+            confirmLabel.hidden = !value.requires_operator_confirmation;
+            const confirm = document.createElement('input');
+            confirm.type = 'checkbox';
+            confirmLabel.append(confirm, 'I confirm this message answers the current turn using its frozen input.');
+            const actions = document.createElement('div');
+            actions.className = 'session-cli-actions';
+            const note = document.createElement('p');
+            note.setAttribute('role', 'status');
+            const buttons = ['final', 'question'].map(kind => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = kind === 'final' ? 'Attach as final answer' : 'Attach as question';
+                if (kind === 'final') button.className = 'session-saved-deliver';
+                button.disabled = value.requires_operator_confirmation;
+                button.onclick = async () => {
+                    if (!candidate || (value.requires_operator_confirmation && !confirm.checked)) return;
+                    if (!decision) decision = {request_id: crypto.randomUUID().replaceAll('-', ''),
+                        message_id: value.message_id, message_uid: value.message_uid, snapshot_hash: value.snapshot_hash,
+                        kind, checkpoint: value.checkpoint, confirm_operator_attribution: confirm.checked};
+                    input.disabled = inspect.disabled = confirm.disabled = true;
+                    buttons.forEach(item => { item.disabled = true; });
+                    try { await submitDecision(decision, note, button); }
+                    catch (error) {
+                        if (!alive()) return;
+                        note.textContent = error.message;
+                        if (error.rejected) {
+                            decision = null;
+                            candidate = null;
+                            input.disabled = inspect.disabled = false;
+                            note.textContent += ' Preview the message again before attaching.';
+                        } else { button.disabled = false; button.textContent = 'Retry this attachment'; }
+                    }
+                };
+                actions.appendChild(button);
+                return button;
+            });
+            confirm.onchange = () => buttons.forEach(button => { button.disabled = !confirm.checked; });
+            preview.replaceChildren(attribution, text, confirmLabel, actions, note);
+        } catch (error) { if (alive() && selection === selectionRequest) status.textContent = error.message; }
+        finally { if (alive() && selection === selectionRequest && !decision) inspect.disabled = false; }
+    };
+    try {
+        const response = await fetch(`/api/sessions/${sessionId}/recovery-status`, {headers});
+        const session = await response.json();
+        if (!alive()) return;
+        if (!response.ok) throw new Error(session.error || 'This review could not be checked. Close and try again.');
+        if (session.channel !== window.activeChannel) throw new Error('Open this review’s channel before selecting a message.');
+        const invocation = session.active_invocation;
+        const cli = session.participant_bindings?.[invocation?.role]?.launch_provenance?.effective?.seat?.adapter === 'cli';
+        const eligible = cli && invocation && !invocation.consumed && !session.stop_id && !session.pending_retry &&
+            !session.replaced_by_run_id && ['active', 'waiting', 'stalled', 'interrupted'].includes(session.state);
+        input.disabled = inspect.disabled = !eligible;
+        status.textContent = eligible ? 'Choose the exact message you want to attach. Chat alone never completes a review turn.' :
+            'This review has no unconsumed CLI turn available. Earlier attachments remain below.';
+        for (const accepted of session.admitted_events || []) {
+            if (!accepted.selected_request) continue;
+            const article = document.createElement('article');
+            article.className = 'session-saved-answer';
+            const details = document.createElement('details');
+            const summary = document.createElement('summary');
+            summary.textContent = `Attached ${accepted.kind === 'question' ? 'question' : 'answer'} from message #${accepted.source_message_id}`;
+            const text = document.createElement('pre');
+            text.textContent = accepted.content;
+            details.append(summary, text);
+            const note = document.createElement('p');
+            note.setAttribute('role', 'status');
+            note.textContent = accepted.attribution === 'operator_attributed' ? 'Association confirmed by the operator.' : 'Turn association verified.';
+            const release = document.createElement('button');
+            release.textContent = 'Check worker release';
+            release.onclick = async () => {
+                const {submitted_by, ...body} = accepted.selected_request;
+                try { await submitDecision(body, note, release); }
+                catch (error) { if (alive()) { note.textContent = error.message; release.disabled = false; } }
+            };
+            article.append(details, note, release);
+            history.appendChild(article);
+        }
+        if (eligible) input.focus();
+    } catch (error) { if (alive()) status.textContent = error.message; }
+}
+
 function renderSessionTurnControls(bar) {
     let panel = document.getElementById('session-turn-controls');
     if (!panel) {
@@ -784,7 +1006,8 @@ function renderSessionTurnControls(bar) {
         bar.after(panel);
     }
     const saved = document.getElementById('session-saved-controls');
-    if (saved && !saved.hidden) { panel.hidden = true; return; }
+    const selected = document.getElementById('session-cli-controls');
+    if ((saved && !saved.hidden) || (selected && !selected.hidden)) { panel.hidden = true; return; }
     const s = activeSession;
     if (s?.stop_id) {
         renderStopControls(panel, s);
@@ -918,7 +1141,8 @@ function renderRestartControls(bar) {
         document.getElementById('session-turn-controls').after(panel);
     }
     const saved = document.getElementById('session-saved-controls');
-    if (saved && !saved.hidden) { panel.hidden = true; return; }
+    const selected = document.getElementById('session-cli-controls');
+    if ((saved && !saved.hidden) || (selected && !selected.hidden)) { panel.hidden = true; return; }
     const s = activeSession;
     const prepared = s?.state === 'prepared' && !s.stop_id;
     panel.hidden = !s || (!s.stop_id && !prepared) || !!s.legacy;
@@ -1768,6 +1992,7 @@ Hub.on('channel_renamed', function (event) {
 
 Store.watch('activeChannel', function (newChannel) {
     closeSavedSessionResults();
+    closeCliMessageRecovery(false);
     activeSession = activeSessionsByChannel[newChannel] || null;
     updateSessionBar();
     fetchActiveSession(newChannel);

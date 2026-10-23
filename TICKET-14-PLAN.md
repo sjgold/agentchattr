@@ -1,6 +1,6 @@
 # Ticket14: recover an operator-selected CLI message
 
-State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage, candidate and admission-store checkpoints independently bounded-PASS. Transport/CLI proof checkpoint2e10812 independently bounded-PASS. Engine attachment/operator HTTP routes implemented and tested (full802/four expected skips70.279s), pending bounded review. UI/actual CLI integration and final acceptance remain pending.
+State: contract settled by the same AGY reviewer, with source-grounded precision amendments. Storage, candidate and admission-store checkpoints independently bounded-PASS. Transport/CLI proof checkpoint2e10812 independently bounded-PASS. Engine attachment/operator HTTP routes implemented and tested (full802/four expected skips70.279s), pending bounded review. UI implemented with syntax checks only; actual CLI integration and browser/final acceptance remain pending.
 
 Base: published main `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Scope: issue14, specification v1.7 SC-5 and CLI AT-21c, standing autonomous policy in STATUS.md. Ticket12 blocker and Ticket13 are closed. Independent review: [contract settlement](epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-14-contract-review/index.md). Same AGY remains final reviewer.
 
@@ -119,3 +119,21 @@ QueueStore.claim accepts internal blocked_identity_ids and checks it AFTER exist
 SessionStore.resolve_selected_transport(session_id, request_id, evidence) is internal only, invoked after genuine selected_cli_exit_proof. It requires literal local_ended=True, exact dispatch/seat/launch and allowed CLI basis against the frozen audit, marks resolved with immutable proof/time, and preserves byte-identical exact replay. Persistence failure rolls memory/disk back. It can resolve transport after Stop without bypassing content fences.
 
 Root missing-dispatch3 plus queue/admission/API hold/settlement regression39 PASS3.180s. Full786 tests OK/four expected skips70.610s (shell4688a3af exit0). Earlier missing-dispatch red and broad CLI-basis API regression remain recorded; no engine attach, HTTP, UI or actual CLI end-to-end acceptance is claimed.
+
+## UI and actual integration progress
+
+The inline existing-theme UI now offers explicit message number and exact preview, verified or legacy operator attribution, literal legacy confirmation, and separate final/question attachment actions. It preserves request ID across uncertain acknowledgement, provides history-based release rechecks, and hides competing review panels until Close. Channel changes invalidate stale responses. Static syntax/whitespace checks pass; desktop/mobile functional/contrast checks remain pending.
+
+Same AGY independently bounded-PASS c48b18a (73 focused/full802 tests, four expected skips71.597s). Actual integration tools are draft-only except one separately authorized tagged-final normal run pending result. Root read full resource cleanup and corrected draft Retry key/termination lookup to exact new identity/launch. Later cases and browser serve still require coordinator readiness after actual preceding results, not a routine human approval gate.
+
+Browser Harness doctor reports no daemon/active connection. Existing Chrome extension is available for bounded desktop/mobile QA without changing user browser settings. Inherited index hook findings stay outside the scoped recovery panel; no suppressions or page redesign are claimed.
+
+Actual first tagged-final run2ua_bi5_ failed before ordinary chat/attachment on a fixture Unicode serialization assertion; stored prior_results text independently equals the expected Unicode string and cleanup unresolved[]. Both string-in-JSON assertions are being replaced with exact parsed-text equality; one corrected normal rerun authorized, no other cases/serve yet. No production failure or positive native attachment acceptance claimed from that run.
+
+## Native settlement failure and same-boot worker-handle correction
+
+Second actual tagged-final7sop0n1_ preserved one real selected admission/projection and observed CLI client+worker end, but exact replay reported unsettled. Root native regression rebuilt actual Windows venv shim versus self-born worker PID at heartbeat admission: CLI and API each failed because the true-worker handle was discarded. Both failures0.878s preceded the source change.
+
+Heartbeat now retains the verified true-worker handle separately as worker_process when original Popen PID differs from birth PID, preserving original Popen authority. Duplicate handles/true-PID launches keep existing behavior. No identity/exit/lease guard is relaxed. Native/proof/adoption32 pass11.137s; stronger native2 check exact unchanged lease during proof passes0.927s.
+
+Unchanged tagged-final7bfj2rgf then passes: one API prior generation, one hidden CLI injection, one recovered admission/projection, no inspect/attach/replay actuation, separate actual owned CLI end, exact replay settled via retained_native_handle_observed_end, peer preserved, cleanup unresolved[]. Root reread persisted result/session. Earlier Unicode fixture2ua_bi5_ and genuine settlement7sop0n1_ failures remain evidence. Legacy-question/after-Retry batch is authorized sequentially, stopping on any failure; Stop/serve/browser acceptance still pending. Substantive handle correction requires same-AGY recheck and final full regression.
