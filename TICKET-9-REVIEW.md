@@ -3,7 +3,7 @@
 State: builder verification complete; final independent review pending. No publication or issue closure yet.
 
 Base: `139e2dee00b2d803fbe8e31f5bd680d7f16df728` (published main).
-Frozen target: to be recorded after the local checkpoint commit.
+Frozen target: `7777f8173ee9109e8c78120b57ec5f9ec55c5237`. Later review-pin changes are documentation only.
 Branch: `codex/ticket-9-restart-reconciliation`.
 Contract: `TICKET-9-PLAN.md` and same-AGY `ticket-9-contract-review` Sections13-19.
 
@@ -15,6 +15,8 @@ Earlier bounded audits passed09f65639,61cc0be,49432621 and328309a. None is final
 - Interrupted session UI survives refresh, exposes explicit saved Retry/repair and retains frozen request IDs. Rendering never submits recovery. Narrow confirmation scroll keeps both choices visible.
 - An unavailable cancellation poll cannot cancel the in-flight model. Positive exact cancellation, local shutdown, heartbeat expiry and provider timeout remain bounded. Admission still obeys durable Stop/superseded fences.
 - Real API repair and crash fixtures retain true-worker/model/client/server handles independently of Windows venv launchers. Cleanup does not infer exit from timeout or fabricate parent IPC/exit records.
+
+The checkpoint also preserves an unrelated pre-existing working-tree spec typo (`p2arts` in docs/agentchattr-fork-spec.md). It is not an intended product-contract change; flag separately from recovery behavior.
 
 Core ownership and recovery risks:
 
