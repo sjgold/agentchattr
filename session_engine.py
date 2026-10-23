@@ -286,6 +286,12 @@ class SessionEngine:
                 if prior['fingerprint'] != intent:
                     raise EventConflict('Retry request ID belongs to different recovery choices.')
                 if session.get('pending_retry', {}).get('request_id') == request_id:
+                    boot_id = getattr(self, '_restart_boot_id', None)
+                    if boot_id and session['pending_retry'].get('recovery_boot_id') != boot_id:
+                        def resume_intent(value):
+                            value['pending_retry']['recovery_boot_id'] = boot_id
+                            value['state'] = 'retrying'
+                        session = self._store._event_update(session_id, resume_intent)
                     return self._finish_retry(session, now)
                 return self._enrich(session)
             invocation, checkpoint = self._current_checkpoint(session, checkpoint_id, attempt_id)
@@ -316,6 +322,7 @@ class SessionEngine:
                        'old_invocation': deepcopy(invocation), 'new_attempt_id': uuid.uuid4().hex,
                        'new_brief_id': uuid.uuid4().hex, 'new_dispatch_id': uuid.uuid4().hex,
                        'status': 'awaiting_local_end', 'requested_at': now,
+                       'recovery_boot_id': getattr(self, '_restart_boot_id', None),
                        'launch_provenance': deepcopy(provenance), 'confirmation': deepcopy(confirmation)}
             def fence(value):
                 current, recovery = self._current_checkpoint(value, checkpoint_id, attempt_id)
@@ -375,7 +382,8 @@ class SessionEngine:
                 value['retry_requests'][request_id].setdefault('preparation_repairs', {}).setdefault(
                     preparation_attempt, {'requested_at': now})
                 value['pending_retry'].update(preparation_attempt=preparation_attempt,
-                    preparation_confirmation=deepcopy(confirmation), status='preparing_contexts')
+                    preparation_confirmation=deepcopy(confirmation), status='preparing_contexts',
+                    recovery_boot_id=getattr(self, '_restart_boot_id', None))
             # Durable repair intent precedes process control, just like Retry.
             session = self._store._event_update(session_id, stage)
             return self._finish_retry(session, now)
@@ -392,6 +400,11 @@ class SessionEngine:
         record = self._trigger.queue.cancel_dispatch(old['dispatch_id'], pending['request_id'])
         provenance = pending.get('launch_provenance')
         cli = bool(provenance and provenance['effective']['seat']['adapter'] == 'cli')
+        if (record and record['state'] == 'cancelling' and provenance and self._seat_manager
+                and hasattr(self._seat_manager, 'runtime_exit_proof')):
+            proof = self._seat_manager.runtime_exit_proof(provenance, old['dispatch_id'])
+            if isinstance(proof, dict) and proof.get('local_ended') is True:
+                record = self._trigger.queue.confirm_local_exit(old['dispatch_id'], pending['request_id'], evidence=proof)
         if record and record['state'] == 'cancelling' and not cli:
             return self._enrich(session)
         context = None
@@ -447,9 +460,12 @@ class SessionEngine:
             raise EventConflict('The retry intent no longer owns this turn.')
         try:
             if self._trigger_current(session, retry=pending, now=now) is False:
+                current = self._store.get(session['id'])
+                recovery = current.get('restart_recovery')
+                waiting_for_proof = recovery and not self._restart_role_ready(current, old['role'], recovery['boot_id'])
                 def blocked(value):
                     value['state'] = 'retrying'
-                    value['pending_retry']['status'] = 'preparation_failed'
+                    value['pending_retry']['status'] = 'preparing_contexts' if waiting_for_proof else 'preparation_failed'
                 return self._enrich(self._store._event_update(session['id'], blocked))
         except OSError:
             # Already-fenced work stays safe; the same explicit request repairs.
@@ -861,6 +877,15 @@ class SessionEngine:
                 phase = session['design_snapshot']['phases'][session['current_phase']]
                 role = phase['participants'][session['current_turn']]
                 pending = session.get('pending_retry')
+                if pending and pending.get('recovery_boot_id') == boot_id:
+                    # Only this boot's explicit operator intent may progress.
+                    # An intent inherited from a crashed boot stays interrupted.
+                    if session['state'] not in ('paused', 'awaiting_input'):
+                        if session['state'] != 'retrying' or session.get('dispatch_eligible') is not False:
+                            def keep_retrying(value):
+                                value.update(state='retrying', dispatch_eligible=False)
+                            self._store._event_update(session['id'], keep_retrying)
+                    continue
                 ready = not pending and self._restart_role_ready(session, role, boot_id)
                 session = self._restart_checkpoint(session, boot_id, ready, now)
                 if (ready and session['state'] == 'active' and not session.get('active_invocation')

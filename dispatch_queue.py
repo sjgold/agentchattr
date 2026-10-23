@@ -278,6 +278,41 @@ class QueueStore:
             self._write(ledger)
             return deepcopy(record)
 
+    def confirm_local_exit(self, dispatch_id, cancellation_id, *, evidence):
+        """Internal operator-intent settlement, distinct from a worker receipt."""
+        _identifier(dispatch_id, 'Dispatch ID')
+        _identifier(cancellation_id, 'Cancellation ID')
+        allowed = {'durable_receipt_and_observed_absent', 'all_bound_invocations_ended',
+                   'protocol_one_no_invocations', 'bound_invocation_birth_and_observed_absent',
+                   'observed_child_exit_and_ipc'}
+        if (not isinstance(evidence, dict) or evidence.get('local_ended') is not True
+                or not isinstance(evidence.get('verification_basis'), str)
+                or evidence['verification_basis'] not in allowed):
+            raise QueueConflict('Verified local exit evidence is required.')
+        launch = _identifier(evidence.get('launch_attempt'), 'Launch attempt')
+        if not re.fullmatch(r'[0-9a-f]{32}', launch):
+            raise QueueConflict('The exact launch attempt is required.')
+        with self._transaction() as ledger:
+            record = next((r for r in ledger['records'] if r['envelope']['dispatch_id'] == dispatch_id), None)
+            if not record or record.get('cancellation_id') != cancellation_id:
+                raise QueueConflict('The exact persisted cancellation request is required.')
+            previous = record.get('cancellation', {})
+            if (record['state'] == 'cancelled' and previous.get('status') == 'local_ended'
+                    and previous.get('source') == 'runtime_reconciliation'
+                    and previous.get('launch_attempt') == launch
+                    and previous.get('verification_basis') == evidence['verification_basis']):
+                return deepcopy(record)
+            if record['state'] != 'cancelling':
+                raise QueueConflict('No cancellation is pending for this dispatch.')
+            receipt = {'status': 'local_ended', 'at': time.time(), 'remote_compute': 'unverified',
+                       'source': 'runtime_reconciliation', 'launch_attempt': launch,
+                       'verification_basis': evidence['verification_basis']}
+            record['cancellation'] = receipt
+            record.setdefault('cancellation_receipts', []).append(deepcopy(receipt))
+            self._event(record, 'cancelled')
+            self._write(ledger)
+            return deepcopy(record)
+
     def status(self):
         with self._transaction() as ledger:
             seats = {}

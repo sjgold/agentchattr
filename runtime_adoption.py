@@ -53,7 +53,7 @@ def _read(path):
     return value
 
 
-def _candidate(manager, path):
+def _launch_record(manager, path):
     snapshot = _read(path)
     validated = _validate(path, snapshot)
     if validated is None:
@@ -71,18 +71,85 @@ def _candidate(manager, path):
             or server != identity['server_identity']):
         raise ValueError('foreign_server_identity')
     manifest = _manifest(path.with_name('launch.json'), identity)
+    return {'snapshot': snapshot, 'path': path, 'identity': identity, 'effective': effective,
+            'key': identity['launch_key'], 'manifest': manifest}
+
+
+def _candidate(manager, path):
+    item = _launch_record(manager, path)
+    snapshot, identity, manifest = item['snapshot'], item['identity'], item['manifest']
+    path = item['path']
     if manifest['spawn_outcome'] == 'failed':
         if path.with_name('birth.json').exists():
             raise ValueError('failed_spawn_has_conflicting_birth')
-        return {'snapshot': snapshot, 'path': path, 'identity': identity,
-                'birth': None, 'effective': effective, 'key': identity['launch_key'], 'manifest': manifest}
+        return dict(item, birth=None)
     birth = _read(path.with_name('birth.json'))
     if (birth.get('ownership') != identity or birth.get('attempt') != identity['attempt']
             or birth.get('base') != snapshot['base']
-            or os.path.normcase(str(birth.get('worker_root'))) != os.path.normcase(root)):
+            or os.path.normcase(str(birth.get('worker_root'))) != os.path.normcase(identity['root_path'])):
         raise ValueError('worker_birth_mismatch')
-    return {'snapshot': snapshot, 'path': path, 'identity': identity,
-            'birth': birth, 'effective': effective, 'key': identity['launch_key'], 'manifest': manifest}
+    return dict(item, birth=birth)
+
+
+def recover_prepared_context(manager, key, context_key, fingerprint, binding, retry_attempt):
+    """Recover an exact preparation lineage; replay alone never replaces it."""
+    from api_seats import SeatError
+    records = {}
+    for path in (manager.store.path.parent / 'api_seat_runtime').glob('*/config.json'):
+        matched = False
+        try:
+            snapshot = _read(path)
+            matched = isinstance(snapshot.get('ownership'), dict) and snapshot['ownership'].get('launch_key') == key
+            if not matched:
+                continue
+            item = _launch_record(manager, path)
+            if (snapshot.get('context_key') != context_key
+                    or snapshot.get('context_source_fingerprint') != fingerprint
+                    or (binding is not None and any(snapshot.get(k) != v for k, v in binding.items()))):
+                raise ValueError('Prepared context references differ.')
+            records[item['identity']['attempt']] = item
+        except (OSError, ValueError, KeyError, TypeError):
+            if matched:
+                raise SeatError('Prepared context evidence is incomplete or belongs to different settings.') from None
+    if not records:
+        return None
+    replaced = {item['snapshot'].get('retried_from') for item in records.values()}
+    leaves = set(records) - replaced
+    if len(leaves) != 1:
+        raise SeatError('Prepared context history has ambiguous unlinked attempts; no replacement was started.')
+    attempt_id = leaves.pop()
+    item = records[attempt_id]
+    snapshot = item['snapshot']
+    # Every other attempt must belong to this leaf's explicit repair ancestry.
+    seen, current = set(), attempt_id
+    while current in records and current not in seen:
+        seen.add(current)
+        current = records[current]['snapshot'].get('retried_from')
+    if seen != set(records) or current in seen:
+        raise SeatError('Prepared context history is not a single repair lineage.')
+    manager.reconcile_runtime()
+    history = manager.runtime_history.get(attempt_id)
+    try:
+        current = _candidate(manager, item['path'])
+    except (OSError, ValueError, KeyError, TypeError):
+        raise SeatError('Prepared context has conflicting or incomplete birth evidence; no replacement was started.') from None
+    proven = bool(history and history['state'] in ('failed', 'exited')
+                  and current['identity'] == history['identity'] and current['birth'] == history['birth'])
+    view = {'key': key, 'state': 'failed' if proven else 'blocked',
+            'reason': 'Explicit repair is required.' if proven else 'Prepared worker exit is unverified.',
+            'launch_attempt': attempt_id, 'context_id': snapshot.get('context_id'),
+            'identity_id': None, 'name': None, 'clean_context': False,
+            'verification_basis': snapshot.get('verification_basis', 'same_turn_retry_relaunch'),
+            'old_local_ended': snapshot.get('retry_source_ended', False), 'worker_alive': None}
+    if retry_attempt is None or snapshot.get('retried_from') == retry_attempt:
+        return {'view': view, 'replace': False}
+    if retry_attempt != attempt_id:
+        raise SeatError('The exact failed prepared launch is required for repair.')
+    if not proven:
+        return {'view': view, 'replace': False}
+    preparation_history = deepcopy(snapshot.get('preparation_history', []))
+    preparation_history.append({'launch_attempt': attempt_id, 'context_id': snapshot.get('context_id')})
+    return {'view': view, 'replace': True, 'preparation_history': preparation_history}
 
 
 def _historical_exit(item):
@@ -242,3 +309,61 @@ def restart_readiness(manager, identity_id, boot_id, *, now=None):
                 return {'state': 'ready', 'process_verified': True}
             return dict(result, reason='adapter_not_ready')
         return result
+
+
+def runtime_exit_proof(manager, provenance, dispatch_id=None):
+    """Resolve one immutable original launch, never a latest-by-name guess."""
+    import hashlib
+    unproven = {'local_ended': False, 'reason': 'unproven_worker_exit'}
+    with manager.lock:
+        try:
+            if not isinstance(provenance, dict):
+                return unproven
+            payload = ({'effective': provenance['effective'], 'fresh_base_effective': provenance['fresh_base_effective']}
+                       if provenance.get('fresh_base_effective') else provenance['effective'])
+            fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+            if provenance.get('fingerprint') != fingerprint:
+                return unproven
+            attempt_id = provenance['launch_attempt']
+            if attempt_id not in manager.runtime_history:
+                reconcile_runtime(manager)
+            history = manager.runtime_history.get(attempt_id)
+            if not history or history.get('state') != 'exited':
+                return unproven
+            current = _candidate(manager, history['path'])
+            if (current['identity'] != history['identity'] or current['birth'] != history['birth']
+                    or current['key'] != provenance['key']
+                    or manager._provenance_effective(current['effective']) != provenance['effective']):
+                return unproven
+            base = current['snapshot'].get('context_base_effective')
+            if provenance.get('fresh_base_effective') != (manager._provenance_effective(base) if base else None):
+                return unproven
+            receipt = _read(current['path'].with_name('receipt.json'))
+            if receipt.get('attempt') != attempt_id or receipt.get('identity_id') != provenance['identity_id']:
+                return unproven
+            proof = deepcopy(history['exit_evidence'])
+            if current['effective']['seat']['adapter'] != 'cli':
+                from invocation_evidence import classify, classify_history
+                models = classify_history(current['path'].parent)
+                if not models['local_ended']:
+                    return unproven
+                if dispatch_id is not None:
+                    from runtime_ownership import _identifier
+                    _identifier(dispatch_id, 'Dispatch')
+                    path = current['path'].parent / 'invocations' / dispatch_id
+                    if path.exists():
+                        model = classify({'runtime_path': str(current['path'].parent), 'dispatch_id': dispatch_id,
+                                          'launch_attempt': attempt_id, 'launch_nonce': current['identity']['launch_nonce']})
+                        if not model['local_ended']:
+                            return unproven
+                    elif models.get('verification_basis') != 'protocol_one_no_invocations':
+                        # A different dispatch's completed child cannot stand
+                        # in for this turn's missing execution receipt.
+                        return unproven
+                proof.update(models)
+            elif (type(receipt.get('child_exit_code')) is not int
+                  or receipt['child_exit_code'] != proof['child_exit_code']):
+                return unproven
+            return dict(proof, local_ended=True, launch_attempt=attempt_id)
+        except (OSError, ValueError, KeyError, TypeError):
+            return unproven

@@ -83,6 +83,21 @@ class ColdSpawnProofTests(unittest.TestCase):
                 self.manager.launch('team', 'cli', restart=True)
         spawn.assert_not_called()
 
+    def test_cached_preparation_failure_cannot_override_new_conflicting_birth(self):
+        from tests import test_cold_preparation_repair as fixture
+        from api_seats import atomic_json
+        f = fixture.ColdPreparationRepairTests()
+        f.setUp()
+        self.addCleanup(f.doCleanups)
+        with patch('runtime_adoption.open_verified_process', return_value={'status': 'absent', 'process': None, 'error_code': 87}):
+            provenance, key, binding, failed, path, snapshot = f.failed_preparation()
+            cold = f.new_manager()
+            cold.reconcile_runtime()
+            atomic_json(path.with_name('birth.json'), {'conflicting_birth': True})
+            with self.assertRaises(SeatError):
+                cold.prepare_retry_context(provenance, key, binding=binding, retry_attempt=failed['launch_attempt'])
+        f.spawn.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

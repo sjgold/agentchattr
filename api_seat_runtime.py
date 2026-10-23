@@ -57,6 +57,10 @@ class SeatManager:
         from runtime_adoption import restart_readiness
         return restart_readiness(self, identity_id, boot_id, now=now)
 
+    def runtime_exit_proof(self, provenance, dispatch_id=None):
+        from runtime_adoption import runtime_exit_proof
+        return runtime_exit_proof(self, provenance, dispatch_id)
+
     def _effective(self, seat):
         original = self.store.providers[seat['provider']]
         if seat['adapter'] == 'cli':
@@ -470,7 +474,13 @@ class SeatManager:
             if not isinstance(provenance, dict) or not isinstance(provenance.get('key'), str):
                 return dict(result, reason='launch_provenance_unavailable')
             original = self.attempts.get(provenance['key'])
-            if not original or original['id'] != provenance['launch_attempt']:
+            if not original:
+                proof = self.runtime_exit_proof(provenance)
+                if proof['local_ended']:
+                    return dict(result, state='ready', old_local_ended=True,
+                                launch_attempt=provenance['launch_attempt'])
+                return dict(result, reason='unproven_worker_exit')
+            if original['id'] != provenance['launch_attempt']:
                 return dict(result, reason='stale_launch_provenance')
             result['launch_attempt'] = original['id']
             if original['seat']['adapter'] == 'cli' and self._cli_exit_proven(original):
@@ -509,10 +519,20 @@ class SeatManager:
             if confirmation is not None and retry_attempt is None:
                 self.validate_context_confirmation(provenance, confirmation)
             if effective['seat']['adapter'] != 'cli':
-                return self.retry_context_offer(provenance)
+                offer = self.retry_context_offer(provenance)
+                if offer['state'] != 'ready' or not offer.get('old_local_ended'):
+                    return offer  # Keep a healthy live API supervisor in place.
             key = 'retry-' + hashlib.sha256(context_key.encode('utf-8')).hexdigest()[:24] + '/' + effective['seat']['id']
             existing = self.attempts.get(key)
             history = []
+            cold = None
+            if existing is None:
+                from runtime_adoption import recover_prepared_context
+                cold = recover_prepared_context(self, key, context_key, fingerprint, binding, retry_attempt)
+                if cold and not cold['replace']:
+                    return cold['view']
+                if cold:
+                    history = cold['preparation_history']
             if existing:
                 if (existing.get('context_source_fingerprint') != fingerprint
                         or (binding is not None and any(existing.get(k) != v for k, v in binding.items()))):
@@ -536,9 +556,9 @@ class SeatManager:
                 history = deepcopy(existing.get('preparation_history', []))
                 history.append({'launch_attempt': existing['id'], 'context_id': existing.get('context_id')})
                 self._release(existing)
-            elif retry_attempt is not None:
+            elif retry_attempt is not None and not cold:
                 raise SeatError('No owned prepared launch matches this repair.')
-            else:
+            elif not cold:
                 offer = self.retry_context_offer(provenance)
                 if offer['state'] == 'confirmation_required':
                     if confirmation is None:
@@ -548,21 +568,25 @@ class SeatManager:
                         return dict(offer, state='blocked', reason='unresolved_child_exit')
                 elif offer['state'] != 'ready':
                     return offer
-                original = self.attempts[provenance['key']]
-                if not self._cli_exit_proven(original):
+                original = self.attempts.get(provenance['key'])
+                if original and not self._cli_exit_proven(original):
                     return dict(offer, state='blocked', reason='unresolved_child_exit', old_local_ended=False)
-                self._release(original)
+                if original:
+                    self._release(original)
+                elif not self.runtime_exit_proof(provenance)['local_ended']:
+                    return dict(offer, state='blocked', reason='unproven_worker_exit', old_local_ended=False)
             context_id = uuid.uuid4().hex
             base = deepcopy(provenance.get('fresh_base_effective', effective))
             fresh = deepcopy(base)
-            verified = fresh['provider'].get('cli_fresh_context_verified') is True
+            verified = fresh['seat']['adapter'] == 'cli' and fresh['provider'].get('cli_fresh_context_verified') is True
             if verified:
                 from cli_seats import build_fresh_context_args
                 fresh['provider']['cli_args'] = list(fresh['provider'].get('cli_args', [])) + build_fresh_context_args(fresh['provider'], context_id)
             self._launch_effective(key, fresh, launch_metadata={
                 'context_id': context_id, 'context_source_fingerprint': fingerprint, 'context_base_effective': base,
                 'context_key': context_key, **(binding or {}), 'retry_source_ended': True,
-                'verification_basis': 'same_turn_retry_relaunch', 'context_clean_verified': verified,
+                'verification_basis': ('same_turn_retry_relaunch' if fresh['seat']['adapter'] == 'cli' else 'isolated_request_packet'),
+                'context_clean_verified': verified,
                 'retried_from': retry_attempt, 'preparation_history': history})
             return self._context_view(key)
 
