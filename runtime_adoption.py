@@ -195,8 +195,16 @@ def reconcile_runtime(manager, *, now=None):
         for path in sorted(directory.glob('*/config.json')):
             try:
                 item = _candidate(manager, path)
-                classification = _historical_exit(item)
                 attempt_id = item['identity']['attempt']
+                known = manager.attempts.get(item['key'])
+                if (known and known['id'] == attempt_id and known.get('worker_birth') is not None
+                        and (known['worker_birth'] != item['birth'] or known.get('ownership') != item['identity'])):
+                    # A changed file cannot retire an owner whose immutable
+                    # birth was already authenticated and retained this boot.
+                    public.append({'attempt': attempt_id, 'key': item['key'],
+                                   'state': 'unverified', 'reason': 'worker_birth_changed'})
+                    continue
+                classification = _historical_exit(item)
                 if classification['state'] in ('exited', 'failed'):
                     manager.retired_attempts.add(attempt_id)
                     manager.runtime_history[attempt_id] = {**item, **classification}
@@ -280,7 +288,8 @@ def observe_runtime_heartbeat(manager, instance, payload, *, now=None):
                 if field in item['snapshot']:
                     attempt[field] = deepcopy(item['snapshot'][field])
             manager.attempts[item['key']] = attempt
-        attempt.update(adopted_boot=manager.boot_id, authenticated_at=now, identity_id=instance['identity_id'])
+        attempt.update(adopted_boot=manager.boot_id, authenticated_at=now, identity_id=instance['identity_id'],
+                       worker_birth=deepcopy(birth))
         return dict(reply, verified=True, reason='verified_runtime')
 
 
@@ -299,8 +308,12 @@ def restart_readiness(manager, identity_id, boot_id, *, now=None):
             if now - attempt.get('authenticated_at', 0) > 15:
                 return dict(result, state='disconnected', reason='authenticated_lease_expired')
             try:
+                candidate = _candidate(manager, attempt['snapshot'])
+                if (candidate['identity'] != attempt.get('ownership')
+                        or candidate['birth'] != attempt.get('worker_birth')):
+                    return dict(result, reason='worker_birth_changed')
                 receipt = _read(attempt['receipt'])
-            except (OSError, ValueError):
+            except (OSError, ValueError, KeyError, TypeError):
                 return result
             live = next((item for item in manager.registry.get_all().values()
                          if item.get('identity_id') == identity_id and item.get('base') == attempt['base']), None)

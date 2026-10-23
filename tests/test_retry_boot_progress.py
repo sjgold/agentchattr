@@ -37,6 +37,31 @@ class RetryBootProgressTests(unittest.TestCase):
         self.assertEqual(f.current()['pending_retry']['new_attempt_id'], reserved)
         self.assertEqual((f.root / 'queue/ledger.json').read_bytes(), before_queue)
 
+    def test_explicit_repeat_of_completed_repair_rejoins_current_boot_without_new_ids(self):
+        f = fixture.ColdRetrySettlementTests()
+        f.setUp()
+        self.addCleanup(f.doCleanups)
+        manager = f.proof_manager(True)
+        f.engine.reconcile_restart(boot_id=manager.boot_id, now=f.now)
+        failed = {'state': 'failed', 'key': 'retry-fixture/api', 'launch_attempt': uuid.uuid4().hex,
+                  'identity_id': None, 'name': None, 'clean_context': False, 'old_local_ended': True}
+        manager.prepare_retry_context.return_value = failed
+        f.engine.retry_turn(f.session_id, f.checkpoint, f.old['attempt_id'], f.request, now=f.now)
+        starting = {**failed, 'state': 'starting', 'launch_attempt': uuid.uuid4().hex}
+        manager.prepare_retry_context.return_value = starting
+        f.engine.repair_retry(f.session_id, f.request, failed['launch_attempt'], now=f.now + 1)
+        reserved = f.current()['pending_retry']['new_attempt_id']
+        before = (f.root / 'queue/ledger.json').read_bytes()
+        manager.boot_id = uuid.uuid4().hex
+        f.engine.reconcile_restart(boot_id=manager.boot_id, now=f.now + 2)
+        self.assertEqual(f.current()['state'], 'interrupted')
+        f.engine.repair_retry(f.session_id, f.request, failed['launch_attempt'], now=f.now + 3)
+        self.assertEqual(f.current()['state'], 'retrying')
+        self.assertEqual(f.current()['pending_retry']['recovery_boot_id'], manager.boot_id)
+        self.assertEqual(f.current()['pending_retry']['new_attempt_id'], reserved)
+        self.assertEqual(f.current()['pending_retry']['context']['launch_attempt'], starting['launch_attempt'])
+        self.assertEqual((f.root / 'queue/ledger.json').read_bytes(), before)
+
 
 if __name__ == '__main__':
     unittest.main()

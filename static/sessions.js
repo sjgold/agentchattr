@@ -501,7 +501,7 @@ function renderRecoveryControls(panel, s) {
                     {checkpoint_id: pending.checkpoint_id, attempt_id: pending.old_invocation.attempt_id,
                         request_id: pending.request_id, ...(pending.confirmation ? {confirmation: pending.confirmation} : {})});
                 if (context?.worker_alive) confirmedAction('Repair failed launch…', context.launch_attempt,
-                    'This ends only the failed prepared CLI context and prepares the same reserved turn again.', repair);
+                    'This ends only the failed prepared context and prepares the same reserved turn again.', repair);
                 else {
                     const button = document.createElement('button');
                     button.textContent = 'Repair saved retry preparation';

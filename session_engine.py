@@ -365,15 +365,21 @@ class SessionEngine:
             pending = session.get('pending_retry')
             if preparation_attempt in repairs and repairs[preparation_attempt].get('launch_attempt'):
                 if pending and pending['request_id'] == request_id:
+                    boot_id = getattr(self, '_restart_boot_id', None)
+                    if boot_id and pending.get('recovery_boot_id') != boot_id:
+                        def resume_repair(value):
+                            value['pending_retry']['recovery_boot_id'] = boot_id
+                            value['state'] = 'retrying'
+                        session = self._store._event_update(session_id, resume_repair)
                     return self._finish_retry(session, now)
                 return self._enrich(session)
             context = (pending or {}).get('context') or {}
             provenance = (pending or {}).get('launch_provenance')
-            if (not pending or pending['request_id'] != request_id or session['state'] != 'retrying'
+            if (not pending or pending['request_id'] != request_id or session['state'] not in ('retrying', 'interrupted')
                     or context.get('launch_attempt') != preparation_attempt
-                    or not provenance or provenance['effective']['seat']['adapter'] != 'cli'
+                    or not provenance or provenance['effective']['seat']['adapter'] not in ('cli', 'openai-compatible')
                     or pending['status'] != 'preparation_failed' or not self._seat_manager):
-                raise EventConflict('Only the exact failed pending CLI preparation can be repaired.')
+                raise EventConflict('Only the exact failed pending prepared context can be repaired.')
             if context.get('identity_id'):
                 records = self._trigger.queue.for_identity({'name': context['name'], 'identity_id': context['identity_id']})
                 if any(r['state'] in ('queued', 'dispatched', 'acknowledged', 'uncertain', 'cancelling') for r in records):

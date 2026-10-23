@@ -549,7 +549,11 @@ class SeatManager:
                             or confirmation['confirm'] is not True or confirmation['launch_attempt'] != existing['id']):
                         raise SeatError('Confirm the exact prepared launch before termination.')
                     instance = next((i for i in self.registry.get_all().values() if i.get('base') == existing['base']), None)
-                    if not instance or not self.terminate_owned(instance['identity_id'], existing['id'])['local_ended']:
+                    if effective['seat']['adapter'] == 'cli':
+                        ended = bool(instance and self.terminate_owned(instance['identity_id'], existing['id'])['local_ended'])
+                    else:
+                        ended = self._end_api_preparation(existing, confirmation)
+                    if not ended:
                         return dict(self._context_view(key), state='blocked', reason='prepared_client_exit_unverified')
                 if not self._retry_preparation_exit_proven(existing):
                     return dict(self._context_view(key), state='blocked', reason='prepared_client_exit_unverified')
@@ -592,6 +596,10 @@ class SeatManager:
 
     @staticmethod
     def _retry_preparation_exit_proven(attempt):
+        proof = attempt.get('verified_api_exit')
+        if (attempt.get('seat', {}).get('adapter') == 'openai-compatible' and isinstance(proof, dict)
+                and proof.get('local_ended') is True and proof.get('launch_attempt') == attempt.get('id')):
+            return True  # An in-memory witness from a verified native wait, never loaded from a snapshot.
         process = attempt.get('process')
         if process is None:
             # A reboot loses RAM handles even when Popen previously succeeded.
@@ -612,6 +620,59 @@ class SeatManager:
             return (receipt.get('attempt') == attempt['id'] and receipt.get('state') in ('failed', 'stopped')
                     and type(receipt.get('child_exit_code')) is int)
         except (OSError, ValueError):
+            return False
+
+    def _end_api_preparation(self, attempt, confirmation):
+        """Cooperate with an exactly confirmed, verified worker; never force kill."""
+        from process_identity import OwnedProcessHandle, open_verified_process
+        from runtime_adoption import _candidate
+        from invocation_evidence import classify_history
+        if (not isinstance(confirmation, dict) or set(confirmation) != {'confirm', 'launch_attempt'}
+                or confirmation['confirm'] is not True or confirmation['launch_attempt'] != attempt['id']):
+            raise SeatError('Confirm the exact prepared API launch before requesting its exit.')
+        if (attempt.get('adopted_boot') != self.boot_id
+                or time.time() - attempt.get('authenticated_at', 0) > 15):
+            return False
+        live = next((item for item in self.registry.get_all().values()
+                     if item.get('identity_id') == attempt.get('identity_id')
+                     and item.get('base') == attempt.get('base')), None)
+        if live is None:
+            return False
+        try:
+            candidate = _candidate(self, attempt['snapshot'])
+            if (candidate['identity'] != attempt.get('ownership')
+                    or candidate['birth'] != attempt.get('worker_birth')):
+                return False
+            receipt = json.loads(attempt['receipt'].read_text(encoding='utf-8'))
+            if receipt.get('attempt') != attempt['id'] or receipt.get('identity_id') != live['identity_id']:
+                return False
+            worker = attempt.get('worker_process')
+            if worker is None and isinstance(attempt.get('process'), OwnedProcessHandle):
+                worker = attempt['process']
+            if worker is None:
+                observed = open_verified_process(candidate['birth'])
+                worker = observed.get('process')
+                if observed['status'] != 'live' or worker is None:
+                    if worker:
+                        worker.close()
+                    return False
+                # A same-boot Popen may own only a venv launcher shim. Retain
+                # the verified true-worker handle separately for this wait.
+                attempt['worker_process'] = worker
+            if worker.pid != candidate['birth']['pid']:
+                return False
+            atomic_json(attempt['snapshot'].with_name('stop.json'), {'attempt': attempt['id']})
+            try:
+                code = worker.wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                return False
+            models = classify_history(attempt['snapshot'].parent)
+            if not models['local_ended']:
+                return False
+            attempt['verified_api_exit'] = {**models, 'local_ended': True, 'launch_attempt': attempt['id'],
+                                            'wrapper_status': 'exited', 'wrapper_exit_code': code}
+            return True
+        except (OSError, ValueError, KeyError, TypeError):
             return False
 
     def fresh_context_owner(self, instance):
@@ -734,3 +795,5 @@ class SeatManager:
                 from process_identity import OwnedProcessHandle
                 if isinstance(attempt.get('process'), OwnedProcessHandle):
                     attempt['process'].close()
+                if isinstance(attempt.get('worker_process'), OwnedProcessHandle):
+                    attempt['worker_process'].close()
