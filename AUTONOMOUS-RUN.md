@@ -19,7 +19,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #16 | Published and closed | Publication08fcee2, final same-AGY PASS including hidden windows |
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
-| #14 | Next eligible, planning | Codex plan/contract critique, same AGY retained |
+| #14 | Planning active | Proposed TICKET-14-PLAN.md, same AGY critique next |
 | #15, #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -68,3 +68,5 @@ Ticket13 final builder pack ready: full734/four expected skips68.060s,5 prior in
 Ticket13 sameAGYfinalFULLPASS e64ff8c/pin16ab003: independent734/four skips63.966s plusallnewactualworker cases. Report-onlyprecision corrected, sourceverdictunchanged. LocalmainFF/postmerge734/four skips64.099s+JS/diffPASS. Receipt REVIEW-GEMINI-TICKET-13.md, publication/closure next then14.
 
 Ticket13 publishedorigin/main5e6a79646c0fa71b03c01a86510c3522db6bd3f3(remoteexacthashverified), issue13closedcompleted. Finalreviewsourcee64ff8c/pin16ab003, independent734/four63.966s, postmerge734/four64.099s+JS/diffPASS. Next14 selectedCLIanswerrecovery planning/contractcritique, no14implementationyet. SameAGYretained; no liveproviders/Omarchy.
+
+Ticket14 planningbranchcodex/ticket-14-selected-cli-result frompublishedclosure9de60a2, implementation-owner movedto14. Proposedplan includesexplicitlegacyoperator-attributed boundary (knownauthenticatedidentitymandatory), import/edit provenance, postRetryreplacementfences and CLIphysicalendproof asOPENcritiquechoices. No14code/tests; sameAGYcontractcritique nextthenfrozeninterfaces/redtranche.
