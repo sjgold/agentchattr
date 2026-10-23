@@ -2,7 +2,7 @@
 
 State: implementation and builder verification complete; same-AGY final verdict pending. No Ticket13 publication or closure yet.
 
-Published base: `2bdbc777b5ab8e254b36e54cd784a469d02720b4`. Branch: `codex/ticket-13-api-result-outbox`. Frozen implementation hash is recorded in the following documentation-only review pin.
+Published base: `2bdbc777b5ab8e254b36e54cd784a469d02720b4`. Branch: `codex/ticket-13-api-result-outbox`. Frozen implementation: `e64ff8cd59609ef5d3c85770e9980393eb687dbe`. This receipt pin changes documentation only; review executable source at that target.
 
 Contract: [TICKET-13-PLAN.md](TICKET-13-PLAN.md), same-AGY contract artifact Sections7.3/7.4 and lifecycle refinements. Usage: [SAVED-API-ANSWERS.md](SAVED-API-ANSWERS.md).
 
