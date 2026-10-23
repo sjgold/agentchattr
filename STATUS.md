@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (#1-8 and #10-11 published/closed; #12 implemented and builder-tested, final regression/review pending)
+**Updated:** 2026-10-22 (#1-8 and #10-11 published/closed; #12 frozen for same-AGY independent implementation review)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -150,7 +150,7 @@
 - Earlier --serve failures remain failures: fixture gate mismatch, then actual CPython Proactor WinError64 closing the HTTP listener. Installed source and issue93821 corroborate the latter. Same AGY approved Uvicorn's app-scoped Windows Selector factory; MCP/global loops are unchanged. Real128-reset connection regression passes. Completed aligned --serve has zero accept failures/WinError64. Windows Selector512-socket bound is documented, with capacity deferred to #16.
 - Native browser Wait/Retry and custom Start policy2/4/.2 were exercised; the human turn remained waiting beyond machine limits. Desktop/390px screenshots visually inspected, scoped14px text and visible confirmation. Existing whole-page mobile header/composer overflow remains standing. Scoped detector/JS/diff checks pass, no new ignores. Owned UI server/browser stopped. Usage STALLED-TURNS.md; review briefing TICKET-12-REVIEW.md.
 - **Recorded verification limitation:** final prior-integration run stopped in verify_dispatch_queue.py waiting for the second MCP call to return. Both exact ledger records are released and both prompts recorded, but fixture records only the first returned reply. An unchanged helper reproduction passed with both actual MCP replies; the exact failed return location remains unproven. The bounded instrumented run also passed: both actual MCP calls traversed initialize/call/session exit/transport exit/asyncio.run return, with no20s stack watchdog firing. Diagnostic instrumentation is retained; it is not a proven fix. Both failed-run and subsequent-run workers were stopped. The other eight integrations passed on the final backend, including API/CLI/corrected-restart. Keep the transient failure visible for independent review; no claimed fix, #12 push or independent implementation PASS yet.
-- **Next:** freeze this implemented/tested target and obtain the same AGY's independent implementation review/recheck, explicitly assessing the unexplained transient MCP return stall. #16 follows reviewed publication; #9 and saved-answer/replacement features remain deferred.
+- **Frozen:** ebc85aedafbef4c53d70ebdaad37f553ddcbe683, base0d247d5a19631dd2b70c20d2861d76af9144da8d. Same AGY received the reproduction pack and independent review request; this later pin changes documentation only. **Next:** obtain independent implementation review/recheck, explicitly assessing the unexplained transient MCP return stall. #16 follows reviewed publication; #9 and saved-answer/replacement features remain deferred.
 
 ## Ticket execution and review
 

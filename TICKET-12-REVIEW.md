@@ -1,6 +1,6 @@
 # Ticket #12 frozen review briefing
 
-Base: `0d247d5a19631dd2b70c20d2861d76af9144da8d` on main. Frozen implementation: use the commit carrying this briefing, whose exact hash is supplied in the review assignment. No #12 publication or independent implementation PASS is claimed here.
+Base: `0d247d5a19631dd2b70c20d2861d76af9144da8d` on main. Frozen implementation: `ebc85aedafbef4c53d70ebdaad37f553ddcbe683`. Later pin commits change documentation only. No #12 publication or independent implementation PASS is claimed here.
 
 The contract is TICKET-12-PLAN.md plus the same AGY's ticket-12-contract-review artifact, including explicit preparation repair (Section 7) and scoped Windows HTTP loop selection (Section 8). Usage and configuration are in STALLED-TURNS.md. Seth's standing autonomy removes routine completion sign-off; the same AGY's independent PASS/recheck remains required before publication.
 
