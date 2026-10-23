@@ -38,4 +38,8 @@ Alternatives: raising scattered constants leaves policy drift and no shared vali
 
 ## Next owner
 
+### User amendment: hidden managed terminals
+
+Seth explicitly requested that terminal windows come up hidden. Managed Windows CLI launches retain CREATE_NEW_CONSOLE and native console input, with STARTUPINFO STARTF_USESHOWWINDOW/SW_HIDE suppressing window display. API worker/model launches already use CREATE_NO_WINDOW. Manual terminal launches and global terminal settings are untouched. A regression observed missing startupinfo before this change. Verify actual hidden-console state, real input/reply and targeted stop before final recheck/publication.
+
 Codex freezes the implemented/builder-tested target with docs and review pack. Native old-invalid recheck succeeded without rewriting original metadata; separate no-client server/browser stopped. Same AGY independently reviews/rechecks before publication; then #9 follows milestone order. No #16 independent implementation PASS or publication yet. No native AI, live external provider, installation or global event-loop changes.

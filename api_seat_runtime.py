@@ -154,6 +154,10 @@ class SeatManager:
             if sys.platform == 'win32':
                 options['creationflags'] = subprocess.CREATE_NEW_CONSOLE if cli else subprocess.CREATE_NO_WINDOW
                 if cli:
+                    startup = subprocess.STARTUPINFO()
+                    startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    startup.wShowWindow = subprocess.SW_HIDE
+                    options['startupinfo'] = startup
                     for field in ('stdin', 'stdout', 'stderr'):
                         options.pop(field)
             else:

@@ -14,6 +14,7 @@ drive that deterministically (one harmless mention, then one that kills it)
 and observe child_exit_code propagate end to end.
 """
 import json
+import ctypes
 import os
 import sys
 from pathlib import Path
@@ -45,6 +46,14 @@ def main():
     record = {"argv": args, "model": model, "reasoning": reasoning,
               "mcp_settings_path": settings_path, "mcp_settings": settings,
               "prompts": []}
+    if sys.platform == 'win32':
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        user = ctypes.WinDLL('user32', use_last_error=True)
+        kernel.GetConsoleWindow.restype = ctypes.c_void_p
+        user.IsWindowVisible.argtypes = [ctypes.c_void_p]
+        console = kernel.GetConsoleWindow()
+        record['console_exists'] = bool(console)
+        record['console_window_visible'] = bool(user.IsWindowVisible(console))
 
     def save():
         record_path.write_text(json.dumps(record), encoding="utf-8")

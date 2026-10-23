@@ -144,6 +144,9 @@ run.main()
         wait_for(lambda: record_path("requested-two").exists(), "seat two fixture record")
         record_one = read_record("requested-one")
         record_two = read_record("requested-two")
+        for record in (record_one, record_two):
+            assert record['console_exists'], 'CLI needs a real console for input injection'
+            assert record['console_window_visible'] is False, 'Managed CLI console should start hidden'
         assert record_one["model"] == "requested-one"
         assert record_two["model"] == "requested-two"
         assert record_one["reasoning"] == "high" and record_two["reasoning"] == "high"
@@ -198,6 +201,9 @@ run.main()
         wait_for(lambda: state("one").get("state") == "ready", "seat one restarted with a new model")
         assert state("one")["requested_model"] == "restarted-one"
         wait_for(lambda: record_path("restarted-one").exists(), "restarted seat one fixture record")
+        for model in ('changed-two', 'restarted-one'):
+            record = read_record(model)
+            assert record['console_exists'] and record['console_window_visible'] is False
         restarted_name = state("one")["name"]
 
         # -- fixture-driven exit 23 propagates as child_exit_code -----------
@@ -222,6 +228,7 @@ run.main()
             "unmentioned_seat_isolated": True, "targeted_stop_peer_alive": True,
             "worker_stop_acknowledged": True, "model_edit_requires_restart": True,
             "stopped_seat_restart_with_new_model": True,
+            "hidden_console_input_verified": True,
             "child_exit_code": final.get("child_exit_code"), "final_state_after_exit_23": final.get("state")}),
             flush=True)
 
