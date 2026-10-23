@@ -457,44 +457,15 @@ class SeatManager:
     def prepare_replacement_context(self, source_provenance, context_key, *, binding):
         """Clone a frozen owned profile without ending its source conversation."""
         from runtime_adoption import _candidate, _launch_record, recover_prepared_context
-        if (not isinstance(context_key, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,128}', context_key)
-                or not isinstance(binding, dict) or set(binding) != {'child_run_id', 'role'}
-                or not isinstance(binding['child_run_id'], str)
-                or not re.fullmatch(r'[0-9a-f]{32}', binding['child_run_id'])
-                or not isinstance(binding['role'], str) or not binding['role'].strip()):
-            raise SeatError('Replacement preparation requires an exact run, role and bounded context key.')
-        try:
-            provenance = deepcopy(source_provenance)
-            effective = provenance['effective']
-            payload = ({'effective': effective, 'fresh_base_effective': provenance['fresh_base_effective']}
-                       if provenance.get('fresh_base_effective') else effective)
-            fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True).encode('utf-8')).hexdigest()
-            if fingerprint != provenance['fingerprint']:
-                raise ValueError('Changed source profile')
-            source = {field: provenance[field] for field in ('key', 'launch_attempt', 'identity_id', 'fingerprint')}
-            base = deepcopy(provenance.get('fresh_base_effective', effective))
-            if base['seat']['adapter'] not in ('cli', 'openai-compatible'):
-                raise ValueError('Unknown adapter')
-        except (KeyError, TypeError, ValueError, UnicodeError):
-            raise SeatError('Replacement source provenance is malformed or changed.') from None
-        scope = {**deepcopy(binding), 'replacement_source': source, 'context_base_effective': base}
-        key = 'replacement-' + hashlib.sha256(context_key.encode('utf-8')).hexdigest()[:24] + '/context'
+        from replacement_preparation import scope, validate_record
+        provenance, fingerprint, base, scope, key = scope(source_provenance, context_key, binding)
+        source = scope['replacement_source']
         with self.lock:
             if self.closed.is_set():
                 raise SeatError('Server is shutting down; no replacement can launch.')
             existing = self.attempts.get(key)
             if existing:
-                try:
-                    item = (_candidate(self, existing['snapshot']) if existing.get('worker_birth') is not None
-                            else _launch_record(self, existing['snapshot']))
-                    if (item['identity'] != existing.get('ownership') or item['key'] != key
-                            or (existing.get('worker_birth') is not None and item['birth'] != existing['worker_birth'])
-                            or any(item['snapshot'].get(field) != value or existing.get(field) != value
-                                   for field, value in {**scope, 'context_key': context_key,
-                                                        'context_source_fingerprint': fingerprint}.items())):
-                        raise ValueError('Prepared replacement changed')
-                except (OSError, ValueError, KeyError, TypeError):
-                    raise SeatError('Replacement preparation evidence changed; no worker was replaced.') from None
+                validate_record(self, key, existing, scope, context_key, fingerprint)
                 return self._replacement_context_view(key)
             # A lost RAM handle is never permission to start another copy.
             cold = recover_prepared_context(self, key, context_key, fingerprint, scope, None)
@@ -531,6 +502,12 @@ class SeatManager:
                 'verification_basis': 'verified_fresh_launch_contract' if cli else 'isolated_request_packet'})
             return self._replacement_context_view(key)
 
+    def repair_replacement_context(self, source_provenance, context_key, *, binding,
+                                   preparation_attempt, dispatch_id, confirmation=None):
+        from replacement_preparation import repair
+        return repair(self, source_provenance, context_key, binding=binding,
+                      preparation_attempt=preparation_attempt, dispatch_id=dispatch_id, confirmation=confirmation)
+
     def _replacement_context_view(self, key):
         """A ready receipt cannot substitute for this clone's native boot proof."""
         view = self._context_view(key)
@@ -539,6 +516,7 @@ class SeatManager:
             if (not isinstance(proof, dict) or proof.get('state') != 'ready'
                     or proof.get('process_verified') is not True):
                 return dict(view, state='starting', reason='awaiting_authenticated_boot_proof', clean_context=False)
+            return dict(view, verified_boot_id=self.boot_id)
         return view
 
     def prepare_clean_context(self, provenance, context_key, *, confirmation=None, retry_attempt=None, binding=None):

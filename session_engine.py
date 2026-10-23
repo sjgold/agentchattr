@@ -164,7 +164,15 @@ class SessionEngine:
         now = time.time() if now is None else now
         with self._lock:
             for session in self._store.list_all():
+                from participant_recovery import finish_replacement, settle_retired
+                settle_retired(self, session)
                 if session.get('stop_id') or session.get('completion_protocol') != 1:
+                    continue
+                pending_replacement = session.get('pending_replacement')
+                if pending_replacement:
+                    if (self._seat_manager and pending_replacement['recovery_boot_id'] == self._seat_manager.boot_id
+                            and pending_replacement['status'] in ('preparing_contexts', 'dispatching')):
+                        finish_replacement(self, session)
                     continue
                 if session.get('pending_retry') and self._retry_authority_bound(session['pending_retry']):
                     self._finish_retry(session, now)
@@ -916,6 +924,14 @@ class SessionEngine:
                     continue
                 phase = session['design_snapshot']['phases'][session['current_phase']]
                 role = phase['participants'][session['current_turn']]
+                replacement = session.get('pending_replacement')
+                if replacement:
+                    if replacement['recovery_boot_id'] != boot_id:
+                        def interrupt_replacement(value):
+                            value.update(state='interrupted', dispatch_eligible=False)
+                            value['pending_replacement']['status'] = 'interrupted_pending_recovery'
+                        self._store._event_update(session['id'], interrupt_replacement, skip_if_unchanged=True)
+                    continue
                 pending = session.get('pending_retry')
                 if pending and pending.get('recovery_boot_id') == boot_id:
                     # Only this boot's explicit operator intent may progress.
@@ -1063,6 +1079,18 @@ class SessionEngine:
         from result_recovery import saved_results
         return saved_results(self, session_id)
 
+    def replace_participant(self, session_id, decision, *, submitted_by='operator'):
+        from participant_recovery import replace_participant
+        return replace_participant(self, session_id, decision, submitted_by=submitted_by)
+
+    def participant_recovery_options(self, session_id):
+        from participant_recovery import recovery_options
+        return recovery_options(self, session_id)
+
+    def repair_replacement(self, session_id, decision):
+        from participant_recovery import repair_replacement
+        return repair_replacement(self, session_id, decision)
+
     def cli_message_candidate(self, session_id, message_id):
         from cli_result_recovery import cli_message_candidate
         return cli_message_candidate(self, session_id, message_id)
@@ -1191,16 +1219,26 @@ class SessionEngine:
                 instance = next((item for item in self._registry.get_all().values()
                     if item['identity_id'] == principal.get('identity_id')), None) if self._registry and not human else None
                 if not human and instance is None:
+                    provenance = principal.get('launch_provenance') or {}
+                    if (not retry and principal.get('identity_id') and provenance.get('identity_id') == principal['identity_id']
+                            and provenance.get('effective', {}).get('seat', {}).get('adapter') in ('cli', 'openai-compatible')):
+                        envelope = build_brief(session, phase_idx, turn_idx, agent, principal['identity_id'])
+                        self._store.bind_missing_participant(session['id'], envelope, dispatch_id, now=now)
+                        return False
                     raise BriefError('The intended seat identity disappeared before dispatch.')
                 if not human:
                     agent = instance['name']
                 identity_id = instance.get('identity_id', '') if not human and isinstance(instance, dict) else ''
-                prior = [self._messages.get_by_id(mid) for mid in session.get('result_message_ids', [])]
-                prior = [{k: msg.get(k) for k in ('id', 'sender', 'text', 'channel')}
-                         for msg in prior if msg is not None]
+                prior = (retry['approved_prior_results'] if retry and 'approved_prior_results' in retry else
+                    [{'id': event.get('projected_message_id'), 'sender': event['sender'],
+                      'text': event['content'], 'channel': session['channel']}
+                     for event in session.get('admitted_events', []) if event['kind'] == 'final'])
                 envelope = build_brief(session, phase_idx, turn_idx, agent, identity_id, prior)
                 if retry:
                     envelope.update(brief_id=retry['new_brief_id'], attempt_id=retry['new_attempt_id'])
+                    if 'approved_continuation_context' in retry:
+                        from copy import deepcopy
+                        envelope['continuation_context'] = deepcopy(retry['approved_continuation_context'])
                 envelope['completion_protocol'] = 1
                 envelope['role_instructions'] = _DISSENT_LINE if role.lower() in _DISSENT_ROLES else ''
                 provenance = principal.get('launch_provenance') or {}

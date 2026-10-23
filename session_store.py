@@ -284,6 +284,23 @@ class SessionStore:
             session['waiting_on'] = envelope['expected_agent']
         return self._event_update(session_id, bind)
 
+    def bind_missing_participant(self, session_id, envelope, dispatch_id, *, now=None):
+        """Reserve an undelivered turn, without creating a review brief owner."""
+        from turn_events import EventConflict
+        import uuid
+        at = time.time() if now is None else now
+        def bind(session):
+            if session['state'] != 'active' or session.get('active_invocation') or session.get('stop_id'):
+                raise EventConflict('This missing participant no longer owns the current turn.')
+            invocation = self._invocation(session, envelope, dispatch_id, False, at)
+            invocation['intent_only'] = True
+            session.update(active_invocation=invocation, state='stalled', waiting_on=envelope['expected_agent'])
+            session['turn_recovery'] = {'checkpoint_id': uuid.uuid4().hex, 'attempt_id': invocation['attempt_id'],
+                'turn_id': invocation['turn_id'], 'dispatch_id': dispatch_id, 'first_at': at, 'actions': [],
+                'recoverable_result': False, 'reason': 'disconnected', 'status': 'stalled',
+                'last_event': {'state': 'not_delivered', 'at': at}}
+        return self._event_update(session_id, bind)
+
     @staticmethod
     def _invocation(session, envelope, dispatch_id, human, now):
         invocation = {key: deepcopy(envelope[key]) for key in (
@@ -487,6 +504,17 @@ class SessionStore:
                 or invocation['turn_id'] != f"{session['run_id']}:{phase_index}:{turn_index}"):
             raise EventConflict('Participant recovery does not match this logical turn.')
         return invocation
+
+    def replace_participant(self, session_id, *, checkpoint_id, attempt_id, request_id,
+                            target_provenance, boot_id, reason='', submitted_by='operator', now=None):
+        from participant_replacement_store import replace_participant
+        return replace_participant(self, session_id, checkpoint_id=checkpoint_id, attempt_id=attempt_id,
+            request_id=request_id, target_provenance=target_provenance, boot_id=boot_id,
+            reason=reason, submitted_by=submitted_by, now=now)
+
+    def bind_replacement(self, session_id, request_id, context, provenance, *, boot_id):
+        from participant_replacement_store import bind_replacement
+        return bind_replacement(self, session_id, request_id, context, provenance, boot_id=boot_id)
 
     def skip_participant(self, session_id, *, checkpoint_id, attempt_id, request_id,
                          reason, confirm_skip, submitted_by='operator', now=None):

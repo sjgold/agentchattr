@@ -1,6 +1,6 @@
 # Ticket15: replace or skip a missing participant
 
-State: same-AGY contract and five precision amendments RATIFIED. Skip storage8834a8d, clone/replay964d3af and unified transport/native proofb9cd507 independently bounded-PASS. Tranche4 replacement-store/repair architecture ratified; store interfaces below freeze before observed-red tests. Replacement state/repair, engine/routes, projection/export and UI remain unimplemented. Finish Ticket15 through reviewed publication/closure, then stop; no next ticket.
+State: same-AGY contract ratified. Skip storage8834a8d, clone/replay964d3af and transport/native proofb9cd507 independently bounded-PASS. Replacement store, explicit preparation repair and engine coordination are implemented with component tests, awaiting their frozen independent review. HTTP routes, skip projection/export, UI and actual Windows/local-fake replacement acceptance remain pending. Finish Ticket15 through reviewed publication/closure, then stop; no next ticket.
 
 Base: published main `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Owner: Codex, claim `a99548d9-49eb-4f70-9cf1-d185414cbad5`. Independent reviewer: same AGY. Scope: issue15, specification v1.7 SC-5 and AT-21d/22. Ticket12 blocker and Tickets13/14 recovery are delivered.
 
@@ -135,8 +135,6 @@ Native tests: new tests/test_participant_exit_proof.py7, actual Windows supervis
 
 Observed failures: root native initial2 missing-method errors0.991s; helper settlement initial2 missing methods0.506s. First settlement24 run23PASS/1 genuine changed-child-code replay failure2.250s, fixed by storing/comparing full stable cancellation.exit_proof; unchanged24PASS2.080s. Root malformed-provenance subcases raised AttributeError before explicit type guard (1test/2errors0.619s). Expanded39 run had1 fixture error: creation mismatch incorrectly labelled absent rather than actual mismatch status, corrected only the fixture enum. Final native/saved/transport39PASS9.357s; full861 total tests OK/four expected skips79.601s. Python syntax/diff review required before freeze. These are component lifetimes and internal ledger checks, not final native participant replacement acceptance. Unified Tranche3 same-AGY bounded source/execution review is next.
 
-## Remaining verification work
-
 ## Frozen tranche4a: durable replacement intent and fresh binding
 
 Same AGY bounded-PASSb9cd507 (doc pin454b001):31 dedicated/5.507s,104 focused/13.419s, full861 total/four expected skips79.196s. The following NEW store signatures were ratified before implementation:
@@ -153,7 +151,15 @@ Binding updates only current/future same-role cast and identity/provenance, pres
 
 Helper owns only new tests/test_participant_replacement_store.py, bounded12. Capture first2 missing methods before production. Real stores/manager/registry with Popen/native-readiness seams labelled nonnative; no fabricated birth. Verify staged fence-before-effects, unchanged prior/source/design/cast, exact future positions, stable IDs/replay/cold explicit resume/Stop, strict scope/first-writer races and real Path.replace rollback. Use actual initial manager clone/ready view for bind success; manager must expose verified_boot_id (current view does not yet supply it), so preserve any genuine missing-witness failure before its refinement. No HTTP/engine/native replacement acceptance.
 
-## Remaining acceptance work
+## Frozen tranche4b: explicit failed preparation repair
+
+NEW `SeatManager.repair_replacement_context(source_provenance, context_key, *, binding, preparation_attempt, dispatch_id, confirmation=None)` targets only the exact failed pre-brief preparation. dispatch_id is the server-reserved replacement dispatch, not a caller-invented model invocation. No record means refusal, never initial launch through a repair request. Same repaired ancestry returns the same current attempt; different/stale request or scope refuses. Ordinary prepare replay remains non-replacing.
+
+Warm/cold metadata must match the frozen replacement_source/context/run/role and current approved root. Refuse if this prepared identity has any queue history/work or any immutable brief ownership; engine separately checks its exact reserved brief before invoking repair. No model invocation directory may be present. Live failed context requires literal exact confirmation; API uses existing cooperative _end_api_preparation, CLI uses exact owned termination. Only this failed clone may be touched, never selected source or retired original participant. Unknown exit/probe/ownership remains blocked; no force API kill or guessedPID.
+
+Synchronous disk-backed failed Popen or genuine two-ended exit permits fresh launch through existing ownership journals, with new context/launch nonce and retried_from/preparation_history while keeping profile/context key and reserved turn IDs. Natural retained-worker proof uses participant_exit_proof against the planned dispatch; no synthetic API child exit. Missing/corrupt/pending evidence cannot authorize replacement. New view remains unready until its own native proof.
+
+Helper owns only new tests/test_replacement_preparation_repair.py, bounded8, using actual manager/store/registry/process doubles and explicitly supplied proof/cooperative-end seams. Capture initial missing repair method before implementation. Cover warm/cold synchronous failure, repeat/stale controls, no record/no blind spawn, wrong source/binding, bound/queued preparation refusal, shared settings locks, confirmation/unknown proof refusal and correct API versus CLI delegate branch. Native lifecycle is tested separately; no real provider or native repair acceptance claimed by these doubles.
 
 - [x] Settle the three architecture choices and five precision amendments with same AGY source/caller critique; freeze each component signature before its observed-red tests.
 - [ ] Store tests observed red before implementation: exact checkpoint/intent, current/future assignment audit, original completed bytes, atomic fence/skip cursor, global first-writer races, Stop/corrected/pending guard, persistence rollback and exact replay/reload.
@@ -168,3 +174,17 @@ Review focus: no hidden old-context reuse, no inferred exit or blanket terminati
 ## Limits
 
 Managed API/CLI targets and existing approved review input. No live provider/native AI usage, native Omarchy, Desktop/global settings, arbitrary participant impersonation, automatic replacement/skip, model-equivalence claim or remote compute cancellation proof. The current source packet is pasted text; later shared document packets plug into the same frozen input boundary. Human-participant replacement and broad future-role deletion are not silently added.
+
+## Implemented tranche4/controller verification boundary
+
+Replacement store12 and terminal pre-brief supersession4 use real atomic stores with nonnative process/readiness seams. Initial stage missing-method2/0.242s; root reproduced0.249s, then7PASS/5 genuine missing manager verified_boot_id failures1.517s. Manager now supplies its own boot witness only after verified readiness. Helper fixed only a duplicate keyword fixture merge, preserving wrong-boot denial. Final store12PASS1.716s, combined28PASS2.917s.
+
+Repair8: initial2 missing-method RED0.117s, expanded6PASS/healthy-clone-control FAIL/CLI receipt-double ERROR0.847s. A readonly failed-state/receipt guard now prevents healthy preparation control. The CLI double was corrected to write the genuine delegate's stopped integer-child receipt. Root unchanged8PASS0.907s. Source settings/processes remain untouched; component delegate/proof seams are explicitly nonnative.
+
+Engine replace decision is exact {request_id,checkpoint_id,attempt_id,target_identity_id,target_fingerprint,reason(optional)}. Operator choices are copied public identity/model/reasoning/fingerprint summaries, with zero profile paths/keys. Durable store intent precedes queue cancellation and clone. Ready binding uses own boot witness, then reserved attempt/brief/dispatch IDs and immutable approved prior text. Persisted ANY brief wins before another preparation call; bind/enqueue gaps reify the bound invocation and stalled/local_delivery_failure, and lost enqueue reply finalizes without duplicate dispatch. Before brief persistence, exact repeat may persist the same reserved brief under the same already-bound owner after fresh readiness; repair cannot change that owner.
+
+Engine repair decision is exact {request_id,preparation_attempt,confirmation(optional exact confirm/launch_attempt)}. Persist confirmation intent before process effects. Record the replacement preparation launch on success; exact replay returns status without repeating launch/control, including a lost response. Changed confirmation conflicts. Only failed pre-brief unbound preparation can be repaired; Stop/corrected guards remain.
+
+Missing coordinator edge ratified by same AGY: managed binding disappearing before dispatch receives an atomic intent_only invocation/checkpoint, stalled/disconnected. This does not persist a BriefStore record, enqueue or spawn. Existing missing/manual unknown bindings remain conservative interruptions. Two actual failing tests0.192s preceded the fix; unchanged2 plus owner-wiring3PASS0.340s.
+
+Controller root2 missing-method RED0.209s; helper fault2 missing-method RED0.206s. Expanded helper10 had8PASS/real brief-put replay gap ERROR/missing options ERROR1.752s. Root reproduced brief gap at13 run12PASS/1ERROR2.152s; same-owner replay fix yielded unchanged13PASS2.208s. Separate repair-lost-response test initially failed EventConflict0.201s, then durable repair journal yielded focused11PASS1.973s. First full discovery900 total/four expected skips85.312s passed on the evolving tree before that last added replay test; final frozen full count must be recorded separately. No HTTP/UI/native replacement acceptance claim.
