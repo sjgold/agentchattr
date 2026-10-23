@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (#1-8 and #10-11 published/closed; #12 frozen for same-AGY independent implementation review)
+**Updated:** 2026-10-22 (#1-8 and #10-11 published/closed; #12 independently passed, publication in progress)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -150,7 +150,7 @@
 - Earlier --serve failures remain failures: fixture gate mismatch, then actual CPython Proactor WinError64 closing the HTTP listener. Installed source and issue93821 corroborate the latter. Same AGY approved Uvicorn's app-scoped Windows Selector factory; MCP/global loops are unchanged. Real128-reset connection regression passes. Completed aligned --serve has zero accept failures/WinError64. Windows Selector512-socket bound is documented, with capacity deferred to #16.
 - Native browser Wait/Retry and custom Start policy2/4/.2 were exercised; the human turn remained waiting beyond machine limits. Desktop/390px screenshots visually inspected, scoped14px text and visible confirmation. Existing whole-page mobile header/composer overflow remains standing. Scoped detector/JS/diff checks pass, no new ignores. Owned UI server/browser stopped. Usage STALLED-TURNS.md; review briefing TICKET-12-REVIEW.md.
 - **Recorded verification limitation:** final prior-integration run stopped in verify_dispatch_queue.py waiting for the second MCP call to return. Both exact ledger records are released and both prompts recorded, but fixture records only the first returned reply. An unchanged helper reproduction passed with both actual MCP replies; the exact failed return location remains unproven. The bounded instrumented run also passed: both actual MCP calls traversed initialize/call/session exit/transport exit/asyncio.run return, with no20s stack watchdog firing. Diagnostic instrumentation is retained; it is not a proven fix. Both failed-run and subsequent-run workers were stopped. The other eight integrations passed on the final backend, including API/CLI/corrected-restart. Keep the transient failure visible for independent review; no claimed fix, #12 push or independent implementation PASS yet.
-- **Frozen:** ebc85aedafbef4c53d70ebdaad37f553ddcbe683, base0d247d5a19631dd2b70c20d2861d76af9144da8d. Same AGY received the reproduction pack and independent review request; this later pin changes documentation only. **Next:** obtain independent implementation review/recheck, explicitly assessing the unexplained transient MCP return stall. #16 follows reviewed publication; #9 and saved-answer/replacement features remain deferred.
+- **Independent PASS:** same AGY reviewed frozen ebc85aedafbef4c53d70ebdaad37f553ddcbe683 (base0d247d5; docs-only reviewed HEAD154412b). Independently467 tests OK/four skips24.367s, all nine integrations PASS, JS/diff checks clean. Reviewer assessed transient MCP teardown/file-lock failures followed by passing reruns as nonblocking. Root requested precise count/scope/causality wording corrections; source unchanged. Receipt REVIEW-GEMINI-TICKET-12.md. **Next:** fast-forward merge, post-merge checks, push and close #12, then #16. #16 follows reviewed publication; #9 and saved-answer/replacement features remain deferred.
 
 ## Ticket execution and review
 
@@ -160,8 +160,8 @@
 
 ## Next step
 
-**Action:** Same AGY independently reviews frozen #12, including the recorded transient MCP return stall; Codex handles substantive fixes/recheck before publication. #16 follows reviewed publication; #9 remains deferred.
-**Who:** Same AGY owns independent review; Codex owns fixes/publication after PASS; existing helper completed bounded diagnostic evidence. No human approval is pending.
+**Action:** Publish independently passed #12 after post-merge checks, close it and begin #16 six-seat capacity planning. #16 follows reviewed publication; #9 remains deferred.
+**Who:** Codex owns publication and next-ticket planning; same AGY remains independent reviewer. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
 ## Now
@@ -174,7 +174,7 @@
 - **Ignore-rule note:** upstream ignores docs contents. Narrow exceptions allow the spec, baseline audit and dated Stage A plan; scratch audit data and local Lavish review surfaces are ignored. Other docs contents remain ignored.
 - **Documentation:** spec v1.7, prior baseline/Stage A evidence and review receipts; #4 plan `TICKET-4-PLAN.md`, user guide `CLI-SEATS.md` and review briefing `TICKET-4-REVIEW.md`. Reviewed/rechecked #4 application implementation is approved and published on origin/main; final review receipt: `REVIEW-GEMINI-TICKET-4.md`.
 - **Existing installation:** Desktop/agentchattr-0.5.0 (original installation) remains intact. Runtime history, credentials, environments, and local settings were not copied.
-- **In flight:** #12 implemented and builder-tested, with final regression finding and frozen review pending. TICKET-12-PLAN.md and TICKET-12-REVIEW.md record scope/evidence. #1-8 and #10-11 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
+- **In flight:** #12 independently passed, publication/post-merge checks in progress. TICKET-12-PLAN.md and TICKET-12-REVIEW.md record scope/evidence. #1-8 and #10-11 independently reviewed, published and closed; #9 deferred by milestone order. Autonomous pipeline remains active without a human sign-off gate.
 - **Verified creation:** fork exists; origin/upstream configured; source checkout was clean before these documentation additions. Current upstream includes archive.py; the old installation's missing export dependency must not be filed as an upstream defect without reproduction.
 - **Upstream activity correction:** earlier web pages were cached. The new checkout is ahead of the July release commit previously shown; do not describe upstream as abandoned based on that earlier lookup.
 

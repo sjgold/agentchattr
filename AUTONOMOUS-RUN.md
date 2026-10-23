@@ -15,7 +15,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | Work | State | Next owner/action |
 | --- | --- | --- |
 | #1-8, #10-11 | Published and closed | Latest #11 publication `f403b59`, same AGY PASS |
-| #12 stalled turns/retry | Builder verification | Same AGY frozen review; Codex fixes/publication after PASS |
+| #12 stalled turns/retry | Independent PASS | Codex post-merge checks, publication and closure |
 | #16 | Pending, first milestone | Follow #12 |
 | #9 | Pending | Full restart reconciliation follows first milestone |
 | #13-15, #17-26 | Pending | Follow documented dependency graph |
@@ -32,3 +32,5 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 #1-8 and #10-11 are published and closed. Latest source publication `f403b590a0256a7db601aa48144c05f121c13ed1`, #11 frozen implementation `78b418df887596c5f173c0126a3e52d6d144670b`. Same AGY independently passed401 tests/four expected platform skips and all eight integrations; post-merge401 tests/four skips pass (19.547s). Receipt metadata/scope corrections are confirmed. Receipt REVIEW-GEMINI-TICKET-11.md; usage CORRECTING-REVIEWS.md. Next: Codex plans #12, same AGY critiques its retry/ownership/deadline contract, then observed-red tests and implementation. #9 remains deferred by milestone order. Native/live/installation acceptance remains outside scope.
 
 Current branch codex/ticket-12-stalled-turns, base0d247d5. Same AGY ratified timing, retry/repair and Windows HTTP mitigation. Managed retry/repair, adapter timing, routes/UI and actual isolated recovery acceptance implemented. Latest full suite467 tests/four expected skips passes (24.883s). Normal and completed aligned --serve recovery pass; earlier gate timeout and Proactor listener failure remain failures. Selector HTTP regression passed128 reset connections. Owned browser-mode workers/server and separate UI server/browser stopped. Final queue regression timed out returning its second MCP call despite both ledger records released; unchanged reproduction passed but exact return stall remains unexplained; instrumented run also passed all actual MCP replies with all phase exits recorded/no watchdog firing. Diagnostic change is not a proven fix. All other eight integrations pass. Implementation frozen at ebc85aedafbef4c53d70ebdaad37f553ddcbe683; same AGY received the independent review request, retaining this limitation explicitly. No #12 push or independent implementation PASS. Usage STALLED-TURNS.md; review pack TICKET-12-REVIEW.md. #16 next after publication; #9 deferred.
+
+Same AGY independently passed frozen ebc85ae at reviewed docs pin154412b:467 tests/four skips24.367s, all nine integrations, JS/diff clean. Transient fixture limitations judged nonblocking. Receipt REVIEW-GEMINI-TICKET-12.md. Publication/post-merge checks now in progress; #16 six-seat capacity follows.
