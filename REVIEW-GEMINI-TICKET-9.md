@@ -20,3 +20,5 @@ Publication follows Seth's standing autonomous authorization in STATUS.md, after
 Limits: Windows fake-provider/native-process acceptance only; POSIX adoption fails closed. No answer outbox or recovery of unadmitted generated answers. Local exit does not certify remote compute cancellation. Scoped browser recovery panels pass; inherited whole-chat mobile overflow remains standing. Earlier failing fixtures and the reproduced cancellation-poll production bug remain recorded in TICKET-9-REVIEW.md.
 
 Local main was fast-forward merged. Post-merge verification:630 tests OK/four expected skips52.068s; sessions/chat JavaScript syntax and diff whitespace clean. Application/test code remains identical to the frozen reviewed target. Remote publication and issue state are recorded separately in STATUS.md after verification.
+
+Source publication2047834e7092553be2bff56e32bc3d409a400a1c is verified on origin/main; issue9 is confirmed closed as completed.

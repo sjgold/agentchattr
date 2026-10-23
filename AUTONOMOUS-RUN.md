@@ -17,8 +17,9 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #1-8, #10-11 | Published and closed | Latest #11 publication `f403b59`, same AGY PASS |
 | #12 stalled turns/retry | Published and closed | Publication8297bc1, same AGY PASS |
 | #16 | Published and closed | Publication08fcee2, final same-AGY PASS including hidden windows |
-| #9 | Final independent PASS | Codex post-merge checks, publication and closure |
-| #13-15, #17-26 | Pending | Follow documented dependency graph |
+| #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
+| #13 | Planning next | Codex outbox contract; same AGY critique |
+| #14-15, #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
 
@@ -36,3 +37,5 @@ Active: #9 restart reconciliation on codex/ticket-9-restart-reconciliation, base
 Same AGY bounded-passed09f65639,61cc0be,49432621 and328309a, explicitly not final#9. Review's616 total/four skips50.27s included one in-progress API test/gate beyond frozen49432621 (frozen615). Latest independent328309a full622 total/four skips54.36s. Fast IDLE reconnect passes; real API prepared repair now passes normal_px1s07_ and two-stage servebdalkk0m (HTTP restart1849.664ms, provider3/prepared0, cooperative true-worker exit0, frozen IDs/source/prior results, peer preserved,4 worker/2 server exits, no CLI/native force during repair). Earlier403 fixture mismatch and auxiliary Git spawn-count failure remain recorded in STATUS. Actual desktop/390px UI refresh and confirmation Open/Cancel pass; no root-submitted Retry/repair. Current623 suite first hit a fixture birth-read PermissionError; bounded fixture read retry gives focused15 PASS, then full623 tests OK/four expected skips53.362s. Earlier failure retained. Projection412pggbr PASS (one stable accepted message/event/generation across crash); held-stop firstf9xwjrf1 exposed transient cancellation-poll failure that killed the model. Root reproduced/fixed unavailable polls as unknown, with4 new tests and unchanged local Stop/heartbeat/provider bounds. Unchanged6ubaumx1 PASS across2 actual crashes, exact held ownership/timing, unfenced API+CLI finals, permanent Stop/late quarantine and exact termination. Read-only preflight inventory visibility red->green3 tests. Latest630 tests OK/four skips52.101s. Long-downdnj0w5b0 PASS:22.005s offline with both true workers/model/native client individually observed exited before reboot, no provider progress used as end proof, retained original timing/queue/prior result, interrupted/ineligible and0 auto spawns. Three matrix cases passed individually; all mode unverified. Final review pack TICKET-9-REVIEW.md and usage RESTART-RECOVERY.md prepared; same AGY final frozen review next. No #9 publication/closure.
 
 Final same-AGY PASS for7777f81 (reviewed pinf3c5966):630 tests/four skips52.504s, all Ticket9 crash/process tools and10 prior integrations PASS. Report precision corrections applied without source changes. Local main fast-forward merged; post-merge630 tests/four skips52.068s and JS/diff pass. Codex publishes/closes9 next, then13 planning. Receipt REVIEW-GEMINI-TICKET-9.md.
+
+Ticket9 source published on origin/main2047834e7092553be2bff56e32bc3d409a400a1c; remote exact hash and closed issue verified. Post-merge630/four skips52.068s. Next13 saved-answer/outbox planning; no13 implementation yet.

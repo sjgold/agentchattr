@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 (#1-8, #10-12 and #16 published/closed; #9 reviewed and merged, post-merge checks pass; publication in progress)
+**Updated:** 2026-10-23 (#1-12 and #16 published/closed; #13 saved API answer planning next)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -13,7 +13,7 @@
 - Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
 - Continue the remaining approved backlog in dependency order, preserving the first-milestone ordering already recorded below. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write tests as before; after a Claude quota failure it switched to Codex gpt-6-sol/medium. AgY remains the independent reviewer. No self-approval or lowered verification bar.
 - Seth grants standing authorization within this agreed project scope to commit, merge, push and close tickets after checks and Antigravity review/recheck pass. Continue to the next eligible ticket without asking for a routine plan or completion gate. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
-- Durable run tracking: `AUTONOMOUS-RUN.md`. Next active work: #9 restart reconciliation after published #16 and the first milestone. `TICKET-11-PLAN.md` records the completed corrected-document contract. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
+- Durable run tracking: `AUTONOMOUS-RUN.md`. Next active work: #13 saved API answers after published #9 restart reconciliation. `TICKET-11-PLAN.md` records the completed corrected-document contract. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
 
 ## Ticket #1 checkpoint
 
@@ -203,7 +203,8 @@
 - Frozen integrated source target7777f8173ee9109e8c78120b57ec5f9ec55c5237 (base139e2de) is pinned in TICKET-9-REVIEW.md; subsequent pin changes are documentation only.
 - Final same-AGY PASS received for7777f81/reviewed pinf3c5966: independent630 tests OK/four expected skips52.504s, focused3/4/11 pass, all Ticket9 real process/crash tools and all10 prior integrations PASS. Independent long downtime19.841s observed every worker/model/native client ended before reboot; all cleanup unresolved lists empty. Review report precision corrections were verified/applied, with no source finding or changed verdict. Receipt REVIEW-GEMINI-TICKET-9.md. The separately flagged spec spelling is corrected in a documentation-only receipt commit.
 - Local main fast-forwarded to the reviewed branch; post-merge630 tests OK/four expected skips52.068s, sessions/chat JS syntax and diff whitespace pass. No application changes after the reviewed target.
-- Next owner: Codex publishes and closes9 under standing authorization, then begins13 saved-answer/outbox planning with the same AGY reviewer. No publication/closure claimed until remote verification. Codex holds implementation-owner responsibility; AGY retains independent-reviewer.
+- Published source on origin/main2047834e7092553be2bff56e32bc3d409a400a1c; remote branch hash matched local, issue9 confirmed closed as completed.
+- Next owner: Codex begins13 saved-answer/outbox planning and same-AGY contract critique, then observed-red tests. No13 implementation or live provider usage yet. Codex holds implementation-owner responsibility; AGY retains independent-reviewer.
 
 ## Ticket execution and review
 
@@ -213,7 +214,7 @@
 
 ## Next step
 
-**Action:** Finish #9 real active-turn/Stop/projection/repeated-crash/long-downtime verification, resolve findings and obtain final same-AGY review. API repair and its operator UI now pass bounded real checks; #16 is already published.
+**Action:** Plan #13 saved API result outbox/delivery recovery against SC-5/AT-21c, settle the contract with the same AGY reviewer, then author observed-red tests. #9 is published and closed.
 **Who:** Codex owns verification/freeze/fixes; same AGY remains independent reviewer. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 
