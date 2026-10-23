@@ -44,9 +44,7 @@ def _timestamp(value):
         raise OutboxError('Result timestamps must be finite positive numbers.')
 
 
-def _payload(value):
-    if not isinstance(value, dict) or set(value) != PAYLOAD_FIELDS:
-        raise OutboxError('Saved result fields do not match the supported schema.')
+def _scope(value):
     if type(value['version']) is not int or value['version'] != 1:
         raise OutboxError('Unsupported saved result version.')
     for field in ('result_id', 'dispatch_id', 'event_id', 'brief_id', 'run_id', 'attempt_id',
@@ -62,6 +60,12 @@ def _payload(value):
     if (not isinstance(turn, str) or len(turn) > 128
             or not re.fullmatch(re.escape(value['run_id']) + r':[0-9]+:[0-9]+', turn)):
         raise OutboxError('Result turn does not match its run.')
+
+
+def _payload(value):
+    if not isinstance(value, dict) or set(value) != PAYLOAD_FIELDS:
+        raise OutboxError('Saved result fields do not match the supported schema.')
+    _scope(value)
     _timestamp(value['created_at'])
     try:
         validate_content(value['kind'], value['content'])
@@ -178,6 +182,16 @@ class ResultOutbox:
 
     def get(self, result_id):
         return self._bound(_read(self._path(result_id)), result_id)
+
+    def find(self, result_id):
+        self._identity()
+        try:
+            self._path(result_id).stat()
+        except FileNotFoundError:
+            return None
+        except OSError:
+            raise OutboxError('Saved result availability cannot be checked safely.') from None
+        return self.get(result_id)
 
     def list_records(self):
         self._identity()
