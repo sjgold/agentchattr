@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; #16 frozen for same-AGY independent implementation review)
+**Updated:** 2026-10-22 (#1-8 and #10-12 published/closed; #16 independent PASS; fixture-only recheck before publication)
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -159,7 +159,7 @@
 - Test helper20 and root config2/route4 tests pass after observed red. Final full discovery493 tests OK/four expected skips25.909s. Malformed non-object draft was observed AttributeError red, then correctly rejected before cache/dispatch. Actual normal plus --serve team integration PASS: seven saved/launched seats, one coordinator call, six review calls and six distinct sequential identity/brief/attempt/dispatch contexts/results; seventh excluded from review; five intact over-cap drafts rejected without extra work. All seven actual retained worker handles exited; server exited.
 - Browser desktop/phone policy/cast verified exact shared text, six selectors and14px type. First pass found select overflow, one scoped flex fix confirmed all selects fit349px dialog on390px viewport. Screenshots visually inspected; browser stopped. Native old-invalid recheck became runnable with all six roles, leaving original metadata unchanged; separate no-client/provider server/browser stopped. Existing whole-page header/composer overflow remains standing. No new suppressions or whole-app mobile claim.
 - Prior recovery/Stop/events/brief regressions pass. Queue fixture ExceptionGroup recurred after call_returned; one bounded diagnostic rerun passed without reproducing nested cause. Private traceback capture retained, no production mitigation/assertion weakening. All other prior scripts pass, as does one bounded diagnostic queue rerun. JS/diff/scoped detector checks pass; frozen independent review remains pending. Same AGY must assess transient limitation; no #16 push/independent implementation PASS.
-- Frozen implementation 5e6f86ee731ccee0a0e33525d906353cd01f12f8, baseee52c32. Same AGY received the review request and reproduction pack; this later pin changes documentation only. Next owner: same AGY independent review/recheck, Codex substantive fixes/publication after PASS. #9 follows reviewed #16 publication. No human approval pending.
+- Independent same-AGY PASS on5e6f86e (docs-only HEADd31cb61), baseee52c32. Independently493 tests OK/four skips26.294s, all10 integrations and JS/diff checks. Same reviewer captured nested scratch WinError5 in fake_dispatch_cli.save, establishing that exception's test-file replacement race; earlier missing-return remains separately unproven. Root verified traceback and changed only fixture record writer to existing bounded atomic_json. Controlled collision probe and real queue integration PASS (scratch sb833a4y); same-AGY fixture-only recheck pending before publication. Application source/tests unchanged. Receipt REVIEW-GEMINI-TICKET-16.md. #9 follows reviewed publication; no human approval pending.
 
 ## Ticket execution and review
 
@@ -169,7 +169,7 @@
 
 ## Next step
 
-**Action:** Same AGY independently reviews frozen #16; Codex handles substantive fixes/recheck before publication. #16 follows reviewed publication; #9 remains deferred.
+**Action:** Same AGY rechecks the bounded fixture-writer change, then Codex publishes/closes independently passed #16 and advances to #9. #16 follows reviewed publication; #9 remains deferred.
 **Who:** Codex owns verification/freeze/fixes; same AGY remains independent reviewer. No human approval is pending.
 **Done when:** Each ticket satisfies its documented criteria, tests and independent Antigravity review/recheck; it is published and closed, with status and next action recorded. Continue autonomously within the approved backlog.
 

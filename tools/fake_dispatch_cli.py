@@ -6,9 +6,13 @@ import os
 from pathlib import Path
 import queue
 import re
+import sys
 import threading
 import time
 import traceback
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from api_seats import atomic_json
 
 
 async def release(settings, dispatch_id, phase):
@@ -51,9 +55,7 @@ def main():
     stack_output = (directory / 'cli-thread-stacks.log').open('a', encoding='utf-8')
 
     def save():
-        temporary = path.with_suffix('.tmp')
-        temporary.write_text(json.dumps(record, ensure_ascii=True), encoding='utf-8')
-        temporary.replace(path)
+        atomic_json(path, record)
 
     def worker():
         while True:
