@@ -1,6 +1,6 @@
 # Ticket14: recover an operator-selected CLI message
 
-State: implementation and builder verification complete. Same AGY independently bounded-passed all foundation checkpoints and the same-boot handle correction. Final quarantine/UI/tool review and whole-ticket reproduction remain pending. No Ticket14 publication yet. Final pack: TICKET-14-REVIEW.md; usage: RECOVER-CLI-MESSAGES.md.
+State: implementation accepted after same-AGY final source-grounded recheck and whole-ticket FULL PASS. Local main fast-forward merged; post-merge806 total tests OK/four expected skips71.794s and syntax/diff pass. Publication/closure are next. Final pack: TICKET-14-REVIEW.md; receipt: REVIEW-GEMINI-TICKET-14.md; usage: RECOVER-CLI-MESSAGES.md.
 
 Base: published main `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Scope: issue14, specification v1.7 SC-5 and CLI AT-21c, standing autonomous policy in STATUS.md. Ticket12 blocker and Ticket13 are closed. Independent review: [contract settlement](epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-14-contract-review/index.md). Same AGY remains final reviewer.
 
@@ -144,4 +144,4 @@ After-Retryio6ppxny actually rejected B's late MCP typed final but recorded no q
 
 Final root full806 tests OK/four expected skips73.299s; base734 plus72 across10 dedicated modules. Existing turn recovery44.799s, corrected restart30.112s and session Stop21.930s integrations pass. Existing API lost-ACKisfhwjra passes with2 calls/2 posts/one event/projection/ACK and no peer invocation; cleanup unresolved[]. Node syntax and diff checks pass. No Python production changes followed these checks; the final question-Close JS focus refinement was separately exercised after reload.
 
-Codex prepares the frozen final review pack for the same AGY, including quarantine/UI/tools not covered by the last bounded audit. Final independent whole-ticket PASS and post-merge checks are still required before standing-authorized publication/closure. See TICKET-14-REVIEW.md for exact commands, scratch paths and limits.
+Same AGY whole-ticket source/reproduction review now FULL PASS for fc921ca:806 total tests/four expected skips80.458s and four independent actual CLI cases. Builder held publication over incorrect source descriptions in the initial report; reviewer reread source/callers, reran72 focused tests7.721s, verified raw logs/scratch and rewrote/re-evaluated the report. No implementation changed. Post-merge806 total tests/four skips71.794s and syntax/diff pass. Codex publishes/closes next under standing authorization. See TICKET-14-REVIEW.md and REVIEW-GEMINI-TICKET-14.md for exact evidence and limits.

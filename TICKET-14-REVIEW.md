@@ -1,6 +1,6 @@
 # Ticket14 final review pack
 
-State: builder verification complete. Same AGY reported final PASS, but builder found incorrect source descriptions in that artifact, including nonexistent SQLite/methods and reversed transaction ordering. Publication is held pending actual source/caller recheck, corrected execution attribution and re-evaluated verdict. No Ticket14 merge, publication or closure yet.
+State: accepted after same-AGY source-grounded recheck and final FULL PASS. Initial report inaccuracies prompted a publication HOLD; actual source reread, focused72-test re-execution and corrected command/scratch attribution resolved it. Local main is fast-forward merged; post-merge806 total tests OK/four expected skips71.794s and syntax/diff pass. Publication/closure are next. Receipt REVIEW-GEMINI-TICKET-14.md.
 
 Base: `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Frozen implementation: `fc921ca884ba3b63303d8a8489320bf668729bcc`. This receipt pin changes documentation only; evaluate executable source at the frozen target.
 
