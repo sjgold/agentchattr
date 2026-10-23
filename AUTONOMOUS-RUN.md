@@ -22,7 +22,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Store/repair/controller component checks green | Final frozen full suite and same AGY bounded audit next; skip projection/HTTP/UI/native acceptance pending; STOP after15 |
+| #15 | Store/repair/controller component checks green | Frozen132e598 full901/four skips90.284s; same AGY bounded audit pending; skip projection/HTTP/UI/native acceptance pending; STOP after15 |
 | #17-26 | Pending | Follow documented dependency graph |
 
 ## Non-negotiable verification
@@ -34,7 +34,7 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-Published/closed: #1-14 and #16, main55bd7cb. Current branch codex/ticket-15-participant-replacement. Same AGY independently bounded-passed Ticket15 skip8834a8d, clone964d3af and unified transport/native proofb9cd507. Replacement store/explicit repair/controller are now implemented and component-tested, with native process/readiness delegates explicitly mocked in these new orchestration tests. First full900 total/four skips85.312s passed before one additional repair replay regression; final frozen full count and bounded review next.
+Published/closed: #1-14 and #16, main55bd7cb. Current branch codex/ticket-15-participant-replacement. Same AGY independently bounded-passed Ticket15 skip8834a8d, clone964d3af and unified transport/native proofb9cd507. Replacement store/explicit repair/controller are now implemented and component-tested, with native process/readiness delegates explicitly mocked in these new orchestration tests. Frozen132e598 full901 total/four skips90.284s and40 focused5.517s pass. Same AGY bounded source/execution review pending.
 
 Remaining owner Codex: skip notices/missing context/output/export, operator HTTP routes, UI, actual Windows/local-fake replacement/skip/repair/restart acceptance, same AGY final source/execution review and verified publication/closure. Finish Ticket15, then stop. No other ticket, live provider/native AI/Omarchy/Desktop/global change is authorized.
 

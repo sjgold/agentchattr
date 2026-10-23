@@ -4,10 +4,10 @@
 
 ## Current handoff
 
-- Active work: Ticket15, branch `codex/ticket-15-participant-replacement`, frozen implementation checkpoint `b9cd50739235ac8e04ac69f020bd8dff84fd44e1`. Ticket15 is not complete, merged or published.
-- Verified:861 total tests OK,4 expected platform skips,79.601s. Same AGY independently bounded-PASSb9cd507 with31 dedicated/104 focused/full861 total,4 skips79.196s. This is component review, not final15 acceptance.
-- Current uncommitted Tranche4/controller: store12, supersession4, explicit manager repair8, controller13, missing-coordinator2 and repair-lost-response1 pass focused checks. First full900 total/four skips85.312s passed before the final added replay case; final frozen full run next. New workflow is not independently reviewed, exposed through HTTP/UI or accepted with actual replacement workers yet.
-- Next owner: Codex freezes replacement store/repair/controller for same AGY bounded review, then completes skip projection/export, HTTP/UI and actual Windows/local-fake acceptance, followed by final review/publication/closure.
+- Active work: Ticket15, branch `codex/ticket-15-participant-replacement`, frozen implementation checkpoint `132e59847175fd911abaf909a67219861d2fdc2f`. Ticket15 is not complete, merged or published.
+- Verified: frozen132e598 full901 total tests OK,4 expected platform skips,90.284s;40 new focused tests PASS5.517s, syntax/diff clean. Same AGY independently bounded-PASS throughb9cd507; current checkpoint audit pending. This is component verification, not final15 acceptance.
+- Tranche4/controller132e598: store12, supersession4, explicit manager repair8, controller13, missing-coordinator2 and repair-lost-response1 pass focused checks; full frozen901 total/four skips90.284s. New workflow is not independently reviewed, exposed through HTTP/UI or accepted with actual replacement workers yet.
+- Next owners: same AGY audits frozen132e598 while Codex continues ratified skip projection/export, then HTTP/UI and actual Windows/local-fake acceptance, followed by final review/publication/closure.
 - Stop condition: finish Ticket15 completely, then stop. Do not start another ticket. Helper is idle; no usage-consuming live providers, native AI clients, Omarchy or global/Desktop changes are authorized.
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
@@ -354,3 +354,5 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Next work remains within15: explicit preparation-repair tests under frozen4b interface, then controller/engine integration and remaining acceptance. No new replacement HTTP/UI or model generation path is exposed yet. Stop after15.
 
 - Tranche4/controller current component results: manager repair8PASS0.907s after actual healthy-clone control guard red and fixture-only CLI child receipt correction. Root controller2 + helper faults10 + options1PASS13/2.208s after genuine pre-brief same-owner replay gap fix. Root missing coordinator2 red0.192s then owner-focused5PASS0.340s. Repair exact replay initially failed0.201s; durable confirmation/launch journal now focused11PASS1.973s. Full900/four skips85.312s is attributed to the evolving tree before the final added repair replay case. TICKET-15-PLAN.md preserves exact failures/seams; final frozen full run pending. No HTTP/UI/native replacement claim.
+
+- Frozen replacement store/repair/controller checkpoint132e598: full901 TOTAL tests OK (897 passed,4 expected platform skips)90.284s, focused40PASS5.517s and syntax/diff clean. Log .audit-tmp/ticket15-replacement-controller-frozen-full.log, tracked shell2111bb2b exit0. Same AGY bounded review requested; no final15 acceptance/publication claim.
