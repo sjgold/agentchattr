@@ -2,7 +2,7 @@
 
 State: builder verification complete; same-AGY final independent review pending. No Ticket14 publication or closure yet.
 
-Base: `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. The implementation freeze is the commit containing this pack; the reviewer briefing supplies its exact hash.
+Base: `9de60a2e9c413dad789a3f06e91682684d74e46f`. Branch: `codex/ticket-14-selected-cli-result`. Frozen implementation: `fc921ca884ba3b63303d8a8489320bf668729bcc`. This receipt pin changes documentation only; evaluate executable source at the frozen target.
 
 Contract: [TICKET-14-PLAN.md](TICKET-14-PLAN.md). Usage: [RECOVER-CLI-MESSAGES.md](RECOVER-CLI-MESSAGES.md). Contract rulings and bounded reviews are in `ticket-14-contract-review` and `ticket-14-foundations-review` under the epic artifacts.
 
