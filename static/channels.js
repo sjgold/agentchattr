@@ -34,8 +34,6 @@ function renderChannelTabs() {
     const container = document.getElementById('channel-tabs');
     if (!container) return;
 
-    // Preserve inline create input if it exists
-    const existingCreate = container.querySelector('.channel-inline-create');
     const scrollLeft = container.scrollLeft;
     container.innerHTML = '';
 
@@ -97,11 +95,6 @@ function renderChannelTabs() {
         container.appendChild(item);
     }
 
-    // Re-append inline create if it was open
-    if (existingCreate) {
-        container.appendChild(existingCreate);
-    }
-
     container.scrollLeft = scrollLeft;
     renderChannelSidebar();
 }
@@ -114,8 +107,6 @@ function renderChannelSidebar() {
     const list = document.getElementById('channel-sidebar-list');
     if (!list) return;
 
-    // Preserve inline create/rename if present
-    const existingCreate = list.querySelector('.channel-inline-create');
     list.innerHTML = '';
 
     for (const name of window.channelList) {
@@ -165,8 +156,6 @@ function renderChannelSidebar() {
 
         list.appendChild(item);
     }
-
-    if (existingCreate) list.appendChild(existingCreate);
 
 }
 
@@ -228,15 +217,6 @@ function filterMessagesByChannel() {
 
 function showChannelCreateDialog() {
     return window.ChannelLifecycle.openManage({op: 'create', channel: ''});
-}
-
-function _submitInlineCreate(input, wrapper) {
-    const name = input.value.trim().toLowerCase();
-    if (!name || !/^[a-z0-9][a-z0-9\-]{0,19}$/.test(name)) return;
-    if (window.channelList.includes(name)) { input.focus(); return; }
-    window._setPendingChannelSwitch(name);
-    window.ws.send(JSON.stringify({ type: 'channel_create', name }));
-    wrapper.remove();
 }
 
 // ---------------------------------------------------------------------------

@@ -43,7 +43,7 @@ window.ChannelLifecycle = (() => {
             if (!response.ok) {
                 const message = object(value) && knownErrors.has(value.error) ? value.error
                     : response.status === 409 ? 'Channel state changed. Refresh the preview; your draft is kept.'
-                    : response.status === 503 ? 'Channel storage is unavailable. Reload after repair; drafts are kept.'
+                    : response.status === 503 ? 'Channel storage is held. Create, reopen, archive, rename and delete are paused until repair. Healthy chat continues; drafts are kept.'
                     : response.status === 403 ? 'The operator session is unavailable. Reconnect before changing channels; drafts are kept.'
                     : 'The channel request could not be completed. Check the name and reload its preview.';
                 throw new ChannelRequestError(message, response.status);
@@ -187,7 +187,10 @@ window.ChannelLifecycle = (() => {
         }
     }
     async function handleEvent(event) {
-        if (['channel_renamed', 'channel_deleted'].includes(event.type)) pendingEvents.push(copy(event));
+        if (['channel_renamed', 'channel_deleted'].includes(event.type)) {
+            pendingEvents.push(copy(event));
+            if (pendingEvents.length > 64) pendingEvents.splice(0, pendingEvents.length - 64);
+        }
         return refresh();
     }
     function errorText(error) {
@@ -202,7 +205,8 @@ window.ChannelLifecycle = (() => {
         form.closed = true; form.readController?.abort();
         form.dialog.close?.(); form.dialog.remove();
         if (current === form) current = null;
-        if (form.trigger?.isConnected !== false) form.trigger?.focus?.();
+        const target = form.trigger?.isConnected !== false ? form.trigger : document.getElementById('channel-manage-btn') || document.getElementById('channel-sidebar-manage');
+        target?.focus?.();
     }
     function openManage({channel = window.activeChannel || 'general', op = null} = {}) {
         if (current) closeManager(current);
@@ -256,6 +260,7 @@ window.ChannelLifecycle = (() => {
         const focused = document.activeElement;
         const focusId = form.dialog.contains(focused) ? focused.id : null;
         const selection = focused && typeof focused.selectionStart === 'number' ? [focused.selectionStart, focused.selectionEnd] : null;
+        form.repairConfirmed = false;
         form.dialog.replaceChildren();
         const header = node('header', undefined, 'channel-manager-header');
         const title = node('h2', 'Manage channels'); title.id = 'channel-manager-title';
@@ -284,7 +289,7 @@ window.ChannelLifecycle = (() => {
                 const line = node('div', undefined, 'channel-manager-row');
                 line.appendChild(node('strong', '# ' + row.name));
                 line.appendChild(node('p', row.counts ? `${row.counts.messages ?? 'Unavailable'} messages, ${row.counts.jobs ?? 'unavailable'} jobs, ${row.counts.sessions ?? 'unavailable'} reviews, ${row.counts.summaries ?? 'unavailable'} summaries` : 'Saved data is readable. Register a valid channel name through create or import before writing.'));
-                for (const owner of Object.keys(row.errors)) line.appendChild(node('p', `${owner}: Cannot confirm contents; repair storage first.`, 'channel-manager-status'));
+                for (const owner of Object.keys(row.errors)) line.appendChild(node('p', `${owner}: Cannot confirm contents; repair storage first. Create, reopen, archive, rename and delete are paused. Healthy chat continues.`, 'channel-manager-status'));
                 const actions = node('div', undefined, 'channel-manager-actions');
                 const ops = row.name === 'general' ? ['view'] : key === 'active' ? ['view', 'rename', 'archive', 'delete', 'cancel_queued', 'recover_projections'] : key === 'archived' ? ['view', 'reopen', 'delete'] : ['view'];
                 if (row.name === 'general') line.appendChild(node('span', 'Protected', 'channel-manager-state'));
@@ -312,7 +317,7 @@ window.ChannelLifecycle = (() => {
             form.name = value; form.preview = null; form.requestId = null;
             form.dialog.querySelector('#channel-manager-consequences')?.replaceChildren(); updateApply(form);
         });
-        if (partialContents(target(form))) detail.appendChild(node('p', 'Cannot confirm contents; repair storage first.', 'channel-manager-status'));
+        if (partialContents(target(form))) detail.appendChild(node('p', 'Cannot confirm contents; repair storage first. Create, reopen, archive, rename and delete are paused. Healthy chat continues.', 'channel-manager-status'));
         const preview = button(form.busy ? 'Checking' : 'Preview consequences', () => previewAction(form));
         preview.id = 'channel-manager-preview'; preview.disabled = !ready || !!mutation || form.busy;
         detail.appendChild(preview);
@@ -359,13 +364,17 @@ window.ChannelLifecycle = (() => {
         try {
             const value = await jsonRequest('/api/channels/' + (repair ? 'retry' : 'apply'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
             if (!object(value) || value.ok !== true) throw new Error('Invalid result.');
+            form.requestId = null;
             if (value.op === 'rename') pendingEvents.push({type: 'channel_renamed', old_name: value.old_name, new_name: value.new_name, revision: value.revision});
             if (value.op === 'delete') pendingEvents.push({type: 'channel_deleted', channel: value.channel, revision: value.revision});
             await refresh();
             form.warning = value.projection_warning || value.projection_repair_error || 'Channel change confirmed.';
             form.preview = null;
-            if (value.op === 'rename') form.channel = value.new_name;
+            if (value.op === 'rename') {
+                form.channel = value.new_name; form.op = null; form.name = ''; form.confirmation = '';
+            }
         } catch (error) {
+            if (error.status >= 400 && error.status < 500) form.requestId = null;
             form.preview = null; report(form, errorText(error));
             try { await refresh(); } catch (_) { /* Closed writes and visible catalog error. */ }
         } finally { mutation = null; form.busy = false; if (current === form && !form.closed) renderManager(form); }

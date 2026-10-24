@@ -1296,8 +1296,7 @@ main#timeline {
     container-type: normal;
 }
 
-#channel-tabs .channel-tab,
-#channel-tabs .channel-inline-create {
+#channel-tabs .channel-tab {
     flex-shrink: 0;
 }
 
@@ -1436,60 +1435,6 @@ main#timeline {
 .channel-add.disabled {
     opacity: 0 !important;
     pointer-events: none;
-}
-
-/* Inline channel input (replaces the + button when creating) */
-.channel-inline-create {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    animation: fadeIn 0.1s ease;
-}
-
-.channel-inline-create .channel-input-prefix {
-    color: var(--text-dim);
-    font-size: 13px;
-    font-weight: 500;
-    user-select: none;
-}
-
-.channel-inline-create input {
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: inherit;
-    font-size: 13px;
-    padding: 3px 8px;
-    width: 120px;
-    outline: none;
-}
-
-.channel-inline-create input:focus { border-color: var(--accent); }
-
-.channel-inline-create button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 2px 4px;
-    line-height: 1;
-    border-radius: var(--radius-sm);
-}
-
-.channel-inline-create .confirm-btn { color: var(--accent); }
-.channel-inline-create .confirm-btn:hover { background: var(--accent-soft); }
-.channel-inline-create .cancel-btn { color: var(--text-dim); }
-.channel-inline-create .cancel-btn:hover { background: var(--white-06); }
-
-/* Compact the inline create input when it sits inside the channel sidebar */
-#channel-sidebar-list .channel-inline-create {
-    padding: 4px 8px;
-}
-#channel-sidebar-list .channel-inline-create input {
-    width: 100%;
-    min-width: 0;
-    flex: 1;
 }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

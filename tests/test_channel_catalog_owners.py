@@ -2,6 +2,7 @@
 import json
 import unittest
 import uuid
+from unittest.mock import patch
 
 import app
 from tests import test_channel_routes as fixture
@@ -96,3 +97,18 @@ class ChannelCatalogOwnerTests(unittest.TestCase):
         self.service.catalog.path.write_bytes(b'{broken catalog')
         response = self.client.get('/api/channels', headers=self.headers)
         self.assertEqual(response.status_code, 503)
+
+    def test_catalog_reads_queue_once_for_all_registered_channels(self):
+        raw = self.service.queue._queue
+        expected = {}
+        for record in raw.records():
+            channel = record['envelope'].get('channel', 'general')
+            expected[channel] = expected.get(channel, 0) + 1
+        with patch.object(raw, '_transaction', wraps=raw._transaction) as transactions:
+            response = self.client.get('/api/channels', headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertGreater(len(response.json()['channels']), 1)
+        self.assertEqual(transactions.call_count, 1)
+        for row in response.json()['channels']:
+            if row['counts'] is not None:
+                self.assertEqual(row['counts']['queue'], expected.get(row['name'], 0))

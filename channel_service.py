@@ -230,7 +230,7 @@ class ChannelService:
                 packet['errors']['summary'] = 'Saved summary is held; repair storage and reload.'
             return packet
 
-    def _display_scope(self, channel):
+    def _display_scope(self, channel, queue_counts):
         counts = {key: None for key in ('messages', 'todos', 'jobs', 'schedules', 'sessions', 'summaries', 'uploads', 'queue')}
         errors, messages, overdue = {}, [], None
         def held(owner):
@@ -253,7 +253,7 @@ class ChannelService:
                 held('uploads')
         else:
             held('todos'); held('uploads')
-        for owner, reader in (('jobs', lambda: self.jobs.retained_metadata(channel, limit=1)['count']),
+        for owner, reader in (('jobs', lambda: len(self.jobs.lifecycle_scope(channel))),
                               ('sessions', lambda: self.engine._store.retained_metadata(channel, limit=1)['count']),
                               ('summaries', lambda: int(self.summaries.contains(channel)))):
             try:
@@ -264,19 +264,23 @@ class ChannelService:
             counts['schedules'], overdue = self.schedules.display_counts(channel)
         except (ChannelUnavailable, OSError):
             held('schedules')
-        try:
-            counts['queue'] = self.queue.channel_count(channel)
-        except (ChannelUnavailable, ValueError, OSError, LaunchError):
+        if queue_counts is None:
             held('queue')
+        else:
+            counts['queue'] = queue_counts.get(channel, 0)
         return counts, errors, overdue
 
     def catalog_view(self):
         with self._boundary():
             value = self.catalog.snapshot()
             self._heal_projection(value)
+            try:
+                queue_counts = self.queue.channel_counts()
+            except (ChannelUnavailable, ValueError, OSError, LaunchError):
+                queue_counts = None
             rows = []
             for name, state in value['channels'].items():
-                counts, errors, overdue = self._display_scope(name)
+                counts, errors, overdue = self._display_scope(name, queue_counts)
                 rows.append({'name': name, 'state': state, 'counts': counts, 'overdue_schedules': overdue, 'errors': errors})
             rows.extend({'name': name, 'state': 'unregistered', 'counts': None, 'overdue_schedules': 0, 'errors': {}}
                         for name in sorted(self._unregistered))

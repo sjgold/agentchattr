@@ -309,11 +309,14 @@ class QueueStore:
         with self._transaction() as ledger:
             return deepcopy([r for r in ledger['records'] if r['envelope']['target_identity_id'] == identity])
 
-    def channel_count(self, channel):
-        """Count metadata without copying immutable dispatch bodies."""
-        _routing({'channel': channel})
+    def channel_counts(self):
+        """Count all channel metadata in one ledger read, without copying bodies."""
         with self._transaction() as ledger:
-            return sum(record['envelope'].get('channel', 'general') == channel for record in ledger['records'])
+            counts = {}
+            for record in ledger['records']:
+                channel = record['envelope'].get('channel', 'general')
+                counts[channel] = counts.get(channel, 0) + 1
+            return counts
 
     def records(self, channel=None):
         """Detached ledger view for channel policy, without claiming or rewriting."""
