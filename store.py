@@ -8,6 +8,8 @@ import uuid
 from copy import deepcopy
 from pathlib import Path
 
+from api_seats import atomic_json
+
 
 _OPERATOR_PUBLICATION = object()
 
@@ -228,11 +230,7 @@ class MessageStore:
 
     def _rewrite(self):
         """Rewrite the full JSONL file from memory (used after bulk edits)."""
-        with open(self._path, "w", encoding="utf-8") as f:
-            for m in self._messages:
-                f.write(json.dumps(m, ensure_ascii=False) + "\n")
-            f.flush()
-            os.fsync(f.fileno())
+        self._rewrite_jsonl()
 
     def get_by_id(self, msg_id: int) -> dict | None:
         with self._lock:
@@ -328,13 +326,19 @@ class MessageStore:
                     return dict(m)
             return None
 
-    def _rewrite_jsonl(self):
-        """Rewrite the JSONL file from current in-memory messages."""
-        with open(self._path, "w", encoding="utf-8") as f:
-            for m in self._messages:
-                f.write(json.dumps(m, ensure_ascii=False) + "\n")
-            f.flush()
-            os.fsync(f.fileno())
+    def _rewrite_jsonl(self, messages=None):
+        """Replace a complete log only after its temporary file is durable."""
+        temporary = self._path.with_name(self._path.name + '.' + uuid.uuid4().hex + '.tmp')
+        try:
+            with temporary.open('x', encoding='utf-8') as output:
+                for message in self._messages if messages is None else messages:
+                    output.write(json.dumps(message, ensure_ascii=False) + '\n')
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(temporary, self._path)
+        finally:
+            if temporary.exists():
+                temporary.unlink()
 
     def clear(self, channel: str | None = None):
         """Wipe messages and rewrite the log file.
@@ -359,13 +363,16 @@ class MessageStore:
     def rename_channel(self, old_name: str, new_name: str):
         """Migrate all messages from old_name to new_name."""
         with self._lock:
-            modified = False
-            for m in self._messages:
-                if m.get("channel") == old_name:
-                    m["channel"] = new_name
-                    modified = True
-            if modified:
-                self._rewrite_jsonl()
+            if not any(message.get('channel') == old_name for message in self._messages):
+                return
+            if any(message.get('channel') == new_name for message in self._messages):
+                raise ValueError('Destination channel already contains messages.')
+            staged = deepcopy(self._messages)
+            for message in staged:
+                if message.get('channel') == old_name:
+                    message['channel'] = new_name
+            self._rewrite_jsonl(staged)
+            self._messages = staged
 
     def rename_sender(self, old_name: str, new_name: str) -> int:
         """Rename sender on all messages from old_name to new_name. Returns count updated."""
@@ -380,19 +387,41 @@ class MessageStore:
         return count
 
     def delete_channel(self, name: str):
-        """Remove all messages belonging to a deleted channel."""
+        """Legacy complete delete; lifecycle repair uses the separate phases."""
+        self.remove_channel_todos(name)
+        removed = self.remove_channel_messages(name)
+        if removed:
+            self.notify_deleted(removed)
+        return removed
+
+    def remove_channel_todos(self, name: str):
+        """Durably remove only todos identified by this channel's live messages."""
         with self._lock:
-            original_len = len(self._messages)
-            # Collect IDs of messages being removed so we can clean up their todos
-            removed_ids = {m["id"] for m in self._messages if m.get("channel") == name}
-            self._messages = [m for m in self._messages if m.get("channel") != name]
-            if len(self._messages) != original_len:
-                self._rewrite_jsonl()
-                # Clean up todos that referenced deleted messages
-                for tid in list(self._todos.keys()):
-                    if tid in removed_ids:
-                        del self._todos[tid]
-                self._save_todos()
+            ids = {message['id'] for message in self._messages if message.get('channel') == name}
+            staged = {key: value for key, value in self._todos.items() if key not in ids}
+            removed = sorted(set(self._todos) - set(staged))
+            if removed:
+                atomic_json(self._todos_path, {str(key): value for key, value in staged.items()})
+                self._todos = staged
+            return removed
+
+    def remove_channel_messages(self, name: str):
+        """Message-only repair step; leave uploads and notifications untouched."""
+        with self._lock:
+            removed = [message['id'] for message in self._messages if message.get('channel') == name]
+            if removed:
+                staged = [message for message in self._messages if message.get('channel') != name]
+                self._rewrite_jsonl(staged)
+                self._messages = staged
+            return removed
+
+    def notify_deleted(self, ids):
+        """Emit invalidation after the configured lifecycle operation finishes."""
+        for callback in self._delete_callbacks:
+            try:
+                callback(list(ids))
+            except Exception:
+                pass
 
     # --- Todos ---
 
@@ -417,10 +446,7 @@ class MessageStore:
                 self._todos = {}
 
     def _save_todos(self):
-        self._todos_path.write_text(
-            json.dumps({str(k): v for k, v in self._todos.items()}, indent=2),
-            "utf-8"
-        )
+        atomic_json(self._todos_path, {str(k): v for k, v in self._todos.items()})
 
     def on_todo(self, callback):
         """Register a callback(msg_id, status) called on todo changes.

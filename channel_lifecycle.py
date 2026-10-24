@@ -12,7 +12,7 @@ from launcher import LaunchError, startup_lock
 
 
 RENAME_STEPS = ('messages', 'jobs', 'schedules', 'summaries', 'sessions', 'cursors', 'settings')
-DELETE_STEPS = ('messages', 'todos', 'settings')
+DELETE_STEPS = ('todos', 'messages', 'settings')
 _FIELDS = {'version', 'revision', 'channels', 'retired', 'intent'}
 _INTENT_FIELDS = {'request_id', 'op', 'old', 'new', 'completed_steps'}
 

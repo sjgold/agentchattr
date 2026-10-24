@@ -131,9 +131,15 @@ class QueueStore:
             return deepcopy(record)
 
     def claim(self, instance, consumer_id, *, blocked_run_ids=None, blocked_identity_ids=None,
-              allowed_dispatch_ids=None):
+              allowed_dispatch_ids=None, blocked_channel_names=None):
         identity = _seat(instance)
         _identifier(consumer_id, 'Consumer ID')
+        if blocked_channel_names is not None:
+            if type(blocked_channel_names) is not set or any(
+                    type(name) is not str or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,19}', name)
+                    for name in blocked_channel_names):
+                raise ValueError('Blocked channel names must be a set of valid names or None.')
+            blocked_channel_names = set(blocked_channel_names)
         if allowed_dispatch_ids is not None:
             if not isinstance(allowed_dispatch_ids, set):
                 raise ValueError('Allowed dispatch IDs must be a set or None.')
@@ -157,6 +163,8 @@ class QueueStore:
                 raise QueueBusy('Saved-result transport exit is unproven; pending work is retained.')
             for record in records:
                 if record['state'] == 'queued':
+                    if record['envelope'].get('channel', 'general') in (blocked_channel_names or set()):
+                        continue
                     if record['envelope'].get('run_id') in blocked:
                         continue
                     if (allowed_dispatch_ids is not None
@@ -167,6 +175,29 @@ class QueueStore:
                     self._write(ledger)
                     return deepcopy(record)
             return None
+
+    def cancel_queued_channel(self, channel, dispatch_ids, cancellation_id):
+        """Cancel an exact confirmed queued set without changing active work."""
+        _routing({'channel': channel})
+        _identifier(cancellation_id, 'Cancellation ID')
+        if type(dispatch_ids) is not list:
+            raise ValueError('Queued dispatch IDs must be a list.')
+        for dispatch_id in dispatch_ids:
+            _identifier(dispatch_id, 'Dispatch ID')
+        if len(set(dispatch_ids)) != len(dispatch_ids):
+            raise ValueError('Queued dispatch IDs must be unique.')
+        with self._transaction() as ledger:
+            queued = [record for record in ledger['records']
+                      if record['envelope'].get('channel', 'general') == channel
+                      and record['state'] == 'queued']
+            if {record['envelope']['dispatch_id'] for record in queued} != set(dispatch_ids):
+                raise QueueConflict('Queued work changed; refresh the channel preview.')
+            for record in queued:
+                record['cancellation_id'] = cancellation_id
+                self._event(record, 'cancelled')
+            if queued:
+                self._write(ledger)
+            return deepcopy(queued)
 
     def _update(self, instance, dispatch_id, consumer_id, state, error='', http_status=None):
         identity = _seat(instance)

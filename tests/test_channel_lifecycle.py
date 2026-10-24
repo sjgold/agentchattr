@@ -11,7 +11,7 @@ import uuid
 
 
 RENAME_STEPS = ('messages', 'jobs', 'schedules', 'summaries', 'sessions', 'cursors', 'settings')
-DELETE_STEPS = ('messages', 'todos', 'settings')
+DELETE_STEPS = ('todos', 'messages', 'settings')
 
 
 class ChannelLifecycleTests(unittest.TestCase):
