@@ -173,7 +173,7 @@ class ChannelJobRouteTests(unittest.TestCase):
         self.jobs.create('Original', 'job', 'review', 'operator')
         path = self.root / 'channel_lifecycle.json'
         path.write_text('{broken', encoding='utf-8')
-        with patch('mcp_bridge.channel_policy_getter', None):
+        with patch('mcp_bridge.channel_policy_getter', None), patch.object(app, 'summaries', self.summaries):
             with self.assertRaises(ChannelUnavailable):
                 app._initialize_channel_lifecycle(self.root)
         self.assertIsNone(app.channel_service)

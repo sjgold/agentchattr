@@ -72,6 +72,12 @@ class ChannelConfigureTests(unittest.TestCase):
                         self.events.append('bind:' + name)
                         return original(instance, getter)
                     seams.enter_context(patch.object(owner, 'bind_channel_policy', bind))
+                for method in ('add', 'add_once', 'add_notice'):
+                    original = getattr(app.MessageStore, method)
+                    def message_write(instance, *args, original=original, method=method, **kwargs):
+                        self.events.append('message:' + method)
+                        return original(instance, *args, **kwargs)
+                    seams.enter_context(patch.object(app.MessageStore, method, message_write))
                 initialize = ChannelStore.initialize
                 def init(catalog, names):
                     self.events.append('catalog')
@@ -157,6 +163,10 @@ class ChannelConfigureTests(unittest.TestCase):
         for before, after in zip(('catalog', 'service', 'observer', 'inventory', 'resume'),
                                  ('service', 'observer', 'inventory', 'resume', 'background')):
             self.assertLess(self.events.index(before), self.events.index(after))
+        first_bind = min(index for index, event in enumerate(self.events) if event.startswith('bind:'))
+        before_service = self.events[first_bind:self.events.index('service')]
+        self.assertFalse(any(event.startswith('message:') for event in before_service),
+                         'No startup MessageStore.add* may run before the channel service exists.')
         self.assertTrue(self.thread_starts)
         for _, getters in self.thread_starts:
             self.assertTrue(all(getter is app._channels for getter in getters.values()))
