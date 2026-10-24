@@ -23,7 +23,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
 | #15 | Published and closed | Source41b80f7, Sonnet independent PASS, post-merge918/four skips86.469s |
-| #17 | Settled contract, exact-interface recheck | Sonnet M1-M5/refinements incorporated; pure schema recheck before helper TDD; scheduling composer deferred |
+| #17 | Tranche1 pure resolver implemented/tested |18 focused PASS, freeze/full regression/independent bounded review next; runtime routing and UI unbuilt; scheduling composer deferred |
 | #18-26 | Authorized, pending | Continue dependency order after current ticket |
 
 ## Non-negotiable verification
