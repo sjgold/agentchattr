@@ -8,7 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import api_seats
-from channel_lifecycle import ChannelConflict, ChannelUnavailable
+from channel_lifecycle import ChannelConflict, ChannelUnavailable, _name
 from channel_guards import channel_write
 from store import _operator_authority, _operator_receipt
 
@@ -170,6 +170,30 @@ class JobStore:
         try:
             self._fingerprint = self._stamp()
         except OSError:
+            self._fingerprint = None
+
+    def rename_channel(self, old_name, new_name):
+        """Durable lifecycle phase; caller holds the engine/catalog boundary."""
+        _name(old_name)
+        _name(new_name)
+        with self._lock:
+            self._check_readable(force=True)
+            if old_name == new_name or not any(row.get('channel') == old_name for row in self._jobs):
+                return
+            if any(row.get('channel') == new_name for row in self._jobs):
+                raise ChannelConflict('Destination already contains jobs.')
+            staged = deepcopy(self._jobs)
+            for row in staged:
+                if row.get('channel') == old_name:
+                    row['channel'] = new_name
+                    for message in row['messages']:
+                        if message.get('channel') == old_name:
+                            message['channel'] = new_name
+            api_seats.atomic_json(self._path, staged)
+            self._jobs = staged
+            self._durable_jobs = deepcopy(staged)
+            self._durable_next_id = self._next_id
+            self._had_file = True
             self._fingerprint = None
 
     def _next_sort_order_locked(self, status: str) -> int:

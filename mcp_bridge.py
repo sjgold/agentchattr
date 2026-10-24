@@ -10,10 +10,12 @@ import os
 import time
 import logging
 import threading
+from copy import deepcopy
 from functools import wraps
 from pathlib import Path
 
-from channel_lifecycle import ChannelInactive, ChannelUnavailable
+from channel_lifecycle import ChannelInactive, ChannelUnavailable, _name
+from api_seats import atomic_json
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -518,13 +520,13 @@ def _save_cursors():
         return
     try:
         with _cursors_lock:
-            snapshot = dict(_cursors)
-        _CURSORS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        tmp = _CURSORS_FILE.with_suffix(".tmp")
-        tmp.write_text(json.dumps(snapshot), "utf-8")
-        os.replace(tmp, _CURSORS_FILE)  # atomic on POSIX
+            snapshot = deepcopy(_cursors)
+            _CURSORS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            tmp = _CURSORS_FILE.with_suffix(".tmp")
+            tmp.write_text(json.dumps(snapshot), "utf-8")
+            os.replace(tmp, _CURSORS_FILE)
     except Exception:
-        log.warning("Failed to save cursor state to %s", _CURSORS_FILE)
+        log.warning("Failed to save cursor state.")
 
 
 def _load_roles():
@@ -611,17 +613,65 @@ def purge_identity(name: str):
     _save_cursors()
 
 
-def migrate_cursors_rename(old_name: str, new_name: str):
-    """Move cursor and fallback entries from old channel to new channel."""
-    with _cursors_lock:
-        for agent_cursors in _cursors.values():
-            if old_name in agent_cursors:
-                agent_cursors[new_name] = agent_cursors.pop(old_name)
+def migrate_fallbacks_rename(old_name: str, new_name: str):
+    """Replayable volatile phase, separate from the durable cursor step."""
+    _name(old_name)
+    _name(new_name)
     with _last_read_lock:
         for sender, fallback in list(_last_read_channel.items()):
             if fallback == old_name:
                 _last_read_channel[sender] = new_name
-    _save_cursors()
+
+
+def migrate_cursors_rename(old_name: str, new_name: str, *, strict=False, path=None):
+    """Lifecycle uses the explicit owned file and propagates durability faults."""
+    _name(old_name)
+    _name(new_name)
+    if strict and path is None:
+        raise ValueError('Strict cursor migration requires its owned path.')
+    with _cursors_lock:
+        staged = deepcopy(_cursors)
+        if strict:
+            def unique(pairs):
+                result = {}
+                for key, value in pairs:
+                    if key in result:
+                        raise ValueError('Duplicate cursor field.')
+                    result[key] = value
+                return result
+            def invalid(value):
+                raise ValueError('Invalid cursor number.')
+            def validate(value):
+                if type(value) is not dict or any(
+                    type(agent) is not str or type(channels) is not dict or any(
+                        type(key) is not str or type(cursor) is not int or cursor < 0
+                        for key, cursor in channels.items())
+                    for agent, channels in value.items()):
+                    raise ValueError('Invalid saved cursors.')
+                return value
+            owned = Path(path)
+            try:
+                saved = validate(json.loads(owned.read_text(encoding='utf-8'),
+                    object_pairs_hook=unique, parse_constant=invalid)) if owned.exists() else {}
+                validate(staged)
+            except (ValueError, TypeError, OSError):
+                raise ChannelUnavailable('Saved cursors are unreadable; no migration was performed.') from None
+            # Recent reads may be ahead of the last successful best-effort save.
+            for agent, channels in saved.items():
+                target = staged.setdefault(agent, {})
+                for key, cursor in channels.items():
+                    target[key] = max(target.get(key, cursor), cursor)
+        for agent_cursors in staged.values():
+            if old_name in agent_cursors:
+                previous = agent_cursors.pop(old_name)
+                agent_cursors[new_name] = max(previous, agent_cursors.get(new_name, previous))
+        if strict and staged != saved:
+            atomic_json(owned, staged)
+        _cursors.clear()
+        _cursors.update(staged)
+    if not strict:
+        migrate_fallbacks_rename(old_name, new_name)
+        _save_cursors()
 
 
 def migrate_cursors_delete(channel: str):
@@ -1017,7 +1067,10 @@ def chat_summary(
             return _serialize_messages(scoped)
 
     if action == "read":
-        entry = summaries.get(channel)
+        try:
+            entry = summaries.get(channel)
+        except ChannelUnavailable:
+            return 'Error: saved summaries are held. Repair the file and restart; chat remains available.'
         if not entry:
             return json.dumps({"channel": channel, "text": None, "message": f"No summary for #{channel} yet — one hasn't been written."})
         return json.dumps(entry, ensure_ascii=False)

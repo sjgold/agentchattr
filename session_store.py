@@ -8,6 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from api_seats import atomic_json
+from channel_lifecycle import ChannelConflict, ChannelUnavailable, _name
 
 log = logging.getLogger(__name__)
 
@@ -65,6 +66,39 @@ class SessionStore:
 
     def _save(self):
         atomic_json(self._path, self._sessions)
+
+    def rename_channel(self, old_name, new_name):
+        """Move only retained runs' top-level channel, never frozen authority."""
+        _name(old_name)
+        _name(new_name)
+        with self._lock:
+            def unique(pairs):
+                value = {}
+                for key, item in pairs:
+                    if key in value:
+                        raise ValueError('Duplicate session field.')
+                    value[key] = item
+                return value
+            def invalid(value):
+                raise ValueError('Invalid JSON number.')
+            try:
+                saved = (json.loads(self._path.read_text(encoding='utf-8'),
+                                    object_pairs_hook=unique, parse_constant=invalid)
+                         if self._path.exists() else [])
+                if type(saved) is not list or saved != self._sessions:
+                    raise ValueError('Sessions changed on disk.')
+            except (ValueError, OSError):
+                raise ChannelUnavailable('Saved sessions are unreadable or changed; no rename was performed.') from None
+            if old_name == new_name or not any(row.get('channel') == old_name for row in saved):
+                return
+            if any(row.get('channel') == new_name for row in saved):
+                raise ChannelConflict('Destination already contains sessions.')
+            staged = deepcopy(saved)
+            for row in staged:
+                if row.get('channel') == old_name:
+                    row['channel'] = new_name
+            atomic_json(self._path, staged)
+            self._sessions = staged
 
     # --- Templates ---
 

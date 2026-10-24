@@ -11,7 +11,7 @@ from copy import deepcopy
 
 from api_seats import atomic_json
 from channel_guards import channel_write
-from channel_lifecycle import ChannelUnavailable
+from channel_lifecycle import ChannelConflict, ChannelUnavailable, _name
 
 
 # Interval parsing: "every 30m", "every 1h", "every 2h", "daily at 09:00"
@@ -237,6 +237,26 @@ class ScheduleStore:
         try:
             self._fingerprint = self._stamp()
         except OSError:
+            self._fingerprint = None
+
+    def rename_channel(self, old_name, new_name):
+        """Durable lifecycle phase; no schedule execution or observer effect."""
+        _name(old_name)
+        _name(new_name)
+        with self._lock:
+            self._check_readable(force=True)
+            if old_name == new_name or not any(row.get('channel') == old_name for row in self._schedules):
+                return
+            if any(row.get('channel') == new_name for row in self._schedules):
+                raise ChannelConflict('Destination already contains schedules.')
+            staged = deepcopy(self._schedules)
+            for row in staged:
+                if row.get('channel') == old_name:
+                    row['channel'] = new_name
+            atomic_json(self._path, staged)
+            self._schedules = staged
+            self._durable = deepcopy(staged)
+            self._had_file = True
             self._fingerprint = None
 
     def on_change(self, callback):
