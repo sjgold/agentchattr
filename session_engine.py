@@ -129,7 +129,7 @@ class SessionEngine:
             return
 
         phase = phases[phase_idx]
-        self._messages.add(
+        self._messages.add_notice(
             sender="system",
             text=f"Phase: {phase['name']}",
             msg_type="session_phase",
@@ -1335,7 +1335,7 @@ class SessionEngine:
                 if retry:
                     return False
                 self._store.interrupt(session['id'], 'Frozen context could not be persisted or exceeded its limit; no turn was queued.')
-                self._messages.add('system', 'Review context could not be prepared. Check input limits and local storage before starting again.',
+                self._messages.add_notice('system', 'Review context could not be prepared. Check input limits and local storage before starting again.',
                                    msg_type='session_error', channel=session.get('channel', 'general'))
                 return False
         if not retry or not session.get('active_invocation'):
@@ -1359,7 +1359,7 @@ class SessionEngine:
             log.error("Session %d: failed to persist dispatch for %s (%s)",
                       session["id"], agent, type(exc).__name__)
             self._store.interrupt(session['id'], 'Dispatch could not be persisted; no turn was delivered.')
-            self._messages.add('system', 'Dispatch could not be saved. Check queue storage before starting again.',
+            self._messages.add_notice('system', 'Dispatch could not be saved. Check queue storage before starting again.',
                                msg_type='session_error', channel=channel)
             return False
 

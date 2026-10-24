@@ -806,7 +806,7 @@ def chat_join(name: str, channel: str = "general", ctx: Context | None = None) -
     # Block unregistered agent names (stale identity from resumed session)
     if registry and registry.is_agent_family(name) and not registry.is_registered(name):
         return f"Error: '{name}' is not registered. Call chat_claim(sender=your_base_name) to get your identity."
-    store.add(name, f"{name} is online", msg_type="join", channel="general")
+    store.add_notice(name, f"{name} is online", msg_type="join", channel="general")
     online = _get_online()
     return f"Joined. Online: {', '.join(online)}"
 

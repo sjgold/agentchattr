@@ -1,6 +1,7 @@
 """JSONL message persistence for the chat room with observer callbacks."""
 
 import json
+import logging
 import os
 import time
 import threading
@@ -10,6 +11,9 @@ from pathlib import Path
 
 from api_seats import atomic_json
 from channel_guards import channel_write
+from channel_lifecycle import ChannelInactive, ChannelUnavailable
+
+log = logging.getLogger(__name__)
 
 
 _OPERATOR_PUBLICATION = object()
@@ -88,6 +92,14 @@ class MessageStore:
         with self._lock:
             return [message.get('channel', 'general') for message in self._messages
                     if ids is None or message['id'] in ids]
+
+    def add_notice(self, *args, **kwargs):
+        """Secondary chat output may be dropped; ordinary publication still refuses."""
+        try:
+            return self.add(*args, **kwargs)
+        except (ChannelInactive, ChannelUnavailable):
+            log.info('Skipped chat notice for an inactive or unavailable channel.')
+            return None
 
     @channel_write(lambda store, args: [args['channel']])
     def add(self, sender: str, text: str, msg_type: str = "chat",

@@ -617,7 +617,7 @@ def configure(cfg: dict, session_token: str = ""):
                 for flag in _data_dir.glob("*_recovered"):
                     agent_name = flag.read_text("utf-8").strip()
                     flag.unlink()
-                    store.add(
+                    store.add_notice(
                         "system",
                         f"Agent routing for {agent_name} interrupted — auto-recovered. "
                         "If agents aren't responding, try sending your message again."
@@ -675,7 +675,7 @@ def configure(cfg: dict, session_token: str = ""):
                                         "new_name": renamed["new"],
                                     })
                                     asyncio.run_coroutine_threadsafe(_broadcast(rename_event), _event_loop)
-                            store.add(name, f"{name} disconnected (timeout)", msg_type="leave", channel=_agent_last_channel.get(name, _last_active_channel))
+                            store.add_notice(name, f"{name} disconnected (timeout)", msg_type="leave", channel=_agent_last_channel.get(name, _last_active_channel))
                             _posted_leave.add(name)
 
                 # Re-fetch registered names (may have changed from crash timeout above)
@@ -697,7 +697,7 @@ def configure(cfg: dict, session_token: str = ""):
                     # Post leave message ONCE per offline transition (debounced)
                     if name not in _posted_leave:
                         _posted_leave.add(name)
-                        store.add(name, f"{name} disconnected", msg_type="leave", channel=_agent_last_channel.get(name, _last_active_channel))
+                        store.add_notice(name, f"{name} disconnected", msg_type="leave", channel=_agent_last_channel.get(name, _last_active_channel))
 
                 # Clear leave debounce for agents that came back online
                 _posted_leave.difference_update(currently_online)
@@ -714,7 +714,7 @@ def configure(cfg: dict, session_token: str = ""):
                         continue
                     if not registry.is_registered(name) and name not in _posted_leave:
                         _posted_leave.add(name)
-                        store.add(name, f"{name} disconnected", msg_type="leave", channel=_agent_last_channel.get(name, _last_active_channel))
+                        store.add_notice(name, f"{name} disconnected", msg_type="leave", channel=_agent_last_channel.get(name, _last_active_channel))
 
                 if _known_online != currently_online and _event_loop:
                     asyncio.run_coroutine_threadsafe(broadcast_status(), _event_loop)
@@ -880,10 +880,13 @@ def _on_session_change(action: str, session: dict):
         if output_id:
             msg = store.get_by_id(output_id)
             if msg:
-                meta = msg.get("metadata") or {}
+                meta = dict(msg.get("metadata") or {})
                 meta["session_output"] = True
-                store.update_message(output_id, {"metadata": meta})
-        store.add(
+                try:
+                    store.update_message(output_id, {"metadata": meta})
+                except (ChannelInactive, ChannelUnavailable):
+                    log.info('Skipped output highlighting for an inactive or unavailable channel.')
+        store.add_notice(
             sender="system",
             text=f"Session complete: {session.get('template_name', '?')}",
             msg_type="session_end",
@@ -892,7 +895,7 @@ def _on_session_change(action: str, session: dict):
         )
     elif action == "interrupt" and store:
         reason = session.get("interrupt_reason", "interrupted")
-        store.add(
+        store.add_notice(
             sender="system",
             text=f"Session ended: {session.get('template_name', '?')} ({reason})",
             msg_type="session_end",
@@ -1350,17 +1353,17 @@ async def _handle_new_message(msg: dict):
     # Check for slash commands — use stripped text (sans @mentions)
     if stripped == "/continue":
         if sender in known_agents:
-            store.add("system", f"Loop guard: only humans can /continue. {sender} tried to self-resume.", channel=channel)
+            store.add_notice("system", f"Loop guard: only humans can /continue. {sender} tried to self-resume.", channel=channel)
             return
         router.continue_routing(channel)
-        store.add("system", f"Routing resumed by {sender}.", channel=channel)
+        store.add_notice("system", f"Routing resumed by {sender}.", channel=channel)
         await broadcast_status()
         return
 
     if not suppress_agent_wakes and stripped == "/roastreview":
         agent_names = registry.get_all_names() if registry else list(config.get("agents", {}).keys())
         mentions = " ".join(f"@{a}" for a in agent_names)
-        store.add(sender, f"{mentions} Time for a roast review! Inspect each other's work and constructively roast it.",
+        store.add_notice(sender, f"{mentions} Time for a roast review! Inspect each other's work and constructively roast it.",
                   channel=channel, metadata=routing_scope)
         return
 
@@ -1369,7 +1372,7 @@ async def _handle_new_message(msg: dict):
         theme = parts[1] if len(parts) > 1 else "anything you like"
         agent_names = registry.get_all_names() if registry else list(config.get("agents", {}).keys())
         mentions = " ".join(f"@{a}" for a in agent_names)
-        store.add(
+        store.add_notice(
             sender,
             f"{mentions} Art challenge! Create an SVG artwork with the theme: **{theme}**. "
             "Write your SVG code to a .svg file, then attach it using chat_send(image_path=...). "
@@ -1388,7 +1391,7 @@ async def _handle_new_message(msg: dict):
             else f"{a}={agents_cfg.get(a, {}).get('color', '#888')}"
             for a in agent_names
         )
-        store.add(
+        store.add_notice(
             sender,
             f"{mentions} Hat making time! Design a new hat for your avatar using SVG. "
             "Use viewBox=\"0 0 32 16\" so it fits on top of a 32px avatar circle. "
@@ -1411,7 +1414,7 @@ async def _handle_new_message(msg: dict):
             "limerick": "Write a limerick about the current state of this codebase.",
             "sonnet": "Write a sonnet about the current state of this codebase.",
         }
-        store.add(sender, f"{mentions} {prompts[form]}", channel=channel, metadata=routing_scope)
+        store.add_notice(sender, f"{mentions} {prompts[form]}", channel=channel, metadata=routing_scope)
         return
 
     # Detect session draft blocks from agents only.
@@ -1430,7 +1433,7 @@ async def _handle_new_message(msg: dict):
             draft_json = json.loads(draft_match.group(1))
             errors = validate_session_template(draft_json, session_store.capacity_policy)
             if errors:
-                store.add(
+                store.add_notice(
                     "system",
                     f"Session draft from {sender} has errors:\n" + "\n".join(f"- {e}" for e in errors),
                     msg_type="session_draft",
@@ -1440,7 +1443,7 @@ async def _handle_new_message(msg: dict):
                 )
             else:
                 draft_json.setdefault("id", f"draft-{draft_id}")
-                store.add(
+                store.add_notice(
                     "system",
                     f"Session draft from {sender}: **{draft_json.get('name', '?')}**",
                     msg_type="session_draft",
@@ -1449,7 +1452,7 @@ async def _handle_new_message(msg: dict):
                               "template": draft_json, "errors": [], "valid": True},
                 )
         except json.JSONDecodeError:
-            store.add(
+            store.add_notice(
                 "system",
                 f"Session draft from {sender} contains invalid JSON.",
                 msg_type="session_draft",
@@ -1475,7 +1478,7 @@ async def _handle_new_message(msg: dict):
         # Only emit the loop guard notice once per pause
         if not router.is_guard_emitted(channel):
             router.set_guard_emitted(channel)
-            store.add(
+            store.add_notice(
                 "system",
                 f"Loop guard: {router.max_hops} agent-to-agent hops reached. "
                 "Type /continue to resume.",
@@ -1504,7 +1507,7 @@ async def _handle_new_message(msg: dict):
         if allowed_agent and target != allowed_agent:
             continue
         if not mcp_bridge.is_online(target):
-            store.add("system", f"{target} appears offline — message queued.", msg_type="system", channel=channel)
+            store.add_notice("system", f"{target} appears offline — message queued.", msg_type="system", channel=channel)
         if agents.is_available(target):
             from dispatch_queue import QueueConflict
             try:
@@ -1792,7 +1795,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         continue
                     if command == '/continue':
                         router.continue_routing()
-                        store.add('system', 'Resuming agent conversation...', msg_type='system', channel=channel)
+                        store.add_notice('system', 'Resuming agent conversation...', msg_type='system', channel=channel)
                         await broadcast_status()
                         continue
                     message = await _publish_operator_message_async(sender=sender, text=text,
@@ -2657,7 +2660,7 @@ async def create_job(request: Request):
                         dead.add(client)
                 ws_clients.difference_update(dead)
     # Post breadcrumb in main timeline with job_id for clickable link
-    store.add(created_by, f"Job created: {title}", msg_type="job_created",
+    store.add_notice(created_by, f"Job created: {title}", msg_type="job_created",
               channel=channel, metadata={"job_id": result["id"]})
     return result
 
@@ -3273,7 +3276,7 @@ async def start_session(request: Request):
         return JSONResponse({"error": "could not start session (one may already be active)"}, status_code=409)
 
     # Add start banner to chat (only after confirmed success)
-    store.add(
+    store.add_notice(
         sender="system",
         text=f"Session started: {tmpl.get('name', template_id)}",
         msg_type="session_start",
@@ -3753,7 +3756,7 @@ async def request_session_draft(request: Request):
     limits_text = policy_description(session_store.capacity_policy if session_store else None)
 
     mention_str = f"@{agent_name}"
-    store.add(
+    store.add_notice(
         "system",
         f"Requested session draft from {mention_str}. Wait for a proposal.",
         channel=channel,
