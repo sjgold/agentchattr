@@ -1,13 +1,13 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 06:10 Chicago (#1-18 closed; #19 lifecycle proposal, no implementation)
+**Updated:** 2026-10-24 06:25 Chicago (#1-18 closed; #19 interface candidate awaits review, no implementation)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
 - Ticket18 is complete on published main5cac753, remote hash verified; issue18 closed/completed at2026-10-24T10:45:05Z reread via wrapper/API. Final independent PASS WITH NONBLOCKING NOTES f893bd2; productc11bdec/verifier12c9a81 unchanged. Postmerge1040/four skips89.765s and bothVM12/syntax/diff PASS. Guide DOCUMENT-INPUTS.md and receipt REVIEW-CLAUDE-TICKET-18.md retain coverage/limits.
-- Active Ticket19 planning branch `codex/ticket-19-channel-lifecycle`, base published main3845c5e. Codex claimed implementation-owner77b543b7; issue19 scope RC-2/AT-11 and blocker10closed verified. TICKET-19-PLAN.md is a discovery/contract PROPOSAL, not frozen: lifecycle dispatch gate, history/retention, multi-store IO recovery and name-reuse/queued-work choices require Sonnet critique. No19source/tests/process/browser actions; existing helper idle.
+- Active Ticket19 planning branch `codex/ticket-19-channel-lifecycle`, base published main3845c5e. Codex implementation-owner77b543b7. Sonnet approved governing choices C1-C5 with settlements; TICKET-19-PLAN.md now specifies the exact catalog/service/API, queued-only cancellation, reserved names with own-alias rename-back, retained records and rename repair. This is an interface freeze CANDIDATE awaiting Sonnet diff confirmation. No19source/tests/process/browser actions; existing helper idle. Next: reviewer confirms or corrects candidate, then Codex assigns only the bounded pure catalog tests (12 methods, first two actual RED); configured runtime wiring is a separate checkpoint.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
