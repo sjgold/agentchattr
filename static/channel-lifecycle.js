@@ -26,9 +26,9 @@ window.ChannelLifecycle = (() => {
         if (className) element.className = className;
         return element;
     };
-    const button = (text, action, className) => {
+    const button = (text, action, className, focusKey = text) => {
         const element = node('button', text, className || 'channel-manager-button');
-        element.type = 'button'; element.onclick = action; return element;
+        element.type = 'button'; element.dataset.focusKey = focusKey; element.onclick = action; return element;
     };
     class ChannelRequestError extends Error {
         constructor(message, status) { super(message); this.status = status; }
@@ -241,7 +241,7 @@ window.ChannelLifecycle = (() => {
     }
     function labelled(parent, text, id, value, change) {
         const label = node('label', text); label.htmlFor = id;
-        const input = node('input'); input.id = id; input.type = 'text'; input.value = value;
+        const input = node('input'); input.id = id; input.dataset.focusKey = id; input.type = 'text'; input.value = value;
         input.autocomplete = 'off'; input.addEventListener('input', () => change(input.value));
         parent.append(label, input); return input;
     }
@@ -258,29 +258,30 @@ window.ChannelLifecycle = (() => {
     function renderManager(form) {
         if (form !== current || form.closed) return;
         const focused = document.activeElement;
-        const focusId = form.dialog.contains(focused) ? focused.id : null;
+        const hadFocus = form.dialog.contains(focused);
+        const focusKey = hadFocus ? focused.dataset.focusKey || focused.id : null;
         const selection = focused && typeof focused.selectionStart === 'number' ? [focused.selectionStart, focused.selectionEnd] : null;
         form.repairConfirmed = false;
         form.dialog.replaceChildren();
         const header = node('header', undefined, 'channel-manager-header');
         const title = node('h2', 'Manage channels'); title.id = 'channel-manager-title';
-        header.append(title, button('Close', () => closeManager(form))); form.dialog.appendChild(header);
+        header.append(title, button('Close', () => closeManager(form), null, 'close')); form.dialog.appendChild(header);
         const status = node('p', form.error || form.warning || (!ready ? 'Checking channel status. Drafts are kept.' : ''), 'channel-manager-status');
         status.id = 'channel-manager-status'; status.setAttribute('role', 'alert'); form.dialog.appendChild(status);
-        form.dialog.appendChild(button('Reload catalog', () => refresh().catch(error => report(form, errorText(error)))));
+        form.dialog.appendChild(button('Reload catalog', () => refresh().catch(error => report(form, errorText(error))), null, 'reload'));
         if (catalog?.intent) {
             const intent = catalog.intent, repair = node('section', undefined, 'channel-manager-repair');
             repair.append(node('h3', 'Channel repair is pending'), node('p', `${intent.op}: ${intent.old}${intent.new ? ' to ' + intent.new : ''}`),
                 node('p', `Completed steps: ${intent.completed_steps.join(', ') || 'none'}. Only these channel names are held.`));
             let typed = '';
-            const retry = button('Retry repair', () => mutate(form, true)); retry.id = 'channel-manager-retry'; retry.disabled = true;
+            const retry = button('Retry repair', () => mutate(form, true), null, 'repair-retry'); retry.id = 'channel-manager-retry'; retry.disabled = true;
             labelled(repair, `Type ${intent.old} to retry`, 'channel-manager-repair-confirm', '', value => {
                 typed = value; form.repairConfirmed = typed === intent.old; retry.disabled = !ready || !!mutation || !form.repairConfirmed;
             });
             repair.appendChild(retry); form.dialog.appendChild(repair);
         }
         const layout = node('div', undefined, 'channel-manager-layout'), list = node('section'); list.id = 'channel-manager-list';
-        list.appendChild(button('Create channel', () => choose(form, '', 'create')));
+        list.appendChild(button('Create channel', () => choose(form, '', 'create'), null, 'create'));
         for (const [key, title] of [['active', 'Active'], ['archived', 'Archived'], ['retired', 'Retired'], ['unregistered', 'Unregistered data']]) {
             list.appendChild(node('h3', title));
             const rows = catalog?.channels.filter(row => row.state === key) || [];
@@ -295,7 +296,7 @@ window.ChannelLifecycle = (() => {
                 if (row.name === 'general') line.appendChild(node('span', 'Protected', 'channel-manager-state'));
                 for (const op of ops) {
                     const labels = {view: 'View retained records', cancel_queued: 'Cancel queued only', recover_projections: 'Repair history'};
-                    const control = button(labels[op] || op[0].toUpperCase() + op.slice(1), () => choose(form, row.name, op));
+                    const control = button(labels[op] || op[0].toUpperCase() + op.slice(1), () => choose(form, row.name, op), null, JSON.stringify(['row', row.name, op]));
                     control.dataset.channelName = row.name; control.dataset.channelOp = op;
                     control.disabled = !ready || !!mutation; actions.appendChild(control);
                 }
@@ -306,9 +307,14 @@ window.ChannelLifecycle = (() => {
         if (!form.op) detail.appendChild(node('p', 'Choose a channel action. Nothing changes until its consequences are checked and confirmed.'));
         else if (form.op === 'view') renderRetained(form, detail);
         else renderAction(form, detail);
-        const next = focusId ? form.dialog.querySelector('#' + focusId) : null;
-        if (next) { next.focus(); if (selection && typeof next.setSelectionRange === 'function') next.setSelectionRange(...selection); }
         updateApply(form);
+        const controls = [...form.dialog.querySelectorAll('button, input, select, textarea, a[href]')]
+            .filter(element => !element.disabled && !element.hidden);
+        const next = (focusKey && controls.find(element => (element.dataset.focusKey || element.id) === focusKey)) || controls[0];
+        if (next && (hadFocus || form.dialog.open)) {
+            next.focus();
+            if (selection && typeof next.setSelectionRange === 'function') next.setSelectionRange(...selection);
+        }
     }
     function renderAction(form, detail) {
         const labels = {create: 'Create channel', rename: 'Rename channel', archive: 'Archive channel', reopen: 'Reopen channel', delete: 'Delete channel', cancel_queued: 'Cancel queued messages only', recover_projections: 'Repair retained history'};
@@ -318,7 +324,7 @@ window.ChannelLifecycle = (() => {
             form.dialog.querySelector('#channel-manager-consequences')?.replaceChildren(); updateApply(form);
         });
         if (partialContents(target(form))) detail.appendChild(node('p', 'Cannot confirm contents; repair storage first. Create, reopen, archive, rename and delete are paused. Healthy chat continues.', 'channel-manager-status'));
-        const preview = button(form.busy ? 'Checking' : 'Preview consequences', () => previewAction(form));
+        const preview = button(form.busy ? 'Checking' : 'Preview consequences', () => previewAction(form), null, 'preview');
         preview.id = 'channel-manager-preview'; preview.disabled = !ready || !!mutation || form.busy;
         detail.appendChild(preview);
         const consequences = node('div'); consequences.id = 'channel-manager-consequences'; detail.appendChild(consequences);
@@ -336,7 +342,7 @@ window.ChannelLifecycle = (() => {
             if (form.op === 'cancel_queued') consequences.appendChild(node('p', `Queued dispatches: ${value.queued_dispatch_ids.join(', ') || 'none'}`));
         }
         labelled(detail, `Type the exact name ${target(form) || '(choose a name)'}`, 'channel-manager-confirm', form.confirmation, value => { form.confirmation = value; updateApply(form); });
-        const apply = button(form.busy ? 'Working' : 'Apply confirmed action', () => mutate(form)); apply.id = 'channel-manager-apply'; detail.appendChild(apply);
+        const apply = button(form.busy ? 'Working' : 'Apply confirmed action', () => mutate(form), null, 'apply'); apply.id = 'channel-manager-apply'; detail.appendChild(apply);
     }
     async function previewAction(form) {
         if (form.busy || mutation || !ready) return;
@@ -407,12 +413,12 @@ window.ChannelLifecycle = (() => {
                 if (owner === 'uploads') {
                     line.appendChild(node('p', `Message ${entry.message_id}, ${entry.message_uid}`));
                     for (const item of entry.attachments || []) line.appendChild(node('p', typeof item.name === 'string' ? item.name : 'Attachment reference'));
-                    for (const link of entry.safe_links || []) if (typeof link.url === 'string' && /^\/uploads\/[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/.test(link.url)) {
-                        const anchor = node('a', link.name || 'Open retained file'); anchor.href = link.url; anchor.target = '_blank'; anchor.rel = 'noopener'; line.appendChild(anchor);
+                    for (const [linkIndex, link] of (entry.safe_links || []).entries()) if (typeof link.url === 'string' && /^\/uploads\/[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/.test(link.url)) {
+                        const anchor = node('a', link.name || 'Open retained file'); anchor.dataset.focusKey = JSON.stringify(['upload', entry.message_uid, linkIndex, link.url]); anchor.href = link.url; anchor.target = '_blank'; anchor.rel = 'noopener'; line.appendChild(anchor);
                     }
                 } else {
                     line.appendChild(node('p', owner === 'jobs' ? `${entry.title || 'Untitled job'} (${entry.status || 'unknown'})` : owner === 'sessions' ? `Review ${entry.id} (${entry.state || 'unknown'})` : `Schedule ${entry.id}: ${entry.active ? 'enabled' : 'inactive'}`));
-                    if (owner !== 'schedules') line.appendChild(button(owner === 'jobs' ? 'Read conversation' : 'Read source and journal', () => expandRecord(form, line, owner, entry.id)));
+                    if (owner !== 'schedules') line.appendChild(button(owner === 'jobs' ? 'Read conversation' : 'Read source and journal', () => expandRecord(form, line, owner, entry.id), null, JSON.stringify(['expand', owner, entry.id])));
                 }
                 detail.appendChild(line);
             }

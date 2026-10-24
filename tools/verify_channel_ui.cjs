@@ -21,14 +21,14 @@ class Element {
       add: name=>{this.className=[...new Set([...this.className.split(/\s+/),name])].join(' ').trim();},
       remove: name=>{this.className=this.className.split(/\s+/).filter(x=>x!==name).join(' ');}, toggle:()=>{}};
   }
-  set textContent(value) { this._text=String(value); this.children=[]; }
+  set textContent(value) { this._text=String(value); for(const child of [...this.children])child.remove?.(); this.children=[]; }
   get textContent() { return this._text+this.children.map(x=>x.textContent||'').join(' '); }
-  set innerHTML(value) { this._html=String(value); this.children=[]; this._text=''; }
+  set innerHTML(value) { this._html=String(value); for(const child of [...this.children])child.remove?.(); this.children=[]; this._text=''; }
   get innerHTML() { return this._html||''; }
-  appendChild(child) { child.remove?.(); child.parentNode=this; child.isConnected=this.isConnected; this.children.push(child); return child; }
+  appendChild(child) { child.remove?.(); child.parentNode=this; child.isConnected=this.isConnected; child.ownerDocument=this.ownerDocument; for(const nested of descendants(child)){nested.ownerDocument=this.ownerDocument;nested.isConnected=this.isConnected;} this.children.push(child); return child; }
   append(...children) { for(const child of children) this.appendChild(typeof child==='string'?{textContent:child}:child); }
-  replaceChildren(...children) { this.children=[]; this._text=''; this.append(...children); }
-  remove() { if(this.parentNode) this.parentNode.children=this.parentNode.children.filter(x=>x!==this); this.parentNode=null; this.isConnected=false; }
+  replaceChildren(...children) { for(const child of [...this.children])child.remove?.(); this.children=[]; this._text=''; this.append(...children); }
+  remove() { const document=this.ownerDocument;if(document&&this.contains(document.activeElement))document.activeElement=document.body;if(this.parentNode)this.parentNode.children=this.parentNode.children.filter(x=>x!==this);this.parentNode=null;this.isConnected=false;for(const child of descendants(this))child.isConnected=false; }
   setAttribute(name,value) { this.attributes[name]=String(value); if(name==='id')this.id=String(value); }
   getAttribute(name) { return this.attributes[name]??null; }
   removeAttribute(name) { delete this.attributes[name]; }
@@ -36,7 +36,8 @@ class Element {
   removeEventListener(name,fn) { this.listeners[name]=(this.listeners[name]||[]).filter(x=>x!==fn); }
   dispatchEvent(event) { event.target||=this; for(const fn of this.listeners[event.type]||[])fn(event); return true; }
   click() { if(!this.disabled){this.onclick?.({target:this,stopPropagation(){},preventDefault(){}});this.dispatchEvent({type:'click'});} }
-  focus(){this.focused=true;} select(){this.focus();}
+  focus(){if(!this.disabled&&this.isConnected){this.focused=true;if(this.ownerDocument)this.ownerDocument.activeElement=this;}} select(){this.focus();}
+  setSelectionRange(start,end){this.selectionStart=start;this.selectionEnd=end;}
   showModal(){this.open=true;} close(){this.open=false;this.dispatchEvent({type:'close'});}
   get lastElementChild(){return this.children.at(-1)||null;}
   closest(selector){let node=this;while(node){if(node.matches?.(selector))return node;node=node.parentNode;}return null;}
@@ -50,15 +51,16 @@ class Element {
     if(base.startsWith('.'))return base.slice(1).split('.').every(x=>this.classList.contains(x));
     return !base||base==='*'||this.tagName.toLowerCase()===base.toLowerCase();
   }
-  querySelectorAll(selector){let roots=[this];for(const part of selector.trim().split(/\s+/))roots=[...new Set(roots.flatMap(x=>descendants(x).filter(e=>e.matches?.(part))))];return roots;}
+  querySelectorAll(selector){if(selector.includes(',')){const matches=new Set(selector.split(',').flatMap(part=>this.querySelectorAll(part.trim())));return descendants(this).filter(element=>matches.has(element));}let roots=[this];for(const part of selector.trim().split(/\s+/))roots=[...new Set(roots.flatMap(x=>descendants(x).filter(e=>e.matches?.(part))))];return roots;}
   querySelector(selector){return this.querySelectorAll(selector)[0]||null;}
 }
 function environment(){
   const body=new Element('body'), sends=[], opens=[], requests=[], timers=new Map();let clock=0,id=0;
-  const document={body,createElement:tag=>new Element(tag),createTextNode:text=>({textContent:text}),
+  const document={body,activeElement:body,createElement:tag=>{const element=new Element(tag);element.ownerDocument=document;return element;},createTextNode:text=>({textContent:text}),
     getElementById:name=>descendants(body).find(x=>x.id===name)||null,
     querySelector:selector=>body.querySelector(selector),querySelectorAll:selector=>body.querySelectorAll(selector),
     addEventListener(){},removeEventListener(){}};
+  body.ownerDocument=document;
   const context=vm.createContext({console,document,AbortController,URL,URLSearchParams,TextEncoder,
     DOMException,Event:class{constructor(type,options={}){this.type=type;Object.assign(this,options);}},
     CustomEvent:class{constructor(type,options={}){this.type=type;Object.assign(this,options);}},
@@ -89,6 +91,24 @@ async function manage(env,op='delete',channel='review'){const dialog=env.api.ope
 function control(env,id){const element=env.document.getElementById(id);assert.ok(element,'control '+id);return element;}
 function input(element,value){element.value=value;element.dispatchEvent({type:'input'});element.dispatchEvent({type:'change'});}
 async function getPreview(env,data=preview()){control(env,'channel-manager-preview').click();await flush();const requests=pending(env,'/api/channels/preview');assert.equal(requests.length,1);answer(requests[0],data);await flush();return requests[0];}
+async function focusRerenderChecks(){
+  const failures=[];
+  async function probe(name,run){try{await run();}catch(error){failures.push(name+': '+error.message);}}
+  for(const label of ['Close','Reload catalog'])await probe(label+' retains focus after catalog refresh',async()=>{
+    const env=moduleEnv();const dialog=await manage(env,'rename');const button=descendants(dialog).find(element=>element.tagName==='BUTTON'&&element.textContent===label);assert.ok(button);button.focus();assert.equal(env.document.activeElement===button,true,'exact button focus before refresh');
+    if(label==='Reload catalog'){button.click();await settleReads(env,catalog(2));}else await refreshed(env,catalog(2));
+    assert.ok(dialog.contains(env.document.activeElement),'focus must remain inside open dialog, actual='+env.document.activeElement.tagName);assert.equal(env.document.activeElement.textContent,label);
+  });
+  await probe('row action retains focus after rerender and activation',async()=>{
+    const env=moduleEnv();const dialog=await manage(env,'rename');let action=descendants(dialog).find(element=>element.dataset.channelName==='review'&&element.dataset.channelOp==='archive');assert.ok(action);action.focus();await refreshed(env,catalog(2));
+    assert.ok(dialog.contains(env.document.activeElement),'refetched row action must retain dialog focus');assert.equal(env.document.activeElement.dataset.channelOp,'archive');action=env.document.activeElement;action.click();await flush();assert.ok(dialog.contains(env.document.activeElement),'action rerender must retain dialog focus');
+  });
+  await probe('input value caret survive and missing input receives in-dialog fallback',async()=>{
+    const env=moduleEnv();const dialog=await manage(env,'rename');input(control(env,'channel-manager-name'),'renamed');let field=control(env,'channel-manager-name');field.focus();field.setSelectionRange(2,5);await refreshed(env,catalog(2));field=control(env,'channel-manager-name');assert.equal(env.document.activeElement===field,true,'exact current input focus after refresh');assert.equal(field.value,'renamed');assert.equal(field.selectionStart,2);assert.equal(field.selectionEnd,5);
+    const view=descendants(dialog).find(element=>element.dataset.channelName==='review'&&element.dataset.channelOp==='view');assert.ok(view);view.click();await settleReads(env,catalog(2),retained({channel:'review',state:'active'}));assert.ok(dialog.contains(env.document.activeElement),'removed input must receive connected in-dialog fallback');assert.notEqual(env.document.activeElement,field);
+  });
+  assert.deepEqual(failures,[],'public focus/caret rerender failures');
+}
 
 test('shared facade exists and exposes authority/management methods without evaluation effects',async()=>{
   assert.ok(fs.existsSync(path.join(root,'static/channel-lifecycle.js')),'shared channel-lifecycle module missing');
@@ -195,11 +215,12 @@ test('actual job ordering excludes inactive IDs and rejects inactive drag source
   const source=read('static/jobs.js');assert.ok(!source.includes('card.draggable = true;'),'inactive cards need actual channel-dependent draggable state');assert.match(source,/jobCanWrite/);
 });
 
-test('script initialization order and scoped responsive styles retain native dialog close paths',()=>{
+test('script initialization order and scoped responsive styles retain native dialog close paths',async()=>{
   const html=read('static/index.html');const moduleIndex=html.indexOf('channel-lifecycle.js');assert.ok(moduleIndex>=0);assert.ok(moduleIndex<html.indexOf('channels.js'));assert.match(html,/channel-lifecycle\.js\?v=\d+/);
   assert.match(extractFunction('static/channels.js','_channelsInit'),/ChannelLifecycle.*refresh|refresh.*ChannelLifecycle/);assert.ok(html.includes('Manage channels'));assert.ok(html.includes('channel-manage-btn')&&html.includes('channel-sidebar-manage'));
   const module=read('static/channel-lifecycle.js');assert.match(module,/(?:createElement|node)\(['"]dialog['"]/);assert.match(module,/cancel/);assert.match(module,/focus/);
   const css=read('static/channel-lifecycle.css');const scoped=css.slice(css.indexOf('.channel-manager'));assert.ok(scoped.length);assert.match(scoped,/font-size:\s*14px/);assert.match(scoped,/min-height:\s*44px/);assert.match(scoped,/padding:\s*12px/);assert.match(scoped,/390|480|600|640/);
+  await focusRerenderChecks();
 });
 
 (async()=>{let failures=0;for(const {name,run} of tests){try{await run();console.log('PASS '+name);}catch(error){failures++;console.error('FAIL '+name+'\n'+error.stack);}}console.log(JSON.stringify({cases:tests.length,failures,scope:'actual_source_vm_only'}));process.exitCode=failures?1:0;})();

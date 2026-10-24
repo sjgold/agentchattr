@@ -1,8 +1,8 @@
 # Ticket 19 channel lifecycle interface freeze candidate
 
-**Current checkpoint:** C0 retained backend independently PASS a9e1270 (reviewer89 tests4.982s plus probe31; builder full1369 tests105.080s OK/skipped4). Manage UI and catalog owner-isolation amendment M1-M5 are implemented locally with VM/middleware evidence below. Component3294b58 independently PASS WITH NOTES; its full run failed one existing no-copy check, corrected below. Correction02ff956 independently PASS (81 Python5.293s, reviewer VM12/4/12/12/2); builder full1374 tests108.219s OK(skipped4). Acceptance draft review is next. Rendered/native acceptance and whole-ticket review remain incomplete; nothing from Ticket19 is published.
+**Current checkpoint:** C0 retained backend independently PASS a9e1270 (reviewer89 tests4.982s plus probe31; builder full1369 tests105.080s OK/skipped4). Manage UI and catalog owner-isolation amendment M1-M5 are implemented locally with VM/middleware evidence below. Component3294b58 independently PASS WITH NOTES; its full run failed one existing no-copy check, corrected below. Correction02ff956 independently PASS (81 Python5.293s, reviewer VM12/4/12/12/2); builder full1374 tests108.219s OK(skipped4). Acceptance source1034fbc independently static PASS; native case independently reproduced PASS; browser run1 aborted, bounded focus/fixture correction awaiting review. Rendered/native acceptance and whole-ticket review remain incomplete; nothing from Ticket19 is published.
 
-**Next:** Review TICKET-19-ACCEPTANCE.md and the drafted full harness/client source plus cleanup before ONE native case, then separately browser acceptance. No browser or native acceptance resources have started.
+**Next:** Sonnet reviews bounded focus/fixture correction at a new pin before a FRESH browser case. Browser run1 is non-acceptance, scratch retained and both server/profile resources closed. Native builder/reviewer PASS remains at1034fbc. Details in TICKET-19-ACCEPTANCE.md.
 
 Goal: discoverable rename, archive/reopen and deliberate deletion; preserve history/artifacts appropriately, block automatic routing into archived channels, protect general, and require finished/stopped work before removal. Scope authority specv1.7 RC-2/AT-11 and issue19. Blocker10 is verified closed. Base published main3845c5ef46ef7dbbc0453b5cf61dadc95a2c1491; baseline1040tests/four platform skips. Prior18 complete with independent acceptance/publication/closure.
 
@@ -722,3 +722,9 @@ First acceptance source draft independently reviewed by root/Sonnet, static comp
 
 
 Corrected acceptance static draft hashes/proof recorded in TICKET-19-ACCEPTANCE.md. Root full new guard/tool-diff read and both compile-only PASS, no actual resources/selftests. All preflight findings addressed by source inspection; independent correction review remains the execution gate. Product02ff956 unchanged.
+
+
+Native builder firstcase1034fbc PASS11.9084347s, tracked4290b89a/scratch pxoi_8ql:2CLI/2dispatches/25WSrefusals, exactquieteffects/ids, cleanup1server1worker1client/0models/0API/unresolved[],3PIDguard23selftests each/0observedattempts, logs0/no failure. Source hashes exact; fullreceipt/scope in TICKET-19-ACCEPTANCE.md. Independent reproduction requested before browser. No product source edits.
+
+
+Browser1 uc4lkfdi aborted perBC1: real dialog focus escaped toBODY after Reload. One inherited version-fetch attempt was blocked byguard, so cleanup isolation assertion alsofailed (2serverends/0workers/clients/models proved, unresolved guard evidence). Source unchanged during case; no resultPASS. Revieweragreed productfocus/harnessversionclassification. Global390overflow independently reproduced EXACT onstaticbaseHTML/CSS andleftoutofscope/noCSSedit. Focusstablekeys/caret/fallback+VMstandardDOMcapability and generated-only fixedversionfetch seam nowgreen12VM+allpriorverifiers/compile-only. Native independently reproduced87_fig46 PASS. Newpin/review/freshbrowser authorization next.

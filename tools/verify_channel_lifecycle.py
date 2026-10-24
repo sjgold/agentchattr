@@ -157,6 +157,14 @@ fault={{'mode':None,'consumed':False}}
 audit=json.loads((root/'fixture-actions.json').read_text(encoding='utf-8')) if (root/'fixture-actions.json').exists() else []
 owned_originals={{}}
 def save_audit():atomic_json(root/'fixture-actions.json',audit)
+def fixture_no_release_lookup():
+    # Generated variant only. The real version route still calls its helper;
+    # this fixed seam prevents inherited upstream IO in the isolated fixture.
+    audit.append({{'kind':'fixture_version_release_lookup_suppressed','fixture_controlled':True,
+        'scope':'generated_server_only','upstream_fetch':False,'stage':{stage},'at':time.time()}})
+    save_audit()
+    return None
+app._fetch_latest_release=fixture_no_release_lookup
 actual_channel_observer=app._on_channel_change
 def observed_channel_event(event):
     audit.append({{'kind':'actual_channel_observer','event':event,'at':time.time()}});save_audit()
@@ -710,11 +718,23 @@ class Fixture:
             assert config_after == self.repository_configs
         except Exception as error:
             problem('owned-repository-config-after', error)
+        version_lookup_calls = []
+        try:
+            actions_path = self.root / 'fixture-actions.json'
+            if actions_path.exists():
+                version_lookup_calls = [row for row in json.loads(actions_path.read_text(encoding='utf-8'))
+                    if row.get('kind') == 'fixture_version_release_lookup_suppressed']
+            assert all(row.get('fixture_controlled') is True and row.get('upstream_fetch') is False
+                       and row.get('scope') == 'generated_server_only' for row in version_lookup_calls)
+        except Exception as error:
+            problem('fixture-version-seam-evidence', error)
         self.cleanup = {'actual_workers_waited': sum(type(row.get('exit_observed')) is int for row in self.workers.values()),
             'actual_clients_waited': sum(type(row.get('exit_observed')) is int for row in self.clients.values()),
             'actual_servers_waited': sum(type(row.get('exit_observed')) is int for row in self.servers),
             'model_intents': sum(len(row['invocations']) for row in inventory),
             'configured_api_runtimes': sum(row['adapter'] != 'cli' for row in inventory),
+            'fixture_version_lookup': {'scope': 'generated_server_only', 'upstream_fetch': False,
+                'observed_calls': len(version_lookup_calls)},
             'provider_scope': 'no API provider configured; model/runtime inventory is measured, no provider listener',
             'external_connections': sum(len(row['real_attempts']) for row in guards), 'server_logs': logs,
             'inventory': inventory, 'guard_records': guards, 'redirected_profile_files': [path.relative_to(self.root).as_posix()
