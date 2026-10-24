@@ -49,3 +49,8 @@ Windows/localfake acceptance only. No nativeLinux/Omarchy, live AI provider/clie
 ## Publication gate
 
 Under Seth's recorded standing authorization: documentation-only receipt descendant, verify executable diff unchanged, fast-forward main, run full post-merge verification, then push and close17. Keep branch/history intact; no PR or destructive cleanup. Current next owner is Codex for that publication sequence.
+
+
+## Post-merge verification
+
+Main fast-forwarded to documentation pin `d049501c3814e5901f4f180f1af887a697514699`; executable diff from4723027 is Markdown-only. Root full discovery:1004TOTAL,1000passed,4expected skips,86.898s, exit0 (`.audit-tmp/ticket17-postmerge-full.log`, shell9bf81c35). Actual-sourceVM12PASS, threeJSsyntax/diffclean. Publication/issue closure andremote reread follow under recorded standing authorization.

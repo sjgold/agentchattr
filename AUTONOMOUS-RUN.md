@@ -23,7 +23,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
 | #15 | Published and closed | Source41b80f7, Sonnet independent PASS, post-merge918/four skips86.469s |
-| #17 | Final independent PASS; publication checks next | Executable4723027, independent1004/four skips87.107s, VM12, three live cases + actualchannel/job browserPASS; receipt REVIEW-CLAUDE-TICKET-17.md. Scheduling composer deferred. |
+| #17 | Final independent PASS; post-merge checks PASS, publishing | Executable4723027, independent1004/four skips87.107s, VM12, three live cases + actualchannel/job browserPASS; receipt REVIEW-CLAUDE-TICKET-17.md. Scheduling composer deferred. |
 | #18-26 | Authorized, pending | Continue dependency order after current ticket |
 
 ## Non-negotiable verification
@@ -37,6 +37,6 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 
 Published/closed: #1-16. Ticket15 source41b80f7 is verified on origin/main and issue15 is confirmed closed. Sonnet5.5 independent PASS WITH NONBLOCKING NOTES; full918/four skips87.682s, four actual scenarios plus prior corrected restart/Retry/Stop/APIlostACK independently PASS. Builder post-merge918/four skips86.469s and syntax/diff PASS; executable1cebd9d unchanged since review.
 
-Current next owner Codex: publish accepted Ticket17 after docs-onlyreceipt pin, ffmerge and postmergefull verification. Executable4723027 finalSonnetPASS WITH NONBLOCKING NOTES; independent1004/four skips87.107s, VM12 andthree live cases/actualtwo-stagebrowserPASS. Preserve schedulingcomposer gap/notes/failures. Then standingauthorizedpush/close17 and briefnextdependency-eligible backlogticket. No liveAI/provider,Omarchy,Desktop/globalchanges.
+Current next owner Codex: push accepted Ticket17 andcloseissue, thenverifyremote. Localffmerge/postmerge1004/four skips86.898s andNode12/syntax/diffPASS complete, executable4723027 unchanged. Executable4723027 finalSonnetPASS WITH NONBLOCKING NOTES; independent1004/four skips87.107s, VM12 andthree live cases/actualtwo-stagebrowserPASS. Preserve schedulingcomposer gap/notes/failures. Then standingauthorizedpush/close17 and briefnextdependency-eligible backlogticket. No liveAI/provider,Omarchy,Desktop/globalchanges.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.
