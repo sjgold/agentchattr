@@ -1,4 +1,7 @@
 import asyncio
+from contextlib import ExitStack
+from types import SimpleNamespace
+from unittest.mock import patch
 import datetime
 import json
 import sys
@@ -194,14 +197,25 @@ class _FakeRequest:
         return self._payload
 
 
+def _bind_schedule_endpoint(case):
+    # Explicit real catalog/engine fixture for the public guarded endpoint.
+    import app
+    from tests import test_channel_import as channel_fixture
+    context = SimpleNamespace(addCleanup=case.addCleanup)
+    channel_fixture.ChannelImportTests.setUp(context)
+    context.schedules.bind_channel_policy(lambda: context.service)
+    stack = ExitStack()
+    case.addCleanup(stack.close)
+    for name, value in (('schedules', context.schedules), ('session_engine', context.engine),
+                        ('channel_service', context.service), ('store', context.messages),
+                        ('registry', context.registry), ('agents', context.trigger)):
+        stack.enter_context(patch.object(app, name, value))
+    case.app = app
+
+
 class CreateEndpointTests(unittest.TestCase):
     def setUp(self):
-        import app
-
-        self.app = app
-        self._saved = app.schedules
-        app.schedules = _store()
-        self.addCleanup(lambda: setattr(app, "schedules", self._saved))
+        _bind_schedule_endpoint(self)
 
     def _post(self, **body):
         payload = {"prompt": "ping", "targets": ["claude"]}
@@ -241,12 +255,7 @@ class RelativeSendAtTests(unittest.TestCase):
     """
 
     def setUp(self):
-        import app
-
-        self.app = app
-        self._saved = app.schedules
-        app.schedules = _store()
-        self.addCleanup(lambda: setattr(app, "schedules", self._saved))
+        _bind_schedule_endpoint(self)
 
     def _post(self, **body):
         payload = {"prompt": "ping", "targets": ["claude"]}

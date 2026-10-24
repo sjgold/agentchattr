@@ -5,6 +5,7 @@ import json
 import re as _re
 import sys
 import threading
+import time
 import uuid
 import logging
 from contextlib import nullcontext
@@ -748,31 +749,92 @@ def configure(cfg: dict, session_token: str = ""):
         import time as _time
         while True:
             _time.sleep(30)
-            try:
-                if not schedules:
-                    continue
-                due = schedules.run_due()
-                for s in due:
-                    prompt = s.get("prompt", "")
-                    targets = s.get("targets", [])
-                    channel = s.get("channel", "general")
-                    if not prompt or not targets:
-                        schedules.mark_run(s["id"])
-                        continue
-                    sender = s.get("created_by", "user")
-                    mention_str = " ".join(f"@{t}" for t in targets)
-                    full_text = f"{mention_str} {prompt}" if mention_str else prompt
-                    _publish_operator_message(sender=sender, text=full_text,
-                        selected_recipients=[], approved_targets=targets,
-                        origin='schedule', channel=channel)
-                    if s.get("one_shot"):
-                        schedules.delete(s["id"])
-                    else:
-                        schedules.mark_run(s["id"])
-            except Exception:
-                log.exception("schedule runner error")
+            _run_schedule_tick()
 
     threading.Thread(target=_schedule_runner, daemon=True).start()
+
+
+def _schedule_tick_unavailable():
+    if schedules is not None and not getattr(schedules, '_policy_outage_logged', False):
+        log.warning('Scheduling is held while its policy or saved data is unavailable.')
+        schedules._policy_outage_logged = True
+
+
+def _fire_schedule_row(schedule_id, policy):
+    with policy._boundary():
+        catalog = policy.catalog.snapshot()
+        row = schedules.get(schedule_id)
+        if not row or not row.get('active') or row.get('next_run', 0) > time.time():
+            return
+        channel = row.get('channel', 'general')
+        if catalog['channels'].get(channel) != 'active' or channel in policy.catalog.blocked_names():
+            return  # Inactive rows remain byte-for-byte overdue, without failure markers.
+        policy.require_active(channel)
+        try:
+            attempt = schedules.begin_attempt(schedule_id)
+        except ChannelUnavailable:
+            raise
+        except Exception:
+            log.error('Scheduled attempt could not be saved; nothing was published.')
+            return
+        if attempt is None:
+            return
+        try:
+            prompt, targets = attempt.get('prompt', ''), attempt.get('targets', [])
+            if not prompt or not targets:
+                schedules.finish_attempt(schedule_id, success=False, error_code='invalid_schedule')
+                return
+            mention_str = ' '.join(f'@{target}' for target in targets)
+            _publish_operator_message(sender=attempt.get('created_by', 'user'),
+                text=f'{mention_str} {prompt}' if mention_str else prompt,
+                selected_recipients=[], approved_targets=targets, origin='schedule', channel=channel)
+        except ChannelUnavailable:
+            raise
+        except Exception as error:
+            code = 'delivery_unconfirmed' if isinstance(error, (OSError, ValueError)) else 'internal'
+            log.error('Scheduled publication was not confirmed (%s).', type(error).__name__)
+            try:
+                schedules.finish_attempt(schedule_id, success=False, error_code=code)
+            except ChannelUnavailable:
+                raise
+            except Exception:
+                log.error('Scheduled failure details could not be saved; the attempt remains reserved.')
+            return
+        try:
+            schedules.finish_attempt(schedule_id, success=True)
+            if attempt.get('one_shot'):
+                schedules.delete(schedule_id)
+        except ChannelUnavailable:
+            raise
+        except Exception:
+            log.error('Scheduled delivery bookkeeping could not be saved; the attempt remains reserved.')
+
+
+def _run_schedule_tick():
+    """One real scheduler pass, with independent write-ahead row boundaries."""
+    if schedules is None:
+        return
+    try:
+        getter = schedules._channel_policy_getter
+        if getter is None:
+            raise ChannelUnavailable('Schedule policy is not bound.')
+        policy = getter()
+        with policy._boundary():
+            policy.catalog.snapshot()
+        due = schedules.run_due()
+    except Exception:
+        _schedule_tick_unavailable()
+        return
+    schedules._policy_outage_logged = False
+    for row in due:
+        try:
+            _fire_schedule_row(row['id'], policy)
+        except ChannelUnavailable:
+            _schedule_tick_unavailable()
+            return
+        except Exception as error:
+            # A malformed/unexpected row cannot starve the next independent row.
+            log.error('Scheduled row could not finish (%s).', type(error).__name__)
 
 
 # --- Store → WebSocket bridge ---
@@ -2371,14 +2433,11 @@ async def delete_hat(agent_name: str):
 
 # --- Jobs API ---
 
-@app.get("/api/schedules")
-async def get_schedules():
-    return schedules.list_all()
-
-
-@app.post("/api/schedules")
-async def create_schedule(request: Request):
-    body = await request.json()
+def _create_schedule_sync(body):
+    if (not isinstance(body, dict) or not isinstance(body.get('prompt', ''), str)
+            or not isinstance(body.get('spec', ''), str) or not isinstance(body.get('targets', []), list)
+            or any(not isinstance(target, str) for target in body.get('targets', []))):
+        return JSONResponse({'error': 'Use a prompt, named targets and a schedule specification.'}, status_code=400)
     prompt = body.get("prompt", "")
     targets = body.get("targets", [])
     channel = body.get("channel", "general")
@@ -2414,32 +2473,63 @@ async def create_schedule(request: Request):
             send_at = dt.timestamp()
         except ValueError:
             pass
+    result = schedules.create(
+        prompt=prompt, targets=targets, channel=channel,
+        interval_seconds=interval_sec, daily_at=daily_at,
+        one_shot=one_shot, send_at=send_at, created_by=created_by)
+    return JSONResponse(result)
+
+
+def _schedule_mutation_sync(action, *, body=None, schedule_id=None):
     try:
-        s = schedules.create(
-            prompt=prompt, targets=targets, channel=channel,
-            interval_seconds=interval_sec, daily_at=daily_at,
-            one_shot=one_shot, send_at=send_at,
-            created_by=created_by,
-        )
-    except ValueError as exc:
-        return JSONResponse({"error": str(exc)}, status_code=400)
-    return JSONResponse(s)
+        policy = _channels()
+        with policy._boundary():
+            policy.catalog.snapshot()
+            if action == 'create':
+                if not isinstance(body, dict):
+                    raise ValueError('Use a schedule object.')
+                policy.require_active(body.get('channel', 'general'))
+                return _create_schedule_sync(body)
+            row = schedules.get(schedule_id)
+            if row is None:
+                return JSONResponse({'error': 'not found'}, status_code=404)
+            policy.require_active(row.get('channel', 'general'))
+            if action == 'delete':
+                schedules.delete(schedule_id)
+                return JSONResponse({'ok': True})
+            if action == 'toggle':
+                return JSONResponse(schedules.toggle(schedule_id))
+            raise ValueError('Unknown schedule change.')
+    except ChannelConflict as error:
+        return JSONResponse({'error': str(error)}, status_code=409)
+    except (ChannelUnavailable, OSError):
+        return JSONResponse({'error': 'Schedules are unavailable. Check saved schedules before retrying.'}, status_code=503)
+    except ValueError as error:
+        return JSONResponse({'error': str(error)}, status_code=400)
+
+
+@app.get("/api/schedules")
+async def get_schedules():
+    try:
+        return await asyncio.to_thread(schedules.list_all)
+    except (ChannelUnavailable, OSError):
+        return JSONResponse({'error': 'Saved schedules could not be read. Repair the file and restart.'}, status_code=503)
+
+
+@app.post("/api/schedules")
+async def create_schedule(request: Request):
+    body = await request.json()
+    return await asyncio.to_thread(_schedule_mutation_sync, 'create', body=body)
 
 
 @app.delete("/api/schedules/{schedule_id}")
 async def delete_schedule(schedule_id: str):
-    removed = schedules.delete(schedule_id)
-    if not removed:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return JSONResponse({"ok": True})
+    return await asyncio.to_thread(_schedule_mutation_sync, 'delete', schedule_id=schedule_id)
 
 
 @app.patch("/api/schedules/{schedule_id}/toggle")
 async def toggle_schedule(schedule_id: str):
-    result = schedules.toggle(schedule_id)
-    if not result:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return JSONResponse(result)
+    return await asyncio.to_thread(_schedule_mutation_sync, 'toggle', schedule_id=schedule_id)
 
 
 @app.get("/api/jobs")
