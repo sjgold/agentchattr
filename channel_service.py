@@ -97,6 +97,21 @@ class ChannelService:
         for run in runs:
             if run.get('state') in _LIVE_REVIEW and not run.get('stop_id') and not run.get('replaced_by_run_id'):
                 block('review', run=run)
+            events = {event['event_id']: event for event in run.get('admitted_events', [])}
+            pending = [event for event in events.values() if event.get('projected_message_id') is None]
+            pending.extend(events.get(context['question_event_id'], {})
+                           for context in run.get('continuation_context', [])
+                           if context.get('projected_message_id') is None)
+            for event in pending:
+                envelope = next((record['envelope'] for record in transport
+                    if record['envelope'].get('run_id') == run.get('run_id')
+                    and record['envelope'].get('attempt_id') == event.get('attempt_id')), {})
+                invocation = run.get('active_invocation') or {}
+                if not envelope and invocation.get('attempt_id') == event.get('attempt_id'):
+                    envelope = invocation
+                block('projection_pending', run=run, audit={
+                    'dispatch_id': envelope.get('dispatch_id'),
+                    'seat_identity_id': event.get('expected_identity_id')})
             for attempt in run.get('superseded_attempts', []):
                 audit = attempt.get('old_transport') or attempt.get('selected_transport')
                 if audit and audit.get('resolved') is not True:

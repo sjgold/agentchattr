@@ -41,6 +41,7 @@ class SessionEngine:
             validate_policy(limits)
             self._adapter_recovery_policy[adapter] = dict(limits)
         self._lock = threading.RLock()
+        self._channel_policy_getter = None
         if agent_trigger is not None and hasattr(agent_trigger, 'queue'):
             from queue_coordinator import CoordinatedQueue
             self._trigger.queue = CoordinatedQueue(agent_trigger.queue, self._store, self._lock)
@@ -49,6 +50,11 @@ class SessionEngine:
         self._messages.on_message(self._on_message)
 
     # --- Public API ---
+
+    def bind_channel_policy(self, getter):
+        if not callable(getter):
+            raise ValueError('An explicit channel policy getter is required.')
+        self._channel_policy_getter = getter
 
     def start_session(self, template_id: str, channel: str, cast: dict,
                       started_by: str, goal: str = "", input_text: str = "", recovery_policy=None, *, source_file=None) -> dict | None:
@@ -1131,6 +1137,28 @@ class SessionEngine:
             return self._store.resume_explicit(session_id)
 
     def _project_session(self, session_id, *, dispatch=True):
+        # Journal admission is independent of this best-effort chat projection.
+        # Enter policy before any store lock, even when backlinks already exist:
+        # the terminal banner must never resurrect a retired conversation.
+        from channel_lifecycle import ChannelUnavailable
+        with self._lock:
+            if self._channel_policy_getter is None:
+                return self._project_session_active(session_id, dispatch=dispatch)
+            try:
+                policy = self._channel_policy_getter()
+            except ChannelUnavailable:
+                return
+            with policy._boundary():
+                session = self._store.get(session_id)
+                if session is None:
+                    return
+                try:
+                    policy.require_active(session['channel'])
+                except (ValueError, ChannelUnavailable):
+                    return
+                return self._project_session_active(session_id, dispatch=dispatch)
+
+    def _project_session_active(self, session_id, *, dispatch=True):
         from turn_events import IDENTITY_FIELDS
         session = self._store.get(session_id)
         from participant_skip import project_skips, footer
