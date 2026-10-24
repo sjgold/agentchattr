@@ -27,6 +27,7 @@ let agentHats = {};  // { agent_name: svg_string }
 window.customRoles = [];  // saved custom roles from settings
 let colorOverrides = JSON.parse(localStorage.getItem('agentchattr-color-overrides') || '{}');
 let schedulesList = [];  // array of schedule objects from server
+let scheduleLoadError = "";
 
 // Expose globals that extracted modules (sessions.js, jobs.js) read via window.*
 // Using defineProperty so live values are always returned.
@@ -563,8 +564,7 @@ function handleServerEvent(event) {
         agentHats = event.data || {};
         updateAllHats();
     } else if (event.type === 'schedules') {
-        schedulesList = event.data || [];
-        renderSchedulesBar();
+        applyScheduleSnapshot(event);
     } else if (event.type === 'schedule') {
         handleScheduleEvent(event.action, event.data);
     } else if (event.type === 'pending_instance') {
@@ -3527,9 +3527,40 @@ function handleScheduleEvent(action, schedule) {
     renderSchedulesBar();
 }
 
+function applyScheduleSnapshot(event) {
+    scheduleLoadError = typeof event.error === 'string' ? event.error : '';
+    if (!scheduleLoadError) schedulesList = event.data || [];
+    renderSchedulesBar();
+}
+
+function renderScheduleStorageError(bar) {
+    let notice = bar.querySelector('.schedule-storage-error');
+    bar.querySelector('.schedules-bar-summary')?.classList.toggle('hidden', !!scheduleLoadError);
+    if (!scheduleLoadError) {
+        notice?.remove();
+        return false;
+    }
+    if (!notice) {
+        notice = document.createElement('div');
+        notice.className = 'schedule-storage-error';
+        notice.setAttribute('role', 'alert');
+        notice.style.fontSize = '14px';
+        notice.style.padding = '12px';
+        bar.appendChild(notice);
+    }
+    notice.textContent = scheduleLoadError;
+    bar.classList.remove('hidden');
+    document.getElementById('schedules-list')?.classList.add('hidden');
+    return true;
+}
+
 function renderSchedulesBar() {
     const bar = document.getElementById('schedules-bar');
     if (!bar) return;
+    if (renderScheduleStorageError(bar)) {
+        repositionScrollAnchor();
+        return;
+    }
 
     const active = schedulesList.filter(s => s.active !== false);
     if (schedulesList.length === 0) {

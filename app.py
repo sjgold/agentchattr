@@ -196,15 +196,28 @@ def _initialize_channel_lifecycle(data_dir):
     # Bind the fail-closed getter first, including the corrupt-file case.
     channel_service = None
     agents.queue.bind_channel_policy(_channels)
+    store.bind_channel_policy(_channels)
+    summaries.bind_channel_policy(_channels)
+    session_engine.bind_channel_policy(_channels)
     jobs.bind_channel_policy(_channels)
+    schedules.bind_channel_policy(_channels)
     import mcp_bridge
     mcp_bridge.channel_policy_getter = _channels
     catalog = ChannelStore(Path(data_dir) / 'channel_lifecycle.json')
     catalog.initialize(room_settings['channels'])
+    data_names = set()
+    with session_engine._lock, catalog._lock:
+        for reader in (lambda: store._message_channels(None), jobs.channel_names,
+                       schedules.channel_names, session_store.channel_names,
+                       lambda: summaries.get_all().keys()):
+            try:
+                data_names.update(name for name in reader() if type(name) is str and name)
+            except ChannelUnavailable:
+                pass  # A held owner stays closed; never replace it with empty saved data.
     channel_service = ChannelService(catalog, engine=session_engine, messages=store,
         jobs=jobs, schedules=schedules, summaries=summaries, queue=agents.queue,
         settings=room_settings, save_settings=_save_settings, migrate_cursors=None,
-        router=router, migrate_last_active=None)
+        router=router, migrate_last_active=None, unregistered_channels=data_names)
     channel_service.on_change(_on_channel_change)
 
 
@@ -539,7 +552,7 @@ def configure(cfg: dict, session_token: str = ""):
     jobs = JobStore(str(jobs_path), migrate_sort_orders=False, hold_unreadable=True)
     jobs.on_change(_on_job_change)
 
-    schedules = ScheduleStore(str(Path(data_dir) / "schedules.json"))
+    schedules = ScheduleStore(str(Path(data_dir) / "schedules.json"), configured=True)
     schedules.on_change(_on_schedule_change)
 
     max_hops = cfg.get("routing", {}).get("max_agent_hops", 4)
@@ -774,6 +787,9 @@ def _fire_schedule_row(schedule_id, policy):
             attempt = schedules.begin_attempt(schedule_id)
         except ChannelUnavailable:
             raise
+        except ValueError:
+            log.error('Scheduled cadence is invalid; no prompt was published.')
+            return
         except Exception:
             log.error('Scheduled attempt could not be saved; nothing was published.')
             return
@@ -1873,7 +1889,11 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.send_text(json.dumps(initial_jobs))
 
     # Send schedules
-    await websocket.send_text(json.dumps({"type": "schedules", "data": schedules.list_all()}))
+    try:
+        initial_schedules = {'type': 'schedules', 'data': await asyncio.to_thread(schedules.list_all)}
+    except (ChannelUnavailable, OSError):
+        initial_schedules = {'type': 'schedules', 'error': 'Saved schedules could not be read. Scheduling is held; repair the file and restart. Chat remains available.'}
+    await websocket.send_text(json.dumps(initial_schedules))
 
     # Send pending instances (so late-connecting browsers still see the naming lightbox)
     if registry:

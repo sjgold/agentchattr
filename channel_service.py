@@ -19,7 +19,7 @@ _OPS = {'create', 'archive', 'reopen', 'delete', 'rename', 'cancel_queued', 'rec
 class ChannelService:
     def __init__(self, catalog, *, engine, messages, jobs, schedules, summaries,
                  queue, settings, save_settings, migrate_cursors, router,
-                 migrate_last_active):
+                 migrate_last_active, unregistered_channels=()):
         self.catalog, self.engine, self.messages = catalog, engine, messages
         self.jobs, self.schedules, self.summaries = jobs, schedules, summaries
         self.queue, self.settings = queue, settings
@@ -29,6 +29,8 @@ class ChannelService:
         self._unregistered = set(settings.get('unregistered_channels', []))
         with self._boundary():
             value = catalog.snapshot()
+            self._unregistered.update(name for name in unregistered_channels
+                                      if name not in value['channels'] and name not in value['retired'])
             self._unregistered.update(name for name in settings.get('channels', [])
                                       if name not in value['channels'] and name not in value['retired'])
             self._project(value)

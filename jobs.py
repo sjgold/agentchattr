@@ -254,6 +254,11 @@ class JobStore:
             result = [a for a in result if a.get("status") == status]
         return result
 
+    def channel_names(self):
+        with self._lock:
+            self._check_readable()
+            return {job.get('channel', 'general') for job in self._jobs}
+
     def lifecycle_scope(self, channel):
         """Return only the stable job identifiers needed for lifecycle confirmation."""
         with self._lock:

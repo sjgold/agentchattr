@@ -250,6 +250,11 @@ class ScheduleStore:
             except Exception:
                 pass
 
+    def channel_names(self):
+        with self._lock:
+            self._check_readable()
+            return {row.get('channel', 'general') for row in self._schedules}
+
     def list_all(self, active_only: bool = False) -> list[dict]:
         with self._lock:
             self._check_readable()

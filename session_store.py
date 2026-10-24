@@ -229,6 +229,10 @@ class SessionStore:
                     return deepcopy(s)
             return None
 
+    def channel_names(self):
+        with self._lock:
+            return {row.get('channel', 'general') for row in self._sessions}
+
     def list_all(self, channel: str | None = None) -> list[dict]:
         with self._lock:
             result = deepcopy(self._sessions)

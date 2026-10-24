@@ -253,6 +253,17 @@ class ChannelScheduleRouteTests(unittest.TestCase):
             closed.list_all()
         self.assertEqual(path.read_bytes(), before)
 
+    def test_nonfuture_reservation_logs_invalid_cadence_without_claiming_a_save_failure(self):
+        self.due()
+        before = self.effects()
+        publisher = Mock()
+        with patch.object(app, 'log') as log, patch('schedules.compute_next_run', return_value=200):
+            self.tick(publisher, now=200)
+        publisher.assert_not_called()
+        self.assertIn('cadence', str(log.mock_calls).lower())
+        self.assertNotIn('could not be saved', str(log.mock_calls))
+        self.assertEqual(self.effects(), before)
+
 
 if __name__ == '__main__':
     unittest.main()
