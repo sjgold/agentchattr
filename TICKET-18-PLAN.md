@@ -358,3 +358,14 @@ Only code change: effect map keys use path.relative_to(data).as_posix(); digests
 Root `.audit-tmp/ticket18_effect_keys_probe.py` executed actual product_effects without Fixture construction: nested config/birth/launch/queue/brief/session targets had exact expected keys, explicit PureWindowsPath lookup succeeded, two snapshots were stable after receipt/tmp mutations, and a real target mutation changed the digest map. Popen guarded/never called, zero native processes. Read-only reconstruction of failed scratch additionally confirmed baseline/after ledger hash+size equality and original/CLI/API/run byte/hash equality; explicitly not acceptance.
 
 Verifier SHA2569445f30d215c77433967d85e7f7b8aa5bbc2e0670d9365a3e7f6e27bae21d9d9; fake client unchanged. Syntax/compile-only2servers/1client/processes0 pass. Next Sonnet diff/hash recheck before a fourth py attempt; no fresh case/mjs/browser started.
+
+
+## py native/local-fake acceptance at12c9a81: builder and reviewer PASS
+
+Builder fourth unchanged py run bfffb863-e689-4f79-b96e-6b74887aae1a, scratch `.audit-tmp/document review py xya1ix3_`, completed exit0 with result.json PASS. Measured1CLI injection/1local fake API generation/2admitted finals;271exact UTF8bytes, SHA25675e60e2aefbe89fc47a46acb84004b2157dc5b85fd54cdc89a623d1eda32a5bc; one prepared pasted child(id3); startup ownership Data line allowlisted exactly once. Final result and post-close provider_calls1 assertions executed. Cleanup2workers/1hiddenclient/1model/1true server ended, model retained_native_model_handle_observed_end, unresolved[]. No failure.json. Client1turn, hidden console, admitted final. Serverlog Traceback/Selector/Warning/Error all0.
+
+Builder observations22/101768bytes include exact source-chain/SYSTEM/quiet25notes, HTTP403/400/413 and chunked524289bytes3chunks reader413, tampered Start, three unchanged restart refusals with equal effects and one prepared pasted child without document/source_document. Early413 body reset remains explicitly status-line+server-audit proof, not JSON body proof.
+
+Sonnet independently ran py on clean12c9a81: PASS, same counts/hash/end bases/post-close provider1, scratch `.audit-tmp/document review py _vutl2yq`, log `.audit-tmp/reviewer-claude/doc-py.log`, observations22/101765bytes, no failure/log error matches, unresolved[]. This is Windows/local-fake native CLI/API evidence, not browser/OS-picker/live external provider/Omarchy proof. Earlier three failed scratches remain failed fixtures.
+
+Sonnet authorized ONE unchanged mjs non-serve boundary run next, then independent reproduction; browser modes remain pending. mjs must carry exactly524288ASCII+CRLFbytes through all hops, with measured request/brief sizes and timing. No mjs result yet.
