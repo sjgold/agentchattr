@@ -34,6 +34,19 @@ class ChannelTransportTests(unittest.TestCase):
         self.assertIsNone(self.queue.claim(self.owner, 'worker', blocked_channel_names={'archived'}))
         self.assertEqual(self.queue.path.read_bytes(), before)
 
+    def test_active_catalog_filter_holds_unknown_without_a_ledger_prepass(self):
+        unknown = self.enqueue('unregistered')
+        peer = self.enqueue('peer')
+        claimed = self.queue.claim(self.owner, 'worker', active_channel_names={'peer'})
+        self.assertEqual(claimed['envelope']['dispatch_id'], peer['envelope']['dispatch_id'])
+        self.assertEqual(self.queue.for_identity(self.owner)[0], unknown)
+        before = self.queue.path.read_bytes()
+        for invalid in ('peer', [], frozenset(), {'Bad'}, {True}):
+            with self.subTest(value=invalid), self.assertRaises(ValueError):
+                self.queue.claim(self.owner, 'worker', active_channel_names=invalid)
+            self.assertEqual(self.queue.path.read_bytes(), before)
+        self.assertEqual(self.queue.claim(self.owner, 'worker', active_channel_names=set())['state'], 'dispatched')
+
     def test_failed_channel_rewrite_keeps_exact_disk_and_memory(self):
         self.messages.add('operator', 'Exact café\r\nsource', channel='old')
         self.messages.add('operator', 'peer', channel='peer')

@@ -123,13 +123,11 @@ class CoordinatedQueue:
 
     def claim(self, instance, consumer_id):
         with self._channel_boundary() as policy:
-            blocked_channels = None
+            blocked_channels, active_channels = None, None
             if policy:
                 value = policy.catalog.snapshot()
                 blocked_channels = policy.catalog.blocked_names()
-                blocked_channels.update(record['envelope'].get('channel', 'general')
-                    for record in self._queue.records()
-                    if value['channels'].get(record['envelope'].get('channel', 'general')) != 'active')
+                active_channels = {name for name, state in value['channels'].items() if state == 'active'}
             unpublished_holds = self._reconcile()
             runs = self._sessions.list_all()
             blocked = {run['run_id'] for run in runs
@@ -138,7 +136,7 @@ class CoordinatedQueue:
             allowed = allowed_review_dispatch_ids(runs, identity)
             return self._queue.claim(instance, consumer_id, blocked_run_ids=blocked,
                                      blocked_identity_ids=unpublished_holds, allowed_dispatch_ids=allowed,
-                                     blocked_channel_names=blocked_channels)
+                                     blocked_channel_names=blocked_channels, active_channel_names=active_channels)
 
     def __getattr__(self, name):
         attribute = getattr(self._queue, name)

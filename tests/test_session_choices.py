@@ -39,6 +39,7 @@ def setup_session(tmp_path, stack):
     stack.enter_context(patch.object(app, 'router', Router(['claude', 'codex'])))
     stack.enter_context(patch.object(app, 'session_engine', engine))
     stack.enter_context(patch.object(app, 'session_store', sessions))
+    stack.enter_context(patch.object(app, 'agents', trigger))
     stack.enter_context(patch.object(app, 'room_settings', {'username': 'Ben'}))
     stack.enter_context(patch.object(app, 'ws_clients', set()))
     engine.start_session('test', 'general', {'asker': 'claude', 'finisher': 'codex'}, 'Ben')
@@ -63,6 +64,8 @@ class SessionChoiceTests(unittest.TestCase):
         self.addCleanup(self.stack.close)
         self.tmp_path = Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
         self.fixture = setup_session(self.tmp_path, self.stack)
+        from tests.channel_fixture import initialize_app_channels
+        initialize_app_channels(self, self.tmp_path, ['general', 'elsewhere'])
 
     def submit(self, kind='final', content='Explicit final result'):
         sessions, messages, engine, trigger, timers = self.fixture

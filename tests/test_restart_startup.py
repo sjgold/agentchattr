@@ -5,6 +5,7 @@ from copy import deepcopy
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import time
 from types import SimpleNamespace
 import unittest
@@ -56,28 +57,41 @@ class RestartStartupTests(unittest.TestCase):
         manager.boot_id = self.boot
         manager.reconcile_runtime.side_effect = lambda: events.append('inventory')
         engine = Mock()
+        engine._lock = threading.RLock()
         engine.resume_active_sessions.side_effect = lambda **kw: events.append('resume')
+        def construct_engine(sessions, messages, trigger, registry, **kwargs):
+            from queue_coordinator import CoordinatedQueue
+            engine._store = sessions
+            trigger.queue = CoordinatedQueue(trigger.queue, sessions, engine._lock)
+            return engine
         thread = Mock()
         thread.start.side_effect = lambda: events.append('background_start')
         cfg = {'server': {'data_dir': str(self.root / 'configured'), 'host': '127.0.0.1', 'port': 18300},
                'images': {'upload_dir': str(self.root / 'uploads')}, 'agents': {}}
         globals_to_restore = ('store', 'rules', 'summaries', 'jobs', 'schedules', 'router', 'agents',
-                             'registry', 'session_store', 'session_engine', 'config', 'api_seat_store', 'api_seat_manager')
+                             'registry', 'session_store', 'session_engine', 'channel_service',
+                             'config', 'api_seat_store', 'api_seat_manager')
         with ExitStack() as stack:
             for name in globals_to_restore:
                 stack.enter_context(patch.object(app, name, None))
-            stack.enter_context(patch.object(app, 'room_settings', {}))
+            stack.enter_context(patch.object(app, 'room_settings', {'channels': ['general']}))
             stack.enter_context(patch.object(app, '_install_security_middleware'))
             stack.enter_context(patch.object(app, '_load_settings'))
             stack.enter_context(patch.object(app, '_load_hats'))
             stack.enter_context(patch('api_seat_runtime.SeatManager', return_value=manager))
-            stack.enter_context(patch.object(app, 'SessionEngine', return_value=engine))
+            stack.enter_context(patch.object(app, 'SessionEngine', side_effect=construct_engine))
+            initialize = app._initialize_channel_lifecycle
+            def initialize_channels(data_dir):
+                initialize(data_dir)
+                events.append('channels')
+            stack.enter_context(patch.object(app, '_initialize_channel_lifecycle', side_effect=initialize_channels))
             stack.enter_context(patch.object(app.threading, 'Thread', return_value=thread))
             app.configure(cfg, session_token='isolated-operator-token')
         self.assertIn('inventory', events)
         self.assertIn('resume', events)
         self.assertIn('background_start', events)
         self.assertLess(events.index('inventory'), events.index('resume'))
+        self.assertLess(events.index('channels'), events.index('inventory'))
         self.assertLess(events.index('resume'), events.index('background_start'))
         engine.resume_active_sessions.assert_called_once_with(boot_id=self.boot)
 

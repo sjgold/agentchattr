@@ -1,6 +1,7 @@
 """Configured publication/coordinator seams, without HTTP or worker claims."""
 import asyncio
 import json
+import threading
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -75,6 +76,7 @@ class ChannelIngressTests(unittest.TestCase):
         self.assertEqual(self.trigger.queue.path.read_bytes(), before)
 
     def test_invalid_catalog_initializer_leaves_queue_closed_without_settings_reseed(self):
+        active = self.trigger.queue.claim(self.owner, 'worker')
         path = self.root / 'channel_lifecycle.json'
         path.write_text('{invalid', encoding='utf-8')
         with self.assertRaises(ChannelUnavailable):
@@ -84,6 +86,9 @@ class ChannelIngressTests(unittest.TestCase):
             self.trigger.queue.claim(self.owner, 'worker')
         self.assertEqual(self.trigger.queue.path.read_bytes(), before)
         self.assertEqual(path.read_text(encoding='utf-8'), '{invalid')
+        # Fail-closed claim includes owner polls, but settlement still works.
+        released = self.trigger.queue.release(self.owner, active['envelope']['dispatch_id'], 'worker')
+        self.assertEqual(released['state'], 'released')
 
     def test_actual_preview_handler_maps_inactive_and_unreadable_catalog_cleanly(self):
         request = Mock()
@@ -94,6 +99,51 @@ class ChannelIngressTests(unittest.TestCase):
         self.assertEqual(asyncio.run(app.preview_recipients(request)).status_code, 409)
         self.channel_service.catalog.path.write_text('{invalid', encoding='utf-8')
         self.assertEqual(asyncio.run(app.preview_recipients(request)).status_code, 503)
+
+    def test_one_target_policy_failure_keeps_saved_content_emit_and_other_target(self):
+        real = self.trigger.trigger_identity_sync
+        emitted = []
+        self.messages.on_message(emitted.append)
+        def fail_one(identity, **kwargs):
+            if identity == self.owner['identity_id']:
+                raise ChannelUnavailable('injected target policy failure')
+            return real(identity, **kwargs)
+        with patch.object(self.trigger, 'trigger_identity_sync', side_effect=fail_one):
+            message = app._publish_operator_message(sender='operator', text='@codex @claude exact',
+                                                  selected_recipients=[], channel='review')
+        self.assertEqual(len(emitted), 1)
+        self.assertEqual(self.messages.get_snapshot(message['id']), message)
+        self.assertEqual([record['envelope']['target_identity_id'] for record in self.trigger.queue.records('review')],
+                         [self.peer['identity_id']])
+
+    def test_async_publication_keeps_loop_responsive_and_emits_on_caller_thread(self):
+        entered, release = threading.Event(), threading.Event()
+        real = app._dispatch_operator_audience_sync
+        emitted_threads = []
+        self.messages.on_message(lambda message: emitted_threads.append(threading.get_ident()))
+        def slow_queue(*args, **kwargs):
+            entered.set()
+            if not release.wait(2):
+                raise AssertionError('Queue test gate timed out')
+            return real(*args, **kwargs)
+        async def exercise():
+            caller = threading.get_ident()
+            with patch.object(app, '_dispatch_operator_audience_sync', side_effect=slow_queue):
+                task = asyncio.create_task(app._publish_operator_message_async(sender='operator',
+                    text='@claude exact', selected_recipients=[], channel='review'))
+                try:
+                    for _ in range(100):
+                        if entered.is_set():
+                            break
+                        await asyncio.sleep(.005)
+                    self.assertTrue(entered.is_set())
+                    self.assertFalse(task.done())
+                    self.assertEqual(emitted_threads, [])
+                finally:
+                    release.set()
+                await asyncio.wait_for(task, 2)
+            self.assertEqual(emitted_threads, [caller])
+        asyncio.run(exercise())
 
 
 if __name__ == '__main__':

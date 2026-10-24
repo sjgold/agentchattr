@@ -9,7 +9,7 @@ from schedules import ScheduleStore
 from summaries import SummaryStore
 
 
-def initialize_app_channels(case, root, channels):
+def initialize_app_channels(case, root, channels, *, enter_context=None):
     catalog = ChannelStore(root / 'fixture_channels.json')
     catalog.initialize(channels)
     service = ChannelService(catalog, engine=app.session_engine, messages=app.store,
@@ -18,6 +18,6 @@ def initialize_app_channels(case, root, channels):
         summaries=SummaryStore(str(root / 'fixture_summaries.json')), queue=app.agents.queue,
         settings={'channels': list(channels)}, save_settings=Mock(), migrate_cursors=Mock(),
         router=app.router, migrate_last_active=Mock())
-    case.enterContext(patch.object(app, 'channel_service', service))
+    (enter_context or case.enterContext)(patch.object(app, 'channel_service', service))
     app.agents.queue.bind_channel_policy(lambda: service)
     return service

@@ -1025,7 +1025,7 @@ def _expand_operator_command(text, recipients):
 
 def _publish_operator_message(*, sender, text, selected_recipients, channel='general',
                               attachments=None, reply_to=None, job_id=None, msg_type='chat',
-                              metadata=None, approved_targets=None, origin='operator'):
+                              metadata=None, approved_targets=None, origin='operator', _emit=True):
     from recipient_routing import _text
     if (not isinstance(sender, str) or not sender or '\0' in sender
             or not isinstance(attachments if attachments is not None else [], list)
@@ -1062,8 +1062,17 @@ def _publish_operator_message(*, sender, text, selected_recipients, channel='gen
         router.continue_routing(channel)
         _dispatch_operator_audience_sync(message, job_id=job_id)
         publisher = store if job_id is None else jobs
-        publisher._emit_operator(message, authority=_OPERATOR_PUBLICATION)
+        if _emit:
+            publisher._emit_operator(message, authority=_OPERATOR_PUBLICATION)
         return message
+
+
+async def _publish_operator_message_async(**fields):
+    # Persist/reset/enqueue in a worker. Never hold an RLock across await.
+    message = await asyncio.to_thread(_publish_operator_message, **fields, _emit=False)
+    publisher = store if fields.get('job_id') is None else jobs
+    publisher._emit_operator(message, authority=_OPERATOR_PUBLICATION)
+    return message
 
 
 def _saved_operator_message(message, job_id=None):
@@ -1100,7 +1109,7 @@ def _dispatch_operator_audience_unlocked(message: dict, *, job_id=None):
                 agents.trigger_identity_sync(identity, dispatch_id=dispatch_id,
                     message=saved['sender'] + ': ' + saved['text'], channel=saved.get('channel', 'general'),
                     job_id=job_id, prompt=saved['text'] if saved.get('type') == 'session_request' else '')
-            except (QueueConflict, ValueError, OSError):
+            except (QueueConflict, ValueError, OSError, ChannelUnavailable):
                 log.info('Resolved recipient is unavailable or already conflicted; message retained.')
     finally:
         if job_id is None and saved.get('type') == 'session_request':
@@ -1677,7 +1686,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         store.add('system', 'Resuming agent conversation...', msg_type='system', channel=channel)
                         await broadcast_status()
                         continue
-                    message = _publish_operator_message(sender=sender, text=text,
+                    message = await _publish_operator_message_async(sender=sender, text=text,
                         selected_recipients=event.get('selected_recipients', []),
                         attachments=attachments, reply_to=event.get('reply_to'), channel=channel)
                     await websocket.send_text(json.dumps({'type': 'message_accepted',
@@ -2397,7 +2406,7 @@ async def resolve_decision(msg_id: int, request: Request):
     username = room_settings.get("username", "user")
     reply_text = f"@{sender} {chosen}" if sender else chosen
     try:
-        _publish_operator_message(sender=username, text=reply_text, selected_recipients=[],
+        await _publish_operator_message_async(sender=username, text=reply_text, selected_recipients=[],
             approved_targets=[sender] if sender else [], origin='workflow', reply_to=msg_id, channel=channel)
     except Exception:
         import traceback; traceback.print_exc()
@@ -2611,11 +2620,10 @@ async def post_job_message(job_id: int, request: Request):
         kind = body.get('type', 'chat')
         if kind not in ('chat', 'suggestion'):
             raise ValueError('Unsupported job message type.')
-        message = _publish_operator_message(sender=body.get('sender') or room_settings.get('username', 'user'),
+        message = await _publish_operator_message_async(sender=body.get('sender') or room_settings.get('username', 'user'),
             text=body.get('text', ''), selected_recipients=body.get('selected_recipients', []),
             channel=job.get('channel', 'general'), job_id=job_id,
             attachments=body.get('attachments', []), msg_type=kind)
-        await _dispatch_operator_audience(message, job_id=job_id)
         return JSONResponse(message, headers={'Cache-Control': 'no-store'})
     except ValueError:
         return JSONResponse({'error': 'Invalid job message or recipient fields.'}, status_code=400)
@@ -3656,7 +3664,7 @@ async def request_session_draft(request: Request):
         f"Requested session draft from {mention_str}. Wait for a proposal.",
         channel=channel,
     )
-    message = _publish_operator_message(
+    message = await _publish_operator_message_async(
         sender=sender,
         text=f"{mention_str} Design a session workflow for: **{description}**\n\n"
         "Respond with a single chat message containing a fenced JSON code block with this exact structure:\n"
@@ -3672,7 +3680,6 @@ async def request_session_draft(request: Request):
         msg_type="session_request",
         metadata={"session_request": True, "mentions": [f"@{agent_name}"], "request": description},
     )
-    await _dispatch_operator_audience(message)
     return JSONResponse({"ok": True})
 
 

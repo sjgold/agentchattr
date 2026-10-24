@@ -33,6 +33,8 @@ class RecipientRuntimeRoutingTests(unittest.TestCase):
         stack.enter_context(patch.object(app, 'broadcast', AsyncMock()))
         stack.enter_context(patch.object(app, 'broadcast_status', AsyncMock()))
         stack.enter_context(patch.object(mcp_bridge, 'is_online', return_value=True))
+        from tests.channel_fixture import initialize_app_channels
+        initialize_app_channels(self, self.f.root, ['general', 'discussion'], enter_context=stack.enter_context)
         return stack
 
     def request(self, body):

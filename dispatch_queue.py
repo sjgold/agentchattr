@@ -131,7 +131,7 @@ class QueueStore:
             return deepcopy(record)
 
     def claim(self, instance, consumer_id, *, blocked_run_ids=None, blocked_identity_ids=None,
-              allowed_dispatch_ids=None, blocked_channel_names=None):
+              allowed_dispatch_ids=None, blocked_channel_names=None, active_channel_names=None):
         identity = _seat(instance)
         _identifier(consumer_id, 'Consumer ID')
         if blocked_channel_names is not None:
@@ -140,6 +140,12 @@ class QueueStore:
                     for name in blocked_channel_names):
                 raise ValueError('Blocked channel names must be a set of valid names or None.')
             blocked_channel_names = set(blocked_channel_names)
+        if active_channel_names is not None:
+            if type(active_channel_names) is not set or any(
+                    type(name) is not str or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,19}', name)
+                    for name in active_channel_names):
+                raise ValueError('Active channel names must be a set of valid names or None.')
+            active_channel_names = set(active_channel_names)
         if allowed_dispatch_ids is not None:
             if not isinstance(allowed_dispatch_ids, set):
                 raise ValueError('Allowed dispatch IDs must be a set or None.')
@@ -164,6 +170,9 @@ class QueueStore:
             for record in records:
                 if record['state'] == 'queued':
                     if record['envelope'].get('channel', 'general') in (blocked_channel_names or set()):
+                        continue
+                    if (active_channel_names is not None
+                            and record['envelope'].get('channel', 'general') not in active_channel_names):
                         continue
                     if record['envelope'].get('run_id') in blocked:
                         continue
