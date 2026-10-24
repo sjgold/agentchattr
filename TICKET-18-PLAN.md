@@ -310,3 +310,21 @@ Root reviewed the diff from058d382 and reran syntax plus py/mjs compile-only: ea
 - Serve secondary restart now uses explicit plain-ASCII LF pasted text and a labelled exact hash; primary canonical and non-serve BOM/Unicode/CRLF remain unchanged. SYSTEM metadata-key/quiet-note exclusions are strengthened; client errors remain safe type categories.
 
 Next Sonnet rechecks this frozen diff/hash before ONE py non-serve readiness authorization. No actual case, native counts/cleanup result or browser proof exists yet. Optional mjs draft-browser mode remains separately gated after py ordinary-browser PASS.
+
+
+## First py readiness at2474c3f: failed fixture, cleanup complete
+
+One authorized unchanged non-serve py run, tracked shell a896f0d0-0f23-42ee-a078-d18e55f8c179, scratch `.audit-tmp/document review py mwq99nfh`, exited1. No rerun/mjs/browser case started. failure.json reports ConnectionResetError during JSON reading of the early413 HTTPError response body, not a failed product limit check. The sibling transport-exception handler cannot catch an error raised inside the HTTPError handler. Sonnet independently confirmed this diagnosis from source and scratch.
+
+Server preview audit row3 proves the intended Content-Length refusal: http_status413, reader_error_status413, stream_observed_bytes0, chunks0. Prior exact271byte BOM/Unicode preview200 and no-token/bearer403, NUL/invalidUTF8400 checks passed. Failure preceded the chunked check and primary Start: no session_runs.json, zero provider calls, hidden client journal zero turns, no result.json/acceptance. Seven observations occupy24041bytes; server.log Traceback/Selector/Warning/Error counts all0.
+
+Actual cleanup:2workers,1hidden client(console_present true, console_visible false),0models,1true server ended; API empty protocol_one_no_invocations proof, unresolved[]. No leftover-resource claim is inferred from process scans; retained-handle cleanup evidence is the basis.
+
+Required verifier-only fix: preserve received413 status; ONLY max_plus_one+413 may tolerate ConnectionError/IncompleteRead/ValueError response-body failure, record body_read_error category/error=None and close HTTPError in finally. Require exact server413+reader413 audit and unchanged effects, proof_basis status-line plus server audit, not body. Other refusal bodies and chunked cap remain strict. Helper is drafting this narrow change; source/hash diff confirmation before any fresh py run. This scratch stays failed fixture evidence, not acceptance.
+
+
+## Early413 response-body fixture correction frozen for recheck
+
+Root verified the narrow diff: status is retained before body parsing; only max_plus_one with actual413 accepts ConnectionError/IncompleteRead/ValueError body-read failure, recorded separately as body_read_error with error=None. Exact one server audit row must show HTTP413, reader413 and zero stream bytes, with unchanged effects; proof_basis explicitly status-line plus server audit, not body. Every HTTPError response is closed in finally. Other refusal bodies remain strict, and chunked cap/count/effect assertions are unchanged.
+
+Syntax and compile-only2servers/1client/processes0 pass. Verifier SHA2566f2640660714fc345cbd46f56947915e0459454194d779ae9f55898d14a4fd1a; client unchanged f5893f5f94abb6684df0543266676639fd9dc6a7e5898d60b8522f73b28c5eae. No fresh run yet; mwq99nfh remains failed fixture evidence with complete cleanup, not acceptance. Next Sonnet diff confirmation before a separately authorized single fresh py run.

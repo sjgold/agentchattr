@@ -371,28 +371,44 @@ class Fixture:
             ('max_plus_one', b'x' * (524288 + 1), {'Content-Type': 'application/octet-stream', 'x-session-token': self.token}, 413)]
         baseline = self.product_effects()
         for label, content, headers, expected_status in checks:
-            status, error, transport_error = None, None, None
+            status, error, transport_error, body_read_error = None, None, None, None
             audit_before = len(json.loads((self.audit/'preview-requests.json').read_text(encoding='utf-8')))
             try:
                 with urllib.request.urlopen(urllib.request.Request(url, data=content, headers=headers), timeout=75) as response:
                     status = response.status
             except urllib.error.HTTPError as exc:
-                status, error = exc.code, json.load(exc)
+                status = exc.code
+                try:
+                    try:
+                        error = json.load(exc)
+                    except (ConnectionError, http.client.IncompleteRead, ValueError) as body_failure:
+                        if label != 'max_plus_one' or status != 413:
+                            raise
+                        error = None
+                        body_read_error = type(body_failure).__name__
+                finally:
+                    exc.close()
             except (urllib.error.URLError, BrokenPipeError, ConnectionError) as exc:
                 if label != 'max_plus_one':
                     raise
                 transport_error = type(exc).__name__
             observed = json.loads((self.audit/'preview-requests.json').read_text(encoding='utf-8'))[audit_before:]
-            if label == 'max_plus_one' and transport_error:
+            if label == 'max_plus_one' and (transport_error or body_read_error):
                 observed = self.wait(lambda: rows if (rows := json.loads((self.audit/'preview-requests.json').read_text(encoding='utf-8'))[audit_before:])
-                    and rows[-1].get('http_status') == 413 else None, 'server observed length overflow 413', 15)
+                    and len(rows)==1 and rows[0].get('http_status')==413 and rows[0].get('reader_error_status')==413
+                    else None, 'server observed length overflow 413', 15)
             after = self.product_effects()
             self.evidence('actual_http_preview_refusal', variant=label, status=status, error=error,
-                transport_error=transport_error, server_preview_audit=observed,
-                proof_basis=('client_http_'+str(status) if status is not None else
+                transport_error=transport_error, body_read_error=body_read_error, server_preview_audit=observed,
+                proof_basis=('status_line_plus_server_audit_NOT_body' if body_read_error else
+                    'client_http_'+str(status) if status is not None else
                     'exact_server_observed_early_413' if any(row.get('http_status')==413 for row in observed) else 'unproven_transport_outcome'),
                 expected_status=expected_status, baseline=baseline, after=after)
             assert (status == expected_status or (label == 'max_plus_one' and transport_error and observed[-1]['http_status'] == 413)) and after == baseline
+            if body_read_error:
+                assert label=='max_plus_one' and status==413 and error is None and len(observed)==1
+                assert observed[0]['http_status']==413 and observed[0]['reader_error_status']==413
+                assert observed[0]['stream_observed_bytes']==0
             assert not self.captures and not self.ledger_records()
         audit_before = len(json.loads((self.audit/'preview-requests.json').read_text(encoding='utf-8')))
         connection = http.client.HTTPConnection('127.0.0.1', int(self.base.rsplit(':',1)[1]), timeout=75)
@@ -421,7 +437,10 @@ class Fixture:
                 'cast': {'reader': self.initial['workers']['document/cli']['name'], 'editor': api_name},
                 'source_file': {**snapshot, 'content_sha256': '0' * 64}})
         except urllib.error.HTTPError as exc:
-            status, error = exc.code, json.load(exc)
+            try:
+                status, error = exc.code, json.load(exc)
+            finally:
+                exc.close()
         after = self.product_effects()
         self.evidence('actual_http_tampered_start_refusal', status=status, error=error, baseline=baseline, after=after)
         assert status == 400 and after == baseline
@@ -655,7 +674,10 @@ def exercise(f, serve=False):
         try:
             f.api(f'/api/sessions/{human["id"]}/correct-and-restart', {'input_text': text, 'request_id': uuid.uuid4().hex})
         except urllib.error.HTTPError as exc:
-            status, error = exc.code, json.load(exc)
+            try:
+                status, error = exc.code, json.load(exc)
+            finally:
+                exc.close()
         after = f.product_effects()
         f.evidence('unchanged_file_restart_refusal', variant=label, status=status, error=error, baseline=baseline, after=after)
         assert status == 400 and 'unchanged' in json.dumps(error).lower()
