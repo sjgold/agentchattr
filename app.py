@@ -25,7 +25,7 @@ from agents import AgentTrigger
 from registry import RuntimeRegistry
 from session_store import SessionStore, validate_session_template
 from session_engine import SessionEngine
-from channel_lifecycle import ChannelStore, ChannelUnavailable, ChannelInactive
+from channel_lifecycle import ChannelStore, ChannelUnavailable, ChannelInactive, ChannelConflict
 from channel_service import ChannelService
 
 log = logging.getLogger(__name__)
@@ -1154,6 +1154,101 @@ async def preview_recipients(request: Request):
         return JSONResponse({'error': 'Recipient preview is unavailable.'}, status_code=503)
 
 
+async def _channel_body(request, required, optional=()):
+    retained = bytearray()
+    async for chunk in request.stream():
+        retained.extend(chunk[:16385 - len(retained)])
+        if len(retained) > 16384:
+            raise ValueError('Channel request is too large.')
+    body = _recipient_json(bytes(retained))
+    if not required <= body.keys() or body.keys() - required - set(optional):
+        raise ValueError('Unsupported channel request fields.')
+    return body
+
+
+async def _channel_http(request, action):
+    try:
+        if getattr(request.state, 'auth_origin', None) != 'operator':
+            raise PermissionError('Operator session required.')
+        if request.url.query:
+            raise ValueError('Channel management accepts no query fields.')
+        service = _channels()
+        if action == 'view':
+            result = await asyncio.to_thread(service.catalog_view)
+        else:
+            required = {'op', 'channel'} if action == 'preview' else {'request_id'}
+            if action == 'apply':
+                required |= {'op', 'channel', 'confirmation', 'preview_token'}
+            body = await _channel_body(request, required, {'new_name'} if action != 'retry' else ())
+            result = await asyncio.to_thread(getattr(service, action), **body)
+            if action in ('apply', 'retry'):
+                view = await asyncio.to_thread(service.catalog_view)
+                await _broadcast(json.dumps({'type': 'channel_state', **view}))
+                await broadcast_settings()
+        return JSONResponse(result, headers={'Cache-Control': 'no-store'})
+    except PermissionError:
+        return JSONResponse({'error': 'Operator session required.'}, status_code=403)
+    except ChannelConflict as error:
+        return JSONResponse({'error': str(error)}, status_code=409)
+    except (ChannelUnavailable, OSError):
+        return JSONResponse({'error': 'Channel management is unavailable; publication is held.'}, status_code=503)
+    except ValueError:
+        return JSONResponse({'error': 'Invalid channel management request.'}, status_code=400)
+
+
+def _channel_error(error, *, request_id=None, channel=None):
+    if isinstance(error, (ChannelUnavailable, OSError)):
+        code, message = 503, 'Channel management is unavailable; reload Manage channels.'
+    elif isinstance(error, ChannelConflict):
+        code, message = 409, str(error)
+    else:
+        code, message = 400, 'Invalid channel management request.'
+    return {'type': 'channel_error', 'request_id': request_id
+        if type(request_id) is str and _re.fullmatch(r'[0-9a-f]{32}', request_id) else None,
+        'channel': channel if type(channel) is str and _CHANNEL_NAME_RE.fullmatch(channel) else None,
+        'error': message, 'code': code}
+
+
+async def _legacy_channel_action(websocket, event):
+    op = event['type'].removeprefix('channel_')
+    channel = event.get('old_name') if op == 'rename' else event.get('name')
+    try:
+        required = {'type', 'request_id', 'confirmation', 'preview_token'}
+        required |= {'old_name', 'new_name'} if op == 'rename' else {'name'}
+        if not required <= event.keys():
+            raise ChannelConflict('Open Manage channels and review a fresh confirmation before changing this channel.')
+        if event.keys() - required:
+            raise ValueError('Unsupported channel fields.')
+        await asyncio.to_thread(_channels().apply, op, channel,
+            new_name=event.get('new_name') if op == 'rename' else None,
+            request_id=event['request_id'], confirmation=event['confirmation'], preview_token=event['preview_token'])
+        view = await asyncio.to_thread(_channels().catalog_view)
+        await _broadcast(json.dumps({'type': 'channel_state', **view}))
+        await broadcast_settings()
+    except (ChannelUnavailable, ChannelConflict, OSError, ValueError) as error:
+        await websocket.send_text(json.dumps(_channel_error(error, request_id=event.get('request_id'), channel=channel)))
+
+
+@app.get('/api/channels')
+async def get_channels(request: Request):
+    return await _channel_http(request, 'view')
+
+
+@app.post('/api/channels/preview')
+async def preview_channel_action(request: Request):
+    return await _channel_http(request, 'preview')
+
+
+@app.post('/api/channels/apply')
+async def apply_channel_action(request: Request):
+    return await _channel_http(request, 'apply')
+
+
+@app.post('/api/channels/retry')
+async def retry_channel_action(request: Request):
+    return await _channel_http(request, 'retry')
+
+
 async def _handle_new_message(msg: dict):
     """Broadcast message to web clients + check for @mention triggers."""
     # For broadcast slash commands, suppress the raw message — only the expanded
@@ -1817,6 +1912,10 @@ async def websocket_endpoint(websocket: WebSocket):
 
             elif event.get("type") == "update_settings":
                 new = event.get("data", {})
+                if isinstance(new, dict) and 'channels' in new:
+                    await websocket.send_text(json.dumps(_channel_error(
+                        ChannelConflict('Use Manage channels to change the channel list.'))))
+                    continue
                 if "title" in new and isinstance(new["title"], str):
                     room_settings["title"] = new["title"].strip() or "agentchattr"
                 apply_room_subtitle(new)
@@ -1930,58 +2029,9 @@ async def websocket_endpoint(websocket: WebSocket):
                                 await _broadcast(rename_event)
                 continue
 
-            elif event.get("type") == "channel_create":
-                name = (event.get("name") or "").strip().lower()
-                if not name or not _CHANNEL_NAME_RE.match(name):
-                    continue
-                if name in room_settings["channels"]:
-                    continue
-                room_settings["channels"].append(name)
-                _save_settings()
-                await broadcast_settings()
-
-            elif event.get("type") == "channel_rename":
-                old_name = (event.get("old_name") or "").strip().lower()
-                new_name = (event.get("new_name") or "").strip().lower()
-                if old_name == "general":
-                    continue
-                if not new_name or not _CHANNEL_NAME_RE.match(new_name):
-                    continue
-                if old_name not in room_settings["channels"]:
-                    continue
-                if new_name in room_settings["channels"]:
-                    continue
-                idx = room_settings["channels"].index(old_name)
-                room_settings["channels"][idx] = new_name
-                store.rename_channel(old_name, new_name)
-                import mcp_bridge
-                mcp_bridge.migrate_cursors_rename(old_name, new_name)
-                _save_settings()
-                await broadcast_settings()
-                # Tell clients to migrate DOM elements
-                rename_event = json.dumps({
-                    "type": "channel_renamed",
-                    "old_name": old_name,
-                    "new_name": new_name,
-                })
-                for c in list(ws_clients):
-                    try:
-                        await c.send_text(rename_event)
-                    except Exception:
-                        pass
-
-            elif event.get("type") == "channel_delete":
-                name = (event.get("name") or "").strip().lower()
-                if name == "general":
-                    continue
-                if name not in room_settings["channels"]:
-                    continue
-                room_settings["channels"].remove(name)
-                store.delete_channel(name)
-                import mcp_bridge
-                mcp_bridge.migrate_cursors_delete(name)
-                _save_settings()
-                await broadcast_settings()
+            elif event.get('type') in ('channel_create', 'channel_archive', 'channel_reopen',
+                                        'channel_rename', 'channel_delete', 'channel_cancel_queued'):
+                await _legacy_channel_action(websocket, event)
 
     except WebSocketDisconnect:
         ws_clients.discard(websocket)
