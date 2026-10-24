@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 23:56 Chicago (#1-16 published/closed; #17 pure resolver bounded PASS; runtime contract freeze next)
+**Updated:** 2026-10-23 23:56 Chicago (#1-16 published/closed; #17 pure resolver bounded PASS; runtime interfaces approved, observed-red tests next)
 
 ## Current handoff
 
@@ -420,3 +420,5 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Corrected26 focused PASS0.349s (22new pure+4existing Router), no provider/process activity. Next Codex freezes fixes and reruns full regression; Sonnet diff-only recheck for bounded Tranche1 approval. Remaining routing/queue/ingress/UI tranches unimplemented.
 
 - Tranche1 corrected full940TOTAL/four skips89.561s exit0 (4686f27c), Sonnet independent26focused0.343s plus defect/performance probes -> boundedPASS e9a6402. Tranche2 exact function/validation/guard-placement proposal appended to TICKET-17-PLAN.md; no runtime code or tests changed yet. Await short freeze recheck, then observed-red assignment.
+
+- Sonnet approved Tranche2 interfaces06bdc67 with three corrections now in plan: malformed-ordering permits only deterministic own review task, conversion ambiguity returns409 with candidates, and adjacent-turn publication priority gap is documented. Existing helper owns new queue-order tests only; Codex owns Router/registry/no-pause/agent guard tests and source. No runtime production edits yet.
