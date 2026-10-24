@@ -1,6 +1,6 @@
 # Ticket17: explicit recipients are authoritative
 
-State: pure interface shapes approved by Sonnet at082307c; seven exact test-encoding clarifications incorporated below before helper TDD. Tranche1 pure module,18 helper tests and4 reviewer-edge regressions are implemented; no live routing, queue or UI changes yet. Routine per-ticket human gates remain removed under Seth's renewed October23 evening authorization.
+State: Tranches1-3 are implemented and independently bounded-PASS through53b63b4 (corrected full1002TOTAL/four skips89.148s). Tranche4 approved U1-U5 UI/ACK code is frozen at3f653e5; actual-source VM12 and40 focused Python tests pass. Full discovery and independent source review are in progress. Actual-server/browser/native acceptance and final Ticket17 publication remain outstanding. Earlier sections below preserve their dated planning/checkpoint evidence. Routine per-ticket human gates remain removed under Seth's renewed October23 evening authorization.
 
 Base: published main61315f7a8fc173577455718d7406645673f53da6. Branch codex/ticket-17-explicit-recipients. Codex owns implementation/follow-through (claim5ac077c7); Sonnet5.5 agent3b53a0e1 is independent reviewer. Scope: issue17, specv1.7 RC-1/AT-09. Blockers8/10 and recovery9/13/14/15 are delivered. Full baseline918 total tests/four platform skips.
 

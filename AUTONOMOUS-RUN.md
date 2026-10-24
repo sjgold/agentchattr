@@ -23,7 +23,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
 | #15 | Published and closed | Source41b80f7, Sonnet independent PASS, post-merge918/four skips86.469s |
-| #17 | Tranche2 boundedPASS | Corrected full964/four skips85.646s, independent70focused+3integrations; Tranche3a boundedPASS/full976; Tranche3b boundedPASS/full1002; Tranche4 UI/ACK behavior freeze next, client UI unbuilt; scheduling composer deferred |
+| #17 | Tranches1-3 boundedPASS; UI review running | Backend53b63b4 full1002/four skips; UI/ACK freeze3f653e5, VM12 and Python40 focusedPASS; full/reviewer checks underway, actual-server/browser acceptance next; scheduling composer deferred |
 | #18-26 | Authorized, pending | Continue dependency order after current ticket |
 
 ## Non-negotiable verification
@@ -37,6 +37,6 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 
 Published/closed: #1-16. Ticket15 source41b80f7 is verified on origin/main and issue15 is confirmed closed. Sonnet5.5 independent PASS WITH NONBLOCKING NOTES; full918/four skips87.682s, four actual scenarios plus prior corrected restart/Retry/Stop/APIlostACK independently PASS. Builder post-merge918/four skips86.469s and syntax/diff PASS; executable1cebd9d unchanged since review.
 
-Current next owner Codex: Ticket17 explicit recipient authority, specv1.7 RC-1/AT-09, blockers8/10 done. Source-read proposal TICKET-17-PLAN.md now awaits Sonnet contract critique; settle interfaces then observed-red tests. Sonnet3b53a0e1 is designated reviewer; test helper available. No next-ticket source edits yet. No live AI/provider, Omarchy, Desktop/global changes. Latest user authorization permits continuation beyond15.
+Current next owner Codex: complete Ticket17 RC-1/AT-09. Tranches1-3 independently bounded-PASS; Tranche4 UI/ACK source3f653e5 frozen for full discovery and Sonnet independent source/VM checks. Then bounded actual-server/native and browser acceptance, whole-ticket review and publication. Helper's new Node verifier is frozen12PASS, no live resources. No live AI/provider, Omarchy, Desktop/global changes. Latest user authorization permits continuation beyond15.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.
