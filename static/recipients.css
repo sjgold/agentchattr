@@ -1,0 +1,21 @@
+.recipient-preview { min-width: 0; margin: 8px 0; padding: 12px; border: 1px solid var(--border, #48485c); border-radius: 6px; background: var(--bg-msg, #16161f); color: var(--text-muted, #cfc8ea); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.recipient-preview p { margin: 0 0 4px; }
+.recipient-preview p:last-child { margin-bottom: 0; }
+.recipient-preview .recipient-heading { color: #f0eef8; font-weight: 650; }
+.recipient-preview .recipient-source { color: #cfc8ea; }
+.recipient-preview .recipient-audience { color: #f0eef8; }
+.recipient-preview .recipient-warning { color: #fbbf24; }
+.recipient-preview button, .recipient-preview summary { min-height: 44px; padding: 10px 12px; box-sizing: border-box; font: inherit; cursor: pointer; }
+.recipient-preview button { border: 1px solid #77718a; border-radius: 4px; background: #292439; color: #f0eef8; margin-top: 8px; }
+.recipient-preview :is(button, summary):focus-visible { outline: 2px solid #c4b5fd; outline-offset: 2px; }
+.recipient-preview details { margin-top: 4px; }
+.recipient-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+#send:disabled, #jobs-conv-send:disabled { opacity: .65; cursor: wait; }
+
+.recipient-receipt { margin: 8px 0 0; padding: 12px; color: #cfc8ea; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+
+/* Recipient controls retain native buttons with readable labels and touch space. */
+#mention-toggles .mention-toggle, #job-reply-target-row button, #send, #jobs-conv-send { min-height: 44px; font-size: 14px; }
+#mention-toggles .mention-toggle, #job-reply-target-row button { padding: 10px 12px; }
+#job-reply-target-row .job-reply-target-prefix, #job-reply-target-row .job-reply-target-name { font-size: 14px; }
+#job-reply-target-row { min-width: 0; flex-wrap: wrap; }

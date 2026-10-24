@@ -150,9 +150,11 @@ class OperatorRoutesTests(unittest.TestCase):
         text = 'café\r\n@codex exact'
         socket.send_json({'type': 'message', 'text': text, 'sender': 'claude', 'channel': 'general',
                           'selected_recipients': ['claude']})
-        event = socket.receive_json()
-        self.assertEqual(event['type'], 'message')
+        frames = [socket.receive_json(), socket.receive_json()]
+        event = next(frame for frame in frames if frame['type'] == 'message')
+        ack = next(frame for frame in frames if frame['type'] == 'message_accepted')
         message = event['data']
+        self.assertEqual(ack, {'type': 'message_accepted', 'uid': message['uid'], 'channel': 'general'})
         self.assertEqual(message['text'], text)
         self.assertEqual(message['metadata']['recipient_routing']['origin'], 'operator')
         self.assertEqual([r['name'] for r in message['metadata']['recipient_routing']['recipients']], ['codex'])
@@ -253,3 +255,41 @@ class OperatorRoutesTests(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertNotIn('private', json.dumps(errors))
         self.assertTrue(any(frame['type'] == 'message' for frame in frames))
+
+    def socket_frames(self, *, failure=False):
+        frames = []
+        inputs = iter([{'type': 'message', 'text': 'saved shared text', 'channel': 'general'}])
+        fixture = self
+        class Socket:
+            query_params = {'token': 'operator-routing-test'}
+            async def accept(self): pass
+            async def receive_text(self):
+                value = next(inputs, None)
+                if value is None:
+                    await asyncio.sleep(.01)
+                    raise WebSocketDisconnect()
+                return json.dumps(value)
+            async def send_text(self, value):
+                event = json.loads(value)
+                if event['type'] == 'message_accepted':
+                    fixture.assertTrue(any(row['uid'] == event['uid'] for row in fixture.f.messages.get_recent(100)))
+                frames.append(event)
+        async def exercise():
+            await asyncio.wait_for(app.websocket_endpoint(Socket()), timeout=2)
+        with ExitStack() as stack:
+            if failure:
+                stack.enter_context(patch.object(app, '_publish_operator_message', side_effect=OSError('fixture append fault')))
+            asyncio.run(exercise())
+        return frames
+
+    def test_saved_content_ack_is_sent_only_after_persistence_and_has_no_delivery_fields(self):
+        frames = self.socket_frames()
+        acks = [frame for frame in frames if frame['type'] == 'message_accepted']
+        self.assertEqual(len(acks), 1)
+        self.assertEqual(set(acks[0]), {'type', 'uid', 'channel'})
+        self.assertEqual(acks[0]['channel'], 'general')
+
+    def test_failed_publication_has_error_but_no_saved_content_ack(self):
+        frames = self.socket_frames(failure=True)
+        self.assertFalse(any(frame['type'] == 'message_accepted' for frame in frames))
+        self.assertEqual(len([frame for frame in frames if frame['type'] == 'message_error']), 1)

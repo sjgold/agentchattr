@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/style.css?v=255">
     <link rel="stylesheet" href="/static/sessions.css?v=226">
     <link rel="stylesheet" href="/static/jobs.css?v=223">
+    <link rel="stylesheet" href="/static/recipients.css?v=1">
     <link rel="icon" href="/static/favicon.ico">
 </head>
 <body>
@@ -215,15 +216,16 @@
                         <div id="job-attachments" class="job-attachments"></div>
                         <div class="job-reply-target-row hidden" id="job-reply-target-row">
                             <button class="job-reply-target-btn" id="job-reply-target-btn" type="button" onclick="cycleJobReplyTarget()" title="Reply target">
-                                <span class="job-reply-target-prefix">To</span>
+                                <span class="job-reply-target-prefix">Address</span>
                                 <span class="job-reply-target-dot" id="job-reply-target-dot"></span>
                                 <span class="job-reply-target-name" id="job-reply-target-name"></span>
                             </button>
                             <button class="job-reply-target-clear hidden" id="job-reply-target-clear" type="button" onclick="clearJobReplyTarget(event)" title="Clear reply target" aria-label="Clear reply target">&times;</button>
                         </div>
+                        <section id="job-recipient-preview" aria-label="Job message audience"></section>
                         <div class="job-input-row">
                             <textarea id="jobs-conv-input-text" placeholder="Message..." rows="1"></textarea>
-                            <button onclick="sendJobMessage()">Send</button>
+                            <button id="jobs-conv-send" onclick="sendJobMessage()">Send</button>
                         </div>
                     </div>
                 </div>
@@ -262,6 +264,7 @@
             <div id="slash-menu" class="hidden"></div>
             <div id="mention-menu" class="hidden"></div>
             <div id="attachments"></div>
+            <section id="channel-recipient-preview" aria-label="Message audience"></section>
             <div id="input-row">
                 <span id="sender-label" class="sender-label">user</span>
                 <button id="session-launch-btn" onclick="showSessionLauncher()" title="Start a session">
@@ -375,9 +378,10 @@
     <script src="/static/core.js?v=223"></script>
     <script src="/static/store.js?v=223"></script>
     <script src="/static/sessions.js?v=228"></script>
-    <script src="/static/jobs.js?v=224"></script>
+    <script src="/static/recipients.js?v=1"></script>
+    <script src="/static/jobs.js?v=225"></script>
     <script src="/static/channels.js?v=226"></script>
     <script src="/static/rules-panel.js?v=224"></script>
-    <script src="/static/chat.js?v=273"></script>
+    <script src="/static/chat.js?v=274"></script>
 </body>
 </html>

@@ -380,3 +380,10 @@ U3: preview failure is fail-closed. Posting stays blocked until a preview succee
 Preview live announcements change only for meaningful audience/warning/ignored/waiting changes, not raw-text keystrokes with the same result. New preview script must precede jobs.js/chat.js (order regression). Scheduling composer tests/helpers remain unchanged and deferred.
 
 Testing anchors: channel recipient state/send/event helpers will live between `// --- Recipient composer ---` and `// --- Image paste/drop ---`; job send helpers between `// --- Recipient job composer ---` and `async function uploadJobImage`. These are extraction seams for the actual source functions in a bounded Node VM test, not an alternate implementation. Backend ACK tests precede the small server change, then Node observed-red precedes UI files/wiring. No frontend or ACK code has changed yet.
+
+
+### Tranche4 implementation evidence (bounded, before source review)
+
+Shared preview and composer code now implement the approved interfaces and U1-U5. Backend saved-content ACK routes16PASS0.457s, actual-source VM12PASS and root combined publication/ingress/routes40PASS0.771s. Initial backend missing-ACK and helper missing-module/E10-prefix reds are retained separately from VM fixture adaptations. Exact native key handlers are invoked for IME, not source-regex proof. Existing historical baseline audit stays unchanged; the new tools/verify_recipient_ui.cjs executes the current extracted functions.
+
+Preview refreshes on meaningful availability/membership and session events, with no network poll; final prepare always rechecks. Displayed stored receipts say Resolved audience. Engine lock still covers trusted append/fsync as accepted in backend review. New receipt/preview uses safe DOM text. UI source review, full regression, actual-server acceptance and browser measurements remain outstanding at this checkpoint.

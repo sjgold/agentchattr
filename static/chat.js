@@ -442,6 +442,7 @@ function handleServerEvent(event) {
     }
     // Emit through Hub for modules to subscribe (PR 1 seam)
     Hub.emit(event.type, event);
+    if (event.type === 'session') refreshRecipientContexts();
     if (event.type === 'message_update') {
         // Re-render an updated message in-place (e.g. decision card resolved)
         const updated = event.message;
@@ -542,6 +543,9 @@ function handleServerEvent(event) {
         }
         updateTodoState(d.id, d.status);
     } else if (event.type === 'status') {
+        const availability = JSON.stringify(Object.entries(event.data).filter(([name]) => name !== 'paused' && name !== '_queue')
+            .map(([name, info]) => [name, !!info.available]));
+        if (availability !== recipientAvailabilityKey) { recipientAvailabilityKey = availability; refreshRecipientContexts(); }
         updateStatus(event.data);
     } else if (event.type === 'typing') {
         updateTyping(event.agent, event.active);
@@ -678,7 +682,9 @@ function connectWebSocket() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${proto}://${location.host}/ws?token=${encodeURIComponent(SESSION_TOKEN)}`);
 
-    ws.onopen = () => {
+    const connection = ws;
+    connection.onopen = () => {
+        if (ws !== connection) return;
         console.log('WebSocket connected');
         if (reconnectTimer) {
             clearTimeout(reconnectTimer);
@@ -686,12 +692,22 @@ function connectWebSocket() {
         }
     };
 
-    ws.onmessage = (e) => handleServerEvent(JSON.parse(e.data));
+    connection.onmessage = (e) => {
+        if (ws !== connection) return;
+        const event = JSON.parse(e.data);
+        if (!handleChannelPostEvent(event, connection)) handleServerEvent(event);
+    };
 
-    ws.onclose = (e) => {
+    connection.onclose = (e) => {
+        if (ws !== connection) return;
+        handleChannelPostEvent({type: 'close'}, connection);
         // Server sends 4003 when session token is invalid (server restarted).
         // Auto-reload to pick up the fresh token from the new HTML page.
         if (e.code === 4003) {
+            if (document.getElementById('input').value || pendingAttachments.length || replyingTo) {
+                getChannelRecipientPreview().error('The server restarted. Draft kept. Copy your draft before refreshing.');
+                return;
+            }
             console.warn('Session token rejected (server restarted?) — reloading page...');
             location.reload();
             return;
@@ -708,9 +724,9 @@ function connectWebSocket() {
         reconnectTimer = setTimeout(connectWebSocket, 2000);
     };
 
-    ws.onerror = (err) => {
+    connection.onerror = (err) => {
         console.error('WebSocket error:', err);
-        ws.close();
+        connection.close();
     };
 }
 
@@ -982,6 +998,8 @@ function appendMessage(msg, options = {}) {
         // Add copy buttons to code blocks
         addCodeCopyButtons(el);
     }
+
+    RecipientPreview.appendReceipt(el, msg);
 
     // Hide messages from other channels
     if (msgChannel !== activeChannel) {
@@ -1321,6 +1339,8 @@ function buildStatusPills() {
         container.appendChild(pill);
     }
     enableDragScroll(container);
+    if (channelRecipientPreview) channelRecipientPreview.invalidate();
+    updateSendButton();
 }
 
 // --- Role presets (shared by pill popover + bubble picker) ---
@@ -2241,12 +2261,12 @@ function showSlashHint(text) {
 }
 
 const SLASH_COMMANDS = [
-    { cmd: '/artchallenge', desc: 'SVG art challenge — all agents create artwork (optional theme)', broadcast: true },
-    { cmd: '/hatmaking', desc: 'All agents design a hat to wear on their avatar', broadcast: true },
-    { cmd: '/roastreview', desc: 'Get all agents to review and roast each other\'s work', broadcast: true },
-    { cmd: '/poetry haiku', desc: 'Agents write a haiku about the codebase', broadcast: true },
-    { cmd: '/poetry limerick', desc: 'Agents write a limerick about the codebase', broadcast: true },
-    { cmd: '/poetry sonnet', desc: 'Agents write a sonnet about the codebase', broadcast: true },
+    { cmd: '/artchallenge', desc: 'SVG art challenge — addressed agents create artwork (optional theme)', broadcast: true },
+    { cmd: '/hatmaking', desc: 'Addressed agents design a hat to wear on their avatar', broadcast: true },
+    { cmd: '/roastreview', desc: 'Get addressed agents to review and roast each other\'s work', broadcast: true },
+    { cmd: '/poetry haiku', desc: 'Addressed agents write a haiku about the codebase', broadcast: true },
+    { cmd: '/poetry limerick', desc: 'Addressed agents write a limerick about the codebase', broadcast: true },
+    { cmd: '/poetry sonnet', desc: 'Addressed agents write a sonnet about the codebase', broadcast: true },
     { cmd: '/summary', desc: 'Summarize recent messages — tag an agent (e.g. /summary @claude)', broadcast: false, needsMention: true },
     { cmd: '/summarise', desc: 'Summarize recent messages — tag an agent (e.g. /summarise @claude)', broadcast: false, needsMention: true, hidden: true },
     { cmd: '/continue', desc: 'Resume after loop guard pauses', broadcast: false },
@@ -2412,7 +2432,144 @@ function selectMention(name) {
 function setupInput() {
     const input = document.getElementById('input');
 
-    input.addEventListener('keydown', (e) => {
+    input.addEventListener('keydown', channelComposerKeydown);
+
+    // Auto-resize + slash menu + mention menu + send button state
+    function onInputChange() {
+        restartVoiceAfterEdit();
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+        updateSlashMenu(input.value);
+        updateMentionMenu();
+        updateSendButton();
+        // Targets come from the composer, so the schedule popover's state goes
+        // stale as soon as this changes. It no-ops while the popover is closed.
+        updateSchedulePopoverState();
+    }
+    input.addEventListener('input', onInputChange);
+    // Voice typing doesn't always fire 'input' — catch with additional events
+    input.addEventListener('compositionend', onInputChange);
+    input.addEventListener('change', onInputChange);
+    // Fallback poll for speech-to-text that bypasses all events
+    let _lastInputVal = '';
+    setInterval(() => {
+        if (input.value !== _lastInputVal) {
+            _lastInputVal = input.value;
+            updateSendButton();
+        }
+    }, 300);
+    updateSendButton();
+}
+
+// --- Recipient composer ---
+let channelRecipientPreview = null;
+let channelSendPending = null;
+let recipientAvailabilityKey = null;
+function refreshRecipientContexts() {
+    if (channelRecipientPreview && !channelSendPending) { channelRecipientPreview.invalidate(); refreshChannelRecipients(); }
+    if (typeof jobRecipientPreview !== 'undefined' && jobRecipientPreview && !jobSendPending) {
+        jobRecipientPreview.invalidate(); refreshJobRecipients();
+    }
+}
+const CHANNEL_UNCONFIRMED = 'This message may have been saved. Check the conversation before sending again. Draft kept.';
+function getChannelRecipientPreview() {
+    if (!channelRecipientPreview) {
+        const panel = document.getElementById('channel-recipient-preview');
+        channelRecipientPreview = RecipientPreview.attach(panel);
+        panel.addEventListener('recipient-preview-state', updateSendButton);
+    }
+    return channelRecipientPreview;
+}
+function channelDraftSnapshot() {
+    return {text: document.getElementById('input').value, selected_recipients: [...activeMentions],
+        channel: activeChannel, attachments: pendingAttachments.map(a => ({path: a.path, name: a.name, url: a.url})),
+        reply_to: replyingTo ? replyingTo.id : null};
+}
+function channelPreviewRequest(snapshot) {
+    return {text: snapshot.text, selected_recipients: snapshot.selected_recipients, channel: snapshot.channel};
+}
+function refreshChannelRecipients() {
+    const snapshot = channelDraftSnapshot();
+    getChannelRecipientPreview().schedule(snapshot.text.trim() || snapshot.attachments.length
+        ? channelPreviewRequest(snapshot) : null);
+}
+function updateSendButton() {
+    const input = document.getElementById('input');
+    const group = document.querySelector('.send-group');
+    if (!input || !group) return;
+    refreshChannelRecipients();
+    const hasContent = input.value.trim().length > 0 || pendingAttachments.length > 0;
+    const local = ['/clear', '/continue'].includes(input.value.trim().split(/\s/)[0].toLowerCase());
+    const disabled = !hasContent || !!channelSendPending || (!local && getChannelRecipientPreview().state === 'error');
+    group.classList.toggle('inactive', !hasContent);
+    const button = document.getElementById('send');
+    button.disabled = disabled;
+    button.textContent = channelSendPending ? (channelSendPending.phase === 'preparing' ? 'Checking audience' : 'Saving') : 'Send';
+    button.setAttribute('aria-busy', String(!!channelSendPending));
+}
+function clearChannelDraft(snapshot) {
+    if (JSON.stringify(channelDraftSnapshot()) !== JSON.stringify(snapshot)) return;
+    const input = document.getElementById('input');
+    input.value = ''; input.style.height = 'auto';
+    restartVoiceAfterEdit(); clearAttachments(); cancelReply();
+    getChannelRecipientPreview().invalidate(); input.focus();
+}
+function handleChannelPostEvent(event, socket) {
+    if (!['message_accepted', 'message_error', 'close'].includes(event.type)) return false;
+    const pending = channelSendPending;
+    if (!pending || pending.socket !== socket) return event.type !== 'close';
+    if (event.type === 'message_accepted' && pending.phase !== 'ack') return true;
+    if (event.type === 'message_accepted' && (event.channel !== pending.snapshot.channel || typeof event.uid !== 'string' || !event.uid)) return true;
+    clearTimeout(pending.timer);
+    channelSendPending = null;
+    if (event.type === 'message_accepted') clearChannelDraft(pending.snapshot);
+    else getChannelRecipientPreview().error(CHANNEL_UNCONFIRMED);
+    updateSendButton();
+    return event.type !== 'close';
+}
+async function sendMessage() {
+    if (channelSendPending) return;
+    const snapshot = channelDraftSnapshot();
+    if (!snapshot.text.trim() && !snapshot.attachments.length) return;
+    const socket = ws;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        getChannelRecipientPreview().error('Connection unavailable. Draft kept. Wait for reconnection before sending.'); return;
+    }
+    const local = ['/clear', '/continue'].includes(snapshot.text.trim().split(/\s/)[0].toLowerCase());
+    const pending = {socket, snapshot, phase: 'preparing', timer: null};
+    channelSendPending = pending;
+    updateSendButton();
+    try {
+        if (!local) await getChannelRecipientPreview().prepare(channelPreviewRequest(snapshot));
+        if (channelSendPending !== pending) return;
+        if (socket !== ws || socket.readyState !== WebSocket.OPEN
+            || JSON.stringify(channelDraftSnapshot()) !== JSON.stringify(snapshot)) {
+            channelSendPending = null; refreshChannelRecipients(); return;
+        }
+        const payload = {type: 'message', text: snapshot.text, sender: username, channel: snapshot.channel,
+            selected_recipients: snapshot.selected_recipients, attachments: snapshot.attachments};
+        if (snapshot.reply_to !== null) payload.reply_to = snapshot.reply_to;
+        if (!local) {
+            pending.phase = 'ack';
+            pending.timer = setTimeout(() => {
+                if (channelSendPending !== pending) return;
+                // Retire this socket before unlocking so a late ACK cannot acknowledge another post.
+                socket.close();
+                clearTimeout(pending.timer); channelSendPending = null;
+                getChannelRecipientPreview().error(CHANNEL_UNCONFIRMED); updateSendButton();
+            }, 10000);
+        }
+        socket.send(JSON.stringify(payload));
+        if (local) { channelSendPending = null; clearChannelDraft(snapshot); }
+    } catch (_) {
+        if (channelSendPending === pending) {
+            clearTimeout(pending.timer); channelSendPending = null;
+            getChannelRecipientPreview().error(pending.phase === 'ack' ? CHANNEL_UNCONFIRMED : 'Audience check failed. Draft kept. Check again before sending.');
+        }
+    } finally { updateSendButton(); }
+}
+function channelComposerKeydown(e) {
+    if (e.isComposing || e.keyCode === 229) return;
         if (mentionMenuVisible) {
             const menu = document.getElementById('mention-menu');
             const items = menu.querySelectorAll('.mention-item');
@@ -2474,106 +2631,6 @@ function setupInput() {
             e.preventDefault();
             sendMessage();
         }
-    });
-
-    // Auto-resize + slash menu + mention menu + send button state
-    function onInputChange() {
-        restartVoiceAfterEdit();
-        input.style.height = 'auto';
-        input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-        updateSlashMenu(input.value);
-        updateMentionMenu();
-        updateSendButton();
-        // Targets come from the composer, so the schedule popover's state goes
-        // stale as soon as this changes. It no-ops while the popover is closed.
-        updateSchedulePopoverState();
-    }
-    input.addEventListener('input', onInputChange);
-    // Voice typing doesn't always fire 'input' — catch with additional events
-    input.addEventListener('compositionend', onInputChange);
-    input.addEventListener('change', onInputChange);
-    // Fallback poll for speech-to-text that bypasses all events
-    let _lastInputVal = '';
-    setInterval(() => {
-        if (input.value !== _lastInputVal) {
-            _lastInputVal = input.value;
-            updateSendButton();
-        }
-    }, 300);
-    updateSendButton();
-}
-
-function updateSendButton() {
-    const input = document.getElementById('input');
-    const group = document.querySelector('.send-group');
-    if (!input || !group) return;
-    const hasContent = input.value.trim().length > 0 || pendingAttachments.length > 0;
-    group.classList.toggle('inactive', !hasContent);
-}
-
-function sendMessage() {
-    const input = document.getElementById('input');
-    let text = input.value.trim();
-
-    if (!text && pendingAttachments.length === 0) return;
-
-    // Prepend active mention toggles if the message doesn't already mention them
-    // Skip for non-broadcast slash commands (e.g. /clear, /continue)
-    let skipMentions = false;
-    if (text.startsWith('/')) {
-        const cmdWord = text.split(/\s/)[0].toLowerCase();
-        const matchedCmd = SLASH_COMMANDS.find(c => c.cmd.startsWith(cmdWord) || cmdWord.startsWith(c.cmd.split(/\s/)[0]));
-        if (matchedCmd && !matchedCmd.broadcast) {
-            skipMentions = true;
-        }
-        // Commands that need an @mention — show hint and keep command in input
-        if (matchedCmd && matchedCmd.needsMention && !/@\w[\w-]*/.test(text)) {
-            const canonical = matchedCmd.cmd.split(/\s/)[0];  // e.g. '/summary'
-            input.value = canonical + ' @';
-            input.focus();
-            input.setSelectionRange(input.value.length, input.value.length);
-            showSlashHint(`Tag an agent: ${canonical} @claude`);
-            // Trigger mention autocomplete for the '@'
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            return;
-        }
-    }
-    if (activeMentions.size > 0 && text && !skipMentions) {
-        const prefix = [...activeMentions].map(n => `@${n}`).join(' ');
-        // Only prepend if user didn't already @mention these agents
-        const lower = text.toLowerCase();
-        const missing = [...activeMentions].filter(n => !lower.includes(`@${n}`));
-        if (missing.length > 0) {
-            text = missing.map(n => `@${n}`).join(' ') + ' ' + text;
-        }
-    }
-
-    const payload = {
-        type: 'message',
-        text: text,
-        sender: username,
-        channel: activeChannel,
-        attachments: pendingAttachments.map(a => ({
-            path: a.path,
-            name: a.name,
-            url: a.url,
-        })),
-    };
-    if (replyingTo) {
-        payload.reply_to = replyingTo.id;
-    }
-
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(payload));
-    }
-
-    input.value = '';
-    restartVoiceAfterEdit();
-    input.style.height = 'auto';
-    clearAttachments();
-    cancelReply();
-    updateSendButton();
-    input.focus();
 }
 
 // --- Image paste/drop ---
@@ -3134,8 +3191,11 @@ window._onChannelSwitchMentions = function(oldChannel, newChannel) {
     // Reflect the swapped state on the toggle buttons
     for (const btn of document.querySelectorAll('.mention-toggle')) {
         btn.classList.toggle('active', activeMentions.has(btn.dataset.agent));
+        btn.setAttribute('aria-pressed', String(activeMentions.has(btn.dataset.agent)));
     }
     if (typeof updateSchedulePopoverState === 'function') updateSchedulePopoverState();
+    if (channelRecipientPreview) channelRecipientPreview.invalidate();
+    updateSendButton();
 };
 
 function buildMentionToggles() {
@@ -3159,6 +3219,7 @@ function buildMentionToggles() {
         if (activeMentions.has(name)) {
             btn.classList.add('active');
         }
+        btn.setAttribute('aria-pressed', String(activeMentions.has(name)));
         btn.onclick = () => {
             if (activeMentions.has(name)) {
                 activeMentions.delete(name);
@@ -3167,7 +3228,9 @@ function buildMentionToggles() {
                 activeMentions.add(name);
                 btn.classList.add('active');
             }
+            btn.setAttribute('aria-pressed', String(activeMentions.has(name)));
             updateSchedulePopoverState();
+            updateSendButton();
         };
         container.appendChild(btn);
     }

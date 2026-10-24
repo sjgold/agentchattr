@@ -201,22 +201,19 @@ function setupJobsGrip() {
 function setupJobsInput() {
     const input = document.getElementById('jobs-conv-input-text');
     if (!input) return;
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey && !jobMentionVisible) {
-            e.preventDefault();
-            sendJobMessage();
-            return;
-        }
-        if (e.key === 'Tab' && !jobMentionVisible && activeJobId) {
-            e.preventDefault();
-            cycleJobReplyTarget(e.shiftKey ? -1 : 1);
-        }
-    });
+    input.addEventListener('keydown', jobComposerKeydown);
     // Auto-grow
     input.addEventListener('input', () => {
         input.style.height = 'auto';
         input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+        refreshJobRecipients();
     });
+    input.addEventListener('compositionend', refreshJobRecipients);
+    input.addEventListener('change', refreshJobRecipients);
+    let previous = input.value;
+    setInterval(() => {
+        if (input.value !== previous) { previous = input.value; refreshJobRecipients(); }
+    }, 300);
 }
 
 // ---------------------------------------------------------------------------
@@ -242,23 +239,6 @@ function _normalizeJobRecipient(name, options = null) {
     const wanted = String(name).toLowerCase();
     const hit = opts.find(o => o.name.toLowerCase() === wanted);
     return hit ? hit.name : '';
-}
-
-function _extractJobMentionTargets(text) {
-    if (!text) return [];
-    const opts = getJobRecipientOptions();
-    if (opts.length === 0) return [];
-    const byLower = {};
-    for (const o of opts) byLower[o.name.toLowerCase()] = o.name;
-    const hits = [];
-    const re = /@([a-zA-Z][\w-]*)/g;
-    let m;
-    while ((m = re.exec(text)) !== null) {
-        const key = m[1].toLowerCase();
-        const canonical = byLower[key];
-        if (canonical && !hits.includes(canonical)) hits.push(canonical);
-    }
-    return hits;
 }
 
 function resolveJobDefaultRecipient(job, messages = []) {
@@ -290,6 +270,7 @@ function resolveJobDefaultRecipient(job, messages = []) {
 }
 
 function updateJobReplyTargetUI() {
+    refreshJobRecipients();
     const row = document.getElementById('job-reply-target-row');
     const btn = document.getElementById('job-reply-target-btn');
     const dot = document.getElementById('job-reply-target-dot');
@@ -1130,6 +1111,7 @@ function appendJobMessage(msg) {
             ${attHtml}
         `;
     }
+    RecipientPreview.appendReceipt(div, msg);
     container.appendChild(div);
 }
 
@@ -1137,44 +1119,87 @@ function appendJobMessage(msg) {
 // Job attachments
 // ---------------------------------------------------------------------------
 
+// --- Recipient job composer ---
+let jobRecipientPreview = null;
+let jobSendPending = null;
+let jobPreviewContext = null;
+function getJobRecipientPreview() {
+    if (!jobRecipientPreview) {
+        const panel = document.getElementById('job-recipient-preview');
+        jobRecipientPreview = RecipientPreview.attach(panel);
+        panel.addEventListener('recipient-preview-state', updateJobSendButton);
+    }
+    return jobRecipientPreview;
+}
+function jobDraftSnapshot() {
+    const job = jobsData.find(j => j.id === activeJobId);
+    const target = jobReplyTargets[activeJobId];
+    return {text: document.getElementById('jobs-conv-input-text').value, job_id: activeJobId,
+        channel: job?.channel || 'general', selected_recipients: target ? [target] : [],
+        attachments: jobPendingAttachments.map(a => ({path: a.path, name: a.name, url: a.url}))};
+}
+function jobPreviewRequest(snapshot) {
+    return {text: snapshot.text, selected_recipients: snapshot.selected_recipients,
+        channel: snapshot.channel, job_id: snapshot.job_id};
+}
+function updateJobSendButton() {
+    const button = document.getElementById('jobs-conv-send');
+    const snapshot = jobDraftSnapshot();
+    button.disabled = !activeJobId || (!snapshot.text.trim() && !snapshot.attachments.length)
+        || !!jobSendPending || getJobRecipientPreview().state === 'error';
+    button.textContent = jobSendPending ? (jobSendPending.phase === 'preparing' ? 'Checking audience' : 'Saving') : 'Send';
+    button.setAttribute('aria-busy', String(!!jobSendPending));
+}
+function refreshJobRecipients() {
+    const preview = getJobRecipientPreview();
+    if (jobPreviewContext !== activeJobId) { preview.invalidate(); jobPreviewContext = activeJobId; }
+    const snapshot = jobDraftSnapshot();
+    preview.schedule(activeJobId && (snapshot.text.trim() || snapshot.attachments.length) ? jobPreviewRequest(snapshot) : null);
+    updateJobSendButton();
+}
 async function sendJobMessage() {
-    if (!activeJobId) return;
-    const input = document.getElementById('jobs-conv-input-text');
-    const text = input.value.trim();
-    if (!text && jobPendingAttachments.length === 0) return;
-    const explicitTargets = _extractJobMentionTargets(text);
-    const hasBroadcastMention = /@(?:all|both)\b/i.test(text);
-    let outboundText = text;
-    if (explicitTargets.length > 0) {
-        jobReplyTargets[activeJobId] = explicitTargets[0];
-    } else if (!hasBroadcastMention) {
-        const target = _normalizeJobRecipient(jobReplyTargets[activeJobId]);
-        if (target) {
-            outboundText = text ? `@${target} ${text}` : `@${target}`;
-        }
-    }
-
+    if (!activeJobId || jobSendPending) return;
+    const snapshot = jobDraftSnapshot();
+    if (!snapshot.text.trim() && !snapshot.attachments.length) return;
+    const pending = {snapshot, phase: 'preparing'};
+    jobSendPending = pending; updateJobSendButton();
+    let deadline;
     try {
-        const resp = await fetch(`/api/jobs/${activeJobId}/messages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
-            body: JSON.stringify({
-                text: outboundText,
-                sender: window.username,
-                attachments: jobPendingAttachments.map(a => ({
-                    path: a.path, name: a.name, url: a.url,
-                })),
-            }),
+        await getJobRecipientPreview().prepare(jobPreviewRequest(snapshot));
+        if (JSON.stringify(jobDraftSnapshot()) !== JSON.stringify(snapshot)) { refreshJobRecipients(); return; }
+        pending.phase = 'post'; updateJobSendButton();
+        const controller = new AbortController();
+        const timeout = new Promise((_, reject) => {
+            deadline = setTimeout(() => { controller.abort(); reject(new Error('Unconfirmed save')); }, 10000);
         });
-        if (resp.ok) {
-            input.value = '';
-            input.style.height = 'auto';
-            clearJobAttachments();
-            updateJobReplyTargetUI();
+        const resp = await Promise.race([fetch(`/api/jobs/${snapshot.job_id}/messages`, {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN},
+            body: JSON.stringify({text: snapshot.text, selected_recipients: snapshot.selected_recipients,
+                sender: window.username, attachments: snapshot.attachments}), signal: controller.signal,
+        }), timeout]);
+        if (!resp.ok) throw new Error('Save not confirmed');
+        if (JSON.stringify(jobDraftSnapshot()) === JSON.stringify(snapshot)) {
+            const input = document.getElementById('jobs-conv-input-text');
+            input.value = ''; input.style.height = 'auto'; clearJobAttachments();
+            getJobRecipientPreview().invalidate(); input.focus();
         }
-    } catch (e) {
-        console.error('Failed to send job message:', e);
-    }
+    } catch (_) {
+        getJobRecipientPreview().error(pending.phase === 'post'
+            ? 'This message may have been saved. Check the conversation before sending again. Draft kept.'
+            : 'Audience check failed. Draft kept. Check again before sending.');
+    } finally { clearTimeout(deadline); jobSendPending = null; updateJobSendButton(); }
+}
+function jobComposerKeydown(e) {
+    if (e.isComposing || e.keyCode === 229) return;
+        if (e.key === 'Enter' && !e.shiftKey && !jobMentionVisible) {
+            e.preventDefault();
+            sendJobMessage();
+            return;
+        }
+        if (e.key === 'Tab' && !jobMentionVisible && activeJobId) {
+            e.preventDefault();
+            cycleJobReplyTarget(e.shiftKey ? -1 : 1);
+        }
 }
 
 async function uploadJobImage(file) {
@@ -1191,6 +1216,7 @@ async function uploadJobImage(file) {
 }
 
 function renderJobAttachments() {
+    refreshJobRecipients();
     const container = document.getElementById('job-attachments');
     if (!container) return;
     container.innerHTML = '';

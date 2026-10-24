@@ -1621,9 +1621,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         store.add('system', 'Resuming agent conversation...', msg_type='system', channel=channel)
                         await broadcast_status()
                         continue
-                    _publish_operator_message(sender=sender, text=text,
+                    message = _publish_operator_message(sender=sender, text=text,
                         selected_recipients=event.get('selected_recipients', []),
                         attachments=attachments, reply_to=event.get('reply_to'), channel=channel)
+                    await websocket.send_text(json.dumps({'type': 'message_accepted',
+                        'uid': message['uid'], 'channel': message['channel']}))
                 except (ValueError, PermissionError):
                     await websocket.send_text(json.dumps({'type': 'message_error',
                         'error': 'Invalid message or recipient fields.'}))
