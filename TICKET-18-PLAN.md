@@ -369,3 +369,14 @@ Builder observations22/101768bytes include exact source-chain/SYSTEM/quiet25note
 Sonnet independently ran py on clean12c9a81: PASS, same counts/hash/end bases/post-close provider1, scratch `.audit-tmp/document review py _vutl2yq`, log `.audit-tmp/reviewer-claude/doc-py.log`, observations22/101765bytes, no failure/log error matches, unresolved[]. This is Windows/local-fake native CLI/API evidence, not browser/OS-picker/live external provider/Omarchy proof. Earlier three failed scratches remain failed fixtures.
 
 Sonnet authorized ONE unchanged mjs non-serve boundary run next, then independent reproduction; browser modes remain pending. mjs must carry exactly524288ASCII+CRLFbytes through all hops, with measured request/brief sizes and timing. No mjs result yet.
+
+
+## mjs512KiB native/local-fake acceptance: builder and reviewer PASS
+
+Builder ONE unchanged non-serve mjs run09e1784d-e818-4e5b-a258-1a3fa6b1fa05 on docs-only0cb367f/verifier12c9a81: PASS, scratch `.audit-tmp/document review mjs 31xlrj4l`. Exact524288ASCII+CRLFbytes, independently rederived SHA2560ce106ffa2cb6be80c450e6468b74de635617f85f603dd5545202a587e4a1016. Measured1CLI/1localfakeAPI/2finals/onepreparedpastedchild/startupData1; final result/post-closeprovider1 checks passed. Cleanup2workers/1hiddenclient/1model/1true server ended, retained native model end basis, unresolved[]; no failure/log error matches.
+
+Actual sizes: primary Start612328bytes, decoded scoped MCP brief JSON613052bytes, provider HTTP body701249bytes, observations22/8923916bytes. Python stopwatch wall26.8629559s. Gate-file creation to brief_received_at0.720313549s includes client poll/scheduling and is not a direct request timer. All original-source byte/hash/metadata views, quiet25messages and3restart400/equal-effects refusals passed; marker absence is bounded side-effect evidence.
+
+Sonnet independently reproduced mjs at docs-only0cb367f: PASS, same counts/hash/provider size/end bases/unresolved[], scratch `.audit-tmp/document review mjs s_105vhi`, log `.audit-tmp/reviewer-claude/doc-mjs.log`, observations8923941bytes, wall27s. Reviewer note:8.9MB source-containing observation file is acceptable; do not grow it. Both native cases now independently reproduced. Windows/local fake only, no live provider/external native client/Omarchy or rendered UI claim.
+
+Sonnet authorized ONE py ordinary-launcher --serve next: real input File/DataTransfer DOM seam, expected file selected once, recovery fields from READY, one Start, then human stopped-parent badge/unchanged refusal/one ASCII pasted child. Optional mjs real-draft browser mode remains separately gated. No browser result yet.

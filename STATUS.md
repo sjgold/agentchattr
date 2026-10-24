@@ -1,13 +1,13 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 05:13 Chicago (#1-17 closed; #18 py independently PASS, mjs next)
+**Updated:** 2026-10-24 05:17 Chicago (#1-17 closed; #18 py/mjs independently PASS, browser next)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
-- Active Ticket18 branch `codex/ticket-18-document-input`, base published main d787f4f. Product source c11bdec has independently cleared pure/backend/UI component review. Full1040/four skips passed at backend c60f003 and UI f139ffb. Native Windows/local-fake py is now independently reproduced PASS at verifier12c9a81; mjs and rendered browser acceptance remain pending.
-- Current work: builder py scratch xya1ix3_ and reviewer _vutl2yq both PASS: exact271byte BOM/Unicode/CRLF source through preview/Start/CLI/API,1CLI/1localfakeAPI/2finals,25quietnotes, three unchanged restart refusals and one prepared pasted child. Cleanup2workers/1hiddenclient/1model/1server ended/unresolved[]. Three earlier fixture failures remain recorded. Next owner Codex runs ONE authorized mjs non-serve512KiB boundary case, then Sonnet independently reproduces. Browser DOMFile/DataTransfer acceptance, final whole-ticket review/publication/closure still pending.
+- Active Ticket18 branch `codex/ticket-18-document-input`, base published main d787f4f. Product source c11bdec has independently cleared pure/backend/UI component review. Full1040/four skips passed at backend c60f003 and UI f139ffb. Native Windows/local-fake py and512KiB mjs are independently reproduced PASS at verifier12c9a81; rendered browser acceptance remains pending.
+- Current work: py builder xya1ix3_/reviewer _vutl2yq and mjs builder31xlrj4l/reviewer s_105vhi PASS. Each1CLI/1localfakeAPI/2finals, onepreparedpastedchild, cleanup2workers/1hiddenclient/1model/1server ended/unresolved[]. Boundary source524288bytes/SHA0ce106ff...1016 survivedallhops; providerbody701249bytes, builderwall26.863s. Three earlier fixture failures remain recorded. Next Codex runs ONE authorized py ordinary-launcher browser --serve, then Sonnet independent rendered check; optional mjs draft browser later. Finalwhole-ticketreview/publication/closure pending.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
@@ -719,3 +719,8 @@ Fresh8797d48 run f89bca0a/scratch document review py pgmsqycg failed on actual40
 ## Ticket18 py builder and independent PASS
 
 12c9a81 builder bfffb863/xya1ix3_ PASS and Sonnet _vutl2yq PASS: exact271byte SHA75e60e2a...a5bc,1CLI1localAPI2finals/onepreparedchild,22observations101768/101765bytes, finalpathscan/postcloseprovider1checksrun, cleanup2workers1client1model1serverended/unresolved[], logsall0/no failure.json. Previousmwq99nfh/pgmsqycg/7pms_r4i remainfailedfixtures. Sonnet cleared ONE unchanged mjs non-serve512KiB case next; request/MCPsizes andwalltime torecord. No mjs/browser result yet, no liveAI/Omarchy/OS-picker claim. Productsourceunchangedc11bdec.
+
+
+## Ticket18 mjs512KiB independently reproduced, ordinary browser next
+
+Builder09e1784d/31xlrj4l PASS26.8629559s, reviewer s_105vhi PASS27s; exact524288ASCII/CRLF/SHA0ce106ff...1016, measured1CLI1localAPI2finals/onechild, cleanup2/1/1/1ended/unresolved[], nofailure/logerrors. PrimaryStart612328bytes/MCPdecoded613052/provider701249,22observations8923916(builder)/8923941(reviewer)bytes. MCPgate->receipt.720s includespoll/scheduling/notdirectrequesttimer. BothnativecasesindependentlyPASSlocalfake only. SonnetauthorizedONEpyordinary--serve DOMFile/notOSpicker, twoUIstages; no browserresultyet. ChromeCDPsettingsremainunchanged; usealreadyapprovedTraycerin-appbrowser. Its session inventory empty andhostmatchesroot612ad505, no separatehostforwardneededexceptsafe-noop ifrequested.
