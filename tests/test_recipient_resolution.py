@@ -60,6 +60,12 @@ class RecipientResolutionTests(unittest.TestCase):
             'ignored': [{'token': 'claude', 'reason': 'quote'}],
             'recipients': [{'name': 'codex', 'identity_id': 'id-codex', 'online': True}],
             'warnings': []})
+        for selected, normalized in [('@@claude', '@claude'), ('bad name', 'bad name')]:
+            with self.subTest(selected=selected):
+                self.assertEqual(self.resolve('', [selected]), {
+                    'mode': 'selected', 'tokens': [normalized], 'ignored': [],
+                    'recipients': [], 'warnings': [
+                        {'kind': 'unavailable', 'token': normalized, 'candidates': []}]})
 
     def test_all_both_order_and_identity_deduplication(self):
         self.instances['alias'] = dict(self.instances['claude'], name='alias')
@@ -207,8 +213,8 @@ class RecipientResolutionTests(unittest.TestCase):
                 with self.subTest(text=repr(text)), self.assertRaises(ValueError) as caught:
                     function(text)
                 self.assertNotIn(sentinel, str(caught.exception))
-        for selected in (None, (), 'claude', [None], [True], [''], ['@@claude'],
-                         ['bad name'], [sentinel + '\x00'], [sentinel + '\ud800']):
+        for selected in (None, (), 'claude', [None], [True], [''],
+                         [sentinel + '\x00'], [sentinel + '\ud800']):
             with self.subTest(selected=repr(selected)), self.assertRaises(ValueError) as caught:
                 self.routing.resolve_recipients('', selected, self.instances, self.online)
             self.assertNotIn(sentinel, str(caught.exception))

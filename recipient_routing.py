@@ -11,6 +11,7 @@ _ADDRESS = re.compile(r'(?<![A-Za-z0-9_.+%\-])@([A-Za-z0-9_][A-Za-z0-9_-]*)')
 _FENCE = re.compile(r' {0,3}(`{3,}|~{3,})(.*)\Z')
 _ELLIPSIS = '\u2026'
 _BACKTICKS = re.compile(r'`+')
+_LINES = re.compile(r'[^\r\n]*(?:\r\n|\r|\n|$)')
 
 
 def _text(value):
@@ -75,7 +76,10 @@ def scan_addresses(text: str) -> dict:
     offset = 0
     paragraph_start = 0
     paragraphs = []
-    for line in text.splitlines(keepends=True):
+    for line_match in _LINES.finditer(text):
+        line = line_match[0]
+        if not line:
+            continue
         body = line.rstrip('\r\n')
         end = offset + len(line)
         marker = _FENCE.fullmatch(body)
@@ -84,8 +88,13 @@ def scan_addresses(text: str) -> dict:
             if marker and marker[1][0] == fence[0] and len(marker[1]) >= fence[1] and not marker[2].strip():
                 fence = None
         elif marker:
-            fence = (marker[1][0], len(marker[1]))
-            mask[offset:end] = b'\1' * len(line)
+            # Backtick info strings cannot contain backticks: ```x``` is inline.
+            if marker[1][0] != '`' or '`' not in marker[2]:
+                fence = (marker[1][0], len(marker[1]))
+                quoted = False
+                mask[offset:end] = b'\1' * len(line)
+            elif quoted:
+                mask[offset:end] = b'\3' * len(line)
         elif not body.strip():
             quoted = False
         elif quoted or body.lstrip(' \t').startswith('>'):
@@ -126,21 +135,27 @@ def scan_addresses(text: str) -> dict:
 def _snapshot(instances, online_names):
     if not isinstance(instances, dict) or not isinstance(online_names, set):
         raise ValueError('Invalid recipient snapshot.')
-    if any(not isinstance(name, str) or not _NAME.fullmatch(name) for name in online_names):
-        raise ValueError('Invalid online recipient snapshot.')
+    for name in online_names:
+        _snapshot_string(name)
     names, families = {}, defaultdict(list)
     for name, record in instances.items():
-        if (not isinstance(name, str) or not _NAME.fullmatch(name)
-                or not isinstance(record, dict)
+        _snapshot_string(name)
+        if (not isinstance(record, dict)
                 or record.get('name') != name
-                or not isinstance(record.get('base'), str) or not _NAME.fullmatch(record['base'])
-                or not isinstance(record.get('identity_id'), str) or not record['identity_id']
                 or record.get('state') not in ('active', 'pending')
                 or name.lower() in names):
             raise ValueError('Invalid recipient snapshot.')
+        _snapshot_string(record.get('base'))
+        _snapshot_string(record.get('identity_id'))
         names[name.lower()] = record
         families[record['base'].lower()].append(record)
     return names, families
+
+
+def _snapshot_string(value):
+    _text(value)
+    if not value:
+        raise ValueError('Invalid empty recipient snapshot field.')
 
 
 def resolve_recipients(text: str, selected_names: list[str],
@@ -154,8 +169,8 @@ def resolve_recipients(text: str, selected_names: list[str],
     for raw in selected_names:
         _text(raw)
         size += len(raw.encode('utf-8'))
-        token = raw.removeprefix('@')
-        if size > MAX_EVENT_BYTES or not _NAME.fullmatch(token):
+        token = raw if raw.lower() in names else raw.removeprefix('@')
+        if size > MAX_EVENT_BYTES or not token:
             raise ValueError('Invalid selected recipients or byte limit exceeded.')
         token = _diagnostic(token.lower())
         if token not in selected_seen:
@@ -182,7 +197,7 @@ def resolve_recipients(text: str, selected_names: list[str],
                                          'identity_id': record['identity_id'], 'online': online})
 
     for token in tokens:
-        if not _NAME.fullmatch(token):
+        if token.endswith(_ELLIPSIS) or (result['mode'] == 'explicit' and not _NAME.fullmatch(token)):
             warn('unknown', token)
         elif token in ('all', 'both'):
             eligible = sorted((r for r in names.values() if r['state'] == 'active'
