@@ -10,6 +10,7 @@ from channel_lifecycle import (ChannelConflict, ChannelInactive, ChannelUnavaila
 from dispatch_queue import ACTIVE
 from session_engine import PROJECTION_REPAIR_STATES
 from retained_artifacts import RetainedArtifactStore, safe_upload_url
+from launcher import LaunchError
 
 
 _LIVE_REVIEW = {'active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'retrying',
@@ -121,6 +122,8 @@ class ChannelService:
             return {'channel': name, 'created': True, 'reason': None}
 
     def _scope(self, channel):
+        self.artifacts.check()
+        self.engine._store.retained_metadata(channel, limit=1)  # Validate retained authority before a mutation preview.
         messages = deepcopy(self.messages.get_recent(count=2**63, channel=channel))
         ids = {item['id'] for item in messages}
         todos = {key: value for key, value in self.messages.get_todos().items() if key in ids}
@@ -128,7 +131,10 @@ class ChannelService:
         schedules = deepcopy([item for item in self.schedules.list_all() if item.get('channel') == channel])
         runs = self.engine._store.list_all(channel=channel)
         summary = deepcopy(self.summaries.get(channel))
-        transport = self.queue.records(channel)
+        try:
+            transport = self.queue.records(channel)
+        except (ValueError, OSError, LaunchError):
+            raise ChannelUnavailable('Saved queue records are unavailable; repair storage before changing channels.') from None
         counts = dict(messages=len(messages), todos=len(todos), jobs=len(jobs),
                       schedules=len(schedules), sessions=len(runs), summaries=int(summary is not None),
                       uploads=sum(len(item.get('attachments') or []) for item in messages))
@@ -224,15 +230,55 @@ class ChannelService:
                 packet['errors']['summary'] = 'Saved summary is held; repair storage and reload.'
             return packet
 
+    def _display_scope(self, channel):
+        counts = {key: None for key in ('messages', 'todos', 'jobs', 'schedules', 'sessions', 'summaries', 'uploads', 'queue')}
+        errors, messages, overdue = {}, [], None
+        def held(owner):
+            errors[owner] = f'Saved {owner} are held; repair storage and reload.'
+        try:
+            messages = self.messages.get_recent(count=2**63, channel=channel)
+            counts['messages'] = len(messages)
+        except (ChannelUnavailable, OSError):
+            held('messages')
+        if counts['messages'] is not None:
+            try:
+                ids = {item['id'] for item in messages}
+                counts['todos'] = sum(key in ids for key in self.messages.get_todos())
+            except (ChannelUnavailable, OSError):
+                held('todos')
+            try:
+                uids = {item.get('uid') or f'legacy:{item["id"]}' for item in messages}
+                counts['uploads'] = sum(len(item.get('attachments') or []) for item in messages) + self.artifacts.reference_count(channel, exclude_uids=uids)
+            except (ChannelUnavailable, OSError):
+                held('uploads')
+        else:
+            held('todos'); held('uploads')
+        for owner, reader in (('jobs', lambda: self.jobs.retained_metadata(channel, limit=1)['count']),
+                              ('sessions', lambda: self.engine._store.retained_metadata(channel, limit=1)['count']),
+                              ('summaries', lambda: int(self.summaries.contains(channel)))):
+            try:
+                counts[owner] = reader()
+            except (ChannelUnavailable, OSError):
+                held(owner)
+        try:
+            counts['schedules'], overdue = self.schedules.display_counts(channel)
+        except (ChannelUnavailable, OSError):
+            held('schedules')
+        try:
+            counts['queue'] = self.queue.channel_count(channel)
+        except (ChannelUnavailable, ValueError, OSError, LaunchError):
+            held('queue')
+        return counts, errors, overdue
+
     def catalog_view(self):
         with self._boundary():
             value = self.catalog.snapshot()
             self._heal_projection(value)
             rows = []
             for name, state in value['channels'].items():
-                counts, _, _, overdue, _ = self._scope(name)
-                rows.append({'name': name, 'state': state, 'counts': counts, 'overdue_schedules': overdue})
-            rows.extend({'name': name, 'state': 'unregistered', 'counts': None, 'overdue_schedules': 0}
+                counts, errors, overdue = self._display_scope(name)
+                rows.append({'name': name, 'state': state, 'counts': counts, 'overdue_schedules': overdue, 'errors': errors})
+            rows.extend({'name': name, 'state': 'unregistered', 'counts': None, 'overdue_schedules': 0, 'errors': {}}
                         for name in sorted(self._unregistered))
             return {'revision': value['revision'], 'channels': rows, 'intent': value['intent']}
 

@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 
 let activeSession = null;
+const knownSessionChannels = new Map();
 let sessionTemplates = [];
 let sessionCapacity = null;
 let activeSessionsByChannel = {};
@@ -1323,12 +1324,17 @@ const restartLabels = {
 };
 
 async function restartRequest(id, action, body) {
+    if (body !== undefined && ['correct-and-restart', 'prepare-contexts', 'activate-restart'].includes(action)) {
+        const channel = knownSessionChannels.get(Number(id)) || Object.values(activeSessionsByChannel).find(row => row.id === Number(id))?.channel;
+        if (!channel || window.ChannelLifecycle?.guardWrite(channel) !== true || window.ChannelLifecycle?.ownerAvailable('sessions', channel) !== true) throw new Error('Reopen this review’s channel before preparing or starting a replacement. Draft kept.');
+    }
     const response = await fetch(`/api/sessions/${id}/${action}`, {
         method: body === undefined ? 'GET' : 'POST',
         headers: {'X-Session-Token': window.SESSION_TOKEN, 'Content-Type': 'application/json'},
         ...(body === undefined ? {} : {body: JSON.stringify(body)})});
     const value = await response.json();
     if (!response.ok) throw new Error(value.error || 'Corrected review could not be updated');
+    if (value && Number.isInteger(value.id) && typeof value.channel === 'string') knownSessionChannels.set(value.id, value.channel);
     return value;
 }
 
@@ -1371,7 +1377,7 @@ function renderRestartControls(bar) {
     const ready = Object.keys(s.participant_bindings || {}).every(role =>
         s.preparation_contexts?.[role]?.state === 'ready' && s.preparation_contexts[role].clean_context);
     const start = panel.querySelector('.session-restart-start');
-    if (start && !start.dataset.busy) start.disabled = !ready || panel.dataset.dirty === 'true';
+    if (start && !start.dataset.busy) start.disabled = !ready || panel.dataset.dirty === 'true' || window.ChannelLifecycle?.canWrite(s.channel) !== true || window.ChannelLifecycle?.ownerAvailable('sessions', s.channel) !== true;
 }
 
 // DOCUMENT RESTART BADGE BEGIN
@@ -1392,6 +1398,7 @@ function appendOriginalFileBadge(section, session) {
 // DOCUMENT RESTART BADGE END
 
 function buildRestartControls(panel, s, prepared) {
+    knownSessionChannels.set(s.id, s.channel);
     const draft = restartDrafts.get(s.id) || {text: s.input_snapshot?.text || '', operations: new Map()};
     restartDrafts.set(s.id, draft);
     const section = document.createElement(prepared ? 'div' : 'details');
@@ -1453,6 +1460,7 @@ function buildRestartControls(panel, s, prepared) {
     const submit = document.createElement('button');
     submit.type = 'submit';
     submit.textContent = prepared ? 'Prepare selected contexts' : 'Save corrected source and prepare';
+    submit.dataset.channelWrite = s.channel;
     submit.disabled = true;
     form.append(roles, submit);
     section.appendChild(error);
@@ -1518,7 +1526,7 @@ function buildRestartControls(panel, s, prepared) {
             row.append(status, retryLabel);
             roles.appendChild(row);
         }
-        submit.disabled = false;
+        submit.disabled = window.ChannelLifecycle?.canWrite(s.channel) !== true || window.ChannelLifecycle?.ownerAvailable('sessions', s.channel) !== true;
         renderRestartControls(document.getElementById('session-bar'));
     }).catch(failure => { if (current()) roles.textContent = failure.message + '. Reopen this channel to reload choices.'; });
     form.onsubmit = async event => {
@@ -1551,11 +1559,12 @@ function buildRestartControls(panel, s, prepared) {
             delete panel.dataset.dirty;
             handleSessionEvent('update', value);
         } catch (failure) { error.textContent = failure.message; }
-        finally { submit.disabled = false; }
+        finally { submit.disabled = window.ChannelLifecycle?.canWrite(s.channel) !== true || window.ChannelLifecycle?.ownerAvailable('sessions', s.channel) !== true; }
     };
     if (prepared) {
         const start = document.createElement('button');
         start.className = 'session-restart-start';
+        start.dataset.channelWrite = s.channel;
         start.textContent = 'Start corrected review';
         start.disabled = true;
         start.onclick = async () => {
@@ -1706,6 +1715,8 @@ function sessionStartError(modal, message) {
 async function submitSessionStart(fields) {
     const modal = document.getElementById('session-launcher-modal');
     if (!modal || modal.dataset.submitting === 'true') return;
+    if (window.ChannelLifecycle?.guardWrite(window.activeChannel) !== true || window.ChannelLifecycle?.ownerAvailable('sessions', window.activeChannel) !== true) { sessionStartError(modal, 'This channel is read-only. Reopen it before starting a review. Draft kept.'); return; }
+    if (fields.draft_message_id !== undefined && window.channelMessageWritable?.(fields.draft_message_id) !== true) { sessionStartError(modal, 'The source draft channel is read-only or unavailable.'); return; }
     let facade, source, policy;
     try {
         facade = initializeDocumentInput(modal);
@@ -1750,6 +1761,7 @@ async function submitSessionStart(fields) {
 // DOCUMENT LAUNCHER HELPERS END
 
 function showSessionLauncher() {
+    if (window.ChannelLifecycle?.guardWrite(window.activeChannel) !== true || window.ChannelLifecycle?.ownerAvailable('sessions', window.activeChannel) !== true) return;
     let existing = document.getElementById('session-launcher-modal');
     if (existing) closeSessionLauncher(existing);
 
@@ -1812,6 +1824,7 @@ function showSessionLauncher() {
 }
 
 async function sendDesignRequest() {
+    if (window.ChannelLifecycle?.guardWrite(window.activeChannel) !== true || window.ChannelLifecycle?.ownerAvailable('sessions', window.activeChannel) !== true) return;
     const agent = document.getElementById('session-design-agent')?.value;
     const desc = document.getElementById('session-design-desc')?.value?.trim();
     if (!agent || !desc) return;
@@ -1974,6 +1987,7 @@ function _supersedePreviousDrafts(draftId, currentRevision) {
 }
 
 function runDraft(msgId) {
+    if (window.channelMessageWritable?.(msgId) !== true) return;
     const el = document.querySelector(`.message[data-id="${msgId}"]`);
     if (!el || !el.dataset.draftTemplate) return;
     const tmpl = JSON.parse(el.dataset.draftTemplate);
@@ -2029,6 +2043,7 @@ async function launchDraftSession(draftMsgId) {
 }
 
 async function saveDraft(msgId, btn) {
+    if (window.channelMessageWritable?.(msgId) !== true) return;
     try {
         const res = await fetch('/api/sessions/save-draft', {
             method: 'POST',
@@ -2115,6 +2130,7 @@ async function deleteSessionTemplate(templateId) {
 }
 
 function requestDraftChanges(draftId, proposedBy, msgId) {
+    if (window.channelMessageWritable?.(msgId) !== true) return;
     const el = document.querySelector(`.message[data-id="${msgId}"]`);
     if (!el) return;
     const actions = el.querySelector('.proposal-actions') || el.querySelector('.session-draft-actions');
@@ -2152,6 +2168,7 @@ function requestDraftChanges(draftId, proposedBy, msgId) {
 }
 
 function submitDraftChanges(draftId, proposedBy, msgId) {
+    if (window.channelMessageWritable?.(msgId) !== true) return;
     const el = document.querySelector(`.message[data-id="${msgId}"]`);
     if (!el) return;
     const inputRow = el.querySelector('.draft-changes-input');
@@ -2176,6 +2193,7 @@ function submitDraftChanges(draftId, proposedBy, msgId) {
 }
 
 function dismissDraft(msgId) {
+    if (window.channelMessageWritable?.(msgId) !== true) return;
     fetch(`/api/messages/${msgId}/demote`, {
         method: 'POST',
         headers: { 'X-Session-Token': window.SESSION_TOKEN },
@@ -2219,8 +2237,13 @@ Hub.on('channel_renamed', function (event) {
     // Migrate session cache key so Store watcher resolves the correct session
     if (activeSessionsByChannel[event.old_name]) {
         activeSessionsByChannel[event.new_name] = activeSessionsByChannel[event.old_name];
+        activeSessionsByChannel[event.new_name].channel = event.new_name;
         delete activeSessionsByChannel[event.old_name];
     }
+    if (activeSession?.channel === event.old_name) activeSession.channel = event.new_name;
+    if (sessionIndicatorTargetChannel === event.old_name) sessionIndicatorTargetChannel = event.new_name;
+    activeSession = activeSessionsByChannel[window.activeChannel] || activeSession;
+    for (const [id, channel] of knownSessionChannels) if (channel === event.old_name) knownSessionChannels.set(id, event.new_name);
 });
 
 // ---------------------------------------------------------------------------
@@ -2273,3 +2296,14 @@ window.toggleDeleteSessionTemplateConfirm = toggleDeleteSessionTemplateConfirm;
 window.scrollToSessionOutput = scrollToSessionOutput;
 
 window.Sessions = { init: _sessionsInit };
+
+Hub.on('channel_lifecycle', () => {
+    const writable = window.ChannelLifecycle?.canWrite(window.activeChannel) === true && window.ChannelLifecycle?.ownerAvailable('sessions', window.activeChannel) === true;
+    const source = document.getElementById('session-corrected-source');
+    if (source) source.readOnly = !writable;
+    document.querySelectorAll('#session-launcher-modal button[onclick*="launchSession"], #session-launcher-modal button[onclick*="launchDraft"]').forEach(button => {
+        const modal = document.getElementById('session-launcher-modal');
+        button.disabled = !writable || modal?.dataset.submitting === 'true' || ['reading', 'error', 'disposed'].includes(modal?._documentInput?.state);
+    });
+    window.ChannelLifecycle?.renderPolicy();
+});

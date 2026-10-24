@@ -112,6 +112,11 @@ class SummaryStore:
         except (ValueError, TypeError, KeyError, OverflowError, OSError):
             raise ChannelUnavailable('Saved summaries are unreadable or changed. Repair the file and restart; no reset was performed.') from None
 
+    def contains(self, channel):
+        with self._lock:
+            self._check_readable()
+            return channel in self._summaries
+
     def get(self, channel: str) -> dict | None:
         with self._lock:
             self._check_readable()

@@ -426,8 +426,98 @@ function renderHistoryBatch() {
 
 // --- WebSocket ---
 
+// CHANNEL LIFECYCLE CLIENT HELPERS BEGIN
+function applyChannelRename(event) {
+    // Migrate per-channel client state to the new name
+    const channelIndex = channelList.indexOf(event.old_name);
+    if (channelIndex !== -1) {
+        channelList = [...channelList];
+        channelList[channelIndex] = event.new_name;
+    }
+    if (channelUnread[event.old_name] !== undefined) {
+        channelUnread[event.new_name] = channelUnread[event.old_name];
+        delete channelUnread[event.old_name];
+    }
+    if (_channelMentions[event.old_name] !== undefined) {
+        _channelMentions[event.new_name] = _channelMentions[event.old_name];
+        delete _channelMentions[event.old_name];
+    }
+    if (pendingChannelSwitch === event.old_name) {
+        pendingChannelSwitch = event.new_name;
+    }
+    // Migrate data-channel on existing DOM elements
+    const container = document.getElementById('messages');
+    for (const el of container.children) {
+        if ((el.dataset.channel || 'general') === event.old_name) {
+            el.dataset.channel = event.new_name;
+        }
+    }
+    // Update per-channel date tracking
+    if (lastMessageDates[event.old_name]) {
+        lastMessageDates[event.new_name] = lastMessageDates[event.old_name];
+        delete lastMessageDates[event.old_name];
+    }
+    // Update active channel if we were on the renamed one
+    if (activeChannel === event.old_name) {
+        activeChannel = event.new_name;
+        localStorage.setItem('agentchattr-channel', event.new_name);
+        Store.set('activeChannel', event.new_name);
+    }
+    for (const schedule of schedulesList) if (schedule.channel === event.old_name) schedule.channel = event.new_name;
+    filterMessagesByChannel();
+    renderChannelTabs();
+}
+function applyChannelSettings(names) {
+    if (!Array.isArray(names)) return;
+    channelList = names.filter(name => typeof name === 'string' && window.ChannelLifecycle?.state(name) === 'active');
+    renderChannelTabs();
+    window.ChannelLifecycle?.renderPolicy();
+}
+function invalidateDeletedChannel(name) {
+    const container = document.getElementById('messages');
+    for (const element of [...(container?.children || [])]) {
+        if ((element.dataset.channel || 'general') !== name) continue;
+        if (element.dataset.id !== undefined) {
+            delete todos[element.dataset.id];
+            deleteSelected.delete(Number(element.dataset.id));
+        }
+        element.remove();
+    }
+    delete channelUnread[name]; delete lastMessageDates[name];
+    renderTodosPanel();
+}
+function channelMessageWritable(identifier) {
+    if (!Number.isSafeInteger(Number(identifier)) || Number(identifier) < 0) return false;
+    const message = document.querySelector(`.message[data-id="${Number(identifier)}"]`);
+    if (!message) {
+        window.ChannelLifecycle?.renderPolicy('Open the source message in history before changing it. Draft kept.');
+        return false;
+    }
+    return window.ChannelLifecycle?.guardWrite(message.dataset.channel || 'general') === true;
+}
+async function channelFetch(url, options = {}) {
+    if (!['GET', 'HEAD'].includes((options.method || 'GET').toUpperCase())) {
+        const source = String(url).match(/^\/api\/messages\/(\d+)/);
+        if (source && !channelMessageWritable(Number(source[1]))) throw new Error('The source channel is read-only.');
+        const schedule = String(url).match(/^\/api\/schedules\/([^/?]+)/);
+        let channel = null;
+        if (schedule) channel = schedulesList.find(row => row.id === schedule[1])?.channel;
+        else if (url === '/api/schedules') channel = JSON.parse(options.body).channel;
+        else if (url === '/api/upload') channel = activeChannel;
+        if ((schedule || url === '/api/schedules') && window.ChannelLifecycle?.ownerAvailable('schedules', channel) !== true) throw new Error('Schedule storage is held; draft kept.');
+        if ((schedule || url === '/api/schedules' || url === '/api/upload')
+                && (!channel || window.ChannelLifecycle?.guardWrite(channel) !== true)) throw new Error('Channel is read-only; draft kept.');
+    }
+    return fetch(url, options);
+}
+window.applyChannelRename = applyChannelRename;
+window.applyChannelSettings = applyChannelSettings;
+window.invalidateDeletedChannel = invalidateDeletedChannel;
+window.channelMessageWritable = channelMessageWritable;
+// CHANNEL LIFECYCLE CLIENT HELPERS END
+
 function handleServerEvent(event) {
-    if (historyLoading && ['message', 'edit', 'message_update', 'delete', 'clear', 'channel_renamed', 'agent_renamed'].includes(event.type)) {
+    if (historyLoading && ['message', 'edit', 'message_update', 'delete', 'clear', 'channel_renamed', 'channel_deleted', 'channel_state', 'agent_renamed'].includes(event.type)) {
         pendingLiveEvents.push(event);
         return;
     }
@@ -439,6 +529,10 @@ function handleServerEvent(event) {
     if (event.type === 'history_complete') {
         historyReceived = true;
         scheduleHistoryRender();
+        return;
+    }
+    if (['channel_state', 'channel_renamed', 'channel_deleted', 'channel_error'].includes(event.type)) {
+        window.ChannelLifecycle.handleEvent(event).catch(() => {});
         return;
     }
     // Emit through Hub for modules to subscribe (PR 1 seam)
@@ -576,44 +670,6 @@ function handleServerEvent(event) {
             base: event.base || '',
         });
         _showNextPendingName();
-    } else if (event.type === 'channel_renamed') {
-        // Migrate per-channel client state to the new name
-        const channelIndex = channelList.indexOf(event.old_name);
-        if (channelIndex !== -1) {
-            channelList = [...channelList];
-            channelList[channelIndex] = event.new_name;
-        }
-        if (channelUnread[event.old_name] !== undefined) {
-            channelUnread[event.new_name] = channelUnread[event.old_name];
-            delete channelUnread[event.old_name];
-        }
-        if (_channelMentions[event.old_name] !== undefined) {
-            _channelMentions[event.new_name] = _channelMentions[event.old_name];
-            delete _channelMentions[event.old_name];
-        }
-        if (pendingChannelSwitch === event.old_name) {
-            pendingChannelSwitch = event.new_name;
-        }
-        // Migrate data-channel on existing DOM elements
-        const container = document.getElementById('messages');
-        for (const el of container.children) {
-            if ((el.dataset.channel || 'general') === event.old_name) {
-                el.dataset.channel = event.new_name;
-            }
-        }
-        // Update per-channel date tracking
-        if (lastMessageDates[event.old_name]) {
-            lastMessageDates[event.new_name] = lastMessageDates[event.old_name];
-            delete lastMessageDates[event.old_name];
-        }
-        // Update active channel if we were on the renamed one
-        if (activeChannel === event.old_name) {
-            activeChannel = event.new_name;
-            localStorage.setItem('agentchattr-channel', event.new_name);
-            Store.set('activeChannel', event.new_name);
-        }
-        filterMessagesByChannel();
-        renderChannelTabs();
     } else if (event.type === 'edit') {
         // A message was edited/demoted — re-render it in place
         const updatedMsg = event.message;
@@ -1983,15 +2039,7 @@ function applySettings(data) {
         window.customRoles = data.custom_roles;
     }
     if (data.channels && Array.isArray(data.channels)) {
-        channelList = data.channels;
-        // If active channel was deleted, switch to general
-        if (!channelList.includes(activeChannel)) {
-            activeChannel = 'general';
-            localStorage.setItem('agentchattr-channel', 'general');
-            Store.set('activeChannel', 'general');
-            filterMessagesByChannel();
-        }
-        renderChannelTabs();
+        applyChannelSettings(data.channels);
 
         if (pendingChannelSwitch && channelList.includes(pendingChannelSwitch)) {
             const name = pendingChannelSwitch;
@@ -2031,6 +2079,7 @@ function _clearChatOutsideClick(e) {
 }
 
 function clearChat() {
+    if (window.ChannelLifecycle?.guardWrite(activeChannel) !== true) return;
     const btn = document.getElementById('clear-chat-btn');
     if (!btn) return;
 
@@ -2490,6 +2539,7 @@ function channelPreviewRequest(snapshot) {
 }
 function refreshChannelRecipients(force = false) {
     const snapshot = channelDraftSnapshot();
+    if (window.ChannelLifecycle?.canWrite(snapshot.channel) !== true) { getChannelRecipientPreview().schedule(null); return; }
     getChannelRecipientPreview().schedule(snapshot.text.trim() || snapshot.attachments.length
         ? channelPreviewRequest(snapshot) : null, force === true);
 }
@@ -2500,7 +2550,7 @@ function updateSendButton() {
     refreshChannelRecipients();
     const hasContent = input.value.trim().length > 0 || pendingAttachments.length > 0;
     const local = ['/clear', '/continue'].includes(input.value.trim().split(/\s/)[0].toLowerCase());
-    const disabled = !hasContent || !!channelSendPending || (!local && getChannelRecipientPreview().state === 'error');
+    const disabled = window.ChannelLifecycle?.canWrite(activeChannel) !== true || !hasContent || !!channelSendPending || (!local && getChannelRecipientPreview().state === 'error');
     group.classList.toggle('inactive', !hasContent);
     const button = document.getElementById('send');
     button.disabled = disabled;
@@ -2515,7 +2565,8 @@ function clearChannelDraft(snapshot) {
     getChannelRecipientPreview().invalidate(); input.focus();
 }
 function handleChannelPostEvent(event, socket) {
-    if (!['message_accepted', 'message_error', 'close'].includes(event.type)) return false;
+    if (!['message_accepted', 'message_error', 'channel_error', 'close'].includes(event.type)) return false;
+    if (event.type === 'channel_error') window.ChannelLifecycle?.handleEvent(event).catch(() => {});
     const pending = channelSendPending;
     if (!pending || pending.socket !== socket) return event.type !== 'close';
     if (event.type === 'message_accepted' && pending.phase !== 'ack') return true;
@@ -2523,12 +2574,13 @@ function handleChannelPostEvent(event, socket) {
     clearTimeout(pending.timer);
     channelSendPending = null;
     if (event.type === 'message_accepted') clearChannelDraft(pending.snapshot);
-    else getChannelRecipientPreview().error(event.type === 'message_error' && typeof event.error === 'string'
+    else getChannelRecipientPreview().error(['message_error', 'channel_error'].includes(event.type) && typeof event.error === 'string'
         ? event.error + ' Draft kept.' : CHANNEL_UNCONFIRMED);
     updateSendButton();
     return event.type !== 'close';
 }
 async function sendMessage() {
+    if (window.ChannelLifecycle?.guardWrite(activeChannel) !== true) return;
     if (channelSendPending) return;
     const snapshot = channelDraftSnapshot();
     if (!snapshot.text.trim() && !snapshot.attachments.length) return;
@@ -2705,7 +2757,7 @@ async function uploadImage(file) {
     form.append('file', file);
 
     try {
-        const resp = await fetch('/api/upload', { method: 'POST', headers: { 'X-Session-Token': SESSION_TOKEN }, body: form });
+        const resp = await channelFetch('/api/upload', { method: 'POST', headers: { 'X-Session-Token': SESSION_TOKEN }, body: form });
         const data = await resp.json();
 
         pendingAttachments.push({
@@ -2881,6 +2933,7 @@ function todoStatusLabel(status) {
 }
 
 function todoCycle(msgId) {
+    if (!channelMessageWritable(msgId)) return;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     const status = todos[msgId] || null;
     if (!status) {
@@ -2894,16 +2947,19 @@ function todoCycle(msgId) {
 }
 
 function todoAdd(msgId) {
+    if (!channelMessageWritable(msgId)) return;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: 'todo_add', id: msgId }));
 }
 
 function todoToggle(msgId) {
+    if (!channelMessageWritable(msgId)) return;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: 'todo_toggle', id: msgId }));
 }
 
 function todoRemove(msgId) {
+    if (!channelMessageWritable(msgId)) return;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: 'todo_remove', id: msgId }));
 }
@@ -2935,6 +2991,7 @@ let deleteSelected = new Set();
 let deleteDragging = false;
 
 function deleteClick(msgId, event) {
+    if (!channelMessageWritable(msgId)) return;
     event.stopPropagation();
     enterDeleteMode(msgId);
 }
@@ -3005,6 +3062,7 @@ function enterDeleteMode(initialId) {
 }
 
 function toggleDeleteSelect(id, dragForceSelect) {
+    if (!channelMessageWritable(id)) return;
     const el = document.querySelector(`.message[data-id="${id}"]`);
     if (!el) return;
     const circle = el.querySelector('.delete-radio');
@@ -3048,6 +3106,7 @@ function updateDeleteBar() {
 }
 
 function confirmDelete() {
+    if (![...deleteSelected].every(channelMessageWritable)) return;
     if (!ws || deleteSelected.size === 0) return;
     ws.send(JSON.stringify({ type: 'delete', ids: [...deleteSelected] }));
     exitDeleteMode();
@@ -3617,12 +3676,16 @@ function renderSchedulesBar() {
             ? '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M5 3l8 5-8 5V3z" fill="currentColor"/></svg>'
             : '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="4" y="3" width="3" height="10" rx="0.5" fill="currentColor"/><rect x="9" y="3" width="3" height="10" rx="0.5" fill="currentColor"/></svg>';
         pauseBtn.title = isPaused ? 'Resume' : 'Pause';
+        pauseBtn.disabled = !!scheduleLoadError || window.ChannelLifecycle?.canWrite(s.channel || 'general') !== true
+            || window.ChannelLifecycle?.ownerAvailable('schedules', s.channel || 'general') !== true;
         pauseBtn.onclick = () => toggleSchedule(s.id);
 
         const trashBtn = document.createElement('button');
         trashBtn.className = 'schedule-delete-inline';
         trashBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M5.5 4V3a1 1 0 011-1h3a1 1 0 011 1v1M6 7v5M10 7v5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 4l.5 9a1 1 0 001 1h5a1 1 0 001-1L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         trashBtn.title = 'Delete';
+        trashBtn.disabled = !!scheduleLoadError || window.ChannelLifecycle?.canWrite(s.channel || 'general') !== true
+            || window.ChannelLifecycle?.ownerAvailable('schedules', s.channel || 'general') !== true;
         trashBtn.onclick = () => deleteSchedule(s.id);
 
         summaryDiv.append(pauseBtn, trashBtn);
@@ -3662,12 +3725,16 @@ function renderSchedulesBar() {
         toggleBtn.className = 'schedule-toggle';
         toggleBtn.textContent = s.active === false ? '▶' : '⏸';
         toggleBtn.title = s.active === false ? 'Resume' : 'Pause';
+        toggleBtn.disabled = !!scheduleLoadError || window.ChannelLifecycle?.canWrite(s.channel || 'general') !== true
+            || window.ChannelLifecycle?.ownerAvailable('schedules', s.channel || 'general') !== true;
         toggleBtn.onclick = () => toggleSchedule(s.id);
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'schedule-delete';
         deleteBtn.innerHTML = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M5.5 4V3a1 1 0 011-1h3a1 1 0 011 1v1M6 7v5M10 7v5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 4l.5 9a1 1 0 001 1h5a1 1 0 001-1L12 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         deleteBtn.title = 'Delete';
+        deleteBtn.disabled = !!scheduleLoadError || window.ChannelLifecycle?.canWrite(s.channel || 'general') !== true
+            || window.ChannelLifecycle?.ownerAvailable('schedules', s.channel || 'general') !== true;
         deleteBtn.onclick = () => deleteSchedule(s.id);
 
         row.append(targets, prompt, interval, toggleBtn, deleteBtn);
@@ -3725,7 +3792,7 @@ function toggleSchedulesExpand() {
 
 async function toggleSchedule(id) {
     try {
-        await fetch(`/api/schedules/${id}/toggle`, {
+        await channelFetch(`/api/schedules/${id}/toggle`, {
             method: 'PATCH',
             headers: { 'X-Session-Token': SESSION_TOKEN },
         });
@@ -3736,7 +3803,7 @@ async function toggleSchedule(id) {
 
 async function deleteSchedule(id) {
     try {
-        await fetch(`/api/schedules/${id}`, {
+        await channelFetch(`/api/schedules/${id}`, {
             method: 'DELETE',
             headers: { 'X-Session-Token': SESSION_TOKEN },
         });
@@ -3757,6 +3824,7 @@ function showScheduleConfirmation() {
 // --- Schedule popover ---
 
 function toggleSchedulePopover(e) {
+    if (window.ChannelLifecycle?.guardWrite(activeChannel) !== true) return;
     if (e) e.stopPropagation();
     const pop = document.getElementById('schedule-popover');
     if (!pop) return;
@@ -3977,6 +4045,7 @@ function updateSchedulePopoverState() {
 }
 
 async function submitSchedulePopover() {
+    if (window.ChannelLifecycle?.guardWrite(activeChannel) !== true) return;
     const input = document.getElementById('input');
     const text = input ? input.value.trim() : '';
 
@@ -4060,7 +4129,7 @@ async function submitSchedulePopover() {
         if (!recurring) body.one_shot = true;
         if (sendAtEpoch !== null) body.send_at = sendAtEpoch;
 
-        const resp = await fetch('/api/schedules', {
+        const resp = await channelFetch('/api/schedules', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -4112,12 +4181,13 @@ setInterval(() => {
 
 // --- Decision card resolve (with fade animation) ---
 async function resolveDecision(msgId, choice) {
+    if (!channelMessageWritable(msgId)) return;
     // Fade out buttons immediately
     const msgEl = document.querySelector(`.message[data-id="${msgId}"]`);
     const buttons = msgEl ? msgEl.querySelectorAll('.decision-choice') : [];
     buttons.forEach(btn => { btn.style.opacity = '0.4'; btn.style.pointerEvents = 'none'; });
     try {
-        const res = await fetch(`/api/messages/${msgId}/resolve_decision`, {
+        const res = await channelFetch(`/api/messages/${msgId}/resolve_decision`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Session-Token': SESSION_TOKEN },
             body: JSON.stringify({ choice }),
@@ -4663,3 +4733,5 @@ function initHelpTour() {
 // --- Start ---
 
 document.addEventListener('DOMContentLoaded', function() { init(); initHelpTour(); });
+
+Hub.on('channel_lifecycle', () => { refreshChannelRecipients(true); updateSendButton(); renderSchedulesBar(); window.ChannelLifecycle.renderPolicy(); });

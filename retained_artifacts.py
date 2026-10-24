@@ -150,6 +150,12 @@ class RetainedArtifactStore:
                 rows.append(deepcopy(entry))
             return {'rows': rows, 'count': len(entries), 'truncated': len(entries) > len(rows)}
 
+    def reference_count(self, channel, *, exclude_uids=()):
+        with self._lock:
+            self.check()
+            return sum(len(entry['attachments']) for uid, entry in self._value['channels'].get(channel, {}).items()
+                       if uid not in exclude_uids)
+
     def channel_names(self):
         with self._lock:
             self.check()

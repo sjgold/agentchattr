@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/static/sessions.css?v=229">
     <link rel="stylesheet" href="/static/jobs.css?v=223">
     <link rel="stylesheet" href="/static/recipients.css?v=2">
+    <link rel="stylesheet" href="/static/channel-lifecycle.css?v=1">
     <link rel="icon" href="/static/favicon.ico">
 </head>
 <body>
@@ -150,6 +151,7 @@
             <div class="channel-bar-left-spacer" aria-hidden="true"></div>
             <div class="channel-main">
                 <div id="channel-tabs"></div>
+                <button id="channel-manage-btn" class="channel-manager-entry" onclick="ChannelLifecycle.openManage()">Manage channels</button>
                 <button id="channel-add-btn" class="channel-add" onclick="showChannelCreateDialog()" title="Add channel">+</button>
             </div>
             <div class="channel-bar-right">
@@ -175,6 +177,7 @@
                 <div id="channel-sidebar-top"></div>
                 <div class="channel-sidebar-header">
                     <span>Channels</span>
+                    <button id="channel-sidebar-manage" class="channel-manager-entry" onclick="ChannelLifecycle.openManage()">Manage</button>
                     <button id="channel-sidebar-add" class="channel-sidebar-header-add" onclick="showChannelCreateDialog()" title="Add channel">+</button>
                 </div>
                 <div id="channel-sidebar-list"></div>
@@ -378,11 +381,12 @@
     <script src="/static/core.js?v=223"></script>
     <script src="/static/store.js?v=223"></script>
     <script src="/static/document-inputs.js?v=2"></script>
-    <script src="/static/sessions.js?v=230"></script>
+    <script src="/static/sessions.js?v=231"></script>
     <script src="/static/recipients.js?v=2"></script>
-    <script src="/static/jobs.js?v=226"></script>
-    <script src="/static/channels.js?v=226"></script>
-    <script src="/static/rules-panel.js?v=224"></script>
-    <script src="/static/chat.js?v=275"></script>
+    <script src="/static/jobs.js?v=227"></script>
+    <script src="/static/channel-lifecycle.js?v=1"></script>
+    <script src="/static/channels.js?v=227"></script>
+    <script src="/static/rules-panel.js?v=225"></script>
+    <script src="/static/chat.js?v=276"></script>
 </body>
 </html>

@@ -66,6 +66,62 @@ window._messageRenderers['job_created'] = function (el, msg) {
 // Job breadcrumb helpers
 // ---------------------------------------------------------------------------
 
+// CHANNEL JOB POLICY HELPERS BEGIN
+function jobCanWrite(job) {
+    return !jobLoadError && !!job && window.ChannelLifecycle?.canWrite(job.channel || 'general') === true
+        && window.ChannelLifecycle?.ownerAvailable('jobs', job.channel || 'general') === true;
+}
+async function jobFetch(url, options = {}) {
+    if (!['GET', 'HEAD'].includes((options.method || 'GET').toUpperCase())) {
+        const body = typeof options.body === 'string' ? JSON.parse(options.body) : {};
+        const match = String(url).match(/^\/api\/jobs\/(\d+)/);
+        const message = String(url).match(/^\/api\/messages\/(\d+)/);
+        let allowed = true;
+        if (match) {
+            const job = jobsData.find(row => Number(row.id) === Number(match[1]));
+            allowed = jobCanWrite(job);
+            if (!allowed) window.ChannelLifecycle?.guardWrite(job?.channel);
+        } else if (url === '/api/jobs/reorder') allowed = (body.ordered_ids || []).every(id => jobCanWrite(jobsData.find(row => Number(row.id) === Number(id))));
+        else if (message) allowed = window.channelMessageWritable?.(Number(message[1])) === true;
+        else if (url === '/api/jobs' || url === '/api/trigger-agent') {
+            allowed = window.ChannelLifecycle?.guardWrite(body.channel || window.activeChannel) === true
+                && window.ChannelLifecycle?.ownerAvailable('jobs', body.channel || window.activeChannel) === true;
+            if (body.anchor_msg_id !== undefined && body.anchor_msg_id !== null) allowed = allowed && window.channelMessageWritable?.(body.anchor_msg_id) === true;
+        } else if (url === '/api/upload') allowed = jobCanWrite(jobsData.find(row => row.id === activeJobId));
+        if (!allowed) {
+            window.ChannelLifecycle?.renderPolicy('This job or source channel is read-only. Reopen it before changing saved work. Draft kept.');
+            const failure = new Error('Job channel is read-only.'); failure.status = 409; throw failure;
+        }
+    }
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        const message = response.status === 503 ? 'Job storage is unavailable. Check history before trying again; draft kept.'
+            : 'Job change could not be confirmed. Check history; draft kept.';
+        window.ChannelLifecycle?.renderPolicy(message);
+        const failure = new Error(message); failure.status = response.status; throw failure;
+    }
+    return response;
+}
+function applyJobChannelState() {
+    const job = jobsData.find(row => row.id === activeJobId), writable = jobCanWrite(job);
+    const input = document.getElementById('jobs-conv-input-text');
+    if (input) input.readOnly = !writable;
+    document.querySelectorAll('#jobs-status-toggles button, #jobs-conversation-view .job-msg-actions button, #jobs-conversation-view .jobs-conv-input button').forEach(control => { control.disabled = !writable; });
+    const send = document.getElementById('jobs-conv-send');
+    if (send && !writable) send.disabled = true;
+    const create = document.querySelector('.jobs-create-btn');
+    if (create) create.disabled = !!jobLoadError || window.ChannelLifecycle?.canWrite(window.activeChannel) !== true
+        || window.ChannelLifecycle?.ownerAvailable('jobs', window.activeChannel) !== true;
+    const view = document.getElementById('jobs-conversation-view');
+    if (view) {
+        let note = view.querySelector('.job-channel-state');
+        if (!note) { note = document.createElement('p'); note.className = 'job-channel-state'; note.setAttribute('role', 'status'); view.prepend(note); }
+        note.textContent = jobLoadError || (job && !writable ? 'This retained job is read-only. Its conversation stays available.' : '');
+        note.hidden = !note.textContent;
+    }
+}
+// CHANNEL JOB POLICY HELPERS END
+
 function _unhideResolvedBreadcrumbs() {
     // After jobsData is populated (e.g. from WS 'jobs' event), unhide any
     // breadcrumbs that were hidden during history replay because jobsData
@@ -400,7 +456,7 @@ function _clearJobReorderTargets(container) {
 
 function _orderedIdsForJobGroup(status) {
     return jobsData
-        .filter(a => a.status === status)
+        .filter(a => a.status === status && jobCanWrite(a))
         .sort(_compareJobsForList)
         .map(a => Number(a.id));
 }
@@ -463,7 +519,7 @@ function _shouldSuppressJobUpdateRender(data) {
 }
 
 async function _persistJobOrder(status, orderedIds) {
-    const resp = await fetch('/api/jobs/reorder', {
+    const resp = await jobFetch('/api/jobs/reorder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
         body: JSON.stringify({ status, ordered_ids: orderedIds }),
@@ -493,7 +549,7 @@ async function reorderJobWithinGroup(status, draggedId, targetId, insertAfter) {
         console.error(err);
         // Reload canonical state from server on failure.
         try {
-            const resp = await fetch('/api/jobs', {
+            const resp = await jobFetch('/api/jobs', {
                 headers: { 'X-Session-Token': window.SESSION_TOKEN },
             });
             if (resp.ok) {
@@ -646,10 +702,10 @@ function renderJobsList() {
             e.stopPropagation();
             header.classList.remove('drop-target');
             const draggedId = _draggedJobId;
-            if (!draggedId || _draggedJobStatus === group.key) return;
+            if (!draggedId || _draggedJobStatus === group.key || !jobCanWrite(jobsData.find(row => String(row.id) === String(draggedId)))) return;
             const oldStatus = _draggedJobStatus;
             try {
-                await fetch(`/api/jobs/${draggedId}`, {
+                await jobFetch(`/api/jobs/${draggedId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
                     body: JSON.stringify({ status: group.key }),
@@ -694,8 +750,9 @@ function renderJobsList() {
             `;
 
 
-            card.draggable = true;
+            card.draggable = jobCanWrite(a);
             card.addEventListener('dragstart', (e) => {
+                if (!jobCanWrite(a)) { e.preventDefault(); return; }
                 let ids = [card.dataset.id];
                 if (group.key === 'archived') {
                     const selected = [...itemsContainer.querySelectorAll('.archive-selected')].map(c => c.dataset.id);
@@ -735,6 +792,7 @@ function renderJobsList() {
                 }
             });
             card.addEventListener('dragover', (e) => {
+                if (!jobCanWrite(a) || !jobCanWrite(jobsData.find(row => String(row.id) === String(_draggedJobId)))) return;
                 if (_draggedJobStatus !== group.key || !_draggedJobId || _draggedJobId === card.dataset.id) return;
                 e.preventDefault();
                 // Clear all other indicators first, then set this one
@@ -745,6 +803,7 @@ function renderJobsList() {
                 card.classList.toggle('reorder-target-after', !before);
             });
             card.addEventListener('drop', async (e) => {
+                if (!jobCanWrite(a) || !jobCanWrite(jobsData.find(row => String(row.id) === String(_draggedJobId)))) return;
                 const draggedId = _draggedJobId;
                 const draggedStatus = _draggedJobStatus;
                 _clearJobReorderTargets(itemsContainer);
@@ -865,6 +924,7 @@ function renderJobsList() {
             }
         }
     }
+    applyJobChannelState();
 }
 
 // ---------------------------------------------------------------------------
@@ -912,11 +972,12 @@ async function openJobConversation(jobId) {
     // Switch views — instant swap (animation deferred to future Motion Guard impl)
     listView.classList.add('hidden');
     convView.classList.remove('hidden');
+    applyJobChannelState();
 
     // Pre-fill starter text for empty jobs
     const jobInput = document.getElementById('jobs-conv-input-text');
     const msgCount = (job.messages || []).filter(m => !m?.deleted).length;
-    if (msgCount === 0 && target) {
+    if (msgCount === 0 && target && jobCanWrite(job)) {
         const starterText = `@${target} start this job`;
         jobInput.value = starterText;
         jobInput.placeholder = 'Send to assign · click to edit';
@@ -944,7 +1005,7 @@ async function loadJobMessages(jobId) {
     container.innerHTML = '';
 
     try {
-        const resp = await fetch(`/api/jobs/${jobId}/messages`, {
+        const resp = await jobFetch(`/api/jobs/${jobId}/messages`, {
             headers: { 'X-Session-Token': window.SESSION_TOKEN }
         });
         if (!resp.ok) return [];
@@ -1049,7 +1110,7 @@ async function confirmDeleteJobMessage(jobId, msgId, event) {
     event?.stopPropagation?.();
     _clearJobMsgDeleteTimer(jobId, msgId);
     try {
-        const resp = await fetch(`/api/jobs/${jobId}/messages/${msgId}`, {
+        const resp = await jobFetch(`/api/jobs/${jobId}/messages/${msgId}`, {
             method: 'DELETE',
             headers: { 'X-Session-Token': window.SESSION_TOKEN },
         });
@@ -1160,7 +1221,7 @@ function jobPreviewRequest(snapshot) {
 function updateJobSendButton() {
     const button = document.getElementById('jobs-conv-send');
     const snapshot = jobDraftSnapshot();
-    button.disabled = !activeJobId || (!snapshot.text.trim() && !snapshot.attachments.length)
+    button.disabled = !jobCanWrite(jobsData.find(row => row.id === activeJobId)) || !activeJobId || (!snapshot.text.trim() && !snapshot.attachments.length)
         || !!jobSendPending || getJobRecipientPreview().state === 'error';
     button.textContent = jobSendPending ? (jobSendPending.phase === 'preparing' ? 'Checking audience' : 'Saving') : 'Send';
     button.setAttribute('aria-busy', String(!!jobSendPending));
@@ -1169,10 +1230,12 @@ function refreshJobRecipients(force = false) {
     const preview = getJobRecipientPreview();
     if (jobPreviewContext !== activeJobId) { preview.invalidate(); jobPreviewContext = activeJobId; }
     const snapshot = jobDraftSnapshot();
-    preview.schedule(activeJobId && (snapshot.text.trim() || snapshot.attachments.length) ? jobPreviewRequest(snapshot) : null, force === true);
+    preview.schedule(jobCanWrite(jobsData.find(row => row.id === activeJobId)) && activeJobId && (snapshot.text.trim() || snapshot.attachments.length) ? jobPreviewRequest(snapshot) : null, force === true);
     updateJobSendButton();
 }
 async function sendJobMessage() {
+    const writableJob = jobsData.find(row => row.id === activeJobId);
+    if (!jobCanWrite(writableJob)) { window.ChannelLifecycle?.guardWrite(writableJob?.channel); return; }
     if (!activeJobId || jobSendPending) return;
     const snapshot = jobDraftSnapshot();
     if (!snapshot.text.trim() && !snapshot.attachments.length) return;
@@ -1187,7 +1250,7 @@ async function sendJobMessage() {
         const timeout = new Promise((_, reject) => {
             deadline = setTimeout(() => { controller.abort(); reject(new Error('Unconfirmed save')); }, 10000);
         });
-        const resp = await Promise.race([fetch(`/api/jobs/${snapshot.job_id}/messages`, {
+        const resp = await Promise.race([jobFetch(`/api/jobs/${snapshot.job_id}/messages`, {
             method: 'POST', headers: {'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN},
             body: JSON.stringify({text: snapshot.text, selected_recipients: snapshot.selected_recipients,
                 sender: window.username, attachments: snapshot.attachments}), signal: controller.signal,
@@ -1201,7 +1264,8 @@ async function sendJobMessage() {
             input.value = ''; input.style.height = 'auto'; clearJobAttachments();
             getJobRecipientPreview().invalidate(); input.focus();
         }
-    } catch (_) {
+    } catch (failure) {
+        if (Number.isInteger(failure.status) && ((failure.status >= 400 && failure.status < 500) || failure.status === 503)) pending.rejected = true;
         getJobRecipientPreview().error(pending.rejected ? 'Not saved (check the fields). Draft kept.' : pending.phase === 'post'
             ? 'This message may have been saved. Check the conversation before sending again. Draft kept.'
             : 'Audience check failed. Draft kept. Check again before sending.');
@@ -1224,7 +1288,7 @@ async function uploadJobImage(file) {
     const form = new FormData();
     form.append('file', file);
     try {
-        const resp = await fetch('/api/upload', { method: 'POST', headers: { 'X-Session-Token': window.SESSION_TOKEN }, body: form });
+        const resp = await jobFetch('/api/upload', { method: 'POST', headers: { 'X-Session-Token': window.SESSION_TOKEN }, body: form });
         const data = await resp.json();
         jobPendingAttachments.push({ path: data.path, name: data.name, url: data.url });
         renderJobAttachments();
@@ -1262,6 +1326,7 @@ function clearJobAttachments() {
 // ---------------------------------------------------------------------------
 
 function startEditJobTitle(job, titleEl) {
+    if (!jobCanWrite(job)) { window.ChannelLifecycle?.guardWrite(job.channel); return; }
     if (titleEl.querySelector('input')) return; // already editing
     const input = document.createElement('input');
     input.type = 'text';
@@ -1277,7 +1342,7 @@ function startEditJobTitle(job, titleEl) {
         const newTitle = input.value.trim();
         if (newTitle && newTitle !== job.title) {
             try {
-                await fetch(`/api/jobs/${job.id}`, {
+                await jobFetch(`/api/jobs/${job.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
                     body: JSON.stringify({ title: newTitle }),
@@ -1304,7 +1369,7 @@ async function toggleJobStatus(status) {
     const statusLabels = { 'open': 'TO DO', 'done': 'ACTIVE', 'archived': 'CLOSED' };
 
     try {
-        await fetch(`/api/jobs/${activeJobId}`, {
+        await jobFetch(`/api/jobs/${activeJobId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
             body: JSON.stringify({ status }),
@@ -1334,6 +1399,8 @@ function updateJobToggles(activeStatus) {
 // ---------------------------------------------------------------------------
 
 function showCreateJob() {
+    if (jobLoadError || window.ChannelLifecycle?.guardWrite(window.activeChannel) !== true
+            || window.ChannelLifecycle?.ownerAvailable('jobs', window.activeChannel) !== true) return;
     const list = document.getElementById('jobs-list');
     if (!list) return;
     // Remove existing form if any
@@ -1381,7 +1448,7 @@ async function submitCreateJob(btn) {
     const jobBody = bodyInput ? bodyInput.value.trim() : '';
 
     try {
-        await fetch('/api/jobs', {
+        await jobFetch('/api/jobs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
             body: JSON.stringify({
@@ -1624,7 +1691,7 @@ async function _doConvertToJob() {
     const instruction = `${window.username}: Please read the following message and use chat_propose_job to propose it as a job. Write a concise title (max 80 chars) and a clear body (max 500 chars) summarizing the task:\n\n---\n${rawText.substring(0, 800)}\n---`;
 
     try {
-        await fetch('/api/trigger-agent', {
+        await jobFetch('/api/trigger-agent', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
             body: JSON.stringify({
@@ -1714,7 +1781,7 @@ async function acceptProposal(msgId) {
     if (!title) return;
 
     try {
-        const resp = await fetch('/api/jobs', {
+        const resp = await jobFetch('/api/jobs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
             body: JSON.stringify({
@@ -1756,7 +1823,7 @@ async function acceptProposal(msgId) {
 async function dismissProposal(msgId) {
     // Demote on server — converts proposal to regular chat message
     try {
-        await fetch(`/api/messages/${msgId}/demote`, {
+        await jobFetch(`/api/messages/${msgId}/demote`, {
             method: 'POST',
             headers: { 'X-Session-Token': window.SESSION_TOKEN },
         });
@@ -1768,7 +1835,7 @@ async function dismissProposal(msgId) {
 async function requestChangesProposal(msgId) {
     // Demote proposal to chat message, then open a reply to it
     try {
-        await fetch(`/api/messages/${msgId}/demote`, {
+        await jobFetch(`/api/messages/${msgId}/demote`, {
             method: 'POST',
             headers: { 'X-Session-Token': window.SESSION_TOKEN },
         });
@@ -1807,7 +1874,7 @@ async function openJobFromBreadcrumb(jobId) {
 
 async function acceptSuggestion(jobId, msgIndex) {
     try {
-        await fetch(`/api/jobs/${jobId}/messages/${msgIndex}/resolve`, {
+        await jobFetch(`/api/jobs/${jobId}/messages/${msgIndex}/resolve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
             body: JSON.stringify({ resolution: 'accepted' }),
@@ -1821,7 +1888,7 @@ async function acceptSuggestion(jobId, msgIndex) {
 
 async function dismissSuggestion(jobId, msgIndex) {
     try {
-        await fetch(`/api/jobs/${jobId}/messages/${msgIndex}/resolve`, {
+        await jobFetch(`/api/jobs/${jobId}/messages/${msgIndex}/resolve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
             body: JSON.stringify({ resolution: 'dismissed' }),
@@ -1845,7 +1912,7 @@ async function confirmDeleteJobPermanent() {
     if (!jobId) return;
     closeDeleteJobModal();
     try {
-        await fetch(`/api/jobs/${jobId}?permanent=true`, {
+        await jobFetch(`/api/jobs/${jobId}?permanent=true`, {
             method: 'DELETE',
             headers: { 'X-Session-Token': window.SESSION_TOKEN },
         });
@@ -1911,6 +1978,7 @@ function animateJobListReflow(prevTops) {
 }
 
 async function deleteArchiveIds(ids, trashZone) {
+    if (!ids.every(id => jobCanWrite(jobsData.find(row => String(row.id) === String(id))))) return;
     const normalizedIds = [...new Set(
         (ids || []).map(id => Number(id)).filter(id => Number.isFinite(id))
     )];
@@ -1928,7 +1996,7 @@ async function deleteArchiveIds(ids, trashZone) {
     const deletedIds = [];
     for (const id of normalizedIds) {
         try {
-            const resp = await fetch(`/api/jobs/${id}?permanent=true`, {
+            const resp = await jobFetch(`/api/jobs/${id}?permanent=true`, {
                 method: 'DELETE',
                 headers: { 'X-Session-Token': window.SESSION_TOKEN },
             });
@@ -1983,6 +2051,11 @@ function syncJobUnreadCache() {
 function updateJobsBadge() {
     const badge = document.getElementById('jobs-badge');
     if (!badge) return;
+    if (jobLoadError) {
+        badge.textContent = 'held'; badge.title = 'Saved jobs are unavailable; cached counts are not current.';
+        badge.classList.toggle('hidden', false); return;
+    }
+    badge.title = 'Unread job messages';
     let total = 0;
     for (const count of Object.values(jobUnread)) {
         total += Number(count || 0);
@@ -2120,6 +2193,7 @@ function applyJobsSnapshot(event) {
     syncJobUnreadCache();
     updateJobsBadge();
     renderJobsList();
+    applyJobChannelState();
     // Unhide breadcrumbs that were hidden because jobsData was empty during replay
     _unhideResolvedBreadcrumbs();
 }
@@ -2176,3 +2250,12 @@ window.markJobRead = markJobRead;
 window.handleJobEvent = handleJobEvent;
 
 window.Jobs = { init: _jobsInit };
+
+Hub.on('channel_lifecycle', () => { renderJobsList(); applyJobChannelState(); if (activeJobId) updateJobSendButton(); });
+Hub.on('channel_renamed', event => {
+    for (const job of jobsData) if (job.channel === event.old_name) {
+        job.channel = event.new_name;
+        for (const message of job.messages || []) if (message.channel === event.old_name) message.channel = event.new_name;
+    }
+    renderJobsList(); applyJobChannelState();
+});

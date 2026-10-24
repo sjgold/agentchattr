@@ -40,7 +40,10 @@ function renderChannelTabs() {
     container.innerHTML = '';
 
     for (const name of window.channelList) {
+        const item = document.createElement('div');
+        item.className = 'channel-tab-item';
         const tab = document.createElement('button');
+        item.appendChild(tab);
         tab.className = 'channel-tab' + (name === window.activeChannel ? ' active' : '');
         tab.dataset.channel = name;
 
@@ -76,7 +79,7 @@ function renderChannelTabs() {
             delBtn.onclick = (e) => { e.stopPropagation(); deleteChannel(name); };
             actions.appendChild(delBtn);
 
-            tab.appendChild(actions);
+            item.appendChild(actions);
         }
 
         tab.onclick = (e) => {
@@ -91,7 +94,7 @@ function renderChannelTabs() {
             }
         };
 
-        container.appendChild(tab);
+        container.appendChild(item);
     }
 
     // Re-append inline create if it was open
@@ -116,7 +119,10 @@ function renderChannelSidebar() {
     list.innerHTML = '';
 
     for (const name of window.channelList) {
+        const item = document.createElement('div');
+        item.className = 'channel-sidebar-item';
         const row = document.createElement('button');
+        item.appendChild(row);
         row.className = 'channel-sidebar-row' + (name === window.activeChannel ? ' active' : '');
         row.dataset.channel = name;
 
@@ -149,7 +155,7 @@ function renderChannelSidebar() {
             delBtn.onclick = (e) => { e.stopPropagation(); _sidebarConfirmDelete(name, row, label); };
             actions.appendChild(delBtn);
 
-            row.appendChild(actions);
+            item.appendChild(actions);
         }
 
         row.onclick = (e) => {
@@ -157,7 +163,7 @@ function renderChannelSidebar() {
             if (name !== window.activeChannel) switchChannel(name);
         };
 
-        list.appendChild(row);
+        list.appendChild(item);
     }
 
     if (existingCreate) list.appendChild(existingCreate);
@@ -165,117 +171,11 @@ function renderChannelSidebar() {
 }
 
 function _showSidebarRenameDialog(oldName) {
-    const list = document.getElementById('channel-sidebar-list');
-    if (!list) return;
-    list.querySelector('.channel-inline-create')?.remove();
-
-    const targetRow = list.querySelector(`.channel-sidebar-row[data-channel="${oldName}"]`);
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'channel-inline-create';
-
-    const prefix = document.createElement('span');
-    prefix.className = 'channel-input-prefix';
-    prefix.textContent = '#';
-    wrapper.appendChild(prefix);
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = 20;
-    input.value = oldName;
-    wrapper.appendChild(input);
-
-    const cleanup = () => { wrapper.remove(); if (targetRow) targetRow.style.display = ''; };
-
-    const confirm = document.createElement('button');
-    confirm.className = 'confirm-btn';
-    confirm.innerHTML = '&#10003;';
-    confirm.title = 'Rename';
-    confirm.onclick = () => {
-        const newName = input.value.trim().toLowerCase();
-        if (!newName || !/^[a-z0-9][a-z0-9\-]{0,19}$/.test(newName)) return;
-        if (newName !== oldName) {
-            window.ws.send(JSON.stringify({ type: 'channel_rename', old_name: oldName, new_name: newName }));
-            if (window.activeChannel === oldName) {
-                window._setActiveChannel(newName);
-                localStorage.setItem('agentchattr-channel', newName);
-                Store.set('activeChannel', newName);
-            }
-        }
-        cleanup();
-    };
-    wrapper.appendChild(confirm);
-
-    const cancel = document.createElement('button');
-    cancel.className = 'cancel-btn';
-    cancel.innerHTML = '&#10005;';
-    cancel.title = 'Cancel';
-    cancel.onclick = cleanup;
-    wrapper.appendChild(cancel);
-
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); confirm.click(); }
-        if (e.key === 'Escape') cleanup();
-    });
-    input.addEventListener('input', () => {
-        input.value = input.value.toLowerCase().replace(/[^a-z0-9\-]/g, '');
-    });
-
-    if (targetRow) {
-        targetRow.style.display = 'none';
-        targetRow.insertAdjacentElement('afterend', wrapper);
-    } else {
-        list.appendChild(wrapper);
-    }
-    input.select();
+    return window.ChannelLifecycle.openManage({channel: oldName, op: 'rename'});
 }
 
 function _sidebarConfirmDelete(name, row, label) {
-    if (name === 'general' || row.classList.contains('confirm-delete')) return;
-    const actions = row.querySelector('.channel-sidebar-row-actions');
-    const originalText = label.textContent;
-    const originalOnclick = row.onclick;
-
-    row.classList.add('confirm-delete');
-    label.textContent = `delete #${name}?`;
-    if (actions) actions.style.display = 'none';
-
-    const confirmBar = document.createElement('span');
-    confirmBar.className = 'channel-sidebar-row-actions';
-    confirmBar.style.display = 'flex';
-
-    const tickBtn = document.createElement('button');
-    tickBtn.title = 'Confirm delete';
-    tickBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5 6.5-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
-    const crossBtn = document.createElement('button');
-    crossBtn.title = 'Cancel';
-    crossBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-
-    confirmBar.appendChild(tickBtn);
-    confirmBar.appendChild(crossBtn);
-    row.appendChild(confirmBar);
-
-    const revert = () => {
-        row.classList.remove('confirm-delete');
-        label.textContent = originalText;
-        if (actions) actions.style.display = '';
-        confirmBar.remove();
-        row.onclick = originalOnclick;
-        document.removeEventListener('click', outsideClick);
-    };
-
-    tickBtn.onclick = (e) => {
-        e.stopPropagation();
-        revert();
-        window.ws.send(JSON.stringify({ type: 'channel_delete', name }));
-        if (window.activeChannel === name) switchChannel('general');
-    };
-    crossBtn.onclick = (e) => { e.stopPropagation(); revert(); };
-    row.onclick = (e) => { e.stopPropagation(); };
-
-    const outsideClick = (e) => { if (!row.contains(e.target)) revert(); };
-    setTimeout(() => document.addEventListener('click', outsideClick), 0);
+    return window.ChannelLifecycle.openManage({channel: name, op: 'delete'});
 }
 
 // ---------------------------------------------------------------------------
@@ -296,6 +196,7 @@ function switchChannel(name) {
     filterMessagesByChannel();
     renderChannelTabs();
     Store.set('activeChannel', name);
+    window.ChannelLifecycle.renderPolicy();
     document.querySelector('#channel-tabs .channel-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     // Restore: scroll to saved message, or bottom if none saved
     const savedId = _channelScrollMsg[name];
@@ -326,61 +227,7 @@ function filterMessagesByChannel() {
 // ---------------------------------------------------------------------------
 
 function showChannelCreateDialog() {
-    // Route the inline create into the sidebar list when sidebar mode is on,
-    // otherwise into the top-bar tabs — keeps the input visible either way.
-    const inSidebar = document.body.classList.contains('channels-in-sidebar');
-    const tabs = inSidebar
-        ? document.getElementById('channel-sidebar-list')
-        : document.getElementById('channel-tabs');
-    // Remove existing inline create if any
-    tabs.querySelector('.channel-inline-create')?.remove();
-
-    // Hide the + button while creating
-    const addBtn = inSidebar
-        ? document.getElementById('channel-sidebar-add')
-        : document.getElementById('channel-add-btn');
-    if (addBtn) addBtn.style.display = 'none';
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'channel-inline-create';
-
-    const prefix = document.createElement('span');
-    prefix.className = 'channel-input-prefix';
-    prefix.textContent = '#';
-    wrapper.appendChild(prefix);
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = 20;
-    input.placeholder = 'channel-name';
-    wrapper.appendChild(input);
-
-    const cleanup = () => { wrapper.remove(); if (addBtn) addBtn.style.display = ''; };
-
-    const confirm = document.createElement('button');
-    confirm.className = 'confirm-btn';
-    confirm.innerHTML = '&#10003;';
-    confirm.title = 'Create';
-    confirm.onclick = () => { _submitInlineCreate(input, wrapper); if (addBtn) addBtn.style.display = ''; };
-    wrapper.appendChild(confirm);
-
-    const cancel = document.createElement('button');
-    cancel.className = 'cancel-btn';
-    cancel.innerHTML = '&#10005;';
-    cancel.title = 'Cancel';
-    cancel.onclick = cleanup;
-    wrapper.appendChild(cancel);
-
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); _submitInlineCreate(input, wrapper); if (addBtn) addBtn.style.display = ''; }
-        if (e.key === 'Escape') cleanup();
-    });
-    input.addEventListener('input', () => {
-        input.value = input.value.toLowerCase().replace(/[^a-z0-9\-]/g, '');
-    });
-
-    tabs.appendChild(wrapper);
-    input.focus();
+    return window.ChannelLifecycle.openManage({op: 'create', channel: ''});
 }
 
 function _submitInlineCreate(input, wrapper) {
@@ -397,73 +244,7 @@ function _submitInlineCreate(input, wrapper) {
 // ---------------------------------------------------------------------------
 
 function showChannelRenameDialog(oldName) {
-    const tabs = document.getElementById('channel-tabs');
-    tabs.querySelector('.channel-inline-create')?.remove();
-
-    // Find the tab being renamed so we can insert the input in its place
-    const targetTab = tabs.querySelector(`.channel-tab[data-channel="${oldName}"]`);
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'channel-inline-create';
-
-    const prefix = document.createElement('span');
-    prefix.className = 'channel-input-prefix';
-    prefix.textContent = '#';
-    wrapper.appendChild(prefix);
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.maxLength = 20;
-    input.value = oldName;
-    wrapper.appendChild(input);
-
-    const cleanup = () => {
-        wrapper.remove();
-        if (targetTab) targetTab.style.display = '';
-    };
-
-    const confirm = document.createElement('button');
-    confirm.className = 'confirm-btn';
-    confirm.innerHTML = '&#10003;';
-    confirm.title = 'Rename';
-    confirm.onclick = () => {
-        const newName = input.value.trim().toLowerCase();
-        if (!newName || !/^[a-z0-9][a-z0-9\-]{0,19}$/.test(newName)) return;
-        if (newName !== oldName) {
-            window.ws.send(JSON.stringify({ type: 'channel_rename', old_name: oldName, new_name: newName }));
-            if (window.activeChannel === oldName) {
-                window._setActiveChannel(newName);
-                localStorage.setItem('agentchattr-channel', newName);
-                Store.set('activeChannel', newName);
-            }
-        }
-        cleanup();
-    };
-    wrapper.appendChild(confirm);
-
-    const cancel = document.createElement('button');
-    cancel.className = 'cancel-btn';
-    cancel.innerHTML = '&#10005;';
-    cancel.title = 'Cancel';
-    cancel.onclick = cleanup;
-    wrapper.appendChild(cancel);
-
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); confirm.click(); }
-        if (e.key === 'Escape') cleanup();
-    });
-    input.addEventListener('input', () => {
-        input.value = input.value.toLowerCase().replace(/[^a-z0-9\-]/g, '');
-    });
-
-    // Insert inline next to the tab, hide the original tab
-    if (targetTab) {
-        targetTab.style.display = 'none';
-        targetTab.insertAdjacentElement('afterend', wrapper);
-    } else {
-        tabs.appendChild(wrapper);
-    }
-    input.select();
+    return window.ChannelLifecycle.openManage({channel: oldName, op: 'rename'});
 }
 
 // ---------------------------------------------------------------------------
@@ -471,64 +252,7 @@ function showChannelRenameDialog(oldName) {
 // ---------------------------------------------------------------------------
 
 function deleteChannel(name) {
-    if (name === 'general') return;
-    const tab = document.querySelector(`.channel-tab[data-channel="${name}"]`);
-    if (!tab || tab.classList.contains('confirm-delete')) return;
-
-    const label = tab.querySelector('.channel-tab-label');
-    const actions = tab.querySelector('.channel-tab-actions');
-    const originalText = label.textContent;
-    const originalOnclick = tab.onclick;
-
-    tab.classList.add('confirm-delete');
-    tab.classList.remove('editing');
-    label.textContent = `delete #${name}?`;
-    if (actions) actions.style.display = 'none';
-
-    const confirmBar = document.createElement('span');
-    confirmBar.className = 'channel-delete-confirm';
-
-    const tickBtn = document.createElement('button');
-    tickBtn.className = 'ch-confirm-yes';
-    tickBtn.title = 'Confirm delete';
-    tickBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.5 3.5 6.5-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-
-    const crossBtn = document.createElement('button');
-    crossBtn.className = 'ch-confirm-no';
-    crossBtn.title = 'Cancel';
-    crossBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-
-    confirmBar.appendChild(tickBtn);
-    confirmBar.appendChild(crossBtn);
-    tab.appendChild(confirmBar);
-
-    const revert = () => {
-        tab.classList.remove('confirm-delete');
-        label.textContent = originalText;
-        if (actions) actions.style.display = '';
-        confirmBar.remove();
-        tab.onclick = originalOnclick;
-        document.removeEventListener('click', outsideClick);
-    };
-
-    tickBtn.onclick = (e) => {
-        e.stopPropagation();
-        revert();
-        window.ws.send(JSON.stringify({ type: 'channel_delete', name }));
-        if (window.activeChannel === name) switchChannel('general');
-    };
-
-    crossBtn.onclick = (e) => {
-        e.stopPropagation();
-        revert();
-    };
-
-    tab.onclick = (e) => { e.stopPropagation(); };
-
-    const outsideClick = (e) => {
-        if (!tab.contains(e.target)) revert();
-    };
-    setTimeout(() => document.addEventListener('click', outsideClick), 0);
+    return window.ChannelLifecycle.openManage({channel: name, op: 'delete'});
 }
 
 // ---------------------------------------------------------------------------
@@ -655,6 +379,7 @@ function _syncClearChatWidth() {
 }
 
 function _channelsInit() {
+    window.ChannelLifecycle.refresh().catch(() => {});
     setupChannelSidebarGrip();
     _restoreSidebarState();
 

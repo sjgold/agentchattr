@@ -1,0 +1,68 @@
+.channel-manager {
+    box-sizing: border-box;
+    width: min(960px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+    padding: 20px;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    background: var(--bg-header);
+    color: var(--text-muted);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, .45);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    color-scheme: dark;
+}
+.channel-manager::backdrop { background: var(--bg-overlay); }
+.channel-manager-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.channel-manager h2 { margin: 0; font-size: 22px; }
+.channel-manager h3 { margin: 24px 0 8px; font-size: 17px; }
+.channel-manager h4 { margin: 20px 0 8px; font-size: 15px; }
+.channel-manager p { margin: 8px 0 12px; }
+.channel-manager-layout { display: grid; grid-template-columns: minmax(0, 310px) minmax(0, 1fr); gap: 28px; }
+.channel-manager-layout > * { min-width: 0; }
+.channel-manager-row, .channel-retained-row { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.channel-manager-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.channel-manager button, .channel-manager input, .channel-state-banner button, .channel-manager-entry {
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+}
+.channel-manager button, .channel-state-banner button, .channel-manager-entry { cursor: pointer; }
+.channel-manager button:hover:enabled, .channel-state-banner button:hover:enabled, .channel-manager-entry:hover { background: var(--accent-hover); }
+.channel-manager button:disabled { opacity: .55; cursor: default; }
+.channel-manager input { display: block; width: 100%; margin: 6px 0 16px; caret-color: var(--user-color); }
+.channel-manager label { display: block; margin-top: 16px; font-weight: 600; }
+.channel-manager :focus-visible, .channel-state-banner :focus-visible, .channel-manager-entry:focus-visible { outline: 2px solid var(--user-color); outline-offset: 3px; }
+.channel-manager-status, .channel-manager-blocker { color: var(--warning); }
+.channel-manager-state { margin-left: 12px; color: var(--user-color); }
+.channel-manager-repair { padding: 0 0 20px; border-bottom: 1px solid var(--border-strong); }
+.channel-manager pre { padding: 12px; max-height: 18rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg-input); border-radius: 6px; font-size: 14px; }
+.channel-manager a { display: block; color: var(--user-color); padding: 12px 0; min-height: 44px; box-sizing: border-box; text-underline-offset: 3px; }
+.channel-manager ::selection { background: var(--accent); color: var(--text-on-accent); }
+.channel-state-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 20px; background: var(--bg-input); border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 14px; }
+.channel-state-banner p { flex: 1 1 220px; margin: 0; }
+.channel-state-banner[hidden] { display: none; }
+.channel-tab-item, .channel-sidebar-item { display: flex; min-width: 0; align-items: center; }
+.channel-tab-item .channel-tab-actions, .channel-sidebar-item .channel-sidebar-row-actions { display: flex; }
+.channel-tab-item .channel-tab-actions button, .channel-sidebar-item .channel-sidebar-row-actions button { min-height: 44px; min-width: 44px; }
+.channel-sidebar-item .channel-sidebar-row { flex: 1; min-width: 0; }
+#channel-manager-apply { margin-top: 12px; background: var(--accent); color: var(--text-on-accent); }
+@media (max-width: 640px) {
+    .channel-manager { padding: 16px; }
+    .channel-manager-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .channel-state-banner { padding: 12px; }
+    .channel-manager-header { align-items: flex-start; }
+    #channel-sidebar .channel-sidebar-header { flex-wrap: wrap; gap: 8px; }
+}
+
+.job-channel-state { margin: 8px 12px; color: var(--warning); font-size: 14px; }

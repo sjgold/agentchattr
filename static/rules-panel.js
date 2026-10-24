@@ -525,6 +525,7 @@ function cancelDeleteRule(id) {
 // ---------------------------------------------------------------------------
 
 async function resolveRuleProposal(msgId, action) {
+    if (window.channelMessageWritable?.(msgId) !== true) return;
     try {
         const response = await fetch(`/api/messages/${msgId}/resolve_rule_proposal`, {
             method: 'POST',
@@ -541,6 +542,7 @@ async function resolveRuleProposal(msgId, action) {
 }
 
 async function dismissRuleProposal(msgId) {
+    if (window.channelMessageWritable?.(msgId) !== true) return;
     // Demote to regular chat message — same as job proposal dismiss
     try {
         const response = await fetch(`/api/messages/${msgId}/demote_rule_proposal`, {

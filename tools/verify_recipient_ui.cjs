@@ -87,6 +87,7 @@ function composer(kind = 'channel') {
   const socket = {readyState: 1, closes: [], send: value => posts.push(JSON.parse(value)),
     close(...args) { this.closes.push(args); this.readyState = 3; }};
   const env = environment({RecipientPreview: {attach: () => preview},
+    ChannelLifecycle: {canWrite: () => true, ownerAvailable: () => true, guardWrite: () => true, renderPolicy() {}}, jobLoadError: '',
     WebSocket: {OPEN: 1}, ws: socket, username: 'operator',
     activeChannel: 'general', activeMentions: new Set(['claude', 'codex', 'glm']),
     pendingAttachments: [], replyingTo: null, activeJobId: 1,
@@ -99,6 +100,12 @@ function composer(kind = 'channel') {
     updateJobReplyTargetUI() {}, _normalizeJobRecipient: value => value || '',
     showSlashHint() {}, renderReplyBar() {}, saveActiveMentions() {}});
   const source = read(kind === 'channel' ? 'static/chat.js' : 'static/jobs.js');
+  if (kind === 'job') {
+    const begin = source.indexOf('// CHANNEL JOB POLICY HELPERS BEGIN');
+    const end = source.indexOf('// CHANNEL JOB POLICY HELPERS END', begin);
+    assert.ok(begin >= 0 && end > begin, 'actual job policy helpers');
+    vm.runInContext(source.slice(begin, end), env.context);
+  }
   const marker = kind === 'channel' ? '// --- Recipient composer ---' : '// --- Recipient job composer ---';
   let start = source.indexOf(marker);
   if (start < 0) start = source.indexOf(kind === 'channel' ? 'function sendMessage() {' : 'async function sendJobMessage() {');

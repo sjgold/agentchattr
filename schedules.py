@@ -270,6 +270,16 @@ class ScheduleStore:
             except Exception:
                 pass
 
+    def display_counts(self, channel):
+        with self._lock:
+            self._check_readable()
+            count, overdue, now = 0, 0, time.time()
+            for row in self._schedules:
+                if row.get('channel') == channel:
+                    count += 1
+                    overdue += int(bool(row.get('active')) and row.get('next_run', 0) <= now)
+            return count, overdue
+
     def retained_metadata(self, channel, *, limit=100):
         if type(limit) is not int or not 1 <= limit <= 1000:
             raise ValueError('Invalid retained row limit.')

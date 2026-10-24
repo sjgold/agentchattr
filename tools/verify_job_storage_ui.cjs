@@ -12,7 +12,7 @@ function extract(name) {
 }
 const context = {
     jobsData: [{id: 4, messages: [{text: 'Retained client snapshot'}]}], jobLoadError: '',
-    syncJobUnreadCache() {}, updateJobsBadge() {}, renderJobsList() {}, _unhideResolvedBreadcrumbs() {},
+    syncJobUnreadCache() {}, updateJobsBadge() {}, renderJobsList() {}, _unhideResolvedBreadcrumbs() {}, applyJobChannelState() {},
     document: {createElement() { return {attributes: {}, setAttribute(k, v) {this.attributes[k] = v;}}; }},
 };
 vm.createContext(context);

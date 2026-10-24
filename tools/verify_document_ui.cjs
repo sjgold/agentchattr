@@ -104,6 +104,8 @@ function block(source, begin, end) {
 }
 function launchers(mode = 'file') {
   const env = environment(), submissions = [], disposals = [];
+  env.context.ChannelLifecycle = {canWrite: () => true, ownerAvailable: () => true, guardWrite: () => true};
+  env.context.channelMessageWritable = () => true;
   const modal = new Element(); modal.id = 'session-launcher-modal';
   const editor = new Element(); editor.className = 'session-source-editor'; modal.appendChild(editor);
   const input = new Element('textarea'); input.value = 'VISUALLY NORMALIZED\nTEXT'; editor.appendChild(input);
