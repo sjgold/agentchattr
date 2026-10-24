@@ -380,3 +380,12 @@ Actual sizes: primary Start612328bytes, decoded scoped MCP brief JSON613052bytes
 Sonnet independently reproduced mjs at docs-only0cb367f: PASS, same counts/hash/provider size/end bases/unresolved[], scratch `.audit-tmp/document review mjs s_105vhi`, log `.audit-tmp/reviewer-claude/doc-mjs.log`, observations8923941bytes, wall27s. Reviewer note:8.9MB source-containing observation file is acceptable; do not grow it. Both native cases now independently reproduced. Windows/local fake only, no live provider/external native client/Omarchy or rendered UI claim.
 
 Sonnet authorized ONE py ordinary-launcher --serve next: real input File/DataTransfer DOM seam, expected file selected once, recovery fields from READY, one Start, then human stopped-parent badge/unchanged refusal/one ASCII pasted child. Optional mjs real-draft browser mode remains separately gated. No browser result yet.
+
+
+## Ordinary rendered py acceptance independently reproduced; final review freeze
+
+Builder py --serve590ceedb/yv4xw7fp and Sonnet own3pzw1x48 PASS. Each actualUIoneStart/onepreparedpastedchild and1CLI/1localfakeAPI/2finals; cleanup2workers/1hiddenclient/1model/1server ended/unresolved[], model retained native end basis, no failure/log errors. Source271bytes/hash unchanged; serverbrowserpreview expectedname selected once afterREADY/beforeStart. Root17QAchecks/privatebrowser-qa.json plus outputimages13-16/DOMgeometry are recorded in ticket-18-browser-qa artifact.
+
+Root desktop+390px/fileerror/empty/BOM/controlledtimeout/focus observations stay builder-only. Reviewer independently exercised desktop source/actual Start/single-flight/stopped-parent badge/unchanged refusal/ASCII child, not390px or error-state rendering. ExistingStartbutton32px note retained; newfileactions44px. Optional mjs real-draft browser serve is explicitly NOTRUN by either; VMboth-launcher/actualdraftHTTP and native512KiBmjs evidence remain separately scoped.
+
+Reviewer own full discovery on docs-only6aef553:1040TOTAL/1036passed/4skips88.771s; bothNodeVM12/0, syntax/diff clean. Productc11bdec and verifier12c9a81 unchanged. DOCUMENT-INPUTS.md is a user/API guide deliverable. REVIEW-CLAUDE-TICKET-18.md records evidence/limits with final verdict pending receipt review. Next Sonnet verifies final docs-only diff/receipt and posts whole-ticket verdict, then root publication gates. No new native/browser runs planned.
