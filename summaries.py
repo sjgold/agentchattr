@@ -16,18 +16,31 @@ MAX_CHARS = 1000
 
 
 class SummaryStore:
-    def __init__(self, path: str):
+    def __init__(self, path: str, *, hold_unreadable=False):
+        if type(hold_unreadable) is not bool:
+            raise ValueError('Summary startup hold must be boolean.')
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._summaries: dict[str, dict] = {}  # channel → summary dict
         self._lock = threading.Lock()
         self._channel_policy_getter = None
-        self._configured = False
+        self._configured = hold_unreadable
         self._load_error = None
         self._fingerprint = None
-        self._had_file = self._path.exists()
-        self._load()
+        self._had_file = False
+        try:
+            self._had_file = self._path.exists()
+            self._load()
+        except (OSError, UnicodeError):
+            if not hold_unreadable:
+                raise
+            self._load_error = 'Saved summaries are unreadable. Repair the file and restart; no reset was performed.'
         self._durable = deepcopy(self._summaries)
+        if hold_unreadable and not self._load_error:
+            try:
+                self._check_readable(force=True)
+            except ChannelUnavailable as error:
+                self._load_error = str(error)
 
     def _load(self):
         if not self._path.exists():
@@ -74,17 +87,23 @@ class SummaryStore:
                 return result
             def invalid(value):
                 raise ValueError('Invalid JSON number.')
+            def finite(value):
+                result = float(value)
+                if not math.isfinite(result):
+                    raise ValueError('Invalid JSON number.')
+                return result
             saved = json.loads(self._path.read_text(encoding='utf-8'),
-                               object_pairs_hook=unique, parse_constant=invalid)
+                               object_pairs_hook=unique, parse_constant=invalid, parse_float=finite)
             if type(saved) is not dict:
                 raise ValueError('Summaries must be an object.')
             for channel, entry in saved.items():
-                _name(channel)
-                if (type(entry) is not dict or type(entry.get('text')) is not str
-                        or type(entry.get('author')) is not str
-                        or type(entry.get('message_id')) is not int
-                        or type(entry.get('updated_at')) not in (int, float)
-                        or not math.isfinite(entry['updated_at'])):
+                if (type(channel) is not str or type(entry) is not dict
+                        or type(entry.get('text')) is not str
+                        or ('author' in entry and type(entry['author']) is not str)
+                        or ('message_id' in entry and type(entry['message_id']) is not int)
+                        or ('updated_at' in entry and (
+                            type(entry['updated_at']) not in (int, float)
+                            or not math.isfinite(entry['updated_at'])))):
                     raise ValueError('Invalid summary.')
             after = self._path.stat()
             if (after.st_mtime_ns, after.st_size) != stamp or saved != self._durable:

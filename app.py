@@ -541,7 +541,7 @@ def configure(cfg: dict, session_token: str = ""):
     rules = RuleStore(str(rules_path))
     rules.on_change(_on_rule_change)
 
-    summaries = SummaryStore(str(Path(data_dir) / "summaries.json"))
+    summaries = SummaryStore(str(Path(data_dir) / "summaries.json"), hold_unreadable=True)
 
     # Migrate legacy activities.json → jobs.json
     jobs_path = Path(data_dir) / "jobs.json"

@@ -123,3 +123,20 @@ class RenamePersistenceTests(unittest.TestCase):
         with self.assertRaises(ChannelUnavailable):
             store.get_all()
         self.assertEqual(path.read_bytes(), raw)
+
+    def test_summary_startup_hold_handles_bad_bytes_and_true_corruption(self):
+        path = self.root / 'summaries.json'
+        cases = (b'\xff', b'{broken', b'[]', b'{"general":[]}',
+                 b'{"general":{"text":4}}', b'{"general":{"text":"ok","author":4}}',
+                 b'{"general":{"text":"ok","message_id":true}}',
+                 b'{"general":{"text":"ok","updated_at":null}}',
+                 b'{"general":{"text":"ok","extra":1e999}}',
+                 b'{"general":{"text":"first","text":"second"}}')
+        for raw in cases:
+            with self.subTest(raw=raw):
+                path.write_bytes(raw)
+                store = SummaryStore(str(path), hold_unreadable=True)
+                store.bind_channel_policy(lambda: None)
+                with self.assertRaises(ChannelUnavailable):
+                    store.get_all()
+                self.assertEqual(path.read_bytes(), raw)

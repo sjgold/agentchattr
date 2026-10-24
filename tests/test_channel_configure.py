@@ -235,6 +235,57 @@ class ChannelConfigureTests(unittest.TestCase):
         self.assertEqual(app.store.get_recent(channel='review'), [])
         self.assertEqual(len(app.store.get_recent(channel='peer')), 2)
 
+    def test_configured_unreadable_summary_path_holds_owner_and_chat_still_works(self):
+        path = self.data / 'summaries.json'
+        path.mkdir()
+        marker = path / 'retained.txt'
+        marker.write_bytes(b'do not replace this directory')
+        self.configure()
+        self.assertIsNotNone(app.channel_service)
+        with self.assertRaises(ChannelUnavailable):
+            app.summaries.get_all()
+        with patch.object(mcp_bridge, 'summaries', app.summaries), patch.object(mcp_bridge, 'session_engine', None):
+            answer = mcp_bridge.chat_summary(action='read', sender='', channel='general')
+        self.assertIn('summaries are held', answer)
+        self.assertNotIn(str(path), answer)
+        frames = []
+        class Socket:
+            query_params = {'token': 'isolated-configure-token'}
+            reads = 0
+            async def accept(inner): pass
+            async def send_text(inner, raw): frames.append(json.loads(raw))
+            async def receive_text(inner):
+                from fastapi import WebSocketDisconnect
+                inner.reads += 1
+                if inner.reads > 1:
+                    raise WebSocketDisconnect()
+                return json.dumps({'type': 'message', 'text': 'Chat works with held summaries',
+                                   'channel': 'general', 'selected_recipients': []})
+        asyncio.run(app.websocket_endpoint(Socket()))
+        self.assertTrue(any(frame.get('type') == 'history_complete' for frame in frames))
+        self.assertTrue(any(frame.get('type') == 'message_accepted' for frame in frames))
+        self.assertEqual(marker.read_bytes(), b'do not replace this directory')
+        self.assertTrue(path.is_dir())
+
+    def test_summary_upgrade_preserves_odd_names_and_optional_legacy_fields(self):
+        (self.data / 'settings.json').write_text(json.dumps({'channels': ['general', 'dev']}), encoding='utf-8')
+        saved = {'general': {'text': 'Valid general summary', 'author': 'operator',
+                             'message_id': 0, 'updated_at': 123.5},
+                 'Old Name': {'text': 'Read-only legacy data'},
+                 'dev': {'text': 'Legacy without message_id', 'author': 'helper', 'updated_at': 124}}
+        path = self.data / 'summaries.json'
+        path.write_text(json.dumps(saved), encoding='utf-8')
+        before = path.read_bytes()
+        self.configure()
+        self.assertEqual(app.summaries.get_all(), saved)
+        self.assertEqual(app.summaries.get('general'), saved['general'])
+        self.assertEqual(app.summaries.get('dev'), saved['dev'])
+        view = {row['name']: row for row in app.channel_service.catalog_view()['channels']}
+        self.assertEqual(view['Old Name']['state'], 'unregistered')
+        with self.assertRaises(ValueError):
+            app.summaries.write('Old Name', 'Must stay read-only', 'operator')
+        self.assertEqual(path.read_bytes(), before)
+
     def test_configured_held_schedules_bootstrap_reports_error_but_chat_stays_available(self):
         path = self.data / 'schedules.json'
         path.write_text('{broken schedules', encoding='utf-8')
