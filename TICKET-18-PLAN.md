@@ -156,3 +156,48 @@ Helper brief12 finalized PASS0.502s; root document36 PASS1.350s (pure12, brief12
 ## Frozen backend full regression (builder evidence)
 
 At clean source c60f003, full discovery ran1040 tests in90.431s, OK with4platformskips (1036passed), tracked def71596, retained `.audit-tmp/ticket18-backend-frozen-full.log`. Count cross-check1004+12+12+12=1040. Sonnet independently reviewing frozen backend; no review verdict yet. Next: address findings or obtain bounded backend clearance before the UI tranche. No UI/native acceptance from this run.
+
+
+## Backend independently cleared
+
+Sonnet bounded PASS at source c60f003 (docs-only d0f440e): own document36 PASS1.411s; related67 PASS3.467s; verify_review_brief, verify_corrected_restart and verify_session_events PASS. Own route probes confirmed size/chunk/media/query/Unicode/auth/Start-tamper refusal with unchanged file effects. Reviewer read builder full1040/4skips90.431s log summary, did not rerun full discovery. Revalidation cost at512KiB is acceptable; no cache is planned. This clears backend only, not UI or native file intake.
+
+## UI behavior freeze proposal (before UI tests/code)
+
+### Facade and source state
+
+Use the existing `.session-source-editor` wrappers in BOTH ordinary and draft launchers. Preserve the current task/cast/recovery controls and product colors, spacing and typography. New static/document-inputs.js loads before sessions.js. No dependencies, new upload store or source rendering.
+
+`DocumentInput.attach(editorElement)` returns one facade per live editor (repeat attach returns the same facade): readonly `.state` in paste|reading|file|error; `.requestFields()` returns a fresh detached object with EXACTLY input_text or source_file; `.setSubmitting(boolean)` disables its source controls; `.dispose()` aborts pending work, invalidates epochs and removes its listeners. requestFields throws when reading, error, submitting or disposed. File mode returns the stored canonical snapshot, never textarea.value. Paste mode returns the exact textarea.value. Dispatch bubbling `document-input-state` CustomEvent with detail `{state, canSubmit}` on meaningful changes so the modal updates Start. The facade owns no run/turn/queue operation.
+
+Initial paste state preserves the current textarea/draft. Add native single-file input and a labelled 'Choose UTF-8 file' action, a 'Use pasted text' action and a plain-text status/metadata region. Accept hint lists the agreed extensions; other extensions remain valid. File picker cancel leaves all state untouched. File selection clears the native input value after capturing the File so the same file can be selected again. More than one supplied file is refused, never silently merged.
+
+On selection cache the current pasted draft, enter reading, abort the previous preview, increment the epoch and disable Start. A valid latest preview enters file, stores its canonical object and shows read-only literal text, basename/title, exact byte size, full content SHA-256 and source_id. The text area may visually normalize newlines; payload still comes from the canonical object. Display the actual line-ending label from that object's text (CRLF, LF, CR or mixed) and a short note that original bytes are preserved. Do not execute, syntax-render, parse Markdown or use innerHTML for file content/name/errors.
+
+A failed NEW selection enters error and keeps any previous preview visible, labelled 'Previous preview, not ready to start'. Start remains blocked; no fallback to the previous file or selected buttons. Show the server's safe validation error (or a bounded generic network/timeout message) plus 'Choose another file or use pasted text. Nothing was started.' Choosing a valid file clears the error. 'Use pasted text' aborts/increments epoch, clears file authority/error, restores the cached paste and focuses its textarea. Picker cancel alone never clears a prior error. A zero-byte file is valid but prominently labelled '0 bytes (empty source)'; a leading BOM shows 'UTF-8 BOM present, preserved'. Both still require explicit Start.
+
+### Fetch, validation and lifetime
+
+POST `/api/documents/preview?filename=${encodeURIComponent(file.name)}` with raw File body, Content-Type application/octet-stream and current X-Session-Token. Client file-size refusal above512KiB is an early convenience; server limits remain authoritative. No client extension gate or text decoding. Eight-second AbortController deadline, monotonically increasing request epoch, disposed and editor.isConnected checks discard stale responses without touching state or Start. Closing/replacing the modal aborts/disposes. No auto retry or Start.
+
+Before accepting a response require exactly the canonical8keys; version integer1, kind file, encoding utf-8, name matches the selected File.name, byte_length integer0..524288 and equals File.size and UTF-8 length of returned text, content_sha256 lowercase64hex, source_id file:lowercase64hex, text string. Invalid shape fails closed; the browser does not duplicate server hashing/provenance validation. Store a detached snapshot and return detached snapshots from requestFields. Timer/abort state must be cleaned on success/failure/dispose; a stale old request cannot remove the newest request's timer/status.
+
+### Both Start paths and draft retention
+
+Both launchSessionWithCast and launchDraftSession read the same attached facade. File payload spreads `{source_file: canonical}` and OMITS input_text; paste payload spreads `{input_text: rawValue}` and OMITS source_file. Preserve goal/cast/recovery/draft/template/channel fields. One Start in flight per captured modal; guard it synchronously before awaiting fetch and disable its Start/source controls. Use a shared small submission/lifetime helper if this avoids duplicating the ownership checks, not a new generic form framework.
+
+On rejection/network failure keep the entire modal, source mode/object, pasted draft, goal/cast/recovery settings and error feedback, unlock controls and permit explicit retry. Never auto retry. Success disposes and removes only the captured modal; a stale response must not close a replacement modal. Closing/replacing the modal calls a single disposal-aware close function; inspect and replace ALL existing remove paths (backdrop, close button, reopening, successful Start). If closed during a Start, the pending request can still have started a run: no automatic resend and no success claim based on a closed modal. Start is explicit, textarea Enter remains a newline, IME never invokes Start, and native button Enter/Space retain native behavior.
+
+### Corrected restart and copy
+
+For file-origin stopped parents add a textContent-only badge 'Original file: {name} ({line endings})'. Keep the full original frozen source readable. Say: 'This restart creates a pasted snapshot. Edit the source itself; changing only line endings is treated as unchanged.' The corrected textarea remains the existing paste editor, no new file picker there. Prepared pasted children have no file badge/source_document. Backend validation remains the authority if stored metadata is malformed; the UI must not invent missing metadata or imply a native file link.
+
+### Layout and accessibility
+
+Operate mode, incumbent app styling. Scope new CSS to the document input component: minimum14px text,12px control inset,44px minimum action targets, min-width0 and anywhere wrapping for filenames/hashes/IDs. Preview stays within the modal at390px with bounded vertical scrolling, preserves literal whitespace and never grows the page horizontally. Empty/BOM/error/reading labels remain visible without opening a secondary dialog. Use associated labels, readonly (not disabled) file preview so it can be selected/copied, polite live status for meaningful state changes, alert for validation failures, and visible focus. Do not move focus when an async response arrives; Use pasted text restores focus to its editor. No decorative animation or unrelated inherited-overflow repair.
+
+### Test ownership and acceptance boundary
+
+After Sonnet confirms this behavior freeze, existing helper owns ONLY NEW tools/verify_document_ui.cjs, bounded12 named Node VM cases. First2 actual RED before frontend edits: missing module/facade and actual ordinary/draft Start payload still reading pasted textarea instead of canonical file fields. Test the actual shared module and extracted real launcher/restart functions at explicit source markers (minimal VM/fake DOM/clock/fetch only); no mirror implementation. Cover exact source/payload key exclusion/noalias, both Start paths, single flight/draft retention, cancel/same-file/replacement error, size/BOM/empty/extension advisory, stale/out-of-order/dispose/8s abort, all close paths, schema refusal, restart badge and script order/accessibility. Root implements UI only after RED. Node results are VM component evidence, not rendered browser or OS picker proof.
+
+Then syntax/diff, existing document/Python regressions and independent frozen UI source/VM review. Native/live-server acceptance requires its own reviewed draft with exact CLI/API invocations and retained-handle cleanup; no process runs under this UI freeze. Browser File/DataTransfer injection must be labelled DOM file-object evidence, distinct from an actual native OS picker. Final browser checks desktop/390px/keyboard/focus/empty/BOM/error/draft retention and both launcher paths. Existing Windows/local-fake/Omarchy/live-provider limits remain.
