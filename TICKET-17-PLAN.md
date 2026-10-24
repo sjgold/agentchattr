@@ -426,3 +426,15 @@ Root source review found and helper corrected: malformed-WS receive requires an 
 ### Independent B1 setup correction before first run
 
 Sonnet source audit caught the one-active-review-per-channel constraint in the initial order draft. Corrected B uses order-run-b, A/manual/peer/hop stay order-run, and Stop reuses order-run after A completes. Both queued records are sampled, actual client A/B/manual injection order is asserted/persisted, and result JSON labels ignored-only selection fallback. Root independently compile-only3/1PASS and short-diff review, no actual execution. Sonnet diff recheck remains required. Planned run order is family first, then audience/order individually stopping on any failure; separate browser serve later.
+
+
+### Live family/audience results and order fixture correction
+
+Family and audience at5f9b3df passed once each for builder and independently for Sonnet, with exact0/7localprovider counts and zero unresolved cleanup. Family scope remains registry/realWS only; audience proves actual managedAPI/model lifecycles and7calls(A4/B3). First order hewx9qyh failed whole active_invocation equality beforeAPI generation, with B/manual queued and one CLI injection; cleanup complete. Both source audits confirm monitoring legitimately records ledger ack/deadline/lastevent changes. Failed evidence stays failed.
+
+Settled R1-R4: compare all logical invocation fields exceptmonitoring plusstate/dispatch_eligible/turn_recovery(None)/currentcursor exactly; validate monitoringpolicy/created/ackdeadline stable and othermonitorvalues derived fromrealledger, wait<=5s forcadence convergence; persistbefore/current/expected beforeassert; preserveeveryotherordering/Stop assertion andrerunonlyafterroot/Sonnetdiffconfirmation. No productionchange, no orderacceptance/browserclaim.
+
+
+### R1-R4 monitoring fixture correction ready
+
+Verifier logical field/identity equality remains exact; both turn_recovery values explicitly must be None. Stable monitoring anchors plus complete expected monitoring from actual queue events must converge within5s, with snapshots/ledger/expectations saved before assertions. Root independently compiled3/1; no actual rerun. Sonnet shortdiffconfirmation remains the next step, after which onefreshorder mayrun.

@@ -466,8 +466,35 @@ def order(f):
         assert record(manual_id)['state'] == 'queued' and len(f.clients_read()[0]['turns']) == 1
         assert f.state()['router']['order-run'] == {'hop_count': 0, 'paused': False, 'guard_emitted': False}
         for run, before in zip((first, second), original):
-            current = f.session(run['id'])
-            assert current['state'] == before['state'] and current['active_invocation'] == before['active_invocation']
+            deadline = time.monotonic() + 5
+            while True:
+                current = f.session(run['id'])
+                baseline = before['active_invocation']
+                invocation = current['active_invocation']
+                ledger = record(baseline['dispatch_id'])
+                acknowledged = next((event['at'] for event in ledger['events'] if event['state'] == 'acknowledged'), None)
+                expected = deepcopy(baseline['monitoring'])
+                expected.update(acknowledged_at=acknowledged,
+                    response_deadline=acknowledged + expected['policy']['response_timeout'] if acknowledged is not None else None,
+                    last_event={key: ledger['events'][-1][key] for key in ('state', 'at')})
+                evidence = {'kind': 'post_interval_logical_and_monitoring_comparison', 'session_id': run['id'],
+                    'baseline': before, 'post_interval': current, 'ledger': ledger,
+                    'expected_monitoring': expected, 'observed_at': time.time(),
+                    'monitor_convergence_bound_seconds': 5}
+                f.observations.append(evidence)
+                # Persist the actual comparison inputs before any assertion can fail.
+                atomic_json(f.root / 'observations.json', f.observations)
+                assert before.get('turn_recovery') is None and current.get('turn_recovery') is None, 'Unexpected recovery checkpoint'
+                for key in ('state', 'dispatch_eligible', 'turn_recovery', 'current_phase', 'current_turn'):
+                    assert current.get(key) == before.get(key), 'Logical review field changed: ' + key
+                assert {key: value for key, value in invocation.items() if key != 'monitoring'} == {
+                    key: value for key, value in baseline.items() if key != 'monitoring'}, 'Logical invocation changed'
+                for key in ('policy', 'created_at', 'ack_deadline'):
+                    assert invocation['monitoring'][key] == baseline['monitoring'][key], 'Monitoring anchor changed: ' + key
+                if invocation['monitoring'] == expected:
+                    break
+                assert time.monotonic() < deadline, 'Actual monitor did not converge to exact ledger-derived state within 5s'
+                time.sleep(.1)
         peer_message, ack = f.post(socket, '@' + peer['name'] + ' PEER_USABLE', [], 'order-run')
         f.receipt(peer_message, [peer['identity_id']], ack); f.finish_api(1)
         assert len(f.clients_read()[0]['turns']) == 1
