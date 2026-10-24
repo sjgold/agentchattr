@@ -27,6 +27,8 @@ class OperatorIngressTests(unittest.TestCase):
                             'session_store': self.sessions}.items():
             self.patches.enter_context(patch.object(app, name, value, create=True))
         self.patches.enter_context(patch.object(mcp_bridge, 'is_online', return_value=True))
+        from tests.channel_fixture import initialize_app_channels
+        initialize_app_channels(self, self.root, ['general', 'review'])
 
     def test_central_publication_keeps_raw_text_and_explicit_over_selection(self):
         message = app._publish_operator_message(sender='operator', text='@codex café\r\nraw',
@@ -137,13 +139,20 @@ class OperatorIngressTests(unittest.TestCase):
         self.assertEqual(self.trigger.queue.path.read_bytes(), before)
 
     def test_identity_rename_preserved_but_removed_identity_not_replaced_by_same_name(self):
-        message = self.publish('@claude')
+        # Replay an already persisted receipt, as after a delayed legacy callback.
+        # Current central publication enqueues before returning, so construct
+        # this specific pre-enqueue storage seam explicitly.
+        from store import _OPERATOR_PUBLICATION
+        def awaiting_replay(text):
+            return self.messages._publish_operator('operator', text, authority=_OPERATOR_PUBLICATION,
+                routing=dict(app._recipient_resolution(text, [], 'general'), origin='operator'))
+        message = awaiting_replay('@claude')
         renamed = self.registry.rename(self.peer['name'], 'claude-renamed')
         self.assertIsInstance(renamed, dict)
         self.dispatch(message)
         record = self.trigger.queue.owned(renamed, self.dispatch_id(message, self.peer['identity_id']))
         self.assertEqual(record['envelope']['target_agent_name'], renamed['name'])
-        second = self.publish('@codex')
+        second = awaiting_replay('@codex')
         self.registry.deregister(self.owner['name'])
         replacement = self.registry.register('codex')
         self.assertNotEqual(replacement['identity_id'], self.owner['identity_id'])

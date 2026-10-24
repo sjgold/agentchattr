@@ -25,6 +25,8 @@ from agents import AgentTrigger
 from registry import RuntimeRegistry
 from session_store import SessionStore, validate_session_template
 from session_engine import SessionEngine
+from channel_lifecycle import ChannelStore, ChannelUnavailable, ChannelInactive
+from channel_service import ChannelService
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +43,7 @@ agents: AgentTrigger | None = None
 registry: RuntimeRegistry | None = None
 session_store: SessionStore | None = None
 session_engine: SessionEngine | None = None
+channel_service: ChannelService | None = None
 _turn_monitor_task = None
 _turn_monitor_stop = None
 _turn_monitor_wake = None
@@ -175,9 +178,39 @@ def _load_settings():
 
 
 def _save_settings():
-    p = _settings_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(room_settings, indent=2), "utf-8")
+    from api_seats import atomic_json
+    atomic_json(_settings_path(), room_settings)
+
+
+def _channels():
+    if channel_service is None:
+        raise ChannelUnavailable('Channel management is unavailable; publication is held.')
+    return channel_service
+
+
+def _initialize_channel_lifecycle(data_dir):
+    global channel_service
+    # Bind the fail-closed getter first, including the corrupt-file case.
+    channel_service = None
+    agents.queue.bind_channel_policy(_channels)
+    catalog = ChannelStore(Path(data_dir) / 'channel_lifecycle.json')
+    catalog.initialize(room_settings['channels'])
+    channel_service = ChannelService(catalog, engine=session_engine, messages=store,
+        jobs=jobs, schedules=schedules, summaries=summaries, queue=agents.queue,
+        settings=room_settings, save_settings=_save_settings, migrate_cursors=None,
+        router=router, migrate_last_active=None)
+    channel_service.on_change(_on_channel_change)
+
+
+def _on_channel_change(event):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is not None:
+        loop.create_task(_broadcast(json.dumps(event)))
+    elif _event_loop is not None:
+        asyncio.run_coroutine_threadsafe(_broadcast(json.dumps(event)), _event_loop)
 
 
 def _extract_agent_token(request: Request) -> str:
@@ -541,6 +574,12 @@ def configure(cfg: dict, session_token: str = ""):
                                    adapter_recovery_policy=cfg.get('session_recovery_by_adapter'))
     session_store.on_change(_on_session_change)
 
+    _load_settings()
+    try:
+        _initialize_channel_lifecycle(data_dir)
+    except (ChannelUnavailable, OSError, ValueError):
+        log.error('Channel state is unavailable; publication and new claims are held.')
+
     # This runs before HTTP/MCP publication or background claim/monitor loops.
     # Cold run eligibility is persisted before surviving workers can reconnect.
     api_seat_manager.reconcile_runtime()
@@ -550,7 +589,6 @@ def configure(cfg: dict, session_token: str = ""):
     # broadcast to all WebSocket clients
     store.on_message(_on_store_message)
 
-    _load_settings()
     _load_hats()
 
     # Apply saved loop guard setting
@@ -932,6 +970,7 @@ def _recipient_resolution(text, selected_recipients, channel, job_id=None):
     from queue_coordinator import allowed_review_dispatch_ids
     if not isinstance(channel, str) or not _re.fullmatch(r'[a-z0-9][a-z0-9-]{0,19}', channel):
         raise ValueError('Use a valid message channel.')
+    _channels().require_active(channel)
     if job_id is not None:
         if type(job_id) is not int or job_id <= 0:
             raise ValueError('Job ID must be a positive integer.')
@@ -1003,7 +1042,7 @@ def _publish_operator_message(*, sender, text, selected_recipients, channel='gen
         raise ValueError('Message text or attachments are required.')
     if any(not isinstance(item, dict) for item in (attachments or [])):
         raise ValueError('Message attachments must be objects.')
-    with session_engine._lock if session_engine else nullcontext():
+    with _channels().publication(channel):
         resolution = _recipient_resolution(text if approved_targets is None else '',
             selected_recipients if approved_targets is None else approved_targets, channel, job_id)
         stored_text = (_expand_operator_command(text, resolution['recipients'])
@@ -1021,6 +1060,7 @@ def _publish_operator_message(*, sender, text, selected_recipients, channel='gen
             if message is None:
                 raise LookupError('Job not found.')
         router.continue_routing(channel)
+        _dispatch_operator_audience_sync(message, job_id=job_id)
         publisher = store if job_id is None else jobs
         publisher._emit_operator(message, authority=_OPERATOR_PUBLICATION)
         return message
@@ -1045,7 +1085,7 @@ def _saved_operator_message(message, job_id=None):
     return saved
 
 
-async def _dispatch_operator_audience(message: dict, *, job_id=None):
+def _dispatch_operator_audience_unlocked(message: dict, *, job_id=None):
     from dispatch_queue import QueueConflict
     saved = _saved_operator_message(message, job_id)
     if saved is None:
@@ -1057,7 +1097,7 @@ async def _dispatch_operator_audience(message: dict, *, job_id=None):
             dispatch_id = uuid.uuid5(uuid.NAMESPACE_URL,
                 'agentchattr:recipient:' + saved['uid'] + ':' + identity).hex
             try:
-                await asyncio.to_thread(agents.trigger_identity_sync, identity, dispatch_id=dispatch_id,
+                agents.trigger_identity_sync(identity, dispatch_id=dispatch_id,
                     message=saved['sender'] + ': ' + saved['text'], channel=saved.get('channel', 'general'),
                     job_id=job_id, prompt=saved['text'] if saved.get('type') == 'session_request' else '')
             except (QueueConflict, ValueError, OSError):
@@ -1067,6 +1107,18 @@ async def _dispatch_operator_audience(message: dict, *, job_id=None):
             current = store.get_snapshot(saved['id'])
             if current and current.get('uid') == saved['uid']:
                 store.delete([saved['id']])  # Hidden coordinator instructions stay in the dispatch, not chat readers.
+
+
+def _dispatch_operator_audience_sync(message: dict, *, job_id=None):
+    with _channels().publication(message.get('channel', 'general')):
+        _dispatch_operator_audience_unlocked(message, job_id=job_id)
+
+
+async def _dispatch_operator_audience(message: dict, *, job_id=None):
+    try:
+        await asyncio.to_thread(_dispatch_operator_audience_sync, message, job_id=job_id)
+    except (ChannelInactive, ChannelUnavailable):
+        log.info('Inactive channel replay held; no audience was redirected.')
 
 
 @app.post('/api/recipients/preview')
@@ -1081,6 +1133,10 @@ async def preview_recipients(request: Request):
         with session_engine._lock if session_engine else nullcontext():
             value = _recipient_resolution(body['text'], body['selected_recipients'], body['channel'], body.get('job_id'))
         return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except ChannelInactive:
+        return JSONResponse({'error': 'Channel is inactive; specify an active channel.'}, status_code=409)
+    except ChannelUnavailable:
+        return JSONResponse({'error': 'Channel management is unavailable; publication is held.'}, status_code=503)
     except ValueError:
         return JSONResponse({'error': 'Invalid recipient preview request.'}, status_code=400)
     except LookupError:

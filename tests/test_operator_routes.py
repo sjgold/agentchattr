@@ -48,6 +48,8 @@ class OperatorRoutesTests(unittest.TestCase):
         self.f.messages.on_message(callback)
         self.headers = {'X-Session-Token': 'operator-routing-test'}
         self.body = {'text': '@codex café\r\nraw', 'selected_recipients': ['claude'], 'channel': 'general'}
+        from tests.channel_fixture import initialize_app_channels
+        initialize_app_channels(self, self.f.root, ['general', 'elsewhere', 'discussion'])
 
     def client(self):
         api = FastAPI()

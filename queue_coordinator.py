@@ -1,5 +1,6 @@
 """Serialize durable run eligibility with queue mutations, without store nesting."""
 import math
+from contextlib import contextmanager, nullcontext
 
 from dispatch_queue import ACTIVE, QueueBusy, QueueConflict, _identifier
 
@@ -52,6 +53,21 @@ def allowed_review_dispatch_ids(runs, identity_id):
 class CoordinatedQueue:
     def __init__(self, queue, sessions, lock):
         self._queue, self._sessions, self._lock = queue, sessions, lock
+        self._channel_policy = None
+
+    def bind_channel_policy(self, policy_getter):
+        """Bind before runtime publication; a failed getter keeps work held."""
+        if not callable(policy_getter):
+            raise ValueError('An explicit channel policy getter is required.')
+        with self._lock:
+            self._channel_policy = policy_getter
+
+    @contextmanager
+    def _channel_boundary(self):
+        with self._lock:
+            policy = self._channel_policy() if self._channel_policy else None
+            with policy._boundary() if policy else nullcontext():
+                yield policy
 
     def _reconcile(self):
         # list_all releases the SessionStore lock before the queue transaction.
@@ -72,7 +88,9 @@ class CoordinatedQueue:
         return unpublished_holds
 
     def enqueue(self, instance, envelope):
-        with self._lock:
+        with self._channel_boundary() as policy:
+            if policy:
+                policy.require_active(envelope.get('channel', 'general'))
             runs = self._sessions.list_all()
             if any(run['run_id'] == envelope.get('run_id') and run.get('dispatch_eligible') is False for run in runs):
                 raise QueueConflict('Stopped runs cannot enqueue further work.')
@@ -104,7 +122,14 @@ class CoordinatedQueue:
             return self._sessions.resolve_old_transport(session_id, request_id, proof)
 
     def claim(self, instance, consumer_id):
-        with self._lock:
+        with self._channel_boundary() as policy:
+            blocked_channels = None
+            if policy:
+                value = policy.catalog.snapshot()
+                blocked_channels = policy.catalog.blocked_names()
+                blocked_channels.update(record['envelope'].get('channel', 'general')
+                    for record in self._queue.records()
+                    if value['channels'].get(record['envelope'].get('channel', 'general')) != 'active')
             unpublished_holds = self._reconcile()
             runs = self._sessions.list_all()
             blocked = {run['run_id'] for run in runs
@@ -112,7 +137,8 @@ class CoordinatedQueue:
             identity = instance.get('identity_id') if isinstance(instance, dict) else None
             allowed = allowed_review_dispatch_ids(runs, identity)
             return self._queue.claim(instance, consumer_id, blocked_run_ids=blocked,
-                                     blocked_identity_ids=unpublished_holds, allowed_dispatch_ids=allowed)
+                                     blocked_identity_ids=unpublished_holds, allowed_dispatch_ids=allowed,
+                                     blocked_channel_names=blocked_channels)
 
     def __getattr__(self, name):
         attribute = getattr(self._queue, name)

@@ -43,6 +43,8 @@ class CapacityRoutesTests(unittest.TestCase):
                             ('router', Router(['coordinator'])), ('agents', self.engine._trigger)):
             stack.enter_context(patch.object(app, name, value))
         self.client = TestClient(self.api)
+        from tests.channel_fixture import initialize_app_channels
+        initialize_app_channels(self, self.root, ['general'])
 
     def test_public_policy_and_coordinator_request_are_identical(self):
         policy = self.client.get('/api/session-capacity').json()
