@@ -421,3 +421,8 @@ Only audience may later get separately authorized600s-pre-send browser serve, wi
 ### Acceptance draft source corrections, before execution
 
 Root source review found and helper corrected: malformed-WS receive requires an overall deadline even with recurring statusframes; observations write failure must always enter resource cleanup. Order record now compares genuine admitted-event accepted_at to B/manual dispatched timestamps and asserts exactly one claim event, alongside actual client receive/release/final timestamps. Three-second quiet windows are explicitly recorded as bounded observations. Both helper and root compile-only3server/1clientPASS, with no actual acceptance run. Full frozen draft/imported-cleanup audit by Sonnet remains required before one case.
+
+
+### Independent B1 setup correction before first run
+
+Sonnet source audit caught the one-active-review-per-channel constraint in the initial order draft. Corrected B uses order-run-b, A/manual/peer/hop stay order-run, and Stop reuses order-run after A completes. Both queued records are sampled, actual client A/B/manual injection order is asserted/persisted, and result JSON labels ignored-only selection fallback. Root independently compile-only3/1PASS and short-diff review, no actual execution. Sonnet diff recheck remains required. Planned run order is family first, then audience/order individually stopping on any failure; separate browser serve later.

@@ -57,7 +57,7 @@ configure=app.configure
 fixture_rows={{}}
 def configured(*args,**kwargs):
     configure(*args,**kwargs)
-    app.room_settings['channels']=['general','audience-run','order-run','family-run']
+    app.room_settings['channels']=['general','audience-run','order-run','order-run-b','family-run']
     app.session_store.save_custom_template({ONE!r})
 app.configure=configured
 @app.app.get('/api/fixture/state')
@@ -253,7 +253,7 @@ class Fixture:
         self.wait(lambda: all(value['state'] in ('released', 'cancelled') for value in self.ledger_records()
             if value['envelope']['dispatch_id'] in self.models), 'API transport release')
 
-    def quiet(self, ledger_count, provider_count, seconds=3, queued_dispatch=None, cli_injections=None):
+    def quiet(self, ledger_count, provider_count, seconds=3, queued_dispatch=None, cli_injections=None, other_queued_dispatch=None):
         # More than two normal 1s worker polls, not an instantaneous absence check.
         started_at = time.time()
         deadline = time.monotonic() + seconds
@@ -263,12 +263,15 @@ class Fixture:
             assert len(records) == ledger_count
             if queued_dispatch:
                 assert next(r for r in records if r['envelope']['dispatch_id'] == queued_dispatch)['state'] == 'queued'
+            if other_queued_dispatch:
+                assert next(r for r in records if r['envelope']['dispatch_id'] == other_queued_dispatch)['state'] == 'queued'
             if cli_injections is not None:
                 assert sum(len(v['turns']) for v in self.clients_read()) == cli_injections
             time.sleep(.1)
         self.observations.append({'kind': 'bounded_poll_interval', 'started_at': started_at,
             'ended_at': time.time(), 'minimum_seconds': seconds, 'provider_count': provider_count,
-            'ledger_count': ledger_count, 'queued_dispatch': queued_dispatch, 'cli_injections': cli_injections})
+            'ledger_count': ledger_count, 'queued_dispatch': queued_dispatch,
+            'other_queued_dispatch': other_queued_dispatch, 'cli_injections': cli_injections})
 
     def receipt(self, message, identities, ack=None):
         receipt = message['metadata']['recipient_routing']
@@ -424,13 +427,16 @@ def audience(f, serve=False):
     assert sum(v['model'] == 'recipient-model-a' for v in f.captures) == 4
     assert sum(v['model'] == 'recipient-model-b' for v in f.captures) == 3
     return {'case': 'audience', 'provider_calls': 7, 'cli_injections': 0,
-            'offline_fixture_native_claim': False, 'serve': serve}
+            'offline_fixture_native_claim': False, 'serve': serve,
+            'ignored_only_no_selection_provider_calls': 0,
+            'ignored_only_selected_a_provider_calls': 1,
+            'ignored_only_behavior': 'settled_selected_fallback_not_address_leak'}
 
 
 def order(f):
     owner, peer = f.initial['workers']['recipients/cli'], f.initial['workers']['recipients/a']
-    def start():
-        run = f.api('/api/sessions/start', {'template_id': ONE['id'], 'channel': 'order-run',
+    def start(channel='order-run'):
+        run = f.api('/api/sessions/start', {'template_id': ONE['id'], 'channel': channel,
             'cast': {'worker': owner['name']}, 'input_text': SOURCE, 'goal': 'Keep exact logical order.'})
         f.runs.append(run['id'])
         return run
@@ -447,7 +453,7 @@ def order(f):
     early = f.wait(lambda: client_turn(0, 'agent_chat_reply'), 'actual MCP chat plus early release')
     assert early['release_reply']['status'] == 'released'
     assert record(early['dispatch_id'])['state'] == 'released'
-    second = start()
+    second = start('order-run-b')
     original = [deepcopy(f.session(run['id'])) for run in (first, second)]
     f.api('/api/fixture/registry', {'action': 'hops', 'channel': 'order-run'})
     with f.ws() as socket:
@@ -455,7 +461,8 @@ def order(f):
         f.receipt(manual, [owner['identity_id']], ack)
         manual_id = uuid.uuid5(uuid.NAMESPACE_URL, 'agentchattr:recipient:' + manual['uid'] + ':' + owner['identity_id']).hex
         queued_count = len(f.ledger_records())
-        f.quiet(queued_count, 0, queued_dispatch=manual_id, cli_injections=1)
+        f.quiet(queued_count, 0, queued_dispatch=manual_id, cli_injections=1,
+            other_queued_dispatch=second['active_invocation']['dispatch_id'])
         assert record(manual_id)['state'] == 'queued' and len(f.clients_read()[0]['turns']) == 1
         assert f.state()['router']['order-run'] == {'hop_count': 0, 'paused': False, 'guard_emitted': False}
         for run, before in zip((first, second), original):
@@ -472,6 +479,12 @@ def order(f):
         third = f.wait(lambda: client_turn(2, 'release_reply'), 'normal manual injection and release')
         assert third['kind'] == 'manual' and third['dispatch_id'] == manual_id
         assert third['release_reply']['status'] == 'released'
+        injection_order = [{'kind': turn['kind'], 'dispatch_id': turn['dispatch_id']}
+                           for turn in f.clients_read()[0]['turns']]
+        assert injection_order == [
+            {'kind': 'review', 'dispatch_id': first['active_invocation']['dispatch_id']},
+            {'kind': 'review', 'dispatch_id': second['active_invocation']['dispatch_id']},
+            {'kind': 'manual', 'dispatch_id': manual_id}]
         b_claim = next(e['at'] for e in record(second_turn['dispatch_id'])['events'] if e['state'] == 'dispatched')
         manual_claim = next(e['at'] for e in record(manual_id)['events'] if e['state'] == 'dispatched')
         a_accepted = f.session(first['id'])['admitted_events'][0]['accepted_at']
@@ -483,6 +496,7 @@ def order(f):
         # Client turn records are the fixture's transport journal, not queue_client storage.
         f.observations.append({'kind': 'actual_order_evidence', 'a_accepted_at': a_accepted,
             'b_claimed_at': b_claim, 'b_accepted_at': b_accepted, 'manual_claimed_at': manual_claim,
+            'client_injection_order': injection_order,
             'journal_path': str(f.records / ('client-' + str(f.client_pid) + '.json'))})
         stopped = start()
         f.wait(lambda: client_turn(3, 'release_reply'), 'Stop review genuine injected/early released')

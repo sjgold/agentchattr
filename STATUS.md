@@ -508,3 +508,13 @@ Helper drafted only tools/verify_explicit_recipients.py and fake_recipient_clien
 ### Ticket17 corrected acceptance draft frozen for independent cleanup audit
 
 Helper addressed R1/R2 with bounded15s malformed-WS receive loop and nested finally guaranteeing cleanup even if observations persistence fails. Added genuine store accepted_at versus B/manual queue claim times, exactly one dispatched event per A/B/manual, explicit client transport-journal timestamps and bounded-poll observation records. Root reread the corrections, matched SHA256s (verifier8b9bfeb68c7454c221eabc7529cc8e71497755cc237cac6b8c468435bed7f98f; client706ef428a9cf7069a4e735471f18c1348257cc6f7ece86c69b021694c2f099a5), and independently ran compile-only3generatedservers/1fakeclientPASS. No actual processes/resources started. Next owner Sonnet independently reads complete frozen scripts and imported cleanup; root authorizes one normal case only after readiness verdict. Optional browser serve is still unrun/unapproved.
+
+
+### Ticket17 independent draft audit found B1 before any run
+
+Sonnet independently read the frozen harness and compiled3server/1client only. It found that both order reviews used order-run, violating SessionStore.create one-active-review-per-channel. Root confirmed the guard and assigned harness-only correction: B uses order-run-b while A/manual/peer/hops stay order-run; observe both B/manual queued, persist exact actual injection order, label ignored-only/no-selection versus selected fallback in resultJSON. Cleanup/source accounting otherwise accepted; no native case ran. First execution after corrected diff recheck will be family (0provider/nativefamily claims), then audience/order singly with stop-on-failure. Browser serve remains separate. Next owner helper corrects, then root/Sonnet recheck before family readiness.
+
+
+### Ticket17 B1 harness correction ready for short recheck
+
+Helper changed only the new verifier: configured order-run-b, starts B there, keeps A/manual/peer/hop and later Stop on order-run. Quiet interval explicitly samples both B/manual queued. Observations assert actual client injection order A/B/manual in addition to ledger/store event times. Audience result labels ignored-only no-selection0 versus selectedA1. Root reviewed the focused diff, independently compiled3server/1client, matched verifierSHA2564b757065bc7fd54965fc34fd73f543c6df94c84d62a900fd2ec772acdc6f9f56; fakeclient unchanged706ef428a9cf7069a4e735471f18c1348257cc6f7ece86c69b021694c2f099a5. No actual run. Next owner Sonnet short diff recheck, then root authorizes exactly one family case before any audience/order/serve.
