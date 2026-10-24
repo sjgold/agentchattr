@@ -1051,16 +1051,22 @@ async def _dispatch_operator_audience(message: dict, *, job_id=None):
     if saved is None:
         return
     receipt = saved['metadata']['recipient_routing']
-    for target in receipt['recipients']:
-        identity = target['identity_id']
-        dispatch_id = uuid.uuid5(uuid.NAMESPACE_URL,
-            'agentchattr:recipient:' + saved['uid'] + ':' + identity).hex
-        try:
-            await asyncio.to_thread(agents.trigger_identity_sync, identity, dispatch_id=dispatch_id,
-                message=saved['sender'] + ': ' + saved['text'], channel=saved.get('channel', 'general'),
-                job_id=job_id, prompt=saved['text'] if saved.get('type') == 'session_request' else '')
-        except (QueueConflict, ValueError, OSError):
-            log.info('Resolved recipient is unavailable or already conflicted; message retained.')
+    try:
+        for target in receipt['recipients']:
+            identity = target['identity_id']
+            dispatch_id = uuid.uuid5(uuid.NAMESPACE_URL,
+                'agentchattr:recipient:' + saved['uid'] + ':' + identity).hex
+            try:
+                await asyncio.to_thread(agents.trigger_identity_sync, identity, dispatch_id=dispatch_id,
+                    message=saved['sender'] + ': ' + saved['text'], channel=saved.get('channel', 'general'),
+                    job_id=job_id, prompt=saved['text'] if saved.get('type') == 'session_request' else '')
+            except (QueueConflict, ValueError, OSError):
+                log.info('Resolved recipient is unavailable or already conflicted; message retained.')
+    finally:
+        if job_id is None and saved.get('type') == 'session_request':
+            current = store.get_snapshot(saved['id'])
+            if current and current.get('uid') == saved['uid']:
+                store.delete([saved['id']])  # Hidden coordinator instructions stay in the dispatch, not chat readers.
 
 
 @app.post('/api/recipients/preview')
@@ -1624,6 +1630,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 except OSError:
                     await websocket.send_text(json.dumps({'type': 'message_error',
                         'error': 'Message storage is unavailable; the message was not accepted.'}))
+                except Exception:
+                    await websocket.send_text(json.dumps({'type': 'message_error',
+                        'error': 'Message could not be confirmed; check the conversation before sending again.'}))
 
             elif event.get("type") == "delete":
                 ids = event.get("ids", [])
@@ -3513,7 +3522,7 @@ async def request_session_draft(request: Request):
         f"Requested session draft from {mention_str}. Wait for a proposal.",
         channel=channel,
     )
-    _publish_operator_message(
+    message = _publish_operator_message(
         sender=sender,
         text=f"{mention_str} Design a session workflow for: **{description}**\n\n"
         "Respond with a single chat message containing a fenced JSON code block with this exact structure:\n"
@@ -3529,6 +3538,7 @@ async def request_session_draft(request: Request):
         msg_type="session_request",
         metadata={"session_request": True, "mentions": [f"@{agent_name}"], "request": description},
     )
+    await _dispatch_operator_audience(message)
     return JSONResponse({"ok": True})
 
 

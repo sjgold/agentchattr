@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 import app
 from agents import AgentTrigger
 from registry import RuntimeRegistry
+from router import Router
 from session_engine import SessionEngine
 from session_store import SessionStore, validate_session_template
 from store import MessageStore
@@ -26,6 +27,8 @@ class CapacityRoutesTests(unittest.TestCase):
         self.sessions = SessionStore(str(self.root / 'sessions.json'), capacity_policy=self.policy)
         self.messages = MessageStore(str(self.root / 'messages.jsonl'))
         self.registry = RuntimeRegistry(str(self.root))
+        self.registry.seed({'coordinator': {}})
+        self.coordinator = self.registry.register('coordinator')
         self.engine = SessionEngine(self.sessions, self.messages,
                                    AgentTrigger(self.registry, str(self.root)), self.registry)
         self.api = FastAPI()
@@ -36,7 +39,8 @@ class CapacityRoutesTests(unittest.TestCase):
         stack = ExitStack()
         self.addCleanup(stack.close)
         for name, value in (('session_store', self.sessions), ('session_engine', self.engine),
-                            ('store', self.messages), ('registry', self.registry)):
+                            ('store', self.messages), ('registry', self.registry),
+                            ('router', Router(['coordinator'])), ('agents', self.engine._trigger)):
             stack.enter_context(patch.object(app, name, value))
         self.client = TestClient(self.api)
 
@@ -46,8 +50,10 @@ class CapacityRoutesTests(unittest.TestCase):
         self.assertEqual(policy['execution'], {'mode': 'sequential', 'active_turns_per_session': 1})
         response = self.client.post('/api/sessions/request-draft', json={'agent': 'coordinator', 'description': 'Use all six'})
         self.assertEqual(response.status_code, 200)
-        request = self.messages.get_recent(1)[0]
-        self.assertIn(policy['limits_text'], request['text'])
+        records = self.engine._trigger.queue.for_identity(self.coordinator)
+        self.assertEqual(len(records), 1)
+        self.assertIn(policy['limits_text'], records[0]['envelope']['prompt'])
+        self.assertFalse(any(message['type'] == 'session_request' for message in self.messages.get_recent(100)))
 
     def test_stale_valid_flag_cannot_save_or_start_excess_draft(self):
         template = {'id': 'excess', 'name': 'Whole team', 'roles': [f'r{i}' for i in range(7)],

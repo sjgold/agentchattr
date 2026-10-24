@@ -3,13 +3,16 @@ import asyncio
 from contextlib import ExitStack
 from copy import deepcopy
 import inspect
+import io
 import json
 import unittest
+import zipfile
 from unittest.mock import AsyncMock, Mock, patch
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocketDisconnect
 from fastapi.testclient import TestClient
 import app
+import archive
 import mcp_bridge
 from jobs import JobStore
 from router import Router
@@ -53,6 +56,8 @@ class OperatorRoutesTests(unittest.TestCase):
         api.add_api_route('/api/recipients/preview', app.preview_recipients, methods=['POST'])
         api.add_api_route('/api/jobs/{job_id}/messages', app.post_job_message, methods=['POST'])
         api.add_api_route('/api/send', app.api_send, methods=['POST'])
+        api.add_api_route('/api/messages', app.get_messages, methods=['GET'])
+        api.add_api_route('/api/sessions/request-draft', app.request_session_draft, methods=['POST'])
         api.add_api_websocket_route('/ws', app.websocket_endpoint)
         client = TestClient(api, client=('127.0.0.1', 40000))
         self.addCleanup(client.close)
@@ -202,3 +207,49 @@ class OperatorRoutesTests(unittest.TestCase):
         self.assertEqual(len(messages), 1)
         self.assertEqual(messages[0]['uid'], response.json()['uid'])
         self.assertEqual(len(response.json()['metadata']['recipient_routing']['recipients']), 1)
+
+    def test_hidden_coordinator_prompt_is_dispatched_then_absent_from_readers_and_zip(self):
+        client = self.client()
+        response = client.post('/api/sessions/request-draft', headers=self.headers,
+            json={'agent': 'claude', 'description': 'Hidden planning description', 'channel': 'general'})
+        self.assertEqual(response.status_code, 200)
+        rows = self.f.messages.get_recent(100)
+        self.assertFalse(any(row['type'] == 'session_request' for row in rows))
+        self.assertNotIn('Hidden planning description', json.dumps(client.get('/api/messages', headers=self.headers).json()))
+        with zipfile.ZipFile(io.BytesIO(archive.build_export(self.f.messages, None, None, None))) as exported:
+            self.assertNotIn('Hidden planning description', exported.read('messages.jsonl').decode('utf-8'))
+        records = self.f.trigger.queue.for_identity(self.f.peer)
+        self.assertEqual(len(records), 1)
+        self.assertIn('Hidden planning description', records[0]['envelope']['prompt'])
+
+    def test_unexpected_websocket_error_is_generic_and_connection_remains_usable(self):
+        # Bound this fault-injected handler test; a missing error frame must not hang discovery.
+        frames = []
+        inputs = iter([{'type': 'message', 'text': '@claude hello'},
+                       {'type': 'message', 'text': 'shared after error'}])
+        class Socket:
+            query_params = {'token': 'operator-routing-test'}
+            async def accept(self): pass
+            async def send_text(self, value): frames.append(json.loads(value))
+            async def receive_text(self):
+                value = next(inputs, None)
+                if value is None:
+                    await asyncio.sleep(.01)
+                    raise WebSocketDisconnect()
+                return json.dumps(value)
+        publish = app._publish_operator_message
+        failed = False
+        def fail_once(**kwargs):
+            nonlocal failed
+            if not failed:
+                failed = True
+                raise RuntimeError('private runtime location')
+            return publish(**kwargs)
+        async def exercise():
+            await asyncio.wait_for(app.websocket_endpoint(Socket()), timeout=2)
+        with patch.object(app, '_publish_operator_message', side_effect=fail_once):
+            asyncio.run(exercise())
+        errors = [frame for frame in frames if frame['type'] == 'message_error']
+        self.assertEqual(len(errors), 1)
+        self.assertNotIn('private', json.dumps(errors))
+        self.assertTrue(any(frame['type'] == 'message' for frame in frames))

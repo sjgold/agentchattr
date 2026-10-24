@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 00:56 Chicago (#1-16 published/closed; #17 trusted ingress backend tested, UI unbuilt)
+**Updated:** 2026-10-24 01:08 Chicago (#1-16 published/closed; #17 backend review fixes tested, full/recheck next)
 
 ## Current handoff
 
@@ -453,3 +453,9 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Server-resolved operator receipts, strict preview/WS/job input/auth, identity/UID-bound dispatch and explicit internal workflows implemented. Namespace spoofing is blocked; unknown generic/MCP human-looking labels are display-only. Private job messages keep acceptance channel; trusted content fields resist generic mutation. Agent scope/Stop and logical waits preserved. UI still unbuilt.
 - Initial helper2red0.037s; root3red0.042s plus2 genuine IO/status failures0.094s retained. Helper absent-file fixture correction and old sender-only/context fixtures are documented, no target assertions weakened. Final affected126PASS3.000s; compile/diff clean. New evidence is direct unit + real in-process HTTP/WebSocket, no native/browser or actual nightly scheduler acceptance.
 - Next Codex frozen full suite and Sonnet substantive bounded review, then UI preview/raw-send and native acceptance. No Tranche4 code yet. Source remains frozen during reviewer runs.
+
+## Ticket17 Tranche3b visibility correction
+
+- 5ed4403 full1000TOTAL failed one capacity-fixture error/four skips89.858s, no backendPASS issued. Sonnet independently103focused reproduced that fixture and passed10 native integrations at that source. Source otherwise approved pendingF1: hidden coordinator prompt persisted into readers/export.
+- Corrected hiddenworkflow removal after dispatch with ID/UID guard and endpoint await; actual queue retains prompt. Capacity fixture supplies real router/coordinator and checks the same policy text in the queued prompt, with no target assertion weakened. Root F1actualFAIL0.046s; bounded unexpected-WS-error actualFAIL0.043s beforegenericframe handling. Earlier unbounded fault test was interrupted, not counted as a completed run; no native workers/providers involved.
+- Corrected67focusedPASS1.376s; next frozen full and Sonnet substantive recheck. UI raw-send/preview/native17/browser acceptance remain unbuilt. No final17 acceptance/publication.
