@@ -527,12 +527,34 @@ def order(f):
             'journal_path': str(f.records / ('client-' + str(f.client_pid) + '.json'))})
         stopped = start()
         f.wait(lambda: client_turn(3, 'release_reply'), 'Stop review genuine injected/early released')
+        pre_stop = deepcopy(f.session(stopped['id']))
+        stopped_ids = {key: pre_stop['active_invocation'][key] for key in
+            ('brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision')}
+        stopped_ids.update(session_id=stopped['id'], expected_identity_id=owner['identity_id'])
         f.api(f'/api/sessions/{stopped["id"]}/stop', {})
         late = submit(3)
         assert late['final_reply']['status'] == 'rejected'
         current = f.session(stopped['id'])
         assert current['stop_id'] and not current['admitted_events']
-        assert any(m.get('metadata', {}).get('quarantine_session_id') == stopped['id'] for m in f.messages())
+        quarantined = current.get('quarantined_events', [])
+        f.observations.append({'kind': 'actual_stopped_typed_quarantine', 'pre_stop_ids': stopped_ids,
+            'pre_stop_quarantined_events': pre_stop.get('quarantined_events', []),
+            'post_stop_quarantined_events': quarantined, 'quarantine_evicted': current.get('quarantine_evicted', 0),
+            'actual_mcp_response': late['final_reply']})
+        atomic_json(f.root / 'observations.json', f.observations)
+        assert pre_stop.get('quarantined_events', []) == [] and len(quarantined) == 1
+        assert current.get('quarantine_evicted', 0) == 0
+        quarantine = quarantined[0]
+        for key, value in stopped_ids.items():
+            assert quarantine[key] == value, 'Stopped typed quarantine scope mismatch: ' + key
+        assert quarantine['kind'] == 'final' and quarantine['content'] == 'ACTUAL_RECIPIENT_FINAL_3'
+        assert quarantine['reason'] == 'stopped_run' and quarantine['provenance'] == 'authenticated_seat'
+        assert isinstance(quarantine['event_id'], str) and quarantine['event_id']
+        for message in f.messages():
+            assert 'ACTUAL_RECIPIENT_FINAL_3' not in message.get('text', ''), 'Late typed content leaked to channel'
+            metadata = message.get('metadata') or {}
+            scoped = metadata.get('session_id') == stopped['id'] or metadata.get('run_id') == stopped_ids['run_id']
+            assert not (scoped and message.get('type') in ('session_input', 'session_result'))
     assert len(f.captures) == 1 and len(f.clients_read()[0]['turns']) == 4
     assert f.session(first['id'])['admitted_events'][0]['content'] == 'ACTUAL_RECIPIENT_FINAL_0'
     assert f.session(second['id'])['admitted_events'][0]['content'] == 'ACTUAL_RECIPIENT_FINAL_1'

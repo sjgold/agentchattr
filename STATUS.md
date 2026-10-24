@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 02:15 Chicago (#1-16 published/closed; #17 audience/family reproduced, order fixture correction)
+**Updated:** 2026-10-24 02:20 Chicago (#1-16 closed; #17 order run reached late-result fence, audit assertion correction)
 
 ## Current handoff
 
@@ -536,3 +536,15 @@ Root andSonnet independently inspected failure+store/ledger and monitor_turns196
 ### Ticket17 monitoring fixture correction frozen for recheck
 
 Helper replaced only whole-invocation comparison with strict logical equality and complete ledger-derived monitoring validation bounded5s. Actual baseline/post-interval/ledger/expected values persist before assertions. Root reread the diff, independently compiled3/1, and added an explicit both-recovery-values-None assertion to enforce R1 even if a baseline were unexpectedly already recoverable. No other ordering/Stop/count assertions changed, no production/fakeclient/cleanup changes. Failedhewx9qyh preserved. Next owner Sonnet confirms this diff before one freshorder; no rerun yet.
+
+
+### Ticket17 order attempt2 reached final fence, wrong audit-store assertion
+
+ONEfreshorder at06dca7c (shell18128a80; scratch `.audit-tmp/explicit recipients order 9cj3csnp`) failedline535 expecting a channel quarantine notice. Actual1API/4CLI, strictlogical/ledger-derivedmonitoring checks, A/B/manualinjectionorder andaccepted/claimtimestamps allpassed. ActualthirdrunlateMCPfinal rejected afterStop,0admitted and EXACTdurable session.quarantined_events record for ACTUAL_RECIPIENT_FINAL_3/reasonstopped_run/provenanceauthenticated_seat. Typedlatequarantine is session-only by existing _admit_envelope->SessionStore.quarantine_event; ordinarychatquarantine channelexpectation was a fixture error. Root/Sonnet independently confirmed source andscratch. Cleanup2trueworkers/1hiddenclient/1model/1true serverended, modelretainednativebasis,unresolved[],noTraceback/Selector/Warning inserverlog. Noresult.json; attemptremainsfailed, notaccepted.
+
+Existinghelper correctsonly verifier: capturepreStopimmutableIDs; exactlyonefullmatchingdurablesessionquarantine/nonempty eventID/noeviction/zeroaccepted; persistinputs+auditbeforeassert; strongerleakchecklatecontentabsentallchannelmessages andnoscopedthirdrun session_input/session_result. Keepallotherassertions/counts/cleanup. Root/Sonnet frozen diff recheck beforeONEthirdfreshorder; no rerun/browsernow. Both failedscratches remain, allresourcesended.
+
+
+### Ticket17 durable typed-quarantine assertion correction ready
+
+Verifier now captures third-run preStop immutableIDs and validates exactly one complete matching sessionquarantine/nonempty eventID/authenticatedprovenance/stoppedreason, with preStop audit empty and noeviction. Root added the explicit absent/zero quarantine_evicted assertion and records its value before assertions, plus safe optional metadata access in channel leak audit. LateactualMCPstatusrejected/zeroaccepted andeveryordering/count/cleanup assertion remain. Latecontent must be absent allchannelmessages and no thirdrun session_input/result. Root independently compile-only3/1PASS; no production/fakeclient/cleanup changes, no native rerun. Next Sonnet frozen diff confirmation beforeonefreshorder; both earlierfailures preserved.

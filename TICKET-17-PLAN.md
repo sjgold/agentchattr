@@ -438,3 +438,13 @@ Settled R1-R4: compare all logical invocation fields exceptmonitoring plusstate/
 ### R1-R4 monitoring fixture correction ready
 
 Verifier logical field/identity equality remains exact; both turn_recovery values explicitly must be None. Stable monitoring anchors plus complete expected monitoring from actual queue events must converge within5s, with snapshots/ledger/expectations saved before assertions. Root independently compiled3/1; no actual rerun. Sonnet shortdiffconfirmation remains the next step, after which onefreshorder mayrun.
+
+
+### Order attempt2 typed-quarantine fixture precision
+
+At06dca7c realorder/monitoring/1API+4CLI/lateStoprejection passed, but scriptfailedlookingforchannelquarantine. Existingtypedlatepathpersists session.quarantined_events only; root/Sonnet verifiedexactrecordin9cj3csnp andsource. Verifier correction capturespreStopIDs,assertsexactonefullmatchingdurableaudit/noeviction/nonempty eventID,zeroaccepted,plusnolatecontentor thirdrunresult/inputinchannel. Persistbeforeassert. No productionchange, noacceptanceclaimforfailedattempt, cleanupcomplete. Rerunafterroot/Sonnetdiffconfirmationonly.
+
+
+### Typed-quarantine fixture correction ready
+
+PreStopIDs and fullactualquarantineauditpersist beforeassertions; exactone/noeviction/fullidentity/provenance/reason/content/eventID checks,zeroaccepted/rejectedMCP unchanged, sharedchannelleak absence andno thirdrunresult/input. Root added explicitnoevictionassert when readinghelperdiff. No sourceproduct/cleanup/countchange; compile-onlyPASS, no rerun beforeSonnetdiffconfirmation.
