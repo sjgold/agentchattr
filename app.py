@@ -22,6 +22,7 @@ from jobs import JobStore
 from schedules import ScheduleStore, parse_schedule_spec
 from router import Router
 from agents import AgentTrigger
+from dispatch_queue import QueueConflict
 from registry import RuntimeRegistry
 from session_store import SessionStore, validate_session_template
 from session_engine import SessionEngine
@@ -1182,13 +1183,11 @@ async def _channel_http(request, action):
             body = await _channel_body(request, required, {'new_name'} if action != 'retry' else ())
             result = await asyncio.to_thread(getattr(service, action), **body)
             if action in ('apply', 'retry'):
-                view = await asyncio.to_thread(service.catalog_view)
-                await _broadcast(json.dumps({'type': 'channel_state', **view}))
-                await broadcast_settings()
+                await _broadcast_channel_projection(service)
         return JSONResponse(result, headers={'Cache-Control': 'no-store'})
     except PermissionError:
         return JSONResponse({'error': 'Operator session required.'}, status_code=403)
-    except ChannelConflict as error:
+    except (ChannelConflict, QueueConflict) as error:
         return JSONResponse({'error': str(error)}, status_code=409)
     except (ChannelUnavailable, OSError):
         return JSONResponse({'error': 'Channel management is unavailable; publication is held.'}, status_code=503)
@@ -1196,10 +1195,19 @@ async def _channel_http(request, action):
         return JSONResponse({'error': 'Invalid channel management request.'}, status_code=400)
 
 
+async def _broadcast_channel_projection(service):
+    try:
+        view = await asyncio.to_thread(service.catalog_view)
+        await _broadcast(json.dumps({'type': 'channel_state', **view}))
+        await broadcast_settings()
+    except Exception:
+        log.warning('Channel change committed; live projection could not be broadcast. Reload the catalog.', exc_info=True)
+
+
 def _channel_error(error, *, request_id=None, channel=None):
     if isinstance(error, (ChannelUnavailable, OSError)):
         code, message = 503, 'Channel management is unavailable; reload Manage channels.'
-    elif isinstance(error, ChannelConflict):
+    elif isinstance(error, (ChannelConflict, QueueConflict)):
         code, message = 409, str(error)
     else:
         code, message = 400, 'Invalid channel management request.'
@@ -1222,9 +1230,7 @@ async def _legacy_channel_action(websocket, event):
         await asyncio.to_thread(_channels().apply, op, channel,
             new_name=event.get('new_name') if op == 'rename' else None,
             request_id=event['request_id'], confirmation=event['confirmation'], preview_token=event['preview_token'])
-        view = await asyncio.to_thread(_channels().catalog_view)
-        await _broadcast(json.dumps({'type': 'channel_state', **view}))
-        await broadcast_settings()
+        await _broadcast_channel_projection(_channels())
     except (ChannelUnavailable, ChannelConflict, OSError, ValueError) as error:
         await websocket.send_text(json.dumps(_channel_error(error, request_id=event.get('request_id'), channel=channel)))
 

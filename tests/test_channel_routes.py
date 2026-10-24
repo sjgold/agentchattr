@@ -11,6 +11,7 @@ from fastapi import FastAPI, WebSocketDisconnect
 from fastapi.testclient import TestClient
 import app
 from channel_lifecycle import ChannelStore
+from dispatch_queue import QueueConflict
 from tests import test_operator_routes as fixture
 
 
@@ -55,7 +56,8 @@ class ChannelRoutesTests(unittest.TestCase):
         self.assertEqual(self.client.get('/api/channels', headers={'Authorization': 'Bearer ' + self.f.owner['token']}).status_code, 403)
         preview = self.preview('archive')
         self.assertEqual(preview['counts']['messages'], 1)
-        self.assertEqual(self.apply(preview).status_code, 200)
+        with patch.object(app, '_broadcast', AsyncMock(side_effect=OSError('broadcast fault'))):
+            self.assertEqual(self.apply(preview).status_code, 200)
         view = self.client.get('/api/channels', headers=self.headers)
         self.assertEqual(view.status_code, 200)
         self.assertTrue(any(row['name'] == 'discussion' and row['state'] == 'archived' for row in view.json()['channels']))
@@ -117,7 +119,13 @@ class ChannelRoutesTests(unittest.TestCase):
         queued = self.f.trigger.queue.enqueue(self.f.peer, {'channel': 'discussion', 'text': 'cancel exactly'})
         peer = self.f.trigger.queue.enqueue(self.f.peer, {'channel': 'elsewhere', 'text': 'keep'})
         self.assertEqual(self.apply(self.preview('archive')).status_code, 409)
-        self.assertEqual(self.apply(self.preview('cancel_queued')).status_code, 200)
+        preview = self.preview('cancel_queued')
+        before = self.f.trigger.queue.path.read_bytes()
+        with patch.object(self.f.trigger.queue, 'cancel_queued_channel', side_effect=QueueConflict('Queue changed; refresh.')):
+            self.assertEqual(self.apply(preview).status_code, 409)
+        self.assertEqual(app._channel_error(QueueConflict('Queue changed; refresh.'))['code'], 409)
+        self.assertEqual(self.f.trigger.queue.path.read_bytes(), before)
+        self.assertEqual(self.apply(preview).status_code, 200)
         self.assertEqual(self.apply(self.preview('archive')).status_code, 200)
         self.assertEqual(self.f.trigger.queue.owned(self.f.peer, queued['envelope']['dispatch_id'])['state'], 'cancelled')
         self.assertEqual(self.f.trigger.queue.owned(self.f.peer, peer['envelope']['dispatch_id']), peer)
