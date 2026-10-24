@@ -95,6 +95,14 @@ class ChannelServiceTests(unittest.TestCase):
         self.apply('create', 'unregistered')
         self.service.require_active('unregistered')
         self.assertEqual(self.settings['unregistered_channels'], [])
+        before = deepcopy(self.settings)
+        self.save.side_effect = OSError('settings save failed')
+        with self.assertRaises(OSError):
+            self.apply('archive', 'peer')
+        self.assertEqual(self.settings, before)
+        self.save.side_effect = None
+        self.service._project(self.catalog.snapshot())
+        self.assertNotIn('peer', self.settings['channels'])
 
     def test_queued_only_cancel_is_separate_and_refreshes_preview(self):
         queued = self.trigger.queue.enqueue(self.peer, {'channel': 'review', 'text': 'waiting'})
@@ -142,6 +150,30 @@ class ChannelServiceTests(unittest.TestCase):
         self.assertIn('review', self.catalog.blocked_names())
         self.assertEqual(self.service.retry(request)['state'], 'retired')
         self.assertEqual(notified, [[target['id']]])
+
+    def test_finished_delete_notifies_channel_even_when_prior_retry_already_removed_messages(self):
+        self.messages.add('operator', 'delete', channel='review')
+        preview = self.service.preview('delete', 'review')
+        request = uuid.uuid4().hex
+        events = []
+        self.service.on_change(events.append)
+        complete = self.catalog.complete_step
+        def fail_settings_mark(request_id, step):
+            if step == 'settings':
+                raise OSError('lost settings step mark')
+            return complete(request_id, step)
+        with patch.object(self.catalog, 'complete_step', side_effect=fail_settings_mark):
+            with self.assertRaises(ChannelUnavailable):
+                self.service.apply('delete', 'review', request_id=request, confirmation='review',
+                                   preview_token=preview['preview_token'])
+        self.assertEqual(self.catalog.snapshot()['intent']['completed_steps'], ['todos', 'messages'])
+        self.assertEqual(self.messages.get_recent(channel='review'), [])
+        self.assertEqual(events, [])
+        result = self.service.retry(request)
+        self.assertEqual(events, [{'type': 'channel_deleted', 'channel': 'review', 'revision': result['revision']}])
+        with self.assertRaises(ChannelConflict):
+            self.service.retry(request)
+        self.assertEqual(len(events), 1)
 
     def test_stopped_review_does_not_hide_unresolved_retired_transport(self):
         run = self.sessions.create('review', 'review', {'reviewer': 'human', 'editor': 'human'}, 'operator')

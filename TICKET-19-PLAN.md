@@ -1,6 +1,6 @@
 # Ticket 19 channel lifecycle interface freeze candidate
 
-**Status: A1 independently PASS; A2 queue/persistence piece independently PASS dd1b6d8, builder full1059/four skips93.526s. Direct ChannelService component now12PASS/related69PASS; component review/full regression pending. No app/HTTP/WS/startup integration yet.**
+**Status: A1 independently PASS; A2 queue/persistence piece independently PASS dd1b6d8, builder full1059/four skips93.526s. Direct service component reviewed with F1 required; channel-level invalidation fix now32 focused PASS, short recheck pending. Builder full1071/four skips90.645s belongs to pre-fix0638da2. No app/HTTP/WS/startup integration yet.**
 
 Goal: discoverable rename, archive/reopen and deliberate deletion; preserve history/artifacts appropriately, block automatic routing into archived channels, protect general, and require finished/stopped work before removal. Scope authority specv1.7 RC-2/AT-11 and issue19. Blocker10 is verified closed. Base published main3845c5ef46ef7dbbc0453b5cf61dadc95a2c1491; baseline1040tests/four platform skips. Prior18 complete with independent acceptance/publication/closure.
 
@@ -88,6 +88,7 @@ While intent is pending both old/new are blocked, other lifecycle mutations conf
 ChannelService(catalog, *, engine, messages, jobs, schedules, summaries,
                queue, settings, save_settings, migrate_cursors, router,
                migrate_last_active)
+ChannelService.on_change(callback) -> None  # channel-level invalidation, independent of message IDs
 ChannelService.catalog_view() -> dict
 ChannelService.require_active(channel) -> None
 ChannelService.publication(channel)  # context manager, holds boundary through persistence/enqueue
@@ -172,4 +173,10 @@ A2 next component (direct service only): root new tests/test_channel_service.py 
 
 Service currently enforces policy when callers explicitly use publication/apply: engine RLock -> catalog RLock -> one store lock, no store callback held; stable preview/CAS, active/archive/reopen/create, separate scoped cancellation, exact busy/audit scope, pending delete with IO hold/retry/deferred notifications, retained counts, active settings projection plus persistent settings.unregistered_channels, and fail-closed reads. New QueueStore.records supplies detached all/channel ledger views. SessionStore._event_update keeps channel_updated_at stable for monitoring-only changes while ordinary updated_at still advances; substantive logical changes advance both. No brief/seal/input shape changes. Rename/repair remains explicitly unavailable until tranche B migration implementation; no endpoint exposes this partial component yet.
 
-Next owner Sonnet: review frozen ChannelService/direct-store test component and small SessionStore timestamp seam. Codex holds executable changes while full regression/review runs; helper idle. App/HTTP/WS/startup integration, automatic coordinator policy derivation, per-record schedule/import wiring, all actual ingress call sites and UI remain pending. Direct race and busy tests are component evidence, not configured-server acceptance. No native/whole-ticket acceptance claim.
+Component review at0638da2: Sonnet personally read both new files and queue/timestamp diffs, ran12PASS0.441s + six probes. Lock order/timestamp seam accepted; F1 required because retry after marked message removal notified only an empty ID list. Builder full at0638da2 finished1071 tests/90.645s OK(skipped4), log.audit-tmp/ticket19-service-component-full.log/shellc1df5573exit0. This total predates the F1 test/fix and is builder evidence only.
+
+F1 fix: new service on_change observer emits channel_deleted with channel+revision unconditionally after a successful catalog finish, independent of removed IDs. No event on partial steps or refused completed retry. Root observed missing observer interface1ERROR0.041s, then implemented it; the test fails settings-step marking after messages is already marked, retries, and verifies exactly one channel invalidation. Removed the redundant settings write AFTER catalog finish so its IO cannot prevent that event. Message-ID notifications are retained for logging and never sufficient for cache clearing. Networking/process-crash exactly-once delivery is not claimed; authoritative GET handles reconnect/ambiguity.
+
+Reviewer N2 memory-ahead projection preference also addressed: injected settings-save failure produced1FAIL0.045s before restoring previous settings/unregistered memory on OSError. Catalog remains authoritative; next projection/reconfigure heals settings. Reviewer N3 retained as known seam: legacy session writers may only advance updated_at, not channel_updated_at; their state changes remain in the token, and live reviews block destructive actions. No broader session writer rewrite in this component.
+
+Final focused catalog/transport/service32PASS1.506s plus syntax/diff clean (service has13 methods after the requested F1 regression). Full discovery not repeated for this isolated observer/projection fix; next actual integration requires its own full run. Next owner Sonnet: short F1/N2 diff recheck, then Codex starts actual ingress tests/wiring. Helper idle. App/HTTP/WS/startup integration, automatic coordinator policy derivation, per-record schedule/import wiring, all actual ingress call sites and UI remain pending. Direct race and busy tests are component evidence, not configured-server acceptance. No native/whole-ticket acceptance claim.

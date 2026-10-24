@@ -24,6 +24,7 @@ class ChannelService:
         self.queue, self.settings = queue, settings
         self._save_settings, self._migrate_cursors = save_settings, migrate_cursors
         self.router, self._migrate_last_active = router, migrate_last_active
+        self._callbacks = []
         self._unregistered = set(settings.get('unregistered_channels', []))
         with self._boundary():
             value = catalog.snapshot()
@@ -40,11 +41,29 @@ class ChannelService:
                 yield
 
     def _project(self, value):
-        self._unregistered.difference_update(value['channels'])
-        self._unregistered.difference_update(value['retired'])
-        self.settings['channels'] = [name for name, state in value['channels'].items() if state == 'active']
-        self.settings['unregistered_channels'] = sorted(self._unregistered)
-        self._save_settings()
+        previous, unregistered = deepcopy(self.settings), set(self._unregistered)
+        try:
+            self._unregistered.difference_update(value['channels'])
+            self._unregistered.difference_update(value['retired'])
+            self.settings['channels'] = [name for name, state in value['channels'].items() if state == 'active']
+            self.settings['unregistered_channels'] = sorted(self._unregistered)
+            self._save_settings()
+        except OSError:
+            self.settings.clear()
+            self.settings.update(previous)
+            self._unregistered = unregistered
+            raise
+
+    def on_change(self, callback):
+        """Register a channel-level invalidation observer before publication starts."""
+        self._callbacks.append(callback)
+
+    def _emit(self, event):
+        for callback in list(self._callbacks):
+            try:
+                callback(deepcopy(event))
+            except Exception:
+                pass
 
     def require_active(self, channel):
         with self._boundary():
@@ -210,9 +229,9 @@ class ChannelService:
                         self._project(projected)
                     self.catalog.complete_step(request_id, step)
                 value = self.catalog.finish(request_id)
-                self._project(value)
             except OSError:
                 raise ChannelUnavailable('Channel operation could not finish; reload management and retry its pending intent.') from None
             self.messages.notify_deleted(removed)
+            self._emit({'type': 'channel_deleted', 'channel': channel, 'revision': value['revision']})
             return {'ok': True, 'revision': value['revision'], 'channel': channel,
                     'state': value['channels'][channel], 'op': 'delete'}
