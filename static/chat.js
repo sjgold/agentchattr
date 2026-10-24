@@ -2466,9 +2466,9 @@ let channelRecipientPreview = null;
 let channelSendPending = null;
 let recipientAvailabilityKey = null;
 function refreshRecipientContexts() {
-    if (channelRecipientPreview && !channelSendPending) { channelRecipientPreview.invalidate(); refreshChannelRecipients(); }
+    if (channelRecipientPreview && !channelSendPending) refreshChannelRecipients(true);
     if (typeof jobRecipientPreview !== 'undefined' && jobRecipientPreview && !jobSendPending) {
-        jobRecipientPreview.invalidate(); refreshJobRecipients();
+        refreshJobRecipients(true);
     }
 }
 const CHANNEL_UNCONFIRMED = 'This message may have been saved. Check the conversation before sending again. Draft kept.';
@@ -2488,10 +2488,10 @@ function channelDraftSnapshot() {
 function channelPreviewRequest(snapshot) {
     return {text: snapshot.text, selected_recipients: snapshot.selected_recipients, channel: snapshot.channel};
 }
-function refreshChannelRecipients() {
+function refreshChannelRecipients(force = false) {
     const snapshot = channelDraftSnapshot();
     getChannelRecipientPreview().schedule(snapshot.text.trim() || snapshot.attachments.length
-        ? channelPreviewRequest(snapshot) : null);
+        ? channelPreviewRequest(snapshot) : null, force === true);
 }
 function updateSendButton() {
     const input = document.getElementById('input');
@@ -2523,7 +2523,8 @@ function handleChannelPostEvent(event, socket) {
     clearTimeout(pending.timer);
     channelSendPending = null;
     if (event.type === 'message_accepted') clearChannelDraft(pending.snapshot);
-    else getChannelRecipientPreview().error(CHANNEL_UNCONFIRMED);
+    else getChannelRecipientPreview().error(event.type === 'message_error' && typeof event.error === 'string'
+        ? event.error + ' Draft kept.' : CHANNEL_UNCONFIRMED);
     updateSendButton();
     return event.type !== 'close';
 }

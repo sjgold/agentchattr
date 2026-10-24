@@ -135,6 +135,13 @@ test('shared debounce deduplicates requests and rejects stale aborted response',
   answer(env.requests[0], response({recipients: [{name: 'stale', identity_id: 'old', online: true}]})); await flush();
   assert.equal(env.panel.textContent, current);
   assert.match(current, /newer/);
+  env.preview.schedule(request('@codex newer'), true);
+  assert.equal(env.panel.textContent, current, 'forced refresh retains rendered audience');
+  await env.tick(250);
+  assert.equal(env.requests.length, 3, 'same request can force a membership refresh');
+  assert.equal(env.panel.textContent, current, 'audience remains visible while refresh fetch is pending');
+  answer(env.requests[2], response({recipients: [{name: 'refreshed', identity_id: 'fresh', online: true}]}));
+  await flush(); assert.match(env.panel.textContent, /refreshed/);
 });
 
 test('shared failures and timeout block posting and Check again retries preview only', async () => {
@@ -192,6 +199,15 @@ test('ACK before or after broadcast clears only unchanged matching draft', async
 });
 
 test('retired socket error close and ACK timeout retain draft without resend', async () => {
+  const rejected = composer(); await rejected.context.sendActual();
+  rejected.event({type: 'message_error', error: 'Invalid message or recipient fields.'});
+  assert.match(rejected.errors.join(' '), /Invalid message or recipient fields\./);
+  assert.match(rejected.errors.join(' '), /Draft kept/i);
+  assert.doesNotMatch(rejected.errors.join(' '), /may have been saved/i);
+  const unconfirmed = composer(); await unconfirmed.context.sendActual();
+  const explanation = 'Save not confirmed. Check the conversation before sending again.';
+  unconfirmed.event({type: 'message_error', error: explanation});
+  assert.ok(unconfirmed.errors.join(' ').includes(explanation));
   for (const type of ['message_error', 'close']) {
     const env = composer(); await env.context.sendActual();
     env.event({type, message: 'rejected'}); assert.equal(env.input.value, '@claude review this');
@@ -229,6 +245,25 @@ test('job duplicate context mutation and HTTP failure preserve current draft', a
   answer(failed.requests[0], {}, 503); await sending;
   assert.equal(failed.input.value, '@claude review this'); assert.equal(failed.requests.length, 1);
   assert.ok(failed.errors.length > 0);
+  for (const status of [400, 403, 404, 503, 500]) {
+    const rejected = composer('job'); const send = rejected.context.sendActual(); await flush();
+    answer(rejected.requests[0], {}, status); await send;
+    assert.equal(rejected.input.value, '@claude review this');
+    assert.match(rejected.errors.join(' '), /Draft kept/i);
+    if (status === 500) assert.match(rejected.errors.join(' '), /may have been saved/i);
+    else {
+      assert.match(rejected.errors.join(' '), /Not saved/i);
+      assert.doesNotMatch(rejected.errors.join(' '), /may have been saved/i);
+    }
+  }
+  for (const timeout of [false, true]) {
+    const ambiguous = composer('job'); const send = ambiguous.context.sendActual(); await flush();
+    if (timeout) await ambiguous.tick(10000);
+    else ambiguous.requests[0].reject(new Error('network failure'));
+    await send;
+    assert.equal(ambiguous.input.value, '@claude review this');
+    assert.match(ambiguous.errors.join(' '), /may have been saved/i);
+  }
 });
 
 test('local commands bypass preview and composing IME Enter cannot post', async () => {

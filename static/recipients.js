@@ -113,9 +113,9 @@
                 throw failure;
             } finally { clearTimeout(deadline); if (own === epoch) controller = null; }
         }
-        function schedule(value) {
+        function schedule(value, force = false) {
             const next = value === null ? null : JSON.stringify(value);
-            if (next === key) return;
+            if (next === key && force !== true) return;
             cancel(); key = next; request = value === null ? null : JSON.parse(next);
             if (request === null) { idle(); change('idle'); return; }
             timer = setTimeout(() => { prepare(request).catch(() => {}); }, 250);

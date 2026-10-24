@@ -1,4 +1,4 @@
-.recipient-preview { min-width: 0; margin: 8px 0; padding: 12px; border: 1px solid var(--border, #48485c); border-radius: 6px; background: var(--bg-msg, #16161f); color: var(--text-muted, #cfc8ea); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.recipient-preview { position: relative; min-width: 0; margin: 8px 0; padding: 12px; border: 1px solid var(--border, #48485c); border-radius: 6px; background: var(--bg-msg, #16161f); color: var(--text-muted, #cfc8ea); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .recipient-preview p { margin: 0 0 4px; }
 .recipient-preview p:last-child { margin-bottom: 0; }
 .recipient-preview .recipient-heading { color: #f0eef8; font-weight: 650; }

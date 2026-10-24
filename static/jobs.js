@@ -1150,11 +1150,11 @@ function updateJobSendButton() {
     button.textContent = jobSendPending ? (jobSendPending.phase === 'preparing' ? 'Checking audience' : 'Saving') : 'Send';
     button.setAttribute('aria-busy', String(!!jobSendPending));
 }
-function refreshJobRecipients() {
+function refreshJobRecipients(force = false) {
     const preview = getJobRecipientPreview();
     if (jobPreviewContext !== activeJobId) { preview.invalidate(); jobPreviewContext = activeJobId; }
     const snapshot = jobDraftSnapshot();
-    preview.schedule(activeJobId && (snapshot.text.trim() || snapshot.attachments.length) ? jobPreviewRequest(snapshot) : null);
+    preview.schedule(activeJobId && (snapshot.text.trim() || snapshot.attachments.length) ? jobPreviewRequest(snapshot) : null, force === true);
     updateJobSendButton();
 }
 async function sendJobMessage() {
@@ -1177,14 +1177,17 @@ async function sendJobMessage() {
             body: JSON.stringify({text: snapshot.text, selected_recipients: snapshot.selected_recipients,
                 sender: window.username, attachments: snapshot.attachments}), signal: controller.signal,
         }), timeout]);
-        if (!resp.ok) throw new Error('Save not confirmed');
+        if (!resp.ok) {
+            pending.rejected = (resp.status >= 400 && resp.status < 500) || resp.status === 503;
+            throw new Error('Save not confirmed');
+        }
         if (JSON.stringify(jobDraftSnapshot()) === JSON.stringify(snapshot)) {
             const input = document.getElementById('jobs-conv-input-text');
             input.value = ''; input.style.height = 'auto'; clearJobAttachments();
             getJobRecipientPreview().invalidate(); input.focus();
         }
     } catch (_) {
-        getJobRecipientPreview().error(pending.phase === 'post'
+        getJobRecipientPreview().error(pending.rejected ? 'Not saved (check the fields). Draft kept.' : pending.phase === 'post'
             ? 'This message may have been saved. Check the conversation before sending again. Draft kept.'
             : 'Audience check failed. Draft kept. Check again before sending.');
     } finally { clearTimeout(deadline); jobSendPending = null; updateJobSendButton(); }
