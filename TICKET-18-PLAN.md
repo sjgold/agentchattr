@@ -394,3 +394,8 @@ Reviewer own full discovery on docs-only6aef553:1040TOTAL/1036passed/4skips88.77
 ## Final Ticket18 verdict received
 
 Sonnet final whole-ticket PASS WITH NONBLOCKING NOTES atf893bd2167c02b3df44faf3c768660a39d9c43b8, artifact ticket-18-final-review-claude. Reviewer verified empty product diff fromc11bdec and tools diff from12c9a81 and read receipt/guide/status for accuracy. N1-N7 preserved: no mjs draft browser; reviewer desktop-only; no OS picker/native Tab/IME/screen reader; inherited32px Start;8.9MB evidence; line-ending-only restart limitation; transparent initial analyst/personal review attribution. No new code or native run required for docs-only receipt update. Next Codex ff-merges main, verifies full post-merge suite/VM/syntax, then pushes/closes18 and rereads remote/issue under standing authorization. Keep source branch and failed scratch history.
+
+
+## Local main merged and post-merge verified
+
+Standing-authorized ff-merge to main9d874a8 completed with source branch retained, no history rewrite/destructive cleanup. Root full1040TOTAL/1036passed/4platform skips89.765s exit0, retained ticket18-postmerge-full.log/trackeda10ad6a9. Both actual-source NodeVM12/0, syntax/diff clean; sourcec11bdec/verifier12c9a81 unchanged. Next publish the receipt/status descendant, verify remote main, comment/close18 with exact limitations, reread closed/completed and update closure tracking. Issue still open at this checkpoint; no next ticket started.
