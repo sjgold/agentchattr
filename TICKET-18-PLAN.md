@@ -22,7 +22,7 @@ Graphify fast-path checked: no localgraph, sharedregistry has no agentchattr ent
 2. Persist each preview in a DocumentStore, Start byID. Useful for future standalone library, but introduces storage/ownership/cleanup and that scope is not requested.
 3. Client-only File.text preview/paste. Smallest UI change but cannot enforce authoritative byte/binary validation or preserve source identity robustly. Rejected.
 
-## Pure contract (settled, awaiting diff confirmation)
+## Pure contract (confirmed, pure implementation review pending)
 
 New document_inputs.py, independently testable and no filesystem/network/runtime operations:
 
@@ -64,7 +64,7 @@ Both predefined-template and chat-draft Start paths use the samevalidated select
 - [ ] ActualisolatedWindows localfake verification .py/.mjs literalroundtrip through realupload/Start/CLIbrief/APIpayload, originaleditsafterselection/Start,>20chatmessages, no source side-effect marker/execution, genuine native resourceend andzero unresolvedcleanup. Draft/counts/cleanup reviewed before any run; no liveprovider/Omarchy/Desktop/globalchanges.
 - [ ] Finalfullsuite/syntax/diff, independentwhole-ticketreproduction/recheckPASS, documentation, ffmerge/postmergefull, standingauthorizedpush/closure. Preserve failingattempts and exactsource attribution.
 
-Next owner: Sonnet confirms the settlement diff against DA-1/FileAT-04 andactualcallers before pure helperTDD. No production/test/helper source work yet.
+Next owner: Sonnet independently reviews the puremodule/testcheckpoint andprobesadversarialinputs beforewiring. Onlynewdocument_inputs.py andtest_document_inputs.py implemented; app/engine/UI unchanged.
 
 
 ## Settlements S1-S6 and initial test freeze
@@ -79,3 +79,8 @@ Initialhelper scope afterdiffconfirmation: NEW tests/test_document_inputs.py onl
 Sonnet confirmed e774037..d399cc3 docs-only settlement; no implementation/test run by reviewer. P1 limitation: a line-ending-only intended change(CRLF/CR->LF) is treated asUNCHANGED by correctedrestart for file-origin parents; use a genuinelyeditedsource or a separatelyselectedfile/newreview rather than using correctedrestart as a line-ending converter. P2 symmetry: normalize CRLF andbareCR->LF on BOTH frozenparenttext and proposedcorrectedtext, ONLY after revalidating parentdocumentmetadata against its frozen text; invalidparentmetadata fails closed, never falls back to exact-hash guard. Storedbytes/hashes remain unnormalized. Purepreview input type is exactbytes only, bytearray/memoryview/str rejected. These precisions do not affectpurehelpertestscope.
 
 Next owner existinghelper: firsttwoactualmissingmoduleRED innewtests/test_document_inputs.py, thenbounded12puremethods; rootimplementsnewmoduleonlyaftertheRED. Reviewer independently reruns/probes puremodulebeforewiring. NoHTTP/engine/nativeclaimfrompuretests.
+
+
+## Pure implementation checkpoint (unwired)
+
+First2actualmissingmoduleRED0.005s, thenrootnewmodule/first2PASS0.063s. Helper12puremethodsPASS0.277s androotindependent12PASS0.261s;pycompile/diffclean, nofixturecorrections/assertionweakening. Purechecks cover allsettledinput/identity/schema/name/binary/size cases; no route/session/native/full18acceptance proof. Sourcefieldsunchangedelsewhere. Sonnet frozen-source/adversarial review next; no callerwiringbeforeboundedclearance.

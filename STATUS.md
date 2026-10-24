@@ -1,13 +1,13 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 03:22 Chicago (#1-17 closed; #18 settled pure-module TDD next)
+**Updated:** 2026-10-24 03:27 Chicago (#1-17 closed; #18 pure validator12 passing, independent review next)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
 - Active Ticket18 planning branch `codex/ticket-18-document-input`, base publishedmain d787f4f. Codex claimed implementation-owner56b000d9; Sonnet remains independent reviewer. Issue18 scope DA-1/FileAT-04 and blocker6closed verified. TICKET-18-PLAN.md statelessfilepreview/existingrun snapshot approvedwithsettlements; amendmentsawaitSonnetdiffconfirmationbeforepureTDD. No production/helpertests yet.
-- Current work: Ticket18 individualfileinput contractsettled withSonnet atd399cc3, puremoduleTDD cleared; no18production/testcodeyet. Statelessbytepreview andcanonicalsource_file revalidation feedexistingfrozenbriefs; strictUTF8/contentlimits, advisoryextensions, hardenednames, BOM/emptyinfo, key-presenceexclusion. File-originrestartunchangedguard normalizesBOTH sidesonlyaftervalidatingmetadata; line-ending-onlychanges countunchanged, storedbytes/hashstayexact. Nextownerexistinghelpercaptures2missingmoduleRED thenbounded12puretests; Codeximplementsdocument_inputs.pyonlyafterRED. Ticket17published/closed d787f4f, finalreceipt/notes/schedulingdeferralretained.
+- Current work: Ticket18 pure document_inputs.py and12newpuretests implemented after2actualmissingmoduleRED0.005s. Helper12PASS0.277s, rootindependent12PASS0.261s,pycompile/diffclean. ExactUTF8/BOM/CRLF/contenthash/sourceID/bytecap/controlbyteoffset/name/schema/noalias checks; no fileIO/HTTP/engine/UI/dispatch wiring or nativeclaim yet. NextownerSonnetadversarialpuremodule/tests review before route/Startintegration. Settledstatelesscontract/P1P2restartconstraints retained. Baselinefull1004/four skips belongscompleted17; no18fullrunclaimed. Ticket17publishedclosed d787f4f, notes/schedulingdeferralretained.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
@@ -615,3 +615,8 @@ Sonnet source-read APPROVED WITH SETTLEMENTS ate774037; noexecution. Extensionsa
 ## Ticket18 pure TDD contract cleared
 
 Sonnetdiffconfirmedsettlementsd399cc3; no code/test/nativeexecutionyet. AddedP1 explicitline-ending-onlycorrectedrestartlimitation andP2 symmetricCRLF/CR->LFcompareonlyafterparentmetadatarevalidation/failclosed. Existinghelpernextownsnewtest_document_inputs.pyonly: first2actualmissingmoduleRED, extendwithin12puremethods, no source/route/nativeclaims. CodexmoduleimplementationstartsafterRED; Sonnetpuremodule/probesreviewbeforewiring. Baseline1004/four skips, no liveAI/Omarchy/Desktop/globalchanges.
+
+
+## Ticket18 pure validation checkpoint
+
+Existinghelper captured first2actual ModuleNotFoundError(document_inputs) errors0.005s beforeproduction. Rootimplementedonlynewdocument_inputs.py(82lines), no app/engine/UI changes: strictbytes/UTF8decode preservedBOM/CRLF/Unicode,512KiB sharedlimit, actionablecontrol/invalidUTF8byteoffsets withoutsourceecho, hardeneddisplaybasename/advisoryextensions, independentrawhash/canonicalsourceID, exactschema/literaltypes/recomputation/detachedreturn. Helperextendedwithin12methods withoutfixture/assertionchanges, actual12PASS0.277s; rootreadalltests/module andreran12PASS0.261s,pycompile/diffclean. No sourcefileexecution/IO/provenance/HTTP/model/nativeclaims; purefunctions remainunwired. NextSonnetindependentprobes/review frozenpurepack beforeexistingbrief/Startintegration. Nofullrepo18runyet because existingproductioncallersunchanged.
