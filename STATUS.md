@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 04:30 Chicago (#1-17 closed; #18 corrected acceptance draft frozen, no runs)
+**Updated:** 2026-10-24 04:53 Chicago (#1-17 closed; #18 acceptance corrections frozen, no runs)
 
 ## Current handoff
 
@@ -684,3 +684,13 @@ Helper produced new verify_document_review.py/fake_document_client.py; reported 
 ## Ticket18 corrected acceptance draft ready for independent review
 
 Root verified B1-B4 draft corrections: exception-safe provider/reservation initialization, serve-only secondary LF expected text, actual pre-primary refusal/no-effects matrix, nested snapshot revision/encoding checks. Root compile-only2servers/1client/processes0 PASS; helper syntax/compile-only/diff clean. Verifier fccaf8ca6a37236bebce301f2d2016740d6738c1e3bc88b06c1dd700fb6e1524, client f5893f5f94abb6684df0543266676639fd9dc6a7e5898d60b8522f73b28c5eae. Freeze new scripts with docs, then Sonnet complete source/cleanup review BEFORE any readiness case. No native resources started, no actual count or cleanup acceptance claimed. Product executable remains c11bdec; prior backend/UI evidence unchanged.
+
+
+## Ticket18 acceptance draft058d382 not ready for a run
+
+Sonnet compile-only/hash checks plus source-verified findings (full checklist by its read-only analyst, transparently not personally read everyline) found two preflight blockers: legitimate Data: startup path fails leak scan; cleanup misses unrecorded/unadopted/lost-response session ids. Helper correcting those and stream-reset/chunked evidence, tmp exclusions, pinned isolated policy, compact sha/size effect maps, measured/post-close counts, actual browser-preview correlation and serve-only ASCII restart paste. Root verified blockers and sent bounded correction brief; product source unchanged. No actual server/worker/model/browser acceptance resources started. Next root reviews corrected diff/hash/compile-only, then Sonnet short recheck and ONE py authorization; retain all earlier draft reviews as preflight evidence, not failed actual cases.
+
+
+## Ticket18 acceptance review corrections ready for recheck (unrun)
+
+Root verified corrected diff and py/mjs compile-only2servers/1client/processes0. Narrow startup Data-line allowlist, all-isolated-run cleanup inventory, actual chunked overflow evidence, documented transient exclusions/compact full-target hash-size maps, pinned isolated120/1200/.2 policy, measured/post-close counts, browser preview-to-Start linkage and serve-only ASCII restart paste are implemented only in the new verifier. Client unchanged/type-only safe errors. Verifier f6b349da53975d5d361581172560703e640cf6c5a2a9fbf58686ec4b7a9fbce2. Next freeze/review Sonnet short diff and hashes before ONE py non-serve readiness authorization. No actual case/process/native/browser activity has started; planned counts remain untested.

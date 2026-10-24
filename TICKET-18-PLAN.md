@@ -284,3 +284,29 @@ Existing helper next drafts ONLY tools/verify_document_review.py + tools/fake_do
 Root read the complete initial verifier/client and reused lifecycle close, then requested B1-B4 preflight corrections. Corrected draft: provider/socket construction has its own exception cleanup and starts the provider thread only after other initialization; serve-only secondary edited text/READY/adoption use exact LF while primary canonical and non-serve CRLF remain unchanged; actual pre-primary refusal matrix now checks agent/no-token403, binary/invalidUTF8/MAX+1 and tampered Start with authoritative no-effects/id/runtime snapshots; nested run/child revision+encoding checks are explicit. No product source or prior verifier was changed.
 
 Root verified the corrected source and ran compile-only (2generatedservers/1client/processes_started0); helper syntax/compile-only also clean. Verifier SHA256 fccaf8ca6a37236bebce301f2d2016740d6738c1e3bc88b06c1dd700fb6e1524; fake client f5893f5f94abb6684df0543266676639fd9dc6a7e5898d60b8522f73b28c5eae. No actual case has run. Next Sonnet independently reads full script/client/cleanup before ONE-case readiness authorization. Planned1CLI/1localAPI/2final counts remain assertions to be tested, not evidence.
+
+
+## Independent acceptance draft review at058d382: not ready to run
+
+Sonnet executed compile-only for both cases, confirmed hashes/clean tree, and verified the specific findings below in source. A read-only analyst audited the full verifier/client checklist; Sonnet explicitly did not personally read all635lines. Retain this attribution, not a claim of personally re-derived whole-script review. No integration/process run.
+
+Two blockers: final path scan rejects the normal run.py Data: absolute-directory startup line; cleanup only records self.runs and can miss a real UI/lost-response run before adoption. Required corrections: narrowly redact only the known ownership startup line while scanning all other public data/output, and inventory/Stop ALL isolated session ids before native cleanup, reporting discovery/stop failures without skipping resource cleanup.
+
+Additional agreed draft fixes: distinguish early Content-Length reset from HTTP rejection and prove no-length chunked MAX+1 cap with actual stream evidence; exclude only documented transient tmp/heartbeat files; pin isolated recovery policy and every Start/READY expectation; replace huge repeated base64 file-tree snapshots with complete per-file SHA256+size maps plus id/runtime inventories (source byte equality remains exact); derive/assert measured call/injection/final counts and post-close provider count; link exactly one expected-name/byte browser preview after READY to the actual Start; use plain-ASCII LF only for serve secondary pasted restart, preserving non-serve BOM/Unicode/CRLF and primary canonical bytes. Metadata keys/quiet notes stay absent from SYSTEM except existing trusted input_revision. Optional client errors use safe categories, never raw source/path/auth text.
+
+Helper corrects only the two new draft files, no processes. Root then verifies diff/compile-only/hash, Sonnet rechecks before ONE py readiness authorization. No accepted native counts, cleanup proof or browser execution exists yet.
+
+
+## Acceptance draft review corrections frozen, still unrun
+
+Root reviewed the diff from058d382 and reran syntax plus py/mjs compile-only: each reports2generatedservers/1client/processes0. Verifier SHA256 f6b349da53975d5d361581172560703e640cf6c5a2a9fbf58686ec4b7a9fbce2; client unchanged f5893f5f94abb6684df0543266676639fd9dc6a7e5898d60b8522f73b28c5eae.
+
+- Startup scan removes only the exact known `  Data:    {owned data directory}` line, requires count1, retains every other public/output path scan.
+- close rereads ALL isolated sessions, unions known ids and Stops each before the reused native cleanup. Inventory/Stop errors are retained in unresolved after visiting resources.
+- Early length-reset outcomes are explicitly labelled and require actual server413 evidence. A separate chunked MAX+1 request has a transparent unchanged-reader stream tap with byte/chunk/digest/reader-error/final-status evidence; no replacement validation or truncation override.
+- Effect snapshots retain every authoritative target's SHA256+size plus ids/runtime directories, excluding documented heartbeat/transient tmp only. Source bytes remain compared exactly, not shortened.
+- Isolated config and Start policy pinned120s ack/1200s response/.2s monitor; actual run/invocation policies asserted and READY exposes the required values. No production default changes.
+- Counts derive from captures/client journal/admitted finals with1/1/2 assertions and post-close provider_calls1. Browser preview records filename/time/hash/size/outcome; exactly one expected-name preview after READY and before Start is required (diagnostic previews use other names).
+- Serve secondary restart now uses explicit plain-ASCII LF pasted text and a labelled exact hash; primary canonical and non-serve BOM/Unicode/CRLF remain unchanged. SYSTEM metadata-key/quiet-note exclusions are strengthened; client errors remain safe type categories.
+
+Next Sonnet rechecks this frozen diff/hash before ONE py non-serve readiness authorization. No actual case, native counts/cleanup result or browser proof exists yet. Optional mjs draft-browser mode remains separately gated after py ordinary-browser PASS.
