@@ -1,13 +1,13 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 05:46 Chicago (#1-18 published/closed; next inspect19 scope and dependencies)
+**Updated:** 2026-10-24 06:10 Chicago (#1-18 closed; #19 lifecycle proposal, no implementation)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
 - Ticket18 is complete on published main5cac753, remote hash verified; issue18 closed/completed at2026-10-24T10:45:05Z reread via wrapper/API. Final independent PASS WITH NONBLOCKING NOTES f893bd2; productc11bdec/verifier12c9a81 unchanged. Postmerge1040/four skips89.765s and bothVM12/syntax/diff PASS. Guide DOCUMENT-INPUTS.md and receipt REVIEW-CLAUDE-TICKET-18.md retain coverage/limits.
-- Next owner Codex: inspect issue19/dependencies/current source, then write a bounded contract for Sonnet before new tests/code. No19implementation started. Ticket18 native py/mjs and ordinary rendered browser cases independently reproduced with complete cleanup; optional mjs draft browser unrun, root390px/failure seams separately attributed, three failed fixtures preserved. All owned acceptance processes/browser sessions ended; source branch retained.
+- Active Ticket19 planning branch `codex/ticket-19-channel-lifecycle`, base published main3845c5e. Codex claimed implementation-owner77b543b7; issue19 scope RC-2/AT-11 and blocker10closed verified. TICKET-19-PLAN.md is a discovery/contract PROPOSAL, not frozen: lifecycle dispatch gate, history/retention, multi-store IO recovery and name-reuse/queued-work choices require Sonnet critique. No19source/tests/process/browser actions; existing helper idle.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
@@ -15,7 +15,7 @@
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
 - Update actual results and next steps, not intended features presented as shipped.
 - Root `AGENTS.md` requires agents to read this file before work and maintain current status, verification, blockers, and the next action before handing off.
-- Resume from the current handoff above and `TICKET-18-PLAN.md`. [October18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md) and older receipts describe historical checkpoints.
+- Resume from the current handoff above and `TICKET-19-PLAN.md`. [October18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md) and older receipts describe historical checkpoints.
 
 ## Autonomous execution policy (latest direction2026-10-23 evening)
 
@@ -744,3 +744,8 @@ Main ff9d874a8, branch retained, remote base d787f4f was unchanged. Full1040TOTA
 ## Ticket18 publication and verified closure
 
 Published main5cac753a9339ed70a26064ee3d561261f7dd66b7, gitls-remote exacthashverified. Issue18 wrapper/API independentlyreturnedclosed/completed/2026-10-24T10:45:05Z afterverificationcommentlinks. FinalPASSWITHNOTES/rootpostmerge1040/four skips89.765s/NodeVM12+12 unchanged. Closuretrackingdocs-only; no application/verifier changes or extra native tests. #1-18 complete. NextCodexinspects19/blockers andcurrentbaselinebeforeboundedplanning; no19codeyet, Sonnet/testhelperidle, no liveacceptanceresources.
+
+
+## Ticket19 channel lifecycle proposal, no implementation
+
+Issue19 open/Archive and manage channels safely, blocker10closed verified; branch codex/ticket-19-channel-lifecycle/base3845c5e. Ownership77b543b7 after18role relinquished. Source: WS rename/delete directly mutate settings/messages, no archive state/work guard; history/settings rewrites non-atomic; schedules, job threads, sessions/queue and MCP fallback span the boundary. No standalone artifact store present; retain available data and do not claim future artifact integration. Root proposed small lifecycle service/shared dispatch boundary/durable intent and explicit confirmation; OPEN C1-C5 include name reuse vsstableIDs, cross-store rename/recovery, queued manual work, reopen scheduling and configured-service migration. Sonnet critique before exact interface/TDD freeze; no source/tests/native/browser changes. Graphindex absent/no matchingregistry, two OpenBrainqueries no relevantthought, boundedrgsource reads only. Ticket18completepublished3845c5e, issueclosed/completedverified, allresourcesended.
