@@ -84,3 +84,49 @@ Next owner existinghelper: firsttwoactualmissingmoduleRED innewtests/test_docume
 ## Pure implementation checkpoint (unwired)
 
 First2actualmissingmoduleRED0.005s, thenrootnewmodule/first2PASS0.063s. Helper12puremethodsPASS0.277s androotindependent12PASS0.261s;pycompile/diffclean, nofixturecorrections/assertionweakening. Purechecks cover allsettledinput/identity/schema/name/binary/size cases; no route/session/native/full18acceptance proof. Sourcefieldsunchangedelsewhere. Sonnet frozen-source/adversarial review next; no callerwiringbeforeboundedclearance.
+
+
+## Pure checkpoint independently cleared
+
+Sonnet atdocs-onlyade99d3/source405b136:12testsPASS0.257s and~65ownadversarialprobes,512KiBpreview0.039s/validate0.038s. BoundedPUREPASS only, noHTTP/engine/UI/nativeproof. Nits retainedaspolicy: contentC1(U+0080..U+009F) accepted becausegateisC0+DEL, notallUnicodecontrols; name trailingUnicodeZs/NBSP permitted becausetrailing-space ruleisASCIIspace/dot; filenamesstillrejectallCc/Cf andU2028/29. No purechangesrequired.
+
+## Wiring tranche interface freeze proposal (before tests/code)
+
+### Operator preview
+
+- New helpersinapp.py: `_document_filename(request) -> str` and `async _document_bytes(request) -> bytes`; `async preview_document_input(request:Request)` registeredPOST`/api/documents/preview`.
+- Require request.state.auth_origin=='operator' before readingquery/body; agentbearer/notoken403. Require Content-Type media type application/octet-stream(case-insensitive, optionalparameters allowed), otherwise415. No newpublic/static/uploadroute.
+- Parse request.scope['query_string'] directly, exactbytes<=4096; ASCIIwire, complete%HHescapes, strictUTF8percentdecodeONCE(via parse_qsl encodingutf8/errorsstrict, rejectmalformedpercentfirst), exactlyonefilenamepair withnonemptyvalue, noextrakeys/duplicates. Generic400/no filenameecho; purevalidator appliesnamepolicy. Do not rely on Starlette replacement decoding.
+- Streamchunkswithoutrequest.body/multipart. Retainedbuffer neverexceedsMAX_DOCUMENT_BYTES+1, includinga singleoversizedASGIchunk(sliceonlyremainingbudget); onoverflow raiseDocumentTooLarge anddoNOTiteratefurtherchunks. This boundsretainedpayload, nottheASGIserver'sownnetworkbuffer. Emptybodyvalid. Incomplete/disconnectrequest returnsgeneric400 ifpossible, no snapshot/state effects. Finaljoin<=MAX thenpurepreview_document; outputJSONsnapshot/no-store. Size413, validation400, unsupportedmedia415. No writes/callbacks/router/queue/Popen/nativeaction.
+
+### Start and snapshot threading
+
+- `SessionEngine.start_session(..., recovery_policy=None, *, source_file=None)` and `_start_session(..., recovery_policy=None, *, source_file=None)`; preserveallpreviouspositionalargs. Validate source_file/canonicalself-consistency beforebindings/managerinspection inengine, beforeanydispatch/persistence.
+- `SessionStore.create(..., recovery_policy=None, *, source_file=None)`; `freeze_inputs(template,goal='',input_text='',rules=None,capacity_policy=None,*,source_file=None)`. Store/freezeboundaryrevalidates, so internalcallerscannotbypasslimits.
+- HTTPStart: immediatelyafterexisting4MiBJSONobjectparse, ifsource_fileKEYpresent requireoperatororiginand reject ANYinput_textKEY(includingempty/None); validatecanonicalfilebefore drafttemplate registration/autocast/engineeffects. Null/invalidsource_file isfailure, neverpastedfallback. Pastedrequest unchanged. FileUIomitsinput_text, sendsfullcanonicalsource_file. DocumentTooLarge413/DocumentInputError400 atHTTP, wrappedBriefError atinternalfreeze boundary forcompatibility.
+- Internalfunctions allow defaultinput_text='' withsource_file(neededforsignaturecompatibility), reject nonempty/non-stringpastedargumentalongsidefile. Source_fileNone remainsordinarypastedmode internally; HTTPpresenceNone rejected.
+- File frozenrun exactshape: input_revision==content_sha256==SHA256originalbytes; input_snapshot existing{text,revision,encoding} plus `document` = canonicalfullsnapshot WITHOUTtext (7exactmetadatafields:version,kind,source_id,name,encoding,byte_length,content_sha256). No path, nativefileprovenance or executionauthority. Pastedinput_snapshot retainsold3fieldshape andhashsemantics.
+
+### Brief metadata and fail-closed reads
+
+- Add private review_brief._validated_document(metadata,text) -> detached canonicalmetadata. Reject non-dict/embeddedtext/unknown/missingmetafields; reconstructfullsnapshotwithauthoritativetext andcallvalidate_document_snapshot. WrapDocumentInputError inBriefError withoutsourceecho. No fieldmaskingofextra`text`.
+- freeze_inputs storesfilemetadata onlyafterpurefullvalidation. build_brief readsfilemetadata onlywhen `document` KEYpresent ininput_snapshot, calls_validated_document andadds `source_document` (same7metadatafields); absentkeypreservespasted/legacyenvelopeunchanged. PresentNone/malformed failsclosed, notfallback.
+- brief_messages puts source_document beside text/input_revision inUNTRUSTED user sourcepacket only, notsysteminstructions; no new tools or permission. CLIscopedbriefreturnssameoptionalmetadata/source. BriefStore._validate, when source_documentKEYpresent, revalidatesmetadataagainstsource (alsoexistinginput_revisioncheck) beforeuse/seal/return; no on-diskrepair/mutation.
+- Retry/replacement useexistinginput_snapshot/revision; newbriefs retainmetadata throughbuild_brief. Noidentity/seal/Stop/outboxchanges. Snapshot/briefreturns detached; mutationdoesnotchangefrozenrun.
+
+### Corrected restart P1/P2
+
+- SessionStore.prepare_restart: ifparentinput_snapshot hasdocumentKEY, revalidateitagainstparenttext FIRST; invalidfailsclosed. Forfileoriginonly compare `_newlines(parenttext)==_newlines(input_text)` withCRLF->LF thenbareCR->LF onBOTHsides. Equal raisesexistingunchanged-sourceBriefError beforechild/contextwrites/callbacks/Popen. Keepoldhash-equalityguardforpastedparents.
+- Genuinelyeditedinputstillfreezes exactsubmittedbytesasNEWPASTEDsnapshot, nofiledocument/source_document; doNOTnormalizetheparentorchildtext/hash. ExistingrequestID/replay/binding/Stopguardsremain. Explicitlineending-onlycorrectionunsupportedforfileparents; selectanotherfile/newrevieworactuallyedittext.
+- ExistingrestarteditoraddsplaintextbadgeOriginalfile{name}/lineendings andsays thisrestartcreatesapasted snapshot; nofilepickerinrestart, noalterationoftheoldsourcepreview.
+
+### UI helper API proposal for later UI tranche
+
+- New static/document-inputs.js exports `DocumentInput.attach(editorElement) -> facade` with `.requestFields()` (returnsdetached{input_text} or{source_file}; throwswhilevalidation/error), `.setSubmitting(bool)` (disablesownsourcecontrols whileexplicitStartinflight), `.dispose()` (abort/staleinvalidate), readonly `.state` paste|reading|file|error. Emits `document-input-state` onmeaningfulchange. Per-modalstate, no globalsnapshotsharedbetweenlaunchers.
+- Bothsessionlauncher/draftmodalsattachtotheexisting.session-source-editor; bothStartfunctionscollectfacade.requestFields BEFOREHTTP, setSubmittingtrue, restoreonfailure,disposeonclose/success/replacement. Startbuttonsdisabledreading/error/submitting; noStartfromstalesnapshotorfailednewselection. Existingpastedtextcached/restoredonexplicitUsepastedtext. Filepickercancelkeepspreviousstate, invalidnewselectionkeepsoldpreviewbutclearlyblocksStartuntilnewfileorUsepastedtext. Noautoretry/start.
+- BinaryfetchusesURLfilenameencodeURIComponent, rawFilebody withoctetstream/sessiontoken;8sdeadline/AbortController/epoch/connectededitorcheck discardsstale. Display servercanonicaltextreadonlyandsubmitthatobject, nevertextarea.valueforfile. Basicresponseschemafailclosed; serverStartrevalidates. Hash/size/sourceID/BOMnote/emptywarning viaDOMtextContent. Acceptlistisadvisory; noextJSgate. Incumbent14px/12px/44px, narrowlayout/keyboardlabels, fileDataTransfertestlabelnoOSpickerclaim.
+- Loadsharedhelper before sessions.js, scopedCSS onlyifneeded. ThisAPI getsitsownshortbehaviorconfirmationbefore UItests/code; backendtranchedoesnotimplementit.
+
+### Proposed test ownership and next action
+
+AfterSonnetinterfaceconfirmation, existinghelper ONLYnewtests/test_document_briefs.py bounded12methods, first2actualmissingkeyword/interfaceRED beforewiring. Realstore/engine/brief fixtures withnon-nativequeue/registryseams, clearlylabelled; noHTTP/nativeclaim. Cover exactfilefreeze/metadata/CLI+APIpacket/>20messages/edits-delete/noalias/pastedcompatibility/tamper/failatomicity/retryreuse and P1/P2storeguard asfits12; rootownsnewroute/restarttestsseparately. Rootnewtest_document_routes.py coversstream/query/auth/contenttype/4MiBJSONbodybounds andbothHTTPStartfields/noeffects. Rootimplementsbackendwiring onlyafteractualRED. No UI/nativeactions beforelaterworkorder/cleanupreview. Fullrepo regression afterbackendchanges, notclaimedfrompure12.
