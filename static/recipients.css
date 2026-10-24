@@ -12,7 +12,7 @@
 .recipient-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 #send:disabled, #jobs-conv-send:disabled { opacity: .65; cursor: wait; }
 
-.recipient-receipt { margin: 8px 0 0; padding: 12px; color: #cfc8ea; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.recipient-receipt { min-width: 0; margin: 8px 0 0; padding: 0; color: #cfc8ea; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 
 /* Recipient controls retain native buttons with readable labels and touch space. */
 #mention-toggles .mention-toggle, #job-reply-target-row button, #send, #jobs-conv-send { min-height: 44px; font-size: 14px; }

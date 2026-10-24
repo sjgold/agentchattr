@@ -127,11 +127,13 @@
     function appendReceipt(element, message) {
         const receipt = message.metadata?.recipient_routing;
         if (!receipt || receipt.version !== 1 || receipt.message_uid !== message.uid || !Array.isArray(receipt.recipients)) return;
-        const row = document.createElement('p');
+        const target = element.querySelector('.chat-bubble') || element;
+        const row = target.querySelector('.recipient-receipt') || document.createElement('p');
         row.className = 'recipient-receipt';
         row.textContent = 'Resolved audience: ' + (receipt.recipients.length
             ? receipt.recipients.map(r => '@' + r.name).join(', ') : 'No agents addressed. Shared conversation.');
-        element.appendChild(row);
+        const actions = target.querySelector('.msg-actions');
+        target.insertBefore(row, actions?.parentNode === target ? actions : null);
     }
     window.RecipientPreview = {attach, appendReceipt};
 })();

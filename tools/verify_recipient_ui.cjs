@@ -22,7 +22,17 @@ class Element {
   get textContent() { return this._text + this.children.map(c => c.textContent || '').join(' '); }
   set innerHTML(value) { assert.equal(value, '', 'untrusted data must never enter innerHTML'); this.children = []; this._text = ''; }
   get innerHTML() { return this.textContent; }
-  appendChild(child) { this.children.push(child); return child; }
+  appendChild(child) {
+    if (child.parentNode) child.parentNode.children = child.parentNode.children.filter(value => value !== child);
+    child.parentNode = this; this.children.push(child); return child;
+  }
+  insertBefore(child, reference) {
+    if (reference === null) return this.appendChild(child);
+    assert.ok(this.children.includes(reference), 'insertBefore reference must belong to target');
+    if (child === reference) return child;
+    if (child.parentNode) child.parentNode.children = child.parentNode.children.filter(value => value !== child);
+    child.parentNode = this; this.children.splice(this.children.indexOf(reference), 0, child); return child;
+  }
   append(...children) { for (const child of children) this.appendChild(typeof child === 'string' ? {textContent: child} : child); }
   replaceChildren(...children) { this.children = []; this._text = ''; this.append(...children); }
   setAttribute(name, value) { this.attributes[name] = String(value); }
@@ -32,7 +42,8 @@ class Element {
   dispatchEvent(event) { event.target ||= this; for (const callback of this.listeners[event.type] || []) callback(event); return true; }
   click() { if (!this.disabled) { this.onclick?.({target: this}); this.dispatchEvent({type: 'click'}); } }
   focus() { this.focused = true; }
-  querySelectorAll(selector) { return descendants(this).filter(e => selector === 'button' ? e.tagName === 'BUTTON' : false); }
+  querySelectorAll(selector) { return descendants(this).filter(e => selector === 'button' ? e.tagName === 'BUTTON'
+    : selector.startsWith('.') && typeof e.className === 'string' && e.className.split(/\s+/).includes(selector.slice(1))); }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
 }
 function descendants(element) { return element.children.flatMap(child => [child, ...descendants(child)]); }
@@ -173,6 +184,32 @@ test('shared renderer uses only server audience diagnostics and text-safe conten
   assert.ok(descendants(env.panel).some(e => e.getAttribute?.('aria-live') === 'polite'));
   env.preview.schedule(null); await flush();
   assert.doesNotMatch(env.panel.textContent, /img onerror/);
+  const message = {uid: 'actual-saved-uid', metadata: {recipient_routing: {
+    version: 1, message_uid: 'actual-saved-uid', recipients: [{name: 'claude', identity_id: 'one'}]}}};
+  const channel = new Element(); const bubble = new Element(); bubble.className = 'chat-bubble';
+  const actions = new Element(); actions.className = 'msg-actions'; bubble.appendChild(actions);
+  channel.appendChild(bubble);
+  env.context.shared.appendReceipt(channel, message);
+  assert.equal(channel.children.length, 1, 'channel receipt must not become a flex-row sidecar');
+  assert.equal(bubble.children.length, 2, 'channel receipt belongs inside its chat bubble');
+  assert.match(bubble.children[0].textContent, /Resolved audience: @claude/);
+  assert.equal(bubble.children.at(-1), actions, 'message actions stay last');
+  // Actual module re-render/history-call seams, not appendMessage/browser history proof.
+  const updated = plain(message); updated.metadata.recipient_routing.recipients = [{name: 'codex', identity_id: 'two'}];
+  env.context.shared.appendReceipt(channel, updated);
+  env.context.shared.appendReceipt(channel, updated);
+  assert.equal(bubble.querySelectorAll('.recipient-receipt').length, 1, 'repeated module calls keep one receipt');
+  assert.match(bubble.querySelector('.recipient-receipt').textContent, /Resolved audience: @codex/);
+  assert.equal(bubble.children.at(-1), actions);
+  const rebuilt = new Element(); const rebuiltBubble = new Element(); rebuiltBubble.className = 'chat-bubble';
+  rebuilt.appendChild(rebuiltBubble); env.context.shared.appendReceipt(rebuilt, message);
+  assert.equal(rebuiltBubble.querySelectorAll('.recipient-receipt').length, 1);
+  assert.equal(rebuilt.children.length, 1);
+  const job = new Element();
+  env.context.shared.appendReceipt(job, message);
+  env.context.shared.appendReceipt(job, message);
+  assert.equal(job.children.length, 1, 'job receipt remains on its ordinary root');
+  assert.match(job.children[0].textContent, /Resolved audience: @claude/);
 });
 
 test('fresh prepare cancels changed draft and duplicate sends are single flight', async () => {

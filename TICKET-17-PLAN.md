@@ -468,3 +468,8 @@ Before restarting3479186serve, root identified that an extra actual jobUIpost wo
 ### Two-stage serve implementation ready
 
 Serve-only secondjobstage replaces scriptedjobPOST with exactonefreshactualUIrow adoption andfreshsentinel/300s pause. Existing7calls andBidentity/UUID5/preview/authchecks remain; nonserveCRLFPOST unchanged. Root verified actual jobs.json list/message format and independently compiled3/1. Sonnet shortdiff confirmation required beforeONEfreshserve; no run at this checkpoint.
+
+
+### Full browser path and receipt placement correction
+
+Root two-stage89875f7 browser functionalPASS: actualchannel+jobUIposts/ACKclears/originalUIDs/exact7calls/cleanup[]. Rendered channelreceiptwasbesideflexrowbubble; SonnetconfirmednewUIdefect. CentralappendReceipt nowtargets.chat-bubble||element,reusesrow,actionsstaylast,compact14px/wrap; jobfallbackunchanged. ActualmoduleVM placementred->12PASS includesrepeat/rebuilt/history-callseams (notfullbrowserhistoryproof). Assetcachev2. Sonnet ownserve confirmsactualrender/390/reload beforefinalticketreview; rootskipsreplayfixture/extra nativecalls. Browserlimits(controlledheaderfault,DOMIME/shiftguardonly,nativeTab/OSIME/screenreaderunexercised) remainexplicit.
