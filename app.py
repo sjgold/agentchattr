@@ -2528,10 +2528,14 @@ def _resolve_decision_sync(msg_id, chosen, username):
     meta.update(resolved=True, chosen=chosen)
     updated = store.update_message(msg_id, {'metadata': meta})
     sender = message.get('sender', '')
-    published = _publish_operator_message(sender=username,
-        text=f'@{sender} {chosen}' if sender else chosen,
-        selected_recipients=[], approved_targets=[sender] if sender else [],
-        origin='workflow', reply_to=msg_id, channel=message.get('channel', 'general'), _emit=False)
+    try:
+        published = _publish_operator_message(sender=username,
+            text=f'@{sender} {chosen}' if sender else chosen,
+            selected_recipients=[], approved_targets=[sender] if sender else [],
+            origin='workflow', reply_to=msg_id, channel=message.get('channel', 'general'), _emit=False)
+    except (ChannelUnavailable, OSError, ValueError):
+        return JSONResponse({'error': 'The decision card was saved as resolved, but its reply could not be confirmed. '
+            'Check the conversation; resend the answer manually if it is absent.'}, status_code=503)
     return updated, published
 
 

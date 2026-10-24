@@ -1,5 +1,6 @@
 """Worker/lock ordering and choice single-flight, without native delivery claims."""
 import asyncio
+import json
 from concurrent.futures import ThreadPoolExecutor
 import threading
 import unittest
@@ -95,6 +96,20 @@ class ChannelMutationOrderTests(unittest.TestCase):
         self.assertEqual(len(self.jobs.list_all()), 1)
         self.assertEqual(self.messages.get_snapshot(0)['metadata']['status'], 'accepted')
         self.assertEqual(len([row for row in self.messages.get_recent() if row['type'] == 'job_created']), 1)
+
+    def test_failed_reply_explains_resolved_card_and_manual_resend_without_retry_duplicate(self):
+        card = self.decision()
+        with patch.object(app, '_publish_operator_message', side_effect=OSError('private storage path')):
+            response = asyncio.run(app.resolve_decision(card['id'], self.request({'choice': 'Blue'})))
+        self.assertEqual(response.status_code, 503)
+        error = json.loads(response.body)['error']
+        self.assertIn('resolved', error)
+        self.assertIn('resend', error)
+        self.assertNotIn('private', error)
+        self.assertTrue(self.messages.get_snapshot(card['id'])['metadata']['resolved'])
+        retry = asyncio.run(app.resolve_decision(card['id'], self.request({'choice': 'Blue'})))
+        self.assertEqual(retry.status_code, 400)
+        self.assertEqual(len(self.trigger.queue.records('review')), 0)
 
 
 if __name__ == '__main__':
