@@ -1,12 +1,12 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 evening (#1-16 published/closed; #17 recipient routing is next; Sonnet reviewer)
+**Updated:** 2026-10-23 evening (#1-16 published/closed; #17 recipient contract proposal awaiting Sonnet critique)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
-- Next owner/action: Codex begins Ticket17 recipient-routing source/contract analysis from specv1.7 RC-1/AT-09 and issue17, with Sonnet5.5 agent3b53a0e1 as independent reviewer. Blockers8/10 are delivered. No Ticket17 implementation or new tests yet. Freeze a bounded plan and interfaces before observed-red test writing.
+- Active Ticket17 planning branch codex/ticket-17-explicit-recipients from verified published61315f7. Codex implementation-owner claim5ac077c7; Sonnet5.5 agent3b53a0e1 reviewer. TICKET-17-PLAN.md records actual ingress/composer/queue callers, baseline E10 reproduction and four OPEN contract choices for Sonnet critique. No17 production or new test changes. Next: settle bounded lexer/ingress/busy-turn/slash-scheduling contract, freeze signatures, then helper observed-red tests. Blockers8/10 are delivered.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
@@ -394,3 +394,9 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Accepted source and receipt published origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb; gitls-remote matched localHEAD. Evidence comment posted and issue15 closed as completed; a separate issueview confirmed closed. The first readback used an unsupported --fields flag after a successful close, then normal view confirmed state; close/comment were not repeated.
 - FinalreviewSonnet PASS WITH NONBLOCKING NOTES, no executable fixes/recheck required. Post-merge full918 total/four skips86.469s, syntax/diff PASS, shellaa226c79 exit0. New usage docs and nonblocking dispositions are tracked. No live provider/native AI/Omarchy/Desktop changes.
 - Seth renewed continuation beyond15. Next Ticket17 Make explicit recipients authoritative, blockers8/10 delivered, scope RC-1/AT-09. Read-only issue/spec preview only so far; next Codex freezes routing contract before tests/implementation. No next-ticket work is represented as shipped.
+
+## Ticket17 source/contract proposal
+
+- Base verified published61315f7, branchcodex/ticket-17-explicit-recipients, implementation-owner5ac077c7. Scope issue17/specv1.7 RC-1/AT-09 read; Open Brain routing query returned no matching thought, no repository graph exists. No tooling installed.
+- Root executed unchanged tools/audit_recipient_baseline.cjs: explicit @claude with selectedclaude/codex/glm actually sends @codex @glm @claude. Source also confirms quoted tokens can route, unknown tokens disappear before default fallback, jobs/scheduling have independent prefix/union logic, and released transport alone can expose manual work while a review invocation is unconsumed.
+- Proposed minimal server lexer/resolver + pure preview, raw text/separate selected names, exact immutable audience receipt, and a narrow new-claim logical-turn wait guard. No new manual-message ticket/outbox, provider call, scheduler or interruption workflow. TICKET-17-PLAN.md has four explicit OPEN decisions; Sonnet critique is required before17tests/code. No proposed behavior is claimed implemented.

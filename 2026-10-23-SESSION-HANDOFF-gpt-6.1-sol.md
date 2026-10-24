@@ -5,9 +5,9 @@ agent: codex
 model: gpt-6.1-sol
 date: 2026-10-23
 time: "11:12 PM"
-branch: main
+branch: codex/ticket-17-explicit-recipients
 session_type: implementation
-active_plan: docs/agentchattr-fork-spec.md
+active_plan: TICKET-17-PLAN.md
 ---
 
 # Session handoff: finish Ticket15, then continue the approved backlog
@@ -26,13 +26,13 @@ Seth initially instructed Codex to finish15 and stop, then explicitly cleared co
 
 ## What's not done
 
-- Ticket17 recipient-routing planning/implementation is next; no source changes yet.
+- Ticket17 proposal TICKET-17-PLAN.md is written with four OPEN choices awaiting Sonnet critique; no17 implementation/tests yet.
 - Native Linux/Omarchy, live AI providers/clients, Desktop/global changes and remote-compute cancellation are outside this work.
 - Future tickets are authorized after15 acceptance/publication, in dependency order. No next-ticket implementation has started.
 
 ## What's next
 
-1. Read STATUS.md, issue17 and specv1.7 RC-1/AT-09. Codex freezes the explicit-recipient routing contract from actual callers; Sonnet reviews it before implementation.
+1. Read STATUS.md, issue17 and specv1.7 RC-1/AT-09. Codex has written TICKET-17-PLAN.md from actual callers; obtain Sonnet critique and settle its four OPEN choices before implementation.
 2. Assign observed-red tests to the existing helper, implement only17, then obtain independent Sonnet final review and recheck any substantive fixes.
 3. Follow the renewed autonomous publication/dependency loop. Live AI/provider/Omarchy/Desktop/global work remains excluded.
 
