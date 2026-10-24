@@ -1,12 +1,12 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 evening (#1-16 published/closed; #17 recipient contract proposal awaiting Sonnet critique)
+**Updated:** 2026-10-23 23:35 Chicago (#1-16 published/closed; #17 settled contract awaiting exact-interface recheck)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
-- Active Ticket17 planning branch codex/ticket-17-explicit-recipients from verified published61315f7. Codex implementation-owner claim5ac077c7; Sonnet5.5 agent3b53a0e1 reviewer. TICKET-17-PLAN.md records actual ingress/composer/queue callers, baseline E10 reproduction and four OPEN contract choices for Sonnet critique. No17 production or new test changes. Next: settle bounded lexer/ingress/busy-turn/slash-scheduling contract, freeze signatures, then helper observed-red tests. Blockers8/10 are delivered.
+- Active Ticket17 planning branch codex/ticket-17-explicit-recipients from verified published61315f7. Codex implementation-owner claim5ac077c7; Sonnet5.5 agent3b53a0e1 reviewer. TICKET-17-PLAN.md incorporates Sonnet M1-M5 and the settled double-quote/parser, immutable-UID dispatch and per-identity logical-turn whitelist refinements. Exact pure interfaces await final Sonnet recheck before helper observed-red tests. No17 production/new tests. Scheduling composer union/mention stripping is explicitly deferred; channel/job/slash routing remains in17. Blockers8/10 are delivered.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
@@ -14,7 +14,7 @@
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
 - Update actual results and next steps, not intended features presented as shipped.
 - Root `AGENTS.md` requires agents to read this file before work and maintain current status, verification, blockers, and the next action before handing off.
-- Resume from the current handoff above and `TICKET-15-PLAN.md`. [October18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md) and older receipts describe historical checkpoints.
+- Resume from the current handoff above and `TICKET-17-PLAN.md`. [October18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md) and older receipts describe historical checkpoints.
 
 ## Autonomous execution policy (latest direction2026-10-23 evening)
 
@@ -22,7 +22,7 @@
 - Codex builds and coordinates the approved backlog. Seth installed Sonnet5.5 agent3b53a0e1 as independent reviewer, replacing the stopped/archived Gemini reviewer. Existing test helper may write assigned tests; a builder does not self-approve final acceptance.
 - Standing authorization covers routine bounded plans, commits, merge/push and issue closure after checks and independent review/recheck PASS. Complete the current ticket before starting the next dependency-eligible ticket. Escalate genuine scope/ownership disputes, destructive operations outside scope, live-provider use or unavailable verification; no repeated routine sign-off questions.
 - Native Omarchy, live AI/provider usage and Desktop/global credentials/settings remain deferred. Preserve exact source/log/reviewer attribution and actual platform limits.
-- Durable tracking: `AUTONOMOUS-RUN.md`, current `TICKET-15-PLAN.md` and review pack. Historical receipts keep their original instructions and evidence as dated records.
+- Durable tracking: `AUTONOMOUS-RUN.md`, current `TICKET-17-PLAN.md` and the completed15 review pack. Historical receipts keep their original instructions and evidence as dated records.
 
 ## Ticket #1 checkpoint
 
@@ -400,3 +400,9 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Base verified published61315f7, branchcodex/ticket-17-explicit-recipients, implementation-owner5ac077c7. Scope issue17/specv1.7 RC-1/AT-09 read; Open Brain routing query returned no matching thought, no repository graph exists. No tooling installed.
 - Root executed unchanged tools/audit_recipient_baseline.cjs: explicit @claude with selectedclaude/codex/glm actually sends @codex @glm @claude. Source also confirms quoted tokens can route, unknown tokens disappear before default fallback, jobs/scheduling have independent prefix/union logic, and released transport alone can expose manual work while a review invocation is unconsumed.
 - Proposed minimal server lexer/resolver + pure preview, raw text/separate selected names, exact immutable audience receipt, and a narrow new-claim logical-turn wait guard. No new manual-message ticket/outbox, provider call, scheduler or interruption workflow. TICKET-17-PLAN.md has four explicit OPEN decisions; Sonnet critique is required before17tests/code. No proposed behavior is claimed implemented.
+
+## Ticket17 settled contract recheck
+
+- Sonnet M1-M5 accepted after source checks: protocol-1 human chat will deliberately stop auto-pausing (Ticket8 test changes), ambiguous family aliases will not expand, internal recipient receipts require a trusted publication boundary with generic add/add_once stripping, all nonterminal run-channel agent wakes are suppressed, and receipts describe resolved audience rather than delivery. These remain planned, not implemented.
+- Parser settlement: paragraph-bounded balanced double quotes only, lazy blockquote continuation, no trailing-hyphen trimming, ignored-address diagnostics. Root fixture execution established multiple reviews can share one seat; whitelist earliest unconsumed dispatch rather than blocking manual records alone. Dispatch UUID5 uses immutable message UID plus identity; ID reuse regression required.
+- No scheduling-composer fix claimed: current client union/mention stripping remains deferred to schedule-specific work. Next owner Codex sends exact pure schema to Sonnet; after approval existing helper captures bounded observed-red tests, then production implementation. No17 new tests/code yet.
