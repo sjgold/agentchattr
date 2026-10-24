@@ -248,7 +248,7 @@ def _do_import(zip_bytes, store, jobs_store, rules_store,
             metadata = deepcopy(msg.get("metadata")) if isinstance(msg.get("metadata"), dict) else {}
             for field in ('seat_identity_id', 'provenance', 'dispatch_id', 'run_id',
                           'turn_id', 'attempt_id', 'input_revision', 'routing_scope',
-                          'quarantine_session_id', 'quarantine_reason'):
+                          'quarantine_session_id', 'quarantine_reason', 'recipient_routing'):
                 metadata.pop(field, None)
             metadata['imported'] = True
             new_msg = store.add(

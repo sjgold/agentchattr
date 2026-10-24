@@ -4,7 +4,11 @@ import json
 import time
 import threading
 import uuid
+from copy import deepcopy
 from pathlib import Path
+
+import api_seats
+from store import _operator_authority, _operator_receipt
 
 
 class JobStore:
@@ -234,6 +238,58 @@ class JobStore:
                 if a["id"] == job_id:
                     return list(a["messages"])
             return None
+
+    def _publish_operator(self, job_id, sender, text, *, routing, authority,
+                          attachments=None, msg_type='chat'):
+        """Save an operator job message without emitting or routing it."""
+        _operator_authority(authority)
+        uid = str(uuid.uuid4())
+        receipt = _operator_receipt(routing, uid)
+        with self._lock:
+            job = next((value for value in self._jobs if value['id'] == job_id), None)
+            if job is None:
+                return None
+            stamp = time.time()
+            message = {'id': len(job['messages']), 'uid': uid, 'sender': sender, 'text': text,
+                       'time': time.strftime('%H:%M:%S'), 'timestamp': stamp,
+                       'attachments': deepcopy(attachments or []),
+                       'metadata': {'recipient_routing': receipt}}
+            if msg_type != 'chat':
+                message['type'] = msg_type
+            before = deepcopy(self._jobs)
+            job['messages'].append(message)
+            job['updated_at'] = stamp
+            try:
+                api_seats.atomic_json(self._path, self._jobs)
+            except Exception:
+                self._jobs = before
+                raise
+        return dict(deepcopy(message), job_id=job_id)
+
+    def get_message_snapshot(self, job_id, message_id):
+        if type(job_id) is not int or job_id <= 0 or type(message_id) is not int or message_id < 0:
+            raise ValueError('Job and message IDs must be valid integers.')
+        with self._lock:
+            job = next((value for value in self._jobs if value['id'] == job_id), None)
+            if job:
+                for message in job['messages']:
+                    if message['id'] == message_id:
+                        return dict(deepcopy(message), job_id=job_id)
+        return None
+
+    def _emit_operator(self, message, *, authority):
+        _operator_authority(authority)
+        saved = self.get_message_snapshot(message['job_id'], message['id'])
+        if not saved or saved.get('uid') != message.get('uid'):
+            return
+        receipt = (saved.get('metadata') or {}).get('recipient_routing') or {}
+        if receipt.get('version') != 1 or receipt.get('message_uid') != saved['uid']:
+            return
+        for callback in list(self._callbacks):
+            try:
+                callback('message', deepcopy({'job_id': saved['job_id'], 'message': saved}))
+            except Exception:
+                pass
 
     def delete_message(self, job_id: int, msg_id: int) -> dict | None:
         """Soft-delete a message from a job conversation by message id."""

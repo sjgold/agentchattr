@@ -9,6 +9,30 @@ from copy import deepcopy
 from pathlib import Path
 
 
+_OPERATOR_PUBLICATION = object()
+
+
+def _operator_authority(authority):
+    if authority is not _OPERATOR_PUBLICATION:
+        raise PermissionError('Trusted operator publication is required.')
+
+
+def _message_metadata(metadata):
+    cleaned = deepcopy(metadata) if isinstance(metadata, dict) else {}
+    cleaned.pop('recipient_routing', None)
+    return cleaned
+
+
+def _operator_receipt(routing, uid):
+    fields = {'origin', 'mode', 'tokens', 'ignored', 'recipients', 'warnings', 'waiting'}
+    if (not isinstance(routing, dict) or set(routing) != fields
+            or routing['origin'] not in ('operator', 'workflow', 'schedule')
+            or routing['mode'] not in ('explicit', 'selected', 'none')
+            or any(not isinstance(routing[key], list) for key in fields - {'origin', 'mode'})):
+        raise ValueError('Operator audience must match the internal routing schema.')
+    return {'version': 1, 'message_uid': uid, **deepcopy(routing)}
+
+
 class MessageStore:
     def __init__(self, path: str):
         self._path = Path(path)
@@ -58,6 +82,7 @@ class MessageStore:
             timestamp: float | None = None,
             time_str: str | None = None,
             _bulk: bool = False) -> dict:
+        metadata = _message_metadata(metadata)
         with self._lock:
             ts = timestamp if timestamp is not None else time.time()
             msg = {
@@ -93,6 +118,58 @@ class MessageStore:
 
         return msg
 
+    def _publish_operator(self, sender, text, *, routing, authority,
+                          channel='general', attachments=None, reply_to=None,
+                          msg_type='chat', metadata=None):
+        """Persist one trusted message before exposing it to any observer."""
+        _operator_authority(authority)
+        uid = str(uuid.uuid4())
+        copied_metadata = _message_metadata(metadata)
+        copied_metadata['recipient_routing'] = _operator_receipt(routing, uid)
+        with self._lock:
+            stamp = time.time()
+            message = {'id': self._next_id, 'uid': uid, 'sender': sender, 'text': text,
+                       'type': msg_type, 'timestamp': stamp, 'time': time.strftime('%H:%M:%S'),
+                       'attachments': deepcopy(attachments or []), 'channel': channel,
+                       'metadata': copied_metadata}
+            if reply_to is not None:
+                message['reply_to'] = reply_to
+            line = (json.dumps(message, ensure_ascii=False) + '\n').encode('utf-8')
+            existed = self._path.exists()
+            try:
+                with open(self._path, 'ab', buffering=0) as output:
+                    before = output.seek(0, os.SEEK_END)
+                    try:
+                        if output.write(line) != len(line):
+                            raise OSError('Message append did not complete.')
+                        output.flush()
+                        os.fsync(output.fileno())
+                    except Exception:
+                        output.truncate(before)
+                        raise
+            except Exception:
+                if not existed and self._path.exists() and self._path.stat().st_size == 0:
+                    self._path.unlink()
+                raise
+            self._messages.append(message)
+            self._next_id += 1
+        return deepcopy(message)
+
+    def _emit_operator(self, message, *, authority):
+        """Emit only the saved identity, independently copying every observation."""
+        _operator_authority(authority)
+        saved = self.get_snapshot(message['id'])
+        if not saved or saved.get('uid') != message.get('uid'):
+            return
+        receipt = (saved.get('metadata') or {}).get('recipient_routing') or {}
+        if receipt.get('version') != 1 or receipt.get('message_uid') != saved['uid']:
+            return
+        for callback in list(self._callbacks):
+            try:
+                callback(deepcopy(saved))
+            except Exception:
+                pass
+
     def add_once(self, uid: str, sender: str, text: str, msg_type='session_result',
                  channel='general', metadata=None):
         """Atomically project a journal event, including after a missing backlink.
@@ -101,7 +178,7 @@ class MessageStore:
         chat keeps its append behavior. No in-memory commit precedes persistence.
         """
         fields = {'sender': sender, 'text': text, 'type': msg_type,
-                  'channel': channel, 'metadata': deepcopy(metadata or {})}
+                  'channel': channel, 'metadata': _message_metadata(metadata)}
         with self._lock:
             for existing in self._messages:
                 if existing.get('uid') == uid:
@@ -235,7 +312,14 @@ class MessageStore:
         with self._lock:
             for m in self._messages:
                 if m["id"] == msg_id:
-                    m.update(updates)
+                    copied = deepcopy(updates)
+                    if 'metadata' in copied:
+                        metadata = _message_metadata(copied['metadata'])
+                        receipt = (m.get('metadata') or {}).get('recipient_routing')
+                        if receipt is not None:
+                            metadata['recipient_routing'] = deepcopy(receipt)
+                        copied['metadata'] = metadata
+                    m.update(copied)
                     self._rewrite_jsonl()
                     return dict(m)
             return None
