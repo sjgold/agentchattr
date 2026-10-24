@@ -399,3 +399,25 @@ Sonnet independently ran actual-source VM12 and65Python tests1.349s with source/
 UI033ac8a is independently bounded-PASS. Existing helper first proposes exact case/count/cleanup design, then drafts new verify_explicit_recipients.py and optional dedicated fake client. No actual acceptance execution before root and Sonnet review full draft, native handle accounting and cleanup. Real run.main server uses private data/dynamic ports and session authentication, with actual WS preview/job ingress and UID content ACK. Required cases: subset while all selected, selections-only, neither/ignored/unknown zero dispatches, all online only, ambiguous/unique family, manual wait behind released-unconsumed typed review, agent display-only mention during review, bearer403 and Stop. Same-family registry/MCP fixtures must not be passed off as native managed seats with unique bases.
 
 All API response-body gates release only after verified native worker/model handles are retained; CLI early release/late typed final must come from the actual fake client's authenticated MCP, not parent-forged machine ingress. Exact per-case provider/injection/admission/dispatch counts are frozen before runs. Cleanup inventories every private launch/config/manifest/model/client record, retains true server separately from launcher, never scans/guesses PID/tree or forces native client/model. Exact cooperative stop then native waits; any worker fallback requires fresh complete child-end evidence immediately before action. Unknown metadata remains unresolved/preserved and later resources still receive cleanup; unresolved fails. Root browser serve is separately authorized/bounded after normal-case evidence. No live AI, Omarchy or Desktop/global settings changes.
+
+
+### Tranche5 acceptance design settled with Sonnet (draft-only)
+
+Three selectable cases, still no execution authorization:
+
+| Case | Exact generation count | Required observations |
+| --- | --- | --- |
+| audience |7 actual local API calls,0CLI injections | ExplicitA/allA+Bselected1; selectionsA+B2; neither0; ignored quote/code/fence+none0; ignored-only+selectedA1; unknown-only+selectedA+B0; all onlineA+B2; jobexplicitB/selectedA1. |
+| order |1 API peer call,4 genuine CLI injections | Actual CLI A early release with unconsumed typed turn; B andmanual queued; Atypedfinal ->B ->Btypedfinal ->manual; explicitmanualAPIpeer1call; agentmentionpeer0; thirdCLIreviewStop then actual late typedfinal rejection/quarantine. |
+| family |0 provider calls,0 native-client claims | Separate real-server registry/MCP fixture proves ambiguousfamily candidates/zeroqueue, then uniqueactivefamily oneidentityqueue, exactpendingunavailable. Managed seat bases are unique; no false native same-family claim. |
+
+Additional audience queue-only/auth checks add0API calls: explicit registeredoffline identity queuesone with offlinewarning; all excludesit; stale selectionunavailable no widening; preview/job reject both agentbearer andno token403; genericbearer /api/send strips forgedreceipt andwakesnone; WSunsupportedmetadata/origin/type fields error+zeroqueue. Per-message acceptedWSUID equals storedUID/receipt.message_uid, exactUUID5overUID+identity for everyrecipient and no nonrecipient ledgerrecord. Job uses its savedHTTPmessageUID, with no false WSACK claim. Every zero case verifies bounded worker-poll/provider/ledger stability, not instantaneous absence.
+
+Order audit records manualstatequeued throughout release-to-typed interval in bothledger andtransportjournal; Bclaimedbeforemanual. Humanposts intentionally reset correctchannel hop/unpause and neverincrement it, while reviewstate remains unchanged. This corrects the loose phrase counters unaffected, which would contradict existing continue_routing(channel).
+
+Only audience may later get separately authorized600s-pre-send browser serve, with actualUIexplicitA/allA+Bselection, originalUID adopted, pulsewithin30s so native handles retained under unchanged120sAPIdeadline. Actual rawtext/selection/receipt/output andexactresourcecounts are frozenbefore execution. Helper drafts new files/compile-only; root/Sonnet inspect full source andcleanup before ONE normal case. No process has started for this acceptance work.
+
+
+### Acceptance draft source corrections, before execution
+
+Root source review found and helper corrected: malformed-WS receive requires an overall deadline even with recurring statusframes; observations write failure must always enter resource cleanup. Order record now compares genuine admitted-event accepted_at to B/manual dispatched timestamps and asserts exactly one claim event, alongside actual client receive/release/final timestamps. Three-second quiet windows are explicitly recorded as bounded observations. Both helper and root compile-only3server/1clientPASS, with no actual acceptance run. Full frozen draft/imported-cleanup audit by Sonnet remains required before one case.
