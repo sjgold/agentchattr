@@ -1,13 +1,13 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 05:43 Chicago (#1-17 closed; #18 merged/full1040 green, publication next)
+**Updated:** 2026-10-24 05:46 Chicago (#1-18 published/closed; next inspect19 scope and dependencies)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
-- Active Ticket18 branch `codex/ticket-18-document-input`, base published main d787f4f. Productc11bdec and verifier12c9a81 are unchanged; pure/backend/UI and native py/mjs plus ordinary rendered browser acceptance have independent PASS evidence. Reviewer full1040/four skips88.771s at docs-only6aef553. Sonnet final whole-ticket PASS WITH NONBLOCKING NOTES atf893bd2; local main9d874a8 fast-forward merged and post-merge1040/four skips89.765s passed; publication/closure remain pending.
-- Current work: root ordinary browser yv4xw7fp and reviewer3pzw1x48 PASS, each1CLI/1localfakeAPI/2finals/onepreparedchild, cleanup2/1/1/1ended/unresolved[]. Root390px/failure-state/DOM-seam checks are builder-only; reviewer desktop1280. Optional mjs draft-browser serve explicitly not run; VMboth-launchers, draftHTTP and512KiBnative mjs remain scoped. [Guide](DOCUMENT-INPUTS.md) and [receipt](REVIEW-CLAUDE-TICKET-18.md) are final docs deliverables. Sonnet verified frozen docs-only diffs/receipt and posted final PASS WITH NONBLOCKING NOTES. Local main9d874a8 merged; post-merge1040/four skips89.765s, bothVM12 and syntax/diff passed. Next Codex pushes/closes18 and verifies remote/issue under standing authorization. No next ticket started.
+- Ticket18 is complete on published main5cac753, remote hash verified; issue18 closed/completed at2026-10-24T10:45:05Z reread via wrapper/API. Final independent PASS WITH NONBLOCKING NOTES f893bd2; productc11bdec/verifier12c9a81 unchanged. Postmerge1040/four skips89.765s and bothVM12/syntax/diff PASS. Guide DOCUMENT-INPUTS.md and receipt REVIEW-CLAUDE-TICKET-18.md retain coverage/limits.
+- Next owner Codex: inspect issue19/dependencies/current source, then write a bounded contract for Sonnet before new tests/code. No19implementation started. Ticket18 native py/mjs and ordinary rendered browser cases independently reproduced with complete cleanup; optional mjs draft browser unrun, root390px/failure seams separately attributed, three failed fixtures preserved. All owned acceptance processes/browser sessions ended; source branch retained.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
@@ -739,3 +739,8 @@ Finalreviewartifact/receipt recordedPASSWITHNONBLOCKINGNOTES atf893bd2, N1-N7 re
 ## Ticket18 post-merge checks green, publish/closure next
 
 Main ff9d874a8, branch retained, remote base d787f4f was unchanged. Full1040TOTAL/1036passed/4skips89.765s exit0 (a10ad6a9/ticket18-postmerge-full.log); documentVM12/0, recipientVM12/0, node syntax and diffcheck PASS. Receipt/guide retain all reviewed notes; executablec11bdec/tools12c9a81 unchanged. Next publish docs/receipt descendant, remote-hashverify, commentandclose18/rereadstate_reason/time, thenclosuretracking; issue18stillopen atcheckpoint. No nextticket code.
+
+
+## Ticket18 publication and verified closure
+
+Published main5cac753a9339ed70a26064ee3d561261f7dd66b7, gitls-remote exacthashverified. Issue18 wrapper/API independentlyreturnedclosed/completed/2026-10-24T10:45:05Z afterverificationcommentlinks. FinalPASSWITHNOTES/rootpostmerge1040/four skips89.765s/NodeVM12+12 unchanged. Closuretrackingdocs-only; no application/verifier changes or extra native tests. #1-18 complete. NextCodexinspects19/blockers andcurrentbaselinebeforeboundedplanning; no19codeyet, Sonnet/testhelperidle, no liveacceptanceresources.

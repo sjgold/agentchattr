@@ -399,3 +399,8 @@ Sonnet final whole-ticket PASS WITH NONBLOCKING NOTES atf893bd2167c02b3df44faf3c
 ## Local main merged and post-merge verified
 
 Standing-authorized ff-merge to main9d874a8 completed with source branch retained, no history rewrite/destructive cleanup. Root full1040TOTAL/1036passed/4platform skips89.765s exit0, retained ticket18-postmerge-full.log/trackeda10ad6a9. Both actual-source NodeVM12/0, syntax/diff clean; sourcec11bdec/verifier12c9a81 unchanged. Next publish the receipt/status descendant, verify remote main, comment/close18 with exact limitations, reread closed/completed and update closure tracking. Issue still open at this checkpoint; no next ticket started.
+
+
+## Ticket18 published and closed
+
+Main5cac753a9339ed70a26064ee3d561261f7dd66b7 pushed and independently reread with git ls-remote. Issue18 stateclosed/state_reasoncompleted/closed_at2026-10-24T10:45:05Z verified through wrapper+API after the evidence comment. Final independentPASSWITHNOTES f893bd2 and postmerge1040/four skips89.765s, bothVM12/syntax/diff evidence retained. Closure metadata is docs-only; no source/verifier changes or reclassification of failed scratches. Source branch and scratch evidence retained, owned acceptance resources/browser sessions ended. Ticket18 complete; next Codex inspects19/dependencies before any new plan/implementation under standing authorization.

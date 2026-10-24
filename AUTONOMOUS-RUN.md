@@ -24,7 +24,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
 | #15 | Published and closed | Source41b80f7, Sonnet independent PASS, post-merge918/four skips86.469s |
 | #17 | Published and closed | Executable4723027, originmainfd825c8, independentPASSWITHNOTES; postmerge1004/four skips86.898s; issueclosed/completedverified. Schedulingcomposer deferred. |
-| #18 | Final independent PASS; merged locally, post-merge verified | Productc11bdec/verifier12c9a81; full1040/four skips89.765s, both UI VM12PASS. Codex publishes/closes18 next; receipt preserves limits/failed fixtures. |
+| #18 | Published and closed | Main5cac753, issueclosed/completed2026-10-24T10:45:05Z verified; independentPASSWITHNOTES; postmerge1040/four skips89.765s. Receipt preserves all limits/failed fixtures. |
 | #19-26 | Authorized, pending | Continue dependency order after current ticket |
 
 ## Non-negotiable verification
@@ -36,8 +36,8 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 
 ## Latest handoff
 
-Published/closed: #1-17. Ticket18 has final Sonnet PASS WITH NONBLOCKING NOTES atf893bd2; productc11bdec and verifier12c9a81 unchanged. Both builder/reviewer reproduced native py/mjs and ordinary py browser serve. Local main9d874a8 post-merge1040/four skips89.765s and both UI VM12PASS. Receipt REVIEW-CLAUDE-TICKET-18.md and guide DOCUMENT-INPUTS.md preserve the optional draft-browser omission and exact platform/DOM limits.
+Published/closed: #1-18. Ticket18 main5cac753 is verified on origin/main and issue18 closed/completed at2026-10-24T10:45:05Z. Independent final Sonnet PASS WITH NONBLOCKING NOTES f893bd2; productc11bdec/verifier12c9a81 unchanged. Both builder/reviewer reproduced py/mjs and ordinary py browser serve; local postmerge1040/four skips89.765s and both UI VM12PASS. Receipt REVIEW-CLAUDE-TICKET-18.md and guide DOCUMENT-INPUTS.md preserve coverage/limits/failed fixtures.
 
-Current owner Codex: publish verified main, verify remote hash, comment/close18 and reread closure, then inspect the next dependency-eligible ticket under the standing run policy. No next ticket implementation has started. Sonnet remains independent reviewer; existing test helper is idle, no owned acceptance processes/browser sessions remain. No live AI/Omarchy/Desktop/global changes.
+Current owner Codex: inspect19 and its blockers/current implementation, then draft the next bounded contract for Sonnet before tests/code. No next-ticket implementation started. Sonnet remains independent reviewer; existing test helper is idle. No owned acceptance processes/browser sessions remain. Standing authorization continues; no live AI/Omarchy/Desktop/global changes.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.

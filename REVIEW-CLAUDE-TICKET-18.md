@@ -55,7 +55,7 @@ Preflight verifier fixes covered constructor resources, all-run cleanup, known D
 |pgmsqycg at8797d48 |Early auth403 response body reset from unread5byte probe, before Start;0provider/clientturns; same complete cleanup. Empty valid UTF8 auth probes fixed it without relaxing403 checks. |
 |7pms_r4i at0118e27 |Final Windows path-key lookup failed after1CLI/1API/2finals and child checks;2workers/1client/1model/1server ended/unresolved[]. Portable map keys fixed it; remains failed fixture, not retroactive acceptance. |
 
-No accepted native cases were rerun on every later docs-only descendant. Final whole-ticket PASS was received and the reviewer verified empty product/tool diffs atf893bd2. Local main was fast-forward merged and post-merge verified. Push/issue closure and remote reread remain under the recorded standing authorization.
+No accepted native cases were rerun on every later docs-only descendant. Final whole-ticket PASS was received and the reviewer verified empty product/tool diffs atf893bd2. Local main was fast-forward merged and post-merge verified. Publication and issue closure were completed under the recorded standing authorization; exact details follow below.
 
 ## Final nonblocking notes N1-N7
 
@@ -70,4 +70,9 @@ No accepted native cases were rerun on every later docs-only descendant. Final w
 
 ## Post-merge verification
 
-Main fast-forwarded to docs-only `9d874a8e95a6baaca50fbc8bc75fe533cf6e5b74`, source branch retained. Builder full discovery1040TOTAL/1036passed/4platform skips89.765s, exit0; `.audit-tmp/ticket18-postmerge-full.log`, tracked a10ad6a9-5be7-4fb7-a81e-b7220b31c914. Actual-source documentVM12/0 and recipientVM12/0, syntax and full-diff whitespace checks passed. Product/tool diffs fromc11bdec/12c9a81 empty. No native cases repeated for the docs-only merge; their accepted pins remain above. Publication and issue closure follow.
+Main fast-forwarded to docs-only `9d874a8e95a6baaca50fbc8bc75fe533cf6e5b74`, source branch retained. Builder full discovery1040TOTAL/1036passed/4platform skips89.765s, exit0; `.audit-tmp/ticket18-postmerge-full.log`, tracked a10ad6a9-5be7-4fb7-a81e-b7220b31c914. Actual-source documentVM12/0 and recipientVM12/0, syntax and full-diff whitespace checks passed. Product/tool diffs fromc11bdec/12c9a81 empty. No native cases repeated for the docs-only merge; their accepted pins remain above. Publication and issue closure are recorded below.
+
+
+## Publication and closure
+
+Published main `5cac753a9339ed70a26064ee3d561261f7dd66b7`, verified by git ls-remote. GitHub issue18 independently reread via the issue wrapper and precise API: state=closed, state_reason=completed, closed_at=`2026-10-24T10:45:05Z`. Verification comment links the published guide/receipt and preserves the exact limitations and failed fixture history. Closure tracking is docs-only; productc11bdec/verifier12c9a81 remain unchanged. No new native rerun is claimed for this metadata descendant.
