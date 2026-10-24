@@ -72,7 +72,7 @@ class ChannelProjectionRepairTests(unittest.TestCase):
     def test_scoped_recovery_validates_names_and_is_noop_when_nothing_pending(self):
         before = self.path.read_bytes()
         with patch.object(self.engine, '_project_session') as project:
-            result = self.engine.recover_projections(channel='peer')
+            result = self.engine.recover_projections(channel='peer', terminal_only=True)
             self.assertEqual(result, {'messages_projected': 0, 'skips_projected': 0,
                 'continuations_projected': 0, 'sessions': []})
             with self.assertRaises(ValueError):
@@ -142,6 +142,11 @@ class ChannelProjectionRepairTests(unittest.TestCase):
         with self.assertRaises(ChannelConflict):
             self.apply('recover_projections')
         self.assertEqual(self.messages.get_recent(channel='review'), [])
+        # Operator repair holds malformed context; startup keeps its historical
+        # attempt-every-protocol-1-session behavior (not an authority claim).
+        with patch.object(self.engine, '_project_session') as project:
+            self.engine.recover_projections()
+        project.assert_any_call(run['id'], dispatch=False)
 
     def test_repair_requires_current_token_and_typed_confirmation(self):
         self.pending_final()
@@ -162,6 +167,21 @@ class ChannelProjectionRepairTests(unittest.TestCase):
             report = self.apply('recover_projections')['projection_repair']
         trigger.assert_not_called()
         self.assertEqual((report['messages_projected'], report['continuations_projected']), (0, 1))
+
+    def test_startup_recovers_missing_banner_after_all_result_backlinks_exist(self):
+        run, _ = self.pending_final()
+        self.apply('recover_projections')
+        before = deepcopy(self.sessions.get(run['id']))
+        banner = next(row for row in self.messages.get_recent(channel='review') if row['type'] == 'session_end')
+        self.messages.delete([banner['id']])
+        self.assertEqual([row['type'] for row in self.messages.get_recent(channel='review')], ['session_result'])
+        with patch.object(self.engine, '_trigger_current') as trigger:
+            report = self.engine.recover_projections()
+        trigger.assert_not_called()
+        self.assertEqual([row['type'] for row in self.messages.get_recent(channel='review')],
+                         ['session_result', 'session_end'])
+        self.assertEqual(self.sessions.get(run['id']), before)
+        self.assertEqual(report['messages_projected'], 0)  # Decorative banner is not a journal row.
 
 
 if __name__ == '__main__':

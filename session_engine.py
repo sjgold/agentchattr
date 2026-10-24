@@ -1221,13 +1221,13 @@ class SessionEngine:
                         or terminal_only and session.get('state') not in PROJECTION_REPAIR_STATES):
                     continue
                 events = {event['event_id'] for event in session.get('admitted_events', [])}
-                if any(context['question_event_id'] not in events
-                       for context in session.get('continuation_context', [])):
+                if terminal_only and any(context['question_event_id'] not in events
+                                         for context in session.get('continuation_context', [])):
                     continue  # Malformed saved context stays held for explicit investigation.
                 pending = {counter: {row[key] for row in session.get(field, [])
                                      if row.get('projected_message_id') is None}
                            for counter, field, key in groups}
-                if not any(pending.values()):
+                if terminal_only and not any(pending.values()):
                     continue
                 self._project_session(session['id'], dispatch=False)
                 after = self._store.get(session['id'])
