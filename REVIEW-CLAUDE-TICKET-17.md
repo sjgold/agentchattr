@@ -54,3 +54,8 @@ Under Seth's recorded standing authorization: documentation-only receipt descend
 ## Post-merge verification
 
 Main fast-forwarded to documentation pin `d049501c3814e5901f4f180f1af887a697514699`; executable diff from4723027 is Markdown-only. Root full discovery:1004TOTAL,1000passed,4expected skips,86.898s, exit0 (`.audit-tmp/ticket17-postmerge-full.log`, shell9bf81c35). Actual-sourceVM12PASS, threeJSsyntax/diffclean. Publication/issue closure andremote reread follow under recorded standing authorization.
+
+
+## Publication and closure
+
+Published main `fd825c848e2f90929b0e76090097bbccf651206d`, verified with `git ls-remote origin refs/heads/main`. Issue17 independently reread through the issue wrapper and GitHub API: `state=closed`, `state_reason=completed`, `closed_at=2026-10-24T08:06:16Z`. Verification comment links this published receipt and preserves scheduling/acceptance limits. Closure tracking is documentation-only; executable4723027 remains unchanged. No additional application rerun is claimed for documentation descendants.

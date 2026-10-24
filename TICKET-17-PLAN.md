@@ -1,6 +1,6 @@
 # Ticket17: explicit recipients are authoritative
 
-State: final independent PASS WITH NONBLOCKING NOTES at executable4723027. Reviewer full1004TOTAL/four skips87.107s, actual-sourceVM12, independent three live scenarios and actualtwo-stagebrowserPASS. Receipt REVIEW-CLAUDE-TICKET-17.md records exactpins/failures/limits. Publication remains after docs-onlypin/ffmain/postmergefull, then authorizedpush/closure. Scheduling composer remains deferred. Earlier planning/tranche sections preserve their original checkpoint context.
+State: complete, independently PASS WITH NONBLOCKING NOTES at executable4723027, published mainfd825c8, GitHub17 verifiedclosed/completed2026-10-24T08:06:16Z. Reviewerfull1004/four skips87.107s, rootpostmerge1004/four skips86.898s,VM12/independentnative/localfake/browserproof. Receipt REVIEW-CLAUDE-TICKET-17.md preserveslimits/fixtures/schedulingdeferral. LaterclosuretrackingMarkdownonly. Earliersections retain originalplanning/checkpointcontext.
 
 Base: published main61315f7a8fc173577455718d7406645673f53da6. Branch codex/ticket-17-explicit-recipients. Codex owns implementation/follow-through (claim5ac077c7); Sonnet5.5 agent3b53a0e1 is independent reviewer. Scope: issue17, specv1.7 RC-1/AT-09. Blockers8/10 and recovery9/13/14/15 are delivered. Full baseline918 total tests/four platform skips.
 
@@ -478,3 +478,8 @@ Root two-stage89875f7 browser functionalPASS: actualchannel+jobUIposts/ACKclears
 ## Final acceptance
 
 Final independentPASS at4723027, receiptREVIEW-CLAUDE-TICKET-17.md. No sourcechangedafterfreeze. Finalfull1004/four skips87.107s independentlyexecuted, ownrenderedreceiptsinsidebubble/390localfit confirmed; allnative/localfakecases independentlyreproduced. Nonblockingnotes preserved inreceipt/STATUS, especiallyschedulingdeferral. Nextpublicationgateff/postmergefull/push/close under standingauthorization.
+
+
+## Publication complete
+
+Originmainfd825c8exacthashverified, issue17closed/completedreread2026-10-24T08:06:16Z. Postmerge1004TOTAL/four skips86.898s,VM12/syntax/diffPASS; executable4723027 unchanged. Schedulingcomposer remainsdeferred. Nextdependency-eligiblebacklogcontractbeforecode.
