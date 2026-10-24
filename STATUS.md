@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 00:22 Chicago (#1-16 published/closed; #17 runtime bounded PASS; trusted-ingress contract next)
+**Updated:** 2026-10-24 00:28 Chicago (#1-16 published/closed; #17 runtime bounded PASS; trusted-ingress contract next)
 
 ## Current handoff
 
@@ -439,3 +439,5 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 
 - Corrected c1bce3a full964TOTAL/960passed/four expected skips85.646s exit0, root readback verified. Sonnet independently70focused4.376s and corrected-source turn_recovery/corrected_restart/session_stop integrations PASS, source diff rechecked -> boundedPASS. Earlier failed962 run and fixture dispositions remain recorded. No native17-specific scenario or final17 acceptance yet.
 - Tranche3 proposed exact signatures/authority/UID/receipt/auth-origin/preview/identity-trigger/callback schemas appended to TICKET-17-PLAN.md. Covers generic add/add_once/update reserved-key protection, private job path, operator/body separation and explicit internal workflows. No Tranche3 source/tests yet. Next owner Sonnet short freeze check, then existing helper publication-only observed-red workorder and Codex ingress tests/implementation.
+
+- Tranche3 bb6f814 approved with C1-C4 before tests: private operator append+fsync before memory, exact truncate rollback (no whole-log rewrite); explicit capability-checked emit after channel hop reset; saved receipt classification before sender lookup; precise generic-agent slash/local-control/nonrouting event exclusions. Plan now includes corrections. Next helper publication-only observed-red tests, Codex private persistence implementation; root ingress tests remain later. No T3 source edits yet.
