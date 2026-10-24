@@ -12,6 +12,9 @@ _DISSENT_LINE = "Provide your own independent analysis. Do not repeat or defer t
 # Roles that get the dissent mandate
 _DISSENT_ROLES = {"reviewer", "red_team", "critic", "challenger", "against"}
 
+# Operator history repair never dispatches a live run's next turn.
+PROJECTION_REPAIR_STATES = frozenset({'complete', 'stopped', 'unresolved', 'interrupted'})
+
 
 class SessionEngine:
     """Orchestrates session turn flow on top of existing chat infrastructure.
@@ -1198,12 +1201,43 @@ class SessionEngine:
             self.emit_current_phase_banner(session)
             return self._trigger_current(session)
 
-    def recover_projections(self):
-        """Repair accepted-event projection before dispatch; never re-admit it."""
+    def recover_projections(self, channel=None, *, terminal_only=False):
+        """Repair journal projections, never re-admit or dispatch.
+
+        Startup may repair live runs before its separate resume step. Operator
+        repair uses terminal_only, so it cannot strand a live next turn.
+        Counts cover journal event/skip/continuation rows, not decorative banners.
+        """
+        if channel is not None:
+            from channel_lifecycle import _name
+            _name(channel)
+        result = dict(messages_projected=0, skips_projected=0, continuations_projected=0, sessions=[])
+        groups = (('messages_projected', 'admitted_events', 'event_id'),
+                  ('skips_projected', 'skipped_turns', 'projection_id'),
+                  ('continuations_projected', 'continuation_context', 'question_event_id'))
         with self._lock:
-            for session in self._store.list_all():
-                if session.get('completion_protocol') == 1:
-                    self._project_session(session['id'], dispatch=False)
+            for session in self._store.list_all(channel=channel):
+                if (session.get('completion_protocol') != 1
+                        or terminal_only and session.get('state') not in PROJECTION_REPAIR_STATES):
+                    continue
+                events = {event['event_id'] for event in session.get('admitted_events', [])}
+                if any(context['question_event_id'] not in events
+                       for context in session.get('continuation_context', [])):
+                    continue  # Malformed saved context stays held for explicit investigation.
+                pending = {counter: {row[key] for row in session.get(field, [])
+                                     if row.get('projected_message_id') is None}
+                           for counter, field, key in groups}
+                if not any(pending.values()):
+                    continue
+                self._project_session(session['id'], dispatch=False)
+                after = self._store.get(session['id'])
+                counts = {counter: sum(row[key] in pending[counter] and row.get('projected_message_id') is not None
+                                       for row in after.get(field, [])) for counter, field, key in groups}
+                if any(counts.values()):
+                    result['sessions'].append({'session_id': session['id'], 'run_id': session['run_id']})
+                    for counter, count in counts.items():
+                        result[counter] += count
+        return result
 
     def _trigger_current(self, session: dict, *, retry=None, now=None):
         """Trigger the agent whose turn it is."""
@@ -1389,9 +1423,10 @@ class SessionEngine:
         """Add computed fields to a session dict for the frontend."""
         session["legacy"] = session.get("completion_protocol") != 1
         session["participant_kind"] = "human" if (session.get("active_invocation") or {}).get("human") else "agent"
-        session['projection_pending'] = any(event.get('projected_message_id') is None
-                                             for event in session.get('admitted_events', [])) or any(
-            context.get('projected_message_id') is None for context in session.get('continuation_context', []))
+        session['projection_pending'] = not session['legacy'] and any(
+            row.get('projected_message_id') is None
+            for field in ('admitted_events', 'continuation_context', 'skipped_turns')
+            for row in session.get(field, []))
         tmpl = self._template(session)
         if tmpl:
             phases = tmpl.get("phases", [])

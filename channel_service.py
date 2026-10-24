@@ -8,11 +8,12 @@ import time
 from channel_lifecycle import (ChannelConflict, ChannelInactive, ChannelUnavailable,
                                _name, _request_id)
 from dispatch_queue import ACTIVE
+from session_engine import PROJECTION_REPAIR_STATES
 
 
 _LIVE_REVIEW = {'active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'retrying',
                 'interrupted', 'prepared'}
-_OPS = {'create', 'archive', 'reopen', 'delete', 'rename', 'cancel_queued'}
+_OPS = {'create', 'archive', 'reopen', 'delete', 'rename', 'cancel_queued', 'recover_projections'}
 
 
 class ChannelService:
@@ -87,21 +88,28 @@ class ChannelService:
         counts = dict(messages=len(messages), todos=len(todos), jobs=len(jobs),
                       schedules=len(schedules), sessions=len(runs), summaries=int(summary is not None))
         blockers = []
-        def block(kind, run=None, record=None, audit=None):
+        def block(kind, run=None, record=None, audit=None, reason=None):
             run, record, audit = run or {}, record or {}, audit or {}
             envelope = record.get('envelope', {})
             blockers.append({'kind': kind, 'session_id': run.get('id'), 'run_id': run.get('run_id') or envelope.get('run_id'),
                 'dispatch_id': envelope.get('dispatch_id') or audit.get('dispatch_id'),
                 'identity_id': envelope.get('target_identity_id') or audit.get('seat_identity_id'),
                 'state': record.get('state') or run.get('state')})
+            if reason:
+                blockers[-1]['reason'] = reason
         for run in runs:
             if run.get('state') in _LIVE_REVIEW and not run.get('stop_id') and not run.get('replaced_by_run_id'):
                 block('review', run=run)
-            events = {event['event_id']: event for event in run.get('admitted_events', [])}
+            events = {event['event_id']: event for event in run.get('admitted_events', [])
+                      if run.get('completion_protocol') == 1}
             pending = [event for event in events.values() if event.get('projected_message_id') is None]
-            pending.extend(events.get(context['question_event_id'], {})
+            pending.extend(events.get(context['question_event_id'], {'reason': 'missing_question_event'})
                            for context in run.get('continuation_context', [])
-                           if context.get('projected_message_id') is None)
+                           if run.get('completion_protocol') == 1 and context.get('projected_message_id') is None)
+            pending.extend({'dispatch_id': skipped['dispatch_id'],
+                            'expected_identity_id': skipped.get('seat_identity_id')}
+                           for skipped in run.get('skipped_turns', [])
+                           if run.get('completion_protocol') == 1 and skipped.get('projected_message_id') is None)
             for event in pending:
                 envelope = next((record['envelope'] for record in transport
                     if record['envelope'].get('run_id') == run.get('run_id')
@@ -110,8 +118,10 @@ class ChannelService:
                 if not envelope and invocation.get('attempt_id') == event.get('attempt_id'):
                     envelope = invocation
                 block('projection_pending', run=run, audit={
-                    'dispatch_id': envelope.get('dispatch_id'),
-                    'seat_identity_id': event.get('expected_identity_id')})
+                    'dispatch_id': event.get('dispatch_id') or envelope.get('dispatch_id'),
+                    'seat_identity_id': event.get('expected_identity_id')},
+                    reason=event.get('reason') or ('live_projection_requires_restart'
+                        if run.get('state') not in PROJECTION_REPAIR_STATES else None))
             for attempt in run.get('superseded_attempts', []):
                 audit = attempt.get('old_transport') or attempt.get('selected_transport')
                 if audit and audit.get('resolved') is not True:
@@ -171,6 +181,8 @@ class ChannelService:
             raise ChannelConflict('Reopen this channel first.')
         elif op == 'reopen' and state != 'archived':
             raise ChannelConflict('Only archived channels can be reopened.')
+        elif op == 'recover_projections' and state != 'active':
+            raise ChannelConflict('Reopen this channel before repairing its history.')
 
     def preview(self, op, channel, *, new_name=None):
         with self._boundary():
@@ -196,6 +208,12 @@ class ChannelService:
             if type(preview_token) is not str or preview_token != preview['preview_token']:
                 raise ChannelConflict('Channel contents or work changed; refresh the preview.')
             blockers = preview['blockers']
+            if op == 'recover_projections':
+                if not any(item['kind'] == 'projection_pending' and not item.get('reason') for item in blockers):
+                    raise ChannelConflict('No repairable history is pending; live work must wait or restart.')
+                repair = self._repair_projections(channel)
+                return {'ok': True, 'revision': preview['revision'], 'channel': channel,
+                        'state': 'active', 'op': op, 'projection_repair': repair}
             if op == 'cancel_queued':
                 blockers = [item for item in blockers if not (item['kind'] == 'transport' and item['state'] == 'queued')]
             if blockers and op not in ('reopen', 'create'):
@@ -217,8 +235,20 @@ class ChannelService:
             else:
                 raise ChannelConflict('Rename requires the separately reviewed migration step.')
             self._project(value)
-            return {'ok': True, 'revision': value['revision'], 'channel': channel,
-                    'state': value['channels'].get(channel), 'op': op}
+            result = {'ok': True, 'revision': value['revision'], 'channel': channel,
+                      'state': value['channels'].get(channel), 'op': op}
+            if op == 'reopen':
+                try:
+                    result['projection_repair'] = self._repair_projections(channel)
+                except ChannelUnavailable:
+                    result['projection_repair_error'] = 'History repair did not finish. Inspect pending work and try repair again.'
+            return result
+
+    def _repair_projections(self, channel):
+        try:
+            return self.engine.recover_projections(channel=channel, terminal_only=True)
+        except Exception:
+            raise ChannelUnavailable('History repair did not finish; reload management and retry.') from None
 
     def retry(self, request_id):
         _request_id(request_id)
