@@ -1,6 +1,6 @@
 # Replace or skip a review participant
 
-Ticket15 passed builder Windows/local-fake/browser checks and independent Sonnet review. Publication follows post-merge verification.
+Ticket15 is published after builder Windows/local-fake/browser checks, independent Sonnet review and post-merge verification.
 
 When a review turn needs attention, open **Replace or skip participant** in its recovery controls. Earlier accepted results stay in the run.
 

@@ -1,16 +1,14 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 evening (#15 merged/post-merge918 pass; publication/closure next; continuation beyond15 authorized)
+**Updated:** 2026-10-23 evening (#1-16 published/closed; #17 recipient routing is next; Sonnet reviewer)
 
 ## Current handoff
 
-- Active work: Ticket15, branch `main`, executable checkpoint `1cebd9d4244177fdedd7027f22d101bf1c58381e`. Builder and independent acceptance complete; fast-forward merged locally through43fda297f2cbfcf44e84c3dca1fa0423c8edfdcd. Post-merge918 total/four skips86.469s and syntax/diff PASS. Push and closure pending.
-- Verified: final frozenfc7ef93 full918 TOTAL tests OK (914 passed,4 expected platform skips)87.210s, focused44/4.167s plus later options/route15/2.751s, syntax/diff clean. All4 actual Windows/local-fake cases and2 actual UI serves PASS with cleanup unresolved[]. Exact counts/scratches/failure evidence: `TICKET-15-REVIEW.md`.
-- Independent scope: historical Gemini bounded-PASS132e598 and earlier components remain attributed to that reviewer. Final review is now assigned by Seth to Claude/Sonnet5.5 agent `3b53a0e1-7bc3-4807-bf3a-0d08fa9fea86` (harness alias sonnet, agent-reported version). Final verdict PASS WITH NONBLOCKING NOTES: own918 total/four skips87.682s,4 fresh native cases and prior corrected restart/Retry/Stop/APIlostACK integrations PASS. Root read report/raw logs/result+cleanup. Receipt REVIEW-CLAUDE-TICKET-15.md; no source changes or substantive recheck required.
-- Remaining owner: Codex performs push/verified issue15 closure and publication receipt, then the next dependency-eligible ticket. Application source remains frozen at1cebd9d; later commits are documentation/header only. Use `TICKET-15-REVIEW.md`.
-- Latest direction (Seth,2026-10-23 evening): "your clear to go past 15". This supersedes the earlier stop-after15 limit. Continue the approved backlog after15 is independently accepted and published, using Sonnet5.5 as designated reviewer. No routine human gates; live providers/nativeAI/Omarchy/Desktop/global settings remain outside authorization.
-- Gemini agent `ec1fbcd1-4a02-410e-9029-e498f67918c8` was explicitly stopped and archived. Three recent integration reproductions have PASS/cleanup[]; its interrupted repair-cold5xphgpv8 has no result/cleanup and is not accepted. Separate root read-only process audit confirms all recorded workers/client/servers absent, model journals ended and a single genuine no-spawn manifest, with all5 launch intents accounted. See retirement artifact. The working badge does not establish continuous inference/billing across the reported12-hour interval.
-- Existing helper is idle for concrete findings/new assigned tests. Builder browser/native fixtures are stopped. New reviewer's bounded acceptance processes are reviewer-owned.
+- Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
+- Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
+- Next owner/action: Codex begins Ticket17 recipient-routing source/contract analysis from specv1.7 RC-1/AT-09 and issue17, with Sonnet5.5 agent3b53a0e1 as independent reviewer. Blockers8/10 are delivered. No Ticket17 implementation or new tests yet. Freeze a bounded plan and interfaces before observed-red test writing.
+- Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
+- Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -390,3 +388,9 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Root verified raw logs/JSON. User guide clarified later-turn identity holds; review pack documents immutable prior-text scope across explicit-protocol turns. Optional local name shadowing and unreproduced malformed-store hardening deferred. No executable changes after review. Main/originmain were both55bd7cb after fetch; fast-forward merge and post-merge checks next. Publication/closure not yet claimed.
 
 - Local main fast-forward through43fda29 accepted receipt; post-merge918 TOTAL tests OK (914 passed,4 expected platform skips)86.469s, node syntax and diff55bd7cb..HEAD clean, tracked shellaa226c79 exit0/log.audit-tmp/ticket15-post-merge-full.log. No executable changes after independentPASS. Ready for standing-authorized publication and closure; neither claimed yet.
+
+## Ticket15 verified publication and closure
+
+- Accepted source and receipt published origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb; gitls-remote matched localHEAD. Evidence comment posted and issue15 closed as completed; a separate issueview confirmed closed. The first readback used an unsupported --fields flag after a successful close, then normal view confirmed state; close/comment were not repeated.
+- FinalreviewSonnet PASS WITH NONBLOCKING NOTES, no executable fixes/recheck required. Post-merge full918 total/four skips86.469s, syntax/diff PASS, shellaa226c79 exit0. New usage docs and nonblocking dispositions are tracked. No live provider/native AI/Omarchy/Desktop changes.
+- Seth renewed continuation beyond15. Next Ticket17 Make explicit recipients authoritative, blockers8/10 delivered, scope RC-1/AT-09. Read-only issue/spec preview only so far; next Codex freezes routing contract before tests/implementation. No next-ticket work is represented as shipped.

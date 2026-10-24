@@ -4,21 +4,21 @@ project: agentchattr
 agent: codex
 model: gpt-6.1-sol
 date: 2026-10-23
-time: "11:00 PM"
-branch: codex/ticket-15-participant-replacement
+time: "11:12 PM"
+branch: main
 session_type: implementation
-active_plan: TICKET-15-PLAN.md
+active_plan: docs/agentchattr-fork-spec.md
 ---
 
 # Session handoff: finish Ticket15, then continue the approved backlog
 
 ## What happened
 
-Seth initially instructed Codex to finish15 and stop, then explicitly cleared continuation beyond15 tonight and installed Sonnet5.5 as independent reviewer. The evening instruction supersedes the earlier limit. Replacement and skip now preserve completed review work, use explicit operator decisions and retain strict ownership/transport fences. Gemini bounded-passed component checkpoints and is now stopped/archived. Final whole-ticket review is underway with Sonnet.
+Seth initially instructed Codex to finish15 and stop, then explicitly cleared continuation beyond15 tonight and installed Sonnet5.5 as independent reviewer. The evening instruction supersedes the earlier limit. Replacement and skip now preserve completed review work, use explicit operator decisions and retain strict ownership/transport fences. Gemini bounded-passed component checkpoints and is now stopped/archived. Final whole-ticket review passed with nonblocking notes; Ticket15 is published and closed.
 
 ## What's done
 
-- Builder implementation and acceptance are complete at executable checkpoint `1cebd9d4244177fdedd7027f22d101bf1c58381e`; review/header pin `fc7ef9361c27be887a34d01677f309b1060bfb35` changes documentation only.
+- Ticket15 is published on origin/main41b80f7 and its issue is confirmed closed. Builder implementation and acceptance are complete at executable checkpoint `1cebd9d4244177fdedd7027f22d101bf1c58381e`; review/header pin `fc7ef9361c27be887a34d01677f309b1060bfb35` changes documentation only.
 - Final frozen suite:918 total tests,914 passed/four expected skips87.210s. `TICKET-15-REVIEW.md` records component, route, native and browser evidence.
 - Four actual Windows/local-fake scenarios and two actual UI serves pass with cleanup unresolved `[]`. The original UI decisions were replayed, source/peer seats survived, and actual old late output was quarantined.
 - `PARTICIPANT-RECOVERY.md` documents operator behavior. `STATUS.md`, `AUTONOMOUS-RUN.md` and the plan preserve current scope, actual results and stop condition.
@@ -26,17 +26,17 @@ Seth initially instructed Codex to finish15 and stop, then explicitly cleared co
 
 ## What's not done
 
-- Final independent review/reproduction, main merge, post-merge checks, push and issue15 closure are pending.
+- Ticket17 recipient-routing planning/implementation is next; no source changes yet.
 - Native Linux/Omarchy, live AI providers/clients, Desktop/global changes and remote-compute cancellation are outside this work.
 - Future tickets are authorized after15 acceptance/publication, in dependency order. No next-ticket implementation has started.
 
 ## What's next
 
-1. Sonnet5.5 reviewer `3b53a0e1-7bc3-4807-bf3a-0d08fa9fea86` reviews the frozen whole change and reproduces `TICKET-15-REVIEW.md`, including corrected restart. Request ac5d5a7e-f98c-4421-a48f-cff1d017e144 is open; independent918/four skips87.682s passed. Gemini is stopped/archived and its old request is closed.
-2. Codex addresses substantive findings and obtains same-reviewer recheck; preserve source/log attribution.
-3. After final FULL PASS, fast-forward main, run post-merge checks, publish under standing authorization, verify remote hash and issue closure, update receipts/status and continue the next dependency-eligible ticket with Sonnet review.
+1. Read STATUS.md, issue17 and specv1.7 RC-1/AT-09. Codex freezes the explicit-recipient routing contract from actual callers; Sonnet reviews it before implementation.
+2. Assign observed-red tests to the existing helper, implement only17, then obtain independent Sonnet final review and recheck any substantive fixes.
+3. Follow the renewed autonomous publication/dependency loop. Live AI/provider/Omarchy/Desktop/global work remains excluded.
 
-Suggested skills: verification-before-completion and finishing-a-development-branch for the remaining acceptance/publication work.
+Suggested skills: brainstorming/technical planning, TDD, verification-before-completion and independent review.
 
 ## Gotchas
 
@@ -65,5 +65,5 @@ Must read on resume:
 ## Next prompt
 
 ```text
-Resume from STATUS.md and TICKET-15-REVIEW.md. Sonnet5.5 agent3b53a0e1 is final independent reviewer; Gemini is stopped/archived. Obtain final15 acceptance, perform authorized merge/post-merge verification/publication/verified closure, then continue the dependency-eligible backlog under Seth's renewed evening authorization. Keep source frozen during review and preserve exact evidence attribution.
+Resume from STATUS.md. Ticket15 is accepted, published and closed. Begin Ticket17 Make explicit recipients authoritative using specv1.7 RC-1/AT-09 and issue17, with Codex building and Sonnet5.5 agent3b53a0e1 reviewing. Freeze the source-grounded plan before tests/code; preserve the autonomous gates and platform limits.
 ```

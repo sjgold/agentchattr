@@ -1,6 +1,6 @@
 # Ticket15 independent acceptance receipt
 
-Verdict: **PASS WITH NONBLOCKING NOTES**, accepted by Codex after source and evidence checks. No blocking defect or substantive fix was requested. Post-merge verification passed; publication/closure are pending.
+Verdict: **PASS WITH NONBLOCKING NOTES**, accepted by Codex after source and evidence checks. No blocking defect or substantive fix was requested. Post-merge verification passed; publication41b80f7 and issue15 closure were independently verified.
 
 - Builder: Codex GPT6.1 Sol, agent6c2a7241 (OpenAI family).
 - Reviewer: Claude Sonnet5.5 as selected by Seth and reported by agent3b53a0e1, configured alias `sonnet` (Anthropic family; exact resolved backend ID not independently attested).

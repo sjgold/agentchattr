@@ -1,6 +1,6 @@
 # Ticket15: replace or skip a missing participant
 
-State: builder implementation and acceptance complete, final same-AGY review pending. Component checkpoints through132e598 have bounded independent PASS. Later skip/routes full918, all4 actual Windows/local-fake cases and both actual UI serves pass. Final independent reproduction, merge/post-merge verification/publication/closure remain. Latest evening authorization permits continuation after15; the designated final reviewer is Sonnet5.5, replacing retired Gemini.
+State: COMPLETE. Sonnet5.5 independently accepted the frozen implementation with nonblocking notes; main publication41b80f7 and issue15 closure verified. Post-merge918 total/four skips86.469s plus syntax/diff pass. All planned Ticket15 work is completed within recorded platform limits. Seth reauthorized continuation beyond15.
 
 Base: published main `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Owner: Codex, claim `a99548d9-49eb-4f70-9cf1-d185414cbad5`. Independent reviewer: Sonnet5.5 agent3b53a0e1, designated by Seth on2026-10-23 evening; earlier bounded AGY reviews remain historical evidence. Scope: issue15, specification v1.7 SC-5 and AT-21d/22. Ticket12 blocker and Tickets13/14 recovery are delivered.
 
@@ -167,7 +167,7 @@ Helper owns only new tests/test_replacement_preparation_repair.py, bounded8, usi
 - [x] Transport/engine tests observed red: absent dispatch, live/uncertain/end proofs, same-owner cancellation poll, identity hold versus peers, old late result quarantine, current/future role mapping, coordinator replacement, skip followed by synthesis, no auto generation on cold restart and durable IO-gap repair.
 - [x] Strict HTTP/operator tests and existing review-panel controls. Preview confirms role/model changes or missing-work consequence; no arbitrary source editing or implicit choice. Desktop/mobile/keyboard QA with actual actions.
 - [x] Isolated Windows local fake API/CLI integration: real prior accepted result, dropped acknowledgement/disconnection/live-stalled as distinct cases, replacement and coordinator replacement, late old event, explicit skip + output/export missing marker, reboot/replay during pending recovery, peer preservation and bounded native cleanup. Root reviews draft fault/cleanup before each actual tranche.
-- [ ] Full regression plus affected Retry/Stop/restart/API outbox/selected CLI suites, same-AGY frozen final source and execution review, post-merge checks, standing-authorized publication/closure.
+- [x] Full regression plus affected Retry/Stop/restart/API outbox suites, independent Sonnet frozen final source/execution review, post-merge checks and standing-authorized publication/closure. Reviewer change and exact scope are recorded in the final receipt.
 
 Review focus: no hidden old-context reuse, no inferred exit or blanket termination, no owner/key mutation after brief binding, no loss of completed work, no missing input presented as agreement, no cold auto-respawn, no repeated downstream dispatch after reply loss. Keep new interfaces bounded to this operation rather than introducing a scheduler or generalized workflow engine.
 
