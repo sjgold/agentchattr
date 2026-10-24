@@ -147,3 +147,43 @@ Review focus: no accidental expansion, source-data routing, name-to-new-identity
 - Sonnet independently ran22 focused/old Router tests0.407s onf868445, but withheld bounded approval for two real fence/blockquote bugs. Root captured4 new tests before fixes:4tests0.010s with11 failing subtests/1error (fence cases, Unicode linebreak classification, real registry odd.name snapshot). No native processes were involved.
 - Corrected backtick info strings, reset quote state at fence open, restricted line boundaries, tolerated valid out-of-grammar registry names, and followed Sonnet settlement allowing literal non-grammar selections (stale selections warn unavailable). The helper deliberately moved two grammar-only negatives to positive stale-selection diagnostics, preserving malformed-shape/UTF8/NUL/empty guards.
 - Root corrected suite26PASS0.349s (22 new pure tests plus4 existing Router tests), syntax/diff checks pending final freeze. Earlier full936TOTAL tests/four skips92.293s was atf868445, before these fixes; do not attribute it to the corrected source. No runtime routing integration yet.
+
+## Tranche2 exact runtime interfaces (proposed freeze, before tests)
+
+Sonnet bounded-passed corrected Tranche1 at e9a6402: independent26 focused0.343s plus probe reruns (no native wiring). Builder corrected full940TOTAL tests,936passed/four expected skips89.561s, shell4686f27c/log.audit-tmp/ticket17-pure-resolver-corrected-full.log. These results do not certify the following unimplemented contracts.
+
+### Router and registry compatibility
+
+- Keep `Router.parse_mentions(self, text: str) -> list[str]`. Replace its regex interpretation with scan_addresses(text)['tokens']; retain only known agent names, expanding all/both at occurrence position to sorted online known names (all known names if no online_checker), stable dedup. Ignored/unknown tokens create no targets. Diagnostic warnings stay in operator resolver/preview, not Router output.
+- Keep `Router.get_targets(self, sender, text, channel='general') -> list[str]`. Human branch resets the existing three hop/paused/notice fields and returns only parsed mentions; remove human routing.default fallback deliberately. Agent branch preserves pause/hop/self-filter behavior. Existing continue_routing is the reset primitive the later trusted operator ingress can reuse. No new reset API.
+- Keep `RuntimeRegistry.resolve_to_instances(self, name: str) -> list[str]`. Exact registered name wins as today; otherwise a known base with exactly one active member returns that member; multiple active members returns []; zero active members and unknown non-agent names keep existing [name] compatibility. Pending exact instances are still skipped by the caller. This changes only the unsafe multiple-family expansion.
+- Keep `SessionEngine._on_message(self, msg: dict) -> None` callback signature. Replace its human-chat pause side effect with a documented inert callback: shared chat/decision content is display data, never admission, pause or progression. Current implementation already ignores legacy runs; explicit session Pause/Resume/Stop operations remain unchanged. Deliberately amend/rename the Ticket8 pause-on-chat test. No new Pause control/API.
+
+### Shared review predicate and precise whitelist derivation
+
+Add pure functions in queue_coordinator.py (no new module/framework):
+
+```python
+is_nonterminal_review(run: dict) -> bool
+allowed_review_dispatch_ids(runs: list[dict], identity_id: str) -> set[str] | None
+```
+
+`is_nonterminal_review` requires completion_protocol ==1, no stop_id, no replaced_by_run_id, and state in active/waiting/paused/awaiting_input/stalled/retrying/interrupted/prepared. It does not require dispatch_eligible True, an active invocation, or proven native readiness.
+
+`allowed_review_dispatch_ids` reads copied SessionStore.list_all() data, never a queue ledger or clock. For qualifying runs whose active_invocation.expected_identity_id equals the claimed identity, a human=True or consumed=True invocation imposes no restriction. An otherwise eligible invocation requires human and consumed both literalFalse, a positive integer session id (bool rejected), a dispatch_id valid under the existing queue identifier format (1..128 ASCII alphanumeric/underscore/dot/hyphen), and monitoring.created_at a finite nonnegative int/float (bool rejected). Missing/malformed monitoring, created_at, session id, flags or dispatch id for that matching identity yields an empty allowset, even if another candidate has valid ordering. No matching invocation yields None. Otherwise sort candidates by (monitoring.created_at, session id) and return the singleton earliest dispatch ID. No timestamp synthesis or persistence.
+
+Keep `CoordinatedQueue.claim(self, instance, consumer_id)`. Under its existing RLock, reconcile existing holds, read sessions once for blocked runs and this helper, then pass allowed_dispatch_ids to raw claim. Derive identity from the immutable authenticated instance identity, never name. Existing store/queue lock nesting is unchanged: list_all releases store lock before queue transaction.
+
+Extend `QueueStore.claim(self, instance, consumer_id, *, blocked_run_ids=None, blocked_identity_ids=None, allowed_dispatch_ids=None)`. Validate None or a set of existing-format identifier strings; invalid shape raises ValueError before mutation. Existing active/cancelling exact-owner polling remains first and is unaffected by the whitelist. Preserve blocked-run cancellation exception, identity/recovery holds. For new queued claims iterate the full identity-specific FIFO, skip blocked run or unallowed dispatch, and claim the first allowed record. Empty allowset claims nothing; a publication gap or blocked allowed run cannot fall through to manual/later work. No queue rewrites on skipped claims.
+
+### Channel predicate and agent-wake suppression placement
+
+Add `SessionEngine.has_nonterminal_review(self, channel: str) -> bool`: under engine RLock read copied sessions for that channel and apply is_nonterminal_review. This differs from get_allowed_agent: prepared/paused/interrupted/awaiting_input also count, regardless of active invocation. Keep get_allowed_agent unchanged for other existing callers.
+
+In app._handle_new_message, retain typed-projection and stopped/superseded-scope early display-only returns. Determine whether the current registered sender is an agent and channel has_nonterminal_review. Agent ordinary chat must broadcast without Router.get_targets, loop-hop mutation or trigger. This check must also stop built-in slash reposts from re-entering as human-looking routing input. Preserve existing agent session-draft validation/cards as display-only: compute the suppression boolean before slash branches, prevent all four broadcast slash branches when suppressed, then after draft extraction return before raw_targets. Suppressed non-draft ordinary chat broadcasts once; a suppressed agent slash remains literal shared text rather than expansion. Existing genuine typed scheduling is untouched.
+
+Apply the same predicate before agent job mention loops in mcp_bridge.py (authenticated instance, job.channel) and the equivalent app job path, preserving existing chat_scope quarantine. This closes a job-thread bypass rather than waiting for operator-job ingress in Tranche3. Operator-origin classification and trusted receipts are still the next tranche; display sender alone will not become authority there.
+
+### Bounded tests after reviewer freeze
+
+Helper assignment proposed: only new tests/test_recipient_runtime_order.py, about12 cases. First actual red: released-but-unconsumed current review must deny a queued manual claim; pure allowed_review_dispatch_ids missing method; nonterminal agent chat must not trigger even its expected peer. Use real engine/store/registry/queue fixtures with explicitly nonnative process doubles. Extend to two runs/same seat ordering, raw queued scan past skipped record, malformed/NaN/bool timing, no occupancy default, Stop/superseded/human/consumed boundaries, owner/cancelling polling/recovery holds and byte-stable no-claim. Root owns separate Router/alias/agent-suppression tests and deliberate old Ticket8 test edit, with actual red first. No helper edits to old tests or production. Freeze approval is required before assigning this workorder.
