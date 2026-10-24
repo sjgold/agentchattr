@@ -96,6 +96,15 @@ class RestartStartupTests(unittest.TestCase):
         self.assertLess(events.index('resume'), events.index('background_start'))
         engine.resume_active_sessions.assert_called_once_with(boot_id=self.boot)
 
+    def test_configure_with_corrupt_jobs_still_reaches_reconciliation_and_background_start(self):
+        data = self.root / 'configured'
+        data.mkdir(parents=True)
+        path = data / 'jobs.json'
+        path.write_text('{unreadable jobs', encoding='utf-8')
+        # Reuse the real configure lifecycle fixture; its order assertions all apply.
+        self.test_configure_inventories_and_reconciles_before_any_background_publication()
+        self.assertEqual(path.read_text(encoding='utf-8'), '{unreadable jobs')
+
     def test_bootstrapped_monitor_reconciles_same_boot_before_observing_turns(self):
         events = []
         engine = Mock()

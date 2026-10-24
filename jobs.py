@@ -18,7 +18,9 @@ def _unbound_job_policy():
 
 
 class JobStore:
-    def __init__(self, path: str, *, migrate_sort_orders=True):
+    def __init__(self, path: str, *, migrate_sort_orders=True, hold_unreadable=False):
+        if type(hold_unreadable) is not bool or (hold_unreadable and migrate_sort_orders):
+            raise ValueError('Startup hold is available only for configured jobs.')
         if type(migrate_sort_orders) is not bool:
             raise ValueError('Sort migration mode must be boolean.')
         self._path = Path(path)
@@ -29,16 +31,25 @@ class JobStore:
         self._configured = not migrate_sort_orders
         self._channel_policy_getter = _unbound_job_policy if self._configured else None
         self._had_file = False
+        self._fingerprint = None
+        self._invalid_fingerprint = None
+        self._load_error = None
         self._durable_jobs = []
         self._durable_next_id = 1
         self._callbacks: list = []  # (action, job) on any change
-        self._load()
+        try:
+            self._load()
+        except ChannelUnavailable:
+            if not hold_unreadable:
+                raise
+            self._load_error = "Saved jobs are unreadable. Jobs are held; repair the file and restart. Chat remains available."
 
     def _load(self):
         if not self._path.exists():
             return
         try:
             raw = self._read_jobs()
+            self._fingerprint = self._read_fingerprint
             if isinstance(raw, list):
                 self._jobs = raw
                 self._had_file = True
@@ -55,7 +66,16 @@ class JobStore:
                 raise
             self._jobs = []
 
+    @property
+    def load_error(self):
+        return self._load_error
+
+    def _stamp(self):
+        stat = self._path.stat()
+        return stat.st_mtime_ns, stat.st_size
+
     def _read_jobs(self):
+        before = self._stamp()
         def unique(pairs):
             value = {}
             for key, item in pairs:
@@ -78,17 +98,37 @@ class JobStore:
                         or any(type(message) is not dict for message in job['messages'])):
                     raise ValueError('Invalid saved job.')
                 seen.add(job['id'])
+        after = self._stamp()
+        if after != before:
+            raise ValueError('Jobs changed while being read.')
+        self._read_fingerprint = after
         return value
 
-    def _check_readable(self):
+    def _check_readable(self, *, force=False):
+        if self._load_error:
+            raise ChannelUnavailable(self._load_error)
         if self._configured:
             try:
-                if self._path.exists():
-                    self._read_jobs()
-                elif self._had_file:
-                    raise OSError('Saved jobs disappeared.')
+                try:
+                    stamp = self._stamp()
+                except FileNotFoundError:
+                    if self._had_file:
+                        raise OSError('Saved jobs disappeared.')
+                    return
+                if stamp == self._invalid_fingerprint:
+                    raise ChannelUnavailable('Saved jobs changed or are unreadable. Repair the file and restart; no reset was performed.')
+                if force or stamp != self._fingerprint:
+                    try:
+                        value = self._read_jobs()
+                        if value != self._durable_jobs:
+                            raise ValueError('External job edits require a restart.')
+                    except (ValueError, KeyError, TypeError, OSError):
+                        self._invalid_fingerprint = stamp
+                        raise
+                    self._fingerprint = self._read_fingerprint
+                    self._invalid_fingerprint = None
             except (ValueError, KeyError, TypeError, OSError):
-                raise ChannelUnavailable('Saved jobs are unreadable; no reset was performed.') from None
+                raise ChannelUnavailable('Saved jobs changed or are unreadable. Repair the file and restart; no reset was performed.') from None
 
     def bind_channel_policy(self, getter):
         if not callable(getter):
@@ -96,7 +136,8 @@ class JobStore:
         self._configured = True
         self._channel_policy_getter = getter
         with self._lock:
-            self._check_readable()
+            if not self._load_error:
+                self._check_readable(force=True)
 
     def _job_channels(self, job_id):
         with self._lock:
@@ -115,7 +156,7 @@ class JobStore:
 
     def _save(self):
         try:
-            self._check_readable()
+            self._check_readable(force=True)
             api_seats.atomic_json(self._path, self._jobs)
         except Exception:
             self._jobs = deepcopy(self._durable_jobs)
@@ -124,10 +165,17 @@ class JobStore:
         self._durable_jobs = deepcopy(self._jobs)
         self._durable_next_id = self._next_id
         self._had_file = True
+        # The atomic writer just committed these known bytes. A later changed
+        # fingerprint must revalidate, never overwrite an external edit.
+        try:
+            self._fingerprint = self._stamp()
+        except OSError:
+            self._fingerprint = None
 
     def _next_sort_order_locked(self, status: str) -> int:
         max_order = 0
-        projected = deepcopy(self._jobs)
+        projected = [{'id': job['id'], 'status': job.get('status', 'open'),
+                      'sort_order': job.get('sort_order', 0)} for job in self._jobs]
         self._ensure_sort_orders_locked(status, jobs=projected)
         for a in projected:
             if a.get("status") != status:
@@ -183,8 +231,18 @@ class JobStore:
         with self._lock:
             self._check_readable()
             if self._configured:
-                result = deepcopy(self._jobs)
-                self._ensure_sort_orders_locked(jobs=result)
+                # Normalize only cheap lane/order projections across all records.
+                # Conversation bodies are copied only for requested rows.
+                orders = [{'id': job['id'], 'status': job.get('status', 'open'),
+                           'sort_order': job.get('sort_order', 0)} for job in self._jobs]
+                self._ensure_sort_orders_locked(jobs=orders)
+                by_id = {job['id']: job['sort_order'] for job in orders}
+                selected = [job for job in self._jobs
+                            if (not channel or job.get('channel') == channel)
+                            and (not status or job.get('status') == status)]
+                result = deepcopy(selected)
+                for job in result:
+                    job['sort_order'] = by_id[job['id']]
             else:
                 changed = self._ensure_sort_orders_locked()
                 if changed:
@@ -195,6 +253,13 @@ class JobStore:
         if status:
             result = [a for a in result if a.get("status") == status]
         return result
+
+    def lifecycle_scope(self, channel):
+        """Return only the stable job identifiers needed for lifecycle confirmation."""
+        with self._lock:
+            self._check_readable()
+            return [{'id': job['id'], 'updated_at': job.get('updated_at')}
+                    for job in self._jobs if job.get('channel') == channel]
 
     def get(self, job_id: int) -> dict | None:
         with self._lock:

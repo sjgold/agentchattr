@@ -535,7 +535,7 @@ def configure(cfg: dict, session_token: str = ""):
     if not jobs_path.exists() and legacy_activities.exists():
         legacy_activities.rename(jobs_path)
 
-    jobs = JobStore(str(jobs_path), migrate_sort_orders=False)
+    jobs = JobStore(str(jobs_path), migrate_sort_orders=False, hold_unreadable=True)
     jobs.on_change(_on_job_change)
 
     schedules = ScheduleStore(str(Path(data_dir) / "schedules.json"))
@@ -1804,7 +1804,11 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.send_text(json.dumps({"type": "hats", "data": agent_hats}))
 
     # Send jobs
-    await websocket.send_text(json.dumps({"type": "jobs", "data": jobs.list_all()}))
+    try:
+        initial_jobs = {'type': 'jobs', 'data': await asyncio.to_thread(jobs.list_all)}
+    except (ChannelUnavailable, OSError):
+        initial_jobs = {'type': 'jobs', 'error': 'Saved jobs could not be read. Jobs are held; repair the file and restart. Chat remains available.'}
+    await websocket.send_text(json.dumps(initial_jobs))
 
     # Send schedules
     await websocket.send_text(json.dumps({"type": "schedules", "data": schedules.list_all()}))
@@ -2446,7 +2450,7 @@ async def get_jobs(channel: str = "", status: str = ""):
     try:
         return await asyncio.to_thread(jobs.list_all, channel=ch, status=st)
     except (ChannelUnavailable, OSError) as error:
-        return _history_write_error(error)
+        return JSONResponse({'error': 'Saved jobs could not be read. Repair the jobs file and restart; chat remains available.'}, status_code=503)
 
 
 @_message_writer
@@ -2759,9 +2763,13 @@ def _job_mutation_sync(action, *, job_id=None, body=None, msg_id=None, permanent
                 message = jobs.resolve_message(job_id, msg_id, resolution)
                 if message is not None:
                     if resolution == 'accepted' and message.get('sender') and agents.is_available(message['sender']):
-                        agents.trigger_sync(message['sender'],
-                            message=f"Your suggestion was accepted: {message.get('text', '')}",
-                            channel=job.get('channel', 'general'), job_id=job_id)
+                        try:
+                            agents.trigger_sync(message['sender'],
+                                message=f"Your suggestion was accepted: {message.get('text', '')}",
+                                channel=job.get('channel', 'general'), job_id=job_id)
+                        except (ChannelUnavailable, OSError, ValueError) as error:
+                            code = 409 if isinstance(error, (ChannelConflict, QueueConflict)) else 503
+                            return JSONResponse({'error': 'The suggestion was saved as accepted, but agent delivery could not be confirmed. Check the job thread and queue before sending the task manually.'}, status_code=code)
                     return {'ok': True, 'resolution': resolution}
                 result = None
             elif action == 'delete':
@@ -2798,7 +2806,7 @@ async def get_job_messages(job_id: int):
             return JSONResponse({'error': 'not found'}, status_code=404)
         return msgs
     except (ChannelUnavailable, OSError) as error:
-        return _history_write_error(error)
+        return JSONResponse({'error': 'Saved jobs could not be read. Repair the jobs file and restart; chat remains available.'}, status_code=503)
 
 
 @app.post("/api/jobs/{job_id}/messages")

@@ -19,6 +19,7 @@
 // ---------------------------------------------------------------------------
 
 let jobsData = []; // all jobs from server
+let jobLoadError = "";
 let activeJobId = null; // currently viewing job in conversation view
 let jobUnread = {}; // { job_id: unread_message_count }
 let jobReplyTargets = {}; // { job_id: default agent recipient }
@@ -545,6 +546,16 @@ function _flipRenderJobs() {
 // Render jobs list
 // ---------------------------------------------------------------------------
 
+function renderJobStorageError(list) {
+    if (!jobLoadError) return false;
+    const error = document.createElement('div');
+    error.className = 'jobs-empty';
+    error.setAttribute('role', 'alert');
+    error.textContent = jobLoadError;
+    list.appendChild(error);
+    return true;
+}
+
 function renderJobsList() {
     const list = document.getElementById('jobs-list');
     if (!list) return;
@@ -561,6 +572,10 @@ function renderJobsList() {
         savedForm = activeForm.parentNode.removeChild(activeForm);
     }
     list.innerHTML = '';
+    if (renderJobStorageError(list)) {
+        if (savedForm) list.appendChild(savedForm);
+        return;
+    }
 
     // Jobs are global — show all regardless of channel
     const channelJobs = jobsData;
@@ -2099,14 +2114,16 @@ function selectJobMention(name) {
 // Hub subscriptions -- handle job WebSocket events
 // ---------------------------------------------------------------------------
 
-Hub.on('jobs', function (event) {
-    jobsData = event.data || [];
+function applyJobsSnapshot(event) {
+    jobLoadError = typeof event.error === 'string' ? event.error : '';
+    if (!jobLoadError) jobsData = event.data || [];
     syncJobUnreadCache();
     updateJobsBadge();
     renderJobsList();
     // Unhide breadcrumbs that were hidden because jobsData was empty during replay
     _unhideResolvedBreadcrumbs();
-});
+}
+Hub.on('jobs', applyJobsSnapshot);
 
 Hub.on('job', function (event) {
     handleJobEvent(event.action, event.data);

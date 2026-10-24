@@ -102,7 +102,7 @@ class ChannelService:
         messages = deepcopy(self.messages.get_recent(count=2**63, channel=channel))
         ids = {item['id'] for item in messages}
         todos = {key: value for key, value in self.messages.get_todos().items() if key in ids}
-        jobs = deepcopy(self.jobs.list_all(channel=channel))
+        jobs = self.jobs.lifecycle_scope(channel)
         schedules = deepcopy([item for item in self.schedules.list_all() if item.get('channel') == channel])
         runs = self.engine._store.list_all(channel=channel)
         summary = deepcopy(self.summaries.get(channel))
