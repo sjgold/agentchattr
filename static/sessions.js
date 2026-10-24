@@ -1716,7 +1716,7 @@ async function submitSessionStart(fields) {
         return;
     }
     const cast = {};
-    modal.querySelectorAll('.session-cast-select').forEach(select => { cast[select.dataset.role] = select.value; });
+    modal.querySelectorAll('#session-step-cast .session-cast-select').forEach(select => { cast[select.dataset.role] = select.value; });
     const body = {...fields, channel: window.activeChannel, cast,
         goal: modal.querySelector('#session-goal-input')?.value.trim() || '', ...source,
         recovery_policy: policy, started_by: window.username};

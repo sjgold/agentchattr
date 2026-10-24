@@ -6,6 +6,7 @@
     const ACCEPT = '.md,.txt,.py,.mjs,.js,.ts,.tsx,.jsx,.json,.yaml,.yml,.toml,.css,.html';
     const KEYS = ['version', 'kind', 'source_id', 'name', 'encoding', 'byte_length', 'content_sha256', 'text'];
     const copy = value => JSON.parse(JSON.stringify(value));
+    class FileCheckError extends Error {}
 
     function attach(editor) {
         if (editors.has(editor)) return editors.get(editor);
@@ -114,8 +115,8 @@
                 });
                 const value = await response.json();
                 if (!live()) return;
-                if (!response.ok) throw new Error(typeof value?.error === 'string' ? value.error : 'The file could not be checked.');
-                if (!valid(value, file)) throw new Error('The file preview response was invalid.');
+                if (!response.ok) throw new FileCheckError(typeof value?.error === 'string' ? value.error : 'The file could not be checked.');
+                if (!valid(value, file)) throw new FileCheckError('The file preview response was invalid.');
                 snapshot = copy(value); state = 'file';
                 input.value = value.text; input.placeholder = '';
                 status.textContent = 'File checked. Start freezes this exact snapshot.';
@@ -123,8 +124,8 @@
                 showMetadata(snapshot);
                 notify();
             } catch (failure) {
-                if (live() && !timedOut) fail(failure.name === 'AbortError' ? 'File check was interrupted.' :
-                    failure.message || 'The file could not be checked.');
+                if (live() && !timedOut) fail(failure instanceof FileCheckError ? failure.message :
+                    failure?.name === 'AbortError' ? 'File check was interrupted.' : 'The file could not be checked.');
             } finally {
                 if (epoch === current) {
                     if (timer !== null) clearTimeout(timer);

@@ -46,7 +46,12 @@ class Element {
     if (selector === 'input[type="file"]' || selector === 'input[type=file]') return this.tagName === 'INPUT' && this.type === 'file';
     return this.tagName.toLowerCase() === selector.toLowerCase();
   }
-  querySelectorAll(selector) { return descendants(this).filter(child => child.matches?.(selector)); }
+  querySelectorAll(selector) {
+    const parts = selector.trim().split(/\s+/);
+    let roots = [this];
+    for (const part of parts) roots = [...new Set(roots.flatMap(root => descendants(root).filter(child => child.matches?.(part))))];
+    return roots;
+  }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
 }
 const descendants = element => element.children.flatMap(child => [child, ...descendants(child)]);
@@ -103,7 +108,8 @@ function launchers(mode = 'file') {
   const editor = new Element(); editor.className = 'session-source-editor'; modal.appendChild(editor);
   const input = new Element('textarea'); input.value = 'VISUALLY NORMALIZED\nTEXT'; editor.appendChild(input);
   const goal = new Element('input'); goal.id = 'session-goal-input'; goal.value = 'Original goal'; modal.appendChild(goal);
-  const select = new Element('select'); select.className = 'session-cast-select'; select.dataset.role = 'reader'; select.value = 'codex'; modal.appendChild(select);
+  const castStep = new Element(); castStep.id = 'session-step-cast'; modal.appendChild(castStep);
+  const select = new Element('select'); select.className = 'session-cast-select'; select.dataset.role = 'reader'; select.value = 'codex'; castStep.appendChild(select);
   const button = new Element('button'); button.className = 'session-start-btn'; modal.appendChild(button);
   env.ids.set(modal.id, modal); env.ids.set('session-source-input', input); env.ids.set('session-goal-input', goal);
   env.context.document.querySelectorAll = () => [select];
@@ -139,16 +145,23 @@ test('actual shared document facade exists', async () => {
 });
 
 test('both actual Start launchers post canonical file object instead of textarea', async () => {
+  const captured = [];
   for (const name of ['ordinary', 'draft']) {
-    const env = launchers(); const sending = env.context[name](name === 'draft' ? 7 : 'review'); await flush();
+    const env = launchers();
+    const stray = new Element('select'); stray.className = 'session-cast-select';
+    stray.dataset.role = 'reader'; stray.value = 'outside-cast-step'; env.modal.appendChild(stray);
+    const sending = env.context[name](name === 'draft' ? 7 : 'review'); await flush();
     assert.equal(env.requests.length, 1);
     const payload = JSON.parse(env.requests[0].options.body);
+    captured.push(payload);
     assert.deepEqual(payload.source_file, canonical);
     assert.equal(Object.hasOwn(payload, 'input_text'), false);
-    assert.equal(payload.channel, 'review'); assert.equal(payload.cast.reader, 'codex');
+    assert.equal(payload.channel, 'review');
     answer(env.requests[0], {error: 'Fixture rejection'}, 400); await sending;
     assert.equal(env.modal.isConnected, true);
   }
+  assert.equal(captured.length, 2);
+  for (const payload of captured) assert.equal(payload.cast.reader, 'codex', 'only the actual cast step supplies role assignments');
 });
 
 test('paste and canonical file fields are detached and file mode ignores normalized textarea', async () => {
@@ -199,6 +212,7 @@ test('picker cancel same-file reselection and invalid replacement never silently
   await env.pick([{name: 'bad.txt', size: 1}]); answer(env.requests[2], {error: 'Invalid document at byte 0.'}, 400); await flush();
   assert.equal(env.facade.state, 'error'); assert.throws(() => env.facade.requestFields());
   assert.match(env.editor.textContent, /Previous preview, not ready to start/i);
+  assert.match(env.editor.querySelector('.document-error').textContent, /Invalid document at byte 0\./);
   assert.match(env.editor.textContent, /Nothing was started/i);
   await env.pick([]); assert.equal(env.facade.state, 'error');
   env.editor.querySelector('.document-use-paste').click(); await flush();
@@ -218,6 +232,20 @@ test('malformed preview response fails closed without substituting canonical cla
     answer(env.requests[0], {...canonical, ...change}); await flush();
     assert.equal(env.facade.state, 'error', JSON.stringify(change));
     assert.throws(() => env.facade.requestFields()); assert.equal(env.requests.length, 1);
+    assert.match(env.editor.querySelector('.document-error').textContent, /The file preview response was invalid\./);
+  }
+  for (const failure of ['network', 'json']) {
+    const env = shared(); const originalDraft = env.textarea.value;
+    await env.pick([{name: canonical.name, size: canonical.byte_length}]);
+    if (failure === 'network') env.requests[0].reject(new TypeError('PRIVATE_NETWORK_PATH /secret/source.py'));
+    else env.requests[0].resolve({ok: true, status: 200,
+      json: async () => { throw new SyntaxError('PRIVATE_RESPONSE_BODY <script>source</script>'); }});
+    await flush();
+    assert.equal(env.facade.state, 'error'); assert.equal(env.textarea.value, originalDraft);
+    assert.throws(() => env.facade.requestFields());
+    const feedback = env.editor.querySelector('.document-error').textContent;
+    assert.match(feedback, /The file could not be checked\./);
+    assert.doesNotMatch(feedback, /PRIVATE_NETWORK_PATH|PRIVATE_RESPONSE_BODY|secret\/source|<script>/);
   }
 });
 
