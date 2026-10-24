@@ -448,3 +448,13 @@ At06dca7c realorder/monitoring/1API+4CLI/lateStoprejection passed, but scriptfai
 ### Typed-quarantine fixture correction ready
 
 PreStopIDs and fullactualquarantineauditpersist beforeassertions; exactone/noeviction/fullidentity/provenance/reason/content/eventID checks,zeroaccepted/rejectedMCP unchanged, sharedchannelleak absence andno thirdrunresult/input. Root added explicitnoevictionassert when readinghelperdiff. No sourceproduct/cleanup/countchange; compile-onlyPASS, no rerun beforeSonnetdiffconfirmation.
+
+
+### All live cases reproduced; serve-only newline precision
+
+Family/audience/order allpassed independently bybuilder andSonnet with exactgenerationcounts/zero unresolved. Browserfirstservea4aa6f49 intentionallyabortedbeforeSend: actualtextarea .value LF-only cannotmatchCRLFliteral. Sonnetsettled ONLYserve expectedLF andready.textsameLF/exactlookup, freshoneoperatorreceipt/modeexplicit/Aonly/exactUUID5Adispatch/originalUIUIDadoption, resultLFlabel. NonserveCRLFpreservation remainsbyte-identical. Partial rendereddesktop/mobilepreview andactualWSdraftretention recorded, fullbrowseractualSend/job/keyboard/receipt stillpending. No falsePASSforabortedfixture.
+
+
+### Serve-only LF correction ready for recheck
+
+Verifier serves anLFexpectedstring matching actualtextarea.value andready.text, with exactequality lookup, baselineUID/time, exactlyonefreshoperatorpost/explicitmode/audiencechannel,originalUID/exactAonlydispatch. NonserveCRLFliteral/assertions unchanged. Resultlabels the distinction. Root independently compile-only3/1PASS/hashmatch, noactualrestartbeforeSonnetconfirmation.

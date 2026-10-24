@@ -345,17 +345,32 @@ def audience(f, serve=False):
     with f.ws() as socket:
         explicit = '@' + a['name'] + ' Exact café\r\nreview this'
         if serve:
+            explicit = '@' + a['name'] + ' Exact café\nreview this'
             f.before_dispatches = {r['envelope']['dispatch_id'] for r in f.ledger_records()}
+            baseline_operator_uids = {m['uid'] for m in f.messages()
+                if m.get('metadata', {}).get('recipient_routing', {}).get('origin') == 'operator'}
             marker = ROOT / '.audit-tmp/ticket17-recipient-browser-url.txt'
             sentinel = ROOT / '.audit-tmp/ticket17-recipient-browser-stop.txt'
+            marker_at = time.time()
             ready = {'url': f.base + '/?channel=audience-run', 'channel': 'audience-run',
                      'text': explicit, 'selected_names': selected, 'scratch': str(f.root),
-                     'stop_sentinel': str(sentinel), 'post_click_pulse_seconds': 30}
+                     'stop_sentinel': str(sentinel), 'post_click_pulse_seconds': 30,
+                     'marker_at': marker_at, 'text_input_mode': 'serve_lf_browser_textarea'}
             atomic_json(marker, ready)
             print(json.dumps(ready, ensure_ascii=True), flush=True)
             try:
                 f.wait(sentinel.exists, 'bounded root browser post', 600)
-                message = next(m for m in reversed(f.messages()) if m.get('text') == explicit and m.get('metadata', {}).get('recipient_routing'))
+                new_operator = [m for m in f.messages()
+                    if m.get('metadata', {}).get('recipient_routing', {}).get('origin') == 'operator'
+                    and m.get('uid') not in baseline_operator_uids]
+                f.observations.append({'kind': 'actual_browser_post_adoption', 'marker_at': marker_at,
+                    'baseline_operator_uids': sorted(baseline_operator_uids),
+                    'new_operator_posts': new_operator, 'expected_exact_text': explicit})
+                atomic_json(f.root / 'observations.json', f.observations)
+                assert len(new_operator) == 1, 'Expected exactly one new actual browser operator post'
+                message = new_operator[0]
+                assert message['timestamp'] >= marker_at and message['channel'] == 'audience-run'
+                assert message['text'] == explicit and message['metadata']['recipient_routing']['mode'] == 'explicit'
                 ack = None  # Browser owns its actual ACK; script never invents one.
             finally:
                 marker.unlink(missing_ok=True); sentinel.unlink(missing_ok=True)
@@ -428,6 +443,7 @@ def audience(f, serve=False):
     assert sum(v['model'] == 'recipient-model-b' for v in f.captures) == 3
     return {'case': 'audience', 'provider_calls': 7, 'cli_injections': 0,
             'offline_fixture_native_claim': False, 'serve': serve,
+            'text_input_mode': 'serve_lf_browser_textarea' if serve else 'nonserve_crlf_wire',
             'ignored_only_no_selection_provider_calls': 0,
             'ignored_only_selected_a_provider_calls': 1,
             'ignored_only_behavior': 'settled_selected_fallback_not_address_leak'}
