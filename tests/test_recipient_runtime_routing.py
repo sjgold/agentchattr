@@ -161,6 +161,9 @@ class RecipientRuntimeRoutingTests(unittest.TestCase):
         job = self.jobs.create('Review task', 'job', 'general', 'operator')
         def send(channel, text):
             with ExitStack() as stack:
+                from tests.channel_fixture import initialize_mcp_channels
+                initialize_mcp_channels(self, self.f.root, ['general', 'discussion'],
+                                        engine=self.f.engine, enter_context=stack.enter_context)
                 for name, value in (('registry', self.f.registry), ('session_engine', self.f.engine),
                                     ('jobs', self.jobs), ('router', self.router), ('agents', agents)):
                     stack.enter_context(patch.object(mcp_bridge, name, value))

@@ -78,6 +78,7 @@ class RestartStartupTests(unittest.TestCase):
             stack.enter_context(patch.object(app, '_install_security_middleware'))
             stack.enter_context(patch.object(app, '_load_settings'))
             stack.enter_context(patch.object(app, '_load_hats'))
+            stack.enter_context(patch('mcp_bridge.channel_policy_getter', None))
             stack.enter_context(patch('api_seat_runtime.SeatManager', return_value=manager))
             stack.enter_context(patch.object(app, 'SessionEngine', side_effect=construct_engine))
             initialize = app._initialize_channel_lifecycle

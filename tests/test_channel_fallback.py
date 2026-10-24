@@ -184,11 +184,11 @@ class ChannelFallbackMigrationTests(unittest.TestCase):
         # Other agents' fallbacks are untouched
         self.assertEqual(mcp_bridge._last_read_channel["bob"], "portfolio")
 
-    def test_channel_delete_resets_fallbacks_to_general(self):
+    def test_channel_delete_keeps_inactive_fallback_for_explicit_refusal(self):
         mcp_bridge._last_read_channel["alice"] = "bugfixing"
         mcp_bridge._last_read_channel["bob"] = "portfolio"
         mcp_bridge.migrate_cursors_delete("bugfixing")
-        self.assertEqual(mcp_bridge._last_read_channel["alice"], "general")
+        self.assertEqual(mcp_bridge._last_read_channel["alice"], "bugfixing")
         # Other agents' fallbacks are untouched
         self.assertEqual(mcp_bridge._last_read_channel["bob"], "portfolio")
 

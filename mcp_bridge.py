@@ -10,7 +10,10 @@ import os
 import time
 import logging
 import threading
+from functools import wraps
 from pathlib import Path
+
+from channel_lifecycle import ChannelInactive, ChannelUnavailable
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -28,6 +31,7 @@ router = None         # set by run.py — Router instance
 agents = None         # set by run.py — AgentManager instance
 review_briefs = None  # set by run.py — immutable seat-scoped review inputs
 session_engine = None  # set by run.py — explicit identity-checked event admission
+channel_policy_getter = None  # bound before runtime publication by app.configure
 _presence: dict[str, float] = {}
 _activity: dict[str, bool] = {}   # True = screen changed on last poll
 _activity_ts: dict[str, float] = {}  # timestamp of last active=True heartbeat
@@ -192,6 +196,26 @@ def _resolve_tool_identity(
     return provided, None
 
 
+def _channel_writer(function):
+    @wraps(function)
+    def guarded(*args, **kwargs):
+        try:
+            if channel_policy_getter is None:
+                raise ChannelUnavailable('Channel management is not initialized.')
+            policy = channel_policy_getter()
+            with policy._boundary():
+                policy.catalog.snapshot()  # Fail closed before identity/presence or upload work.
+                return function(*args, **kwargs)
+        except ChannelInactive as error:
+            return 'Error: ' + str(error)
+        except (ChannelUnavailable, OSError):
+            return 'Error: channel storage is unavailable. Check history before sending again.'
+        except ValueError:
+            return 'Error: use a valid active channel; specify a channel explicitly.'
+    return guarded
+
+
+@_channel_writer
 def chat_send(
     sender: str,
     message: str,
@@ -252,6 +276,20 @@ def chat_send(
         return f"Error: sender '{sender}' is not registered. Call chat_claim(sender=your_base_name) to get your identity."
     if not message.strip() and not image_path:
         return "Empty message, not sent."
+
+    # Resolve a job's actual channel under the same boundary before copying any
+    # attachment or writing a message. Remembered inactive targets never widen.
+    if job_id:
+        if type(job_id) is not int or job_id <= 0:
+            return 'Error: job_id must be a positive integer.'
+        job = jobs.get(job_id) if jobs else None
+        if job is None:
+            return f'Error: job #{job_id} not found; specify an active channel or job.'
+        actual_channel = job.get('channel', 'general')
+        if channel and channel != actual_channel:
+            return 'Error: the channel must match the selected job.'
+        channel = actual_channel
+    channel_policy_getter().require_active(channel)
 
     # Job-scoped send: post into a job conversation instead of main timeline
     if job_id and jobs:
@@ -584,14 +622,10 @@ def migrate_cursors_rename(old_name: str, new_name: str):
 
 
 def migrate_cursors_delete(channel: str):
-    """Remove cursors and reset every stale fallback to #general."""
+    """Remove read cursors, retaining inactive remembered targets for refusal."""
     with _cursors_lock:
         for agent_cursors in _cursors.values():
             agent_cursors.pop(channel, None)
-    with _last_read_lock:
-        for sender, fallback in list(_last_read_channel.items()):
-            if fallback == channel:
-                _last_read_channel[sender] = "general"
     _save_cursors()
 
 

@@ -88,6 +88,9 @@ class McpBridgeAuthTests(unittest.TestCase):
         mcp_bridge._activity.clear()
         mcp_bridge._cursors.clear()
         mcp_bridge._renamed_from.clear()
+        self.enterContext(mock.patch.object(mcp_bridge, 'session_engine', None))
+        from tests.channel_fixture import initialize_mcp_channels
+        initialize_mcp_channels(self, Path(self.tmp.name), ['general'])
 
     def test_chat_send_stamps_authenticated_sender(self):
         self.registry.register("codex")

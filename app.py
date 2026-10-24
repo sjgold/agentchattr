@@ -194,6 +194,8 @@ def _initialize_channel_lifecycle(data_dir):
     # Bind the fail-closed getter first, including the corrupt-file case.
     channel_service = None
     agents.queue.bind_channel_policy(_channels)
+    import mcp_bridge
+    mcp_bridge.channel_policy_getter = _channels
     catalog = ChannelStore(Path(data_dir) / 'channel_lifecycle.json')
     catalog.initialize(room_settings['channels'])
     channel_service = ChannelService(catalog, engine=session_engine, messages=store,
@@ -1294,6 +1296,12 @@ async def _handle_new_message(msg: dict):
         await broadcast(msg)
         return  # A display sender is never evidence of authenticated authorship.
 
+    try:
+        _channels().require_active(channel)
+    except (ChannelUnavailable, ValueError):
+        await broadcast(msg)
+        return  # A delayed callback may display history, never route inactive work.
+
     # Track last active channel for leave/join messages (skip system messages)
     global _last_active_channel
     if msg_type not in ("system", "leave", "join"):
@@ -1502,8 +1510,8 @@ async def _handle_new_message(msg: dict):
             try:
                 await agents.trigger(target, message=chat_msg, channel=channel, prompt=custom_prompt,
                     **{key: routing_scope[key] for key in ('run_id', 'turn_id', 'attempt_id', 'input_revision') if key in routing_scope})
-            except QueueConflict:
-                pass  # A Stop committed after callback scheduling; retain chat without dispatch.
+            except (QueueConflict, ChannelInactive, ChannelUnavailable):
+                pass  # A Stop/channel fence committed after scheduling; retain chat without dispatch.
 
 
 # --- broadcasting ---
@@ -2175,28 +2183,48 @@ async def api_send(request: Request):
         return JSONResponse({"error": "text is required"}, status_code=400)
     channel = body.get("channel", "general")
 
-    job_id = body.get('job_id')
-    if job_id is not None:
-        if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id <= 0:
-            return JSONResponse({'error': 'job_id must be a positive integer'}, status_code=400)
+    try:
+        msg = await asyncio.to_thread(_agent_chat_sync, inst, text, body)
+        return JSONResponse(msg)
+    except ChannelInactive as error:
+        return JSONResponse({'error': str(error)}, status_code=409)
+    except (ChannelUnavailable, OSError):
+        return JSONResponse({'error': 'Channel storage is unavailable; publication is held.'}, status_code=503)
+    except LookupError:
+        return JSONResponse({'error': 'Job not found.'}, status_code=404)
+    except PermissionError:
+        return JSONResponse({'error': 'Chat dispatch scope does not belong to this seat.'}, status_code=403)
+    except ValueError:
+        return JSONResponse({'error': 'Use valid chat, job and channel fields.'}, status_code=400)
+
+
+def _agent_chat_sync(instance, text, body):
+    with _channels()._boundary():
+        channel = body.get('channel', 'general')
+        job_id = body.get('job_id')
+        job = None
+        if job_id is not None:
+            if type(job_id) is not int or job_id <= 0:
+                raise ValueError('Job ID must be a positive integer.')
+            job = jobs.get(job_id) if jobs else None
+            if job is None:
+                raise LookupError('Job not found.')
+            channel = job.get('channel', 'general')
+            if 'channel' in body and body['channel'] != channel:
+                raise ValueError('The channel must match the job.')
+        _channels().require_active(channel)
         if session_engine:
-            try:
-                msg = session_engine.send_chat(inst, text, dispatch_id=body.get('dispatch_id'), channel=channel,
-                    publish=lambda value, scope: jobs.add_message(job_id, sender, value,
-                        msg_type='quarantine' if scope.get('routing_suppressed') else 'chat'))
-            except (ValueError, PermissionError):
-                return JSONResponse({'error': 'Chat dispatch scope does not belong to this seat.'}, status_code=403)
+            publish = (lambda value, scope: jobs.add_message(job_id, instance['name'], value,
+                msg_type='quarantine' if scope.get('routing_suppressed') else 'chat')) if job else None
+            result = session_engine.send_chat(instance, text, dispatch_id=body.get('dispatch_id'),
+                                              channel=channel, publish=publish)
+        elif job:
+            result = jobs.add_message(job_id, instance['name'], text)
         else:
-            msg = jobs.add_message(job_id, sender, text)
-        return JSONResponse(msg) if msg is not None else JSONResponse({'error': 'job not found'}, status_code=404)
-    if session_engine:
-        try:
-            msg = session_engine.send_chat(inst, text, dispatch_id=body.get('dispatch_id'), channel=channel)
-        except (ValueError, PermissionError):
-            return JSONResponse({'error': 'Chat dispatch scope does not belong to this seat.'}, status_code=403)
-    else:
-        msg = store.add(sender, text, channel=channel)
-    return JSONResponse(msg)
+            result = store.add(instance['name'], text, channel=channel)
+        if result is None:
+            raise LookupError('Chat target no longer exists.')
+        return result
 
 
 @app.get("/api/status")
@@ -2251,7 +2279,7 @@ async def dispatch_operation(operation: str, request: Request):
         return JSONResponse({'error': str(exc)}, status_code=409)
     except (ValueError, TypeError):
         return JSONResponse({'error': 'Invalid or unavailable dispatch receipt. Queue retained.'}, status_code=400)
-    except OSError:
+    except (ChannelUnavailable, OSError):
         return JSONResponse({'error': 'Dispatch storage unavailable. Queue retained.'}, status_code=503)
 
 
@@ -2578,10 +2606,20 @@ async def trigger_agent_silent(request: Request):
             return JSONResponse({'error': 'Agent family is ambiguous; select one seat.',
                                  'candidates': candidates}, status_code=409)
         targets = resolved
-    for target in targets:
-        if agents.is_available(target):
-            await agents.trigger(target, message=message, channel=channel, prompt=custom_prompt)
-    return {"ok": True, "triggered": targets}
+    def enqueue_targets():
+        with _channels().publication(channel):
+            for target in targets:
+                if agents.is_available(target):
+                    agents.trigger_sync(target, message=message, channel=channel, prompt=custom_prompt)
+        return {'ok': True, 'triggered': targets}
+    try:
+        return await asyncio.to_thread(enqueue_targets)
+    except ChannelInactive as error:
+        return JSONResponse({'error': str(error)}, status_code=409)
+    except (ChannelUnavailable, OSError):
+        return JSONResponse({'error': 'Channel storage is unavailable; no trigger was accepted.'}, status_code=503)
+    except ValueError:
+        return JSONResponse({'error': 'Use a valid active channel and registered target.'}, status_code=400)
 
 
 @app.post("/api/jobs")

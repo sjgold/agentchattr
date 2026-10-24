@@ -15,6 +15,11 @@ class StopRoutingTests(unittest.TestCase):
         self.fixture = SessionStopTests()
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
+        f = self.fixture
+        from tests.channel_fixture import initialize_mcp_channels
+        with patch.object(mcp_bridge, 'store', f.messages), patch.object(mcp_bridge, 'registry', f.registry):
+            policy = initialize_mcp_channels(self, f.root, ['general'], engine=f.engine)
+        self.enterContext(patch.object(app, 'channel_service', policy))
 
     def test_tagged_late_chat_is_quarantined_and_wrong_seat_cannot_tag_it(self):
         f = self.fixture
