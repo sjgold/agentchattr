@@ -61,6 +61,34 @@ class RecipientRuntimeRoutingTests(unittest.TestCase):
         self.assertEqual(allowed_review_dispatch_ids([run], self.f.owner['identity_id']),
                          {run['active_invocation']['dispatch_id']})
 
+    def test_retry_fence_retires_old_occupancy_before_replacement_binding(self):
+        queue, owner = self.f.trigger.queue, self.f.owner
+        original = self.f.invocation()
+        queue.claim(owner, 'worker')
+        queue.release(owner, original['dispatch_id'], 'worker')
+        manual = queue.enqueue(owner, {'text': 'manual request'})
+        retry = queue.enqueue(owner, {'text': 'reserved replacement', 'run_id': original['run_id'],
+            'attempt_id': 'b' * 32, 'dispatch_id': 'c' * 32})
+        self.assertIsNone(queue.claim(owner, 'worker'))
+        history = {key: original[key] for key in ('attempt_id', 'dispatch_id', 'expected_identity_id')}
+        history.update(reason='operator_retry', request_id='d' * 32)
+        self.f.sessions._event_update(self.f.session_id,
+            lambda run: run.update(state='retrying', superseded_attempts=[history]))
+        self.assertIsNone(allowed_review_dispatch_ids(self.f.sessions.list_all(), owner['identity_id']))
+        self.assertEqual(queue.claim(owner, 'worker')['envelope'], manual['envelope'])
+        queue.release(owner, manual['envelope']['dispatch_id'], 'worker')
+        self.assertEqual(queue.claim(owner, 'worker')['envelope'], retry['envelope'])
+
+    def test_agent_continue_cannot_reset_loop_guard_or_hide_its_rejection(self):
+        self.router._get_ch('general').update(paused=True, hop_count=9, guard_emitted=True)
+        before = deepcopy(self.router._channels)
+        with self.patched():
+            asyncio.run(app._handle_new_message({'sender': 'claude', 'text': '/continue',
+                'channel': 'general', 'type': 'chat'}))
+        self.assertEqual(self.router._channels, before)
+        self.assertTrue(any('only humans can /continue' in message['text']
+                            for message in self.f.messages.get_recent(100)))
+
     def test_channel_predicate_covers_nonterminal_states_without_invocation(self):
         for state in ('active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'retrying', 'interrupted', 'prepared'):
             self.f.sessions._event_update(self.f.session_id,

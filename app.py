@@ -953,14 +953,14 @@ async def _handle_new_message(msg: dict):
     _session_draft_re = _re.compile(r'```session\s*\n(.*?)\n```', _re.DOTALL)
     draft_match = _session_draft_re.search(text)
     is_agent_session_draft = bool(draft_match and sender in known_agents)
+    is_agent_continue = (stripped == "/continue" and sender in known_agents)
     suppress_agent_wakes = bool(session_engine and sender in known_agents
                                 and session_engine.has_nonterminal_review(channel))
-    if suppress_agent_wakes and (not is_agent_session_draft or is_broadcast_cmd):
+    if suppress_agent_wakes and not is_agent_continue and (not is_agent_session_draft or is_broadcast_cmd):
         await broadcast(msg)
         return
     is_hidden_session_request = msg_type == "session_request"
 
-    is_agent_continue = (stripped == "/continue" and sender in known_agents)
     suppress_broadcast = (
         is_broadcast_cmd
         or is_hidden_session_request

@@ -106,6 +106,9 @@ class SavedResultRecoveryTests(unittest.TestCase):
         return payload,box
 
     def two_phase(self,same_seat=False):
+        # This scenario owns a new run, rather than bypassing the setup run's turn.
+        self.engine.stop_session(self.session_id, 'isolate successor recovery scenario')
+        self.assertIsNone(self.box.get_ack(self.payload['result_id']))
         if same_seat:
             peer = self.owner
         else:
@@ -175,6 +178,8 @@ class SavedResultRecoveryTests(unittest.TestCase):
 
     def test_verified_question_uses_original_kind_and_waits_for_operator_input(self):
         # A separate valid pending brief avoids mutating an immutable outbox.
+        self.engine.stop_session(self.session_id, 'isolate question recovery scenario')
+        self.assertIsNone(self.box.get_ack(self.payload['result_id']))
         run = fixture.ResultOwnerWiringTests.start(self,self.owner['name'],'question')
         claimed = self.queue.claim(self.owner,'question-consumer')
         self.queue.release(self.owner,claimed['envelope']['dispatch_id'],'question-consumer',failed=True,error='local_delivery_failure')

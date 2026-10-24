@@ -21,6 +21,10 @@ def allowed_review_dispatch_ids(runs, identity_id):
         if (invocation.get('expected_identity_id') != identity_id
                 or invocation.get('human') is True or invocation.get('consumed') is True):
             continue
+        if invocation.get('attempt_id') and any(
+                attempt.get('attempt_id') == invocation['attempt_id']
+                for attempt in run.get('superseded_attempts', [])):
+            continue  # Retry's durable fence retires occupancy before rebinding.
         dispatch = invocation.get('dispatch_id')
         try:
             _identifier(dispatch, 'Dispatch ID')
