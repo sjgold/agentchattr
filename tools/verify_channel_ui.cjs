@@ -36,7 +36,8 @@ class Element {
   removeEventListener(name,fn) { this.listeners[name]=(this.listeners[name]||[]).filter(x=>x!==fn); }
   dispatchEvent(event) { event.target||=this; for(const fn of this.listeners[event.type]||[])fn(event); return true; }
   click() { if(!this.disabled){this.onclick?.({target:this,stopPropagation(){},preventDefault(){}});this.dispatchEvent({type:'click'});} }
-  focus(){if(!this.disabled&&this.isConnected){this.focused=true;if(this.ownerDocument)this.ownerDocument.activeElement=this;}} select(){this.focus();}
+  getClientRects(){for(let node=this;node;node=node.parentNode)if(!node.isConnected||node.hidden||node.style?.display==='none'||node.style?.visibility==='hidden')return [];return [{x:0,y:0,width:100,height:44,top:0,left:0,right:100,bottom:44}];}
+  focus(){if(!this.disabled&&this.getClientRects().length){this.focused=true;if(this.ownerDocument)this.ownerDocument.activeElement=this;}} select(){this.focus();}
   setSelectionRange(start,end){this.selectionStart=start;this.selectionEnd=end;}
   showModal(){this.open=true;} close(){this.open=false;this.dispatchEvent({type:'close'});}
   get lastElementChild(){return this.children.at(-1)||null;}
@@ -107,7 +108,23 @@ async function focusRerenderChecks(){
     const env=moduleEnv();const dialog=await manage(env,'rename');input(control(env,'channel-manager-name'),'renamed');let field=control(env,'channel-manager-name');field.focus();field.setSelectionRange(2,5);await refreshed(env,catalog(2));field=control(env,'channel-manager-name');assert.equal(env.document.activeElement===field,true,'exact current input focus after refresh');assert.equal(field.value,'renamed');assert.equal(field.selectionStart,2);assert.equal(field.selectionEnd,5);
     const view=descendants(dialog).find(element=>element.dataset.channelName==='review'&&element.dataset.channelOp==='view');assert.ok(view);view.click();await settleReads(env,catalog(2),retained({channel:'review',state:'active'}));assert.ok(dialog.contains(env.document.activeElement),'removed input must receive connected in-dialog fallback');assert.notEqual(env.document.activeElement,field);
   });
+  for(const hideSidebar of [false,true])await probe(hideSidebar?'detached trigger and unavailable Manage controls focus canonical input':'detached trigger and hidden top Manage focus visible sidebar Manage',async()=>{
+    const env=moduleEnv();const topBar=env.add('div',{hidden:true});const top=env.add('button',{id:'channel-manage-btn',textContent:'Manage channels'},topBar);const sidebarBar=env.add('div');const sidebar=env.add('button',{id:'channel-sidebar-manage',textContent:'Manage'},sidebarBar);if(hideSidebar)sidebarBar.style.display='none';const composer=env.add('textarea',{id:'input',value:'Retained readonly draft',readOnly:true});const trigger=env.add('button',{textContent:'Original tab action'});trigger.focus();
+    top.focus();assert.equal(env.document.activeElement===trigger,true,'hidden top/ancestor must not accept focus');assert.equal(top.getClientRects().length,0);if(hideSidebar){sidebar.focus();assert.equal(env.document.activeElement===trigger,true,'hidden sidebar ancestor must not accept focus');assert.equal(sidebar.getClientRects().length,0);}
+    const dialog=await manage(env,'rename');trigger.remove();const close=descendants(dialog).find(element=>element.tagName==='BUTTON'&&element.textContent==='Close');assert.ok(close);close.click();await flush();assert.equal(dialog.isConnected,false);assert.equal(env.document.activeElement===(hideSidebar?composer:sidebar),true,'exact connected visible close fallback');assert.equal(composer.value,'Retained readonly draft');
+  });
   assert.deepEqual(failures,[],'public focus/caret rerender failures');
+}
+function actionVisibilityStyles(){
+  const css=read('static/channel-lifecycle.css'),source=read('static/channels.js');const failures=[];
+  assert.ok(source.includes("'channel-tab-item'")&&source.includes("'channel-sidebar-item'"),'actual wrapper names cross-checked');
+  function visibleRule(text,selector){return [...text.matchAll(/([^{}]+)\{([^{}]*)\}/g)].some(([,head,body])=>head.split(',').some(value=>value.trim()===selector)&&/opacity:\s*1(?:\s*[;}]|\s*$)/.test(body)&&/pointer-events:\s*auto(?:\s*[;}]|\s*$)/.test(body));}
+  for(const [wrapper,actions,states] of [['.channel-tab-item','.channel-tab-actions',[':hover',':focus-within','.editing']],['.channel-sidebar-item','.channel-sidebar-row-actions',[':hover',':focus-within']]])for(const state of states){const selector=wrapper+state+' '+actions;if(!visibleRule(css,selector))failures.push('missing visible actionable scoped rule '+selector);}
+  for(const condition of [/hover\s*:\s*none/,/pointer\s*:\s*coarse/]){
+    const bodies=[];for(const match of css.matchAll(/@media\s*([^{}]+)\{/g)){if(!condition.test(match[1]))continue;let depth=1,end=match.index+match[0].length;for(;end<css.length&&depth;end++){if(css[end]==='{')depth++;else if(css[end]==='}')depth--;}bodies.push(css.slice(match.index+match[0].length,end-1));}
+    if(!bodies.length)failures.push('missing interaction media '+condition);for(const [wrapper,actions] of [['.channel-tab-item','.channel-tab-actions'],['.channel-sidebar-item','.channel-sidebar-row-actions']])if(!visibleRule(bodies.join('\n'),wrapper+' '+actions))failures.push('missing no-hover/coarse visible actions '+wrapper+' '+condition);
+  }
+  assert.deepEqual(failures,[],'scoped wrapper action visibility contracts');
 }
 
 test('shared facade exists and exposes authority/management methods without evaluation effects',async()=>{
@@ -135,6 +152,7 @@ test('both actual top/sidebar rename and delete entrypoints delegate without opt
     results.push({name,sends:env.sends,selection:env.context.activeChannel,opens:env.opens});
   }
   assert.deepEqual(results,results.map(({name})=>({name,sends:[],selection:'review',opens:[{channel:'review',op:name.toLowerCase().includes('delete')?'delete':'rename'}]})));
+  actionVisibilityStyles();
 });
 
 async function catalogAuthority(){

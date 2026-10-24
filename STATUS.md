@@ -1,6 +1,25 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 21:06 UTC (#1-18 closed; #19 browser focus correction awaiting review)
+**Updated:** 2026-10-24 21:36 UTC (#1-18 closed; #19 UI correction ready for review)
+
+## At a glance
+
+**Ticket 19, safe channel management: core implemented; final UI corrections and browser acceptance remain.** Nothing from Ticket 19 has been pushed.
+
+| Checkpoint | Status |
+| --- | --- |
+| Tickets 1-18 | Published and closed |
+| Ticket 19 implementation | Core complete locally; final UI corrections are tested and awaiting review |
+| Full regression | 1,374 tests, four skips, passed at the backend freeze |
+| Independent review | Backend/UI components and focus fix `294364d` accepted; latest correction batch awaits recheck |
+| Windows native check | Passed by Codex and independently by Sonnet; cleanup complete |
+| First browser run | Stopped after finding a dialog-focus bug; evidence retained |
+| Focus correction | Fixed, regression tested and independently reviewed |
+| Second browser run | Focus fix passed at both widths; stopped on hidden action icons and a browser-tool runtime handoff |
+| Next | Sonnet reviews the tested UI correction batch, then a fresh complete browser run and independent reproduction |
+| Before shipping | Final whole-ticket verdict, merge/post-merge checks, push and issue closure |
+
+Codex owns implementation and verification; Sonnet is the independent reviewer. The next browser run awaits review of the latest correction. All test servers, workers and browser sessions are stopped. The inherited mobile page overflow is documented; this ticket's dialog fits the mobile viewport.
 
 ## Current handoff
 
@@ -17,7 +36,10 @@
 - Native independently reproduced by Sonnet at1034fbc, own scratch87_fig46/11.2s; both runs2CLI/2dispatches/25refusals, cleanup1server1worker1client/0models/0API/0observedattempts/unresolved[], guard/bootstrap/config/log checks agree. Native scope remains one managed fake CLI, not installed/live AI.
 - Browser1 at1034fbc (tracked0a352636/scratch uc4lkfdi) was ABORTED/FAILED after real focus escaped native Manage dialog toBODY on authoritative Reload. No source changes during case, sentinel actual_ui_completed=false, screenshots/ordered partial observations/not_run list retained, actual isolated profile closed. Both server ends proved/0workers/clients/models; cleanup unresolved isolation evidence from ONE guard-blocked inherited GitHub version lookup, not successful egress. No browser PASS claimed. Pre-lifecycle exact-file/restart HOLD evidence remains investigation only.
 - Bounded correction now implemented: stable control focus keys/caret/in-dialog fallback; actual removal-toBODY modeled in VM. Initial12/11PASS1genuineFAIL, corrected-source fixture lacked comma selectors, standard capability fix preserves assertions, final helper/root12PASS plus prior document12/recipient12/policy4/storage2+2 and syntax/compile-only PASS. Generated server only suppresses upstream release fetch, strict guard unchanged. No CSS edit: static ticket-base390 diagnostic EXACTLY reproduces476page/header475.67/timeline590, inherited/outofscope; new dialog356fits. Client/guard unchanged, new verifier7427750e. Full receipt/source/fixture attribution in acceptance doc.
-- Next owner Codex: freeze correction/new cache pin and obtain Sonnet diff recheck plus fresh browser authorization. No rerun/resumption of uc4lkfdi; no acceptance resource currently running, no publication or whole-ticket PASS.- Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
+- Correction294364d independently passed source/VM review and actual focus checks in fresh browser2 at both widths. Browser2 (pu_r7m_m, tracked180297f1) is NON-ACCEPTANCE: hidden sidebar action icons are a product regression; an environment electron-to-headless handoff during tool dragTo lost page state, so root stopped. Both servers and isolated session closed;0workers/clients/models, guard0/unresolved[], version seam2 calls. Many valid partial UI observations remain investigation only; drag completion/reopen/retained/delete were not completed.
+- Latest batch fixes wrapper hover/focus/editing/touch visibility in scoped CSS only and visible close-focus fallbacks. Public VM first10PASS/2genuineFAIL (CSS and hidden-trigger fallbacks), then helper/root12PASS; all previous Node checks remain PASS. No global layout, Python backend, harness/client or guard change. Existing native passes stand.
+- Next owner Codex: freeze the batch and obtain Sonnet recheck before one fresh full browser run, using clearly labeled synthetic DOM DragEvents with separate network and persisted-order evidence. Then Sonnet's own browser reproduction and final verdict precede publication. All acceptance resources are stopped; Ticket19 remains unpublished/incomplete.
+- Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.

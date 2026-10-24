@@ -84,10 +84,11 @@ function renderChannelTabs() {
             if (e.target.closest('.channel-tab-actions')) return;
             if (name === window.activeChannel) {
                 // Second click on active tab -- toggle edit controls
-                tab.classList.toggle('editing');
+                const editing = tab.classList.toggle('editing');
+                item.classList.toggle('editing', editing);
             } else {
                 // Clear any editing state, switch channel
-                document.querySelectorAll('.channel-tab.editing').forEach(t => t.classList.remove('editing'));
+                document.querySelectorAll('.channel-tab.editing').forEach(t => { t.classList.remove('editing'); t.closest('.channel-tab-item')?.classList.remove('editing'); });
                 switchChannel(name);
             }
         };

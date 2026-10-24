@@ -253,7 +253,7 @@ function init() {
     // Dismiss channel edit controls when clicking outside channel bar
     document.addEventListener('click', (e) => {
         if (!e.target.closest('#channel-bar')) {
-            document.querySelectorAll('.channel-tab.editing').forEach(t => t.classList.remove('editing'));
+            document.querySelectorAll('.channel-tab.editing').forEach(t => { t.classList.remove('editing'); t.closest('.channel-tab-item')?.classList.remove('editing'); });
         }
     });
 }

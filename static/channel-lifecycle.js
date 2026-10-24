@@ -205,7 +205,10 @@ window.ChannelLifecycle = (() => {
         form.closed = true; form.readController?.abort();
         form.dialog.close?.(); form.dialog.remove();
         if (current === form) current = null;
-        const target = form.trigger?.isConnected !== false ? form.trigger : document.getElementById('channel-manage-btn') || document.getElementById('channel-sidebar-manage');
+        const target = [form.trigger, document.getElementById('channel-manage-btn'),
+            document.getElementById('channel-sidebar-manage'), document.getElementById('input')]
+            .find(element => element && element !== document.body && element.isConnected
+                && !element.disabled && !element.hidden && element.getClientRects().length);
         target?.focus?.();
     }
     function openManage({channel = window.activeChannel || 'general', op = null} = {}) {

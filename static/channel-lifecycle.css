@@ -53,9 +53,35 @@
 .channel-state-banner p { flex: 1 1 220px; margin: 0; }
 .channel-state-banner[hidden] { display: none; }
 .channel-tab-item, .channel-sidebar-item { display: flex; min-width: 0; align-items: center; }
+.channel-tab-item { flex-shrink: 0; }
 .channel-tab-item .channel-tab-actions, .channel-sidebar-item .channel-sidebar-row-actions { display: flex; }
 .channel-tab-item .channel-tab-actions button, .channel-sidebar-item .channel-sidebar-row-actions button { min-height: 44px; min-width: 44px; }
 .channel-sidebar-item .channel-sidebar-row { flex: 1; min-width: 0; }
+.channel-tab-item:hover .channel-tab-actions,
+.channel-tab-item:focus-within .channel-tab-actions,
+.channel-tab-item.editing .channel-tab-actions {
+    max-width: 90px;
+    margin-left: 4px;
+    opacity: 1;
+    pointer-events: auto;
+}
+.channel-sidebar-item:hover .channel-sidebar-row-actions,
+.channel-sidebar-item:focus-within .channel-sidebar-row-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+@media (hover: none), (pointer: coarse) {
+    .channel-tab-item .channel-tab-actions {
+        max-width: 90px;
+        margin-left: 4px;
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .channel-sidebar-item .channel-sidebar-row-actions {
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
 #channel-manager-apply { margin-top: 12px; background: var(--accent); color: var(--text-on-accent); }
 @media (max-width: 640px) {
     .channel-manager { padding: 16px; }
