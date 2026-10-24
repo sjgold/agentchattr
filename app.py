@@ -8,6 +8,7 @@ import threading
 import uuid
 import logging
 from contextlib import nullcontext
+from functools import wraps
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
@@ -1252,6 +1253,73 @@ def _propose_rule_sync(text, author, reason, channel, *, is_human):
         return rule
 
 
+def _history_write_error(error):
+    if isinstance(error, (ChannelConflict, QueueConflict)):
+        return JSONResponse({'error': str(error)}, status_code=409)
+    if isinstance(error, (ChannelUnavailable, OSError)):
+        return JSONResponse({'error': 'History change could not be confirmed. Check history before trying again.'}, status_code=503)
+    return JSONResponse({'error': 'Invalid history change.'}, status_code=400)
+
+
+def _message_writer(function):
+    @wraps(function)
+    def guarded(msg_id, *args, **kwargs):
+        try:
+            policy = _channels()
+            with policy._boundary():
+                policy.catalog.snapshot()
+                message = store.get_snapshot(msg_id)
+                if message is None:
+                    return JSONResponse({'error': 'message not found'}, status_code=404)
+                policy.require_active(message.get('channel', 'general'))
+                return function(msg_id, *args, **kwargs)
+        except (ChannelUnavailable, OSError, ValueError) as error:
+            return _history_write_error(error)
+    return guarded
+
+
+async def _broadcast_message_edit(message, event_type='edit'):
+    if message:
+        saved = store.get_snapshot(message['id'])
+        if saved is not None and saved.get('uid') == message.get('uid'):
+            await _broadcast(json.dumps({'type': event_type, 'message': saved}))
+
+
+def _history_control_sync(action, *, ids=(), channel=None):
+    policy = _channels()
+    with policy._boundary():
+        policy.catalog.snapshot()
+        if action in ('clear', 'continue'):
+            policy.require_active(channel)
+            if action == 'clear':
+                store.clear(channel=channel)
+            else:
+                router.continue_routing(channel)
+                store.add_notice('system', 'Resuming agent conversation...', msg_type='system', channel=channel)
+            return None
+        for message_id in ids:
+            message = store.get_snapshot(message_id)
+            if message is not None:
+                policy.require_active(message.get('channel', 'general'))
+        if action == 'delete':
+            return store.delete(ids)
+        message_id = ids[0]
+        if action == 'todo_add':
+            return 'todo' if store.add_todo(message_id) else None
+        if action == 'todo_remove':
+            store.remove_todo(message_id)
+            return None
+        if action == 'todo_toggle':
+            status = store.get_todo_status(message_id)
+            if status == 'todo':
+                store.complete_todo(message_id)
+                return 'done'
+            if status == 'done':
+                store.reopen_todo(message_id)
+                return 'todo'
+        return None
+
+
 @app.get('/api/channels')
 async def get_channels(request: Request):
     return await _channel_http(request, 'view')
@@ -1802,12 +1870,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     # Explicit local controls retain their existing behavior.
                     command = text.strip().split()[0].lower() if text.strip() else ''
                     if command == '/clear':
-                        store.clear(channel=channel)
+                        await asyncio.to_thread(_history_control_sync, 'clear', channel=channel)
                         await broadcast_clear(channel=channel)
                         continue
                     if command == '/continue':
-                        router.continue_routing()
-                        store.add_notice('system', 'Resuming agent conversation...', msg_type='system', channel=channel)
+                        await asyncio.to_thread(_history_control_sync, 'continue', channel=channel)
                         await broadcast_status()
                         continue
                     message = await _publish_operator_message_async(sender=sender, text=text,
@@ -1815,6 +1882,11 @@ async def websocket_endpoint(websocket: WebSocket):
                         attachments=attachments, reply_to=event.get('reply_to'), channel=channel)
                     await websocket.send_text(json.dumps({'type': 'message_accepted',
                         'uid': message['uid'], 'channel': message['channel']}))
+                except ChannelInactive as error:
+                    await websocket.send_text(json.dumps({'type': 'message_error', 'error': str(error), 'code': 409}))
+                except ChannelUnavailable:
+                    await websocket.send_text(json.dumps({'type': 'message_error',
+                        'error': 'Channel storage is unavailable; the message was not accepted.', 'code': 503}))
                 except (ValueError, PermissionError):
                     await websocket.send_text(json.dumps({'type': 'message_error',
                         'error': 'Invalid message or recipient fields.'}))
@@ -1825,46 +1897,30 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_text(json.dumps({'type': 'message_error',
                         'error': 'Message could not be confirmed; check the conversation before sending again.'}))
 
-            elif event.get("type") == "delete":
-                ids = event.get("ids", [])
-                if ids:
-                    deleted = store.delete([int(i) for i in ids])
-                    if deleted:
-                        data = json.dumps({"type": "delete", "ids": deleted})
-                        dead = set()
-                        for client in list(ws_clients):
-                            try:
-                                await client.send_text(data)
-                            except Exception:
-                                dead.add(client)
-                        ws_clients.difference_update(dead)
-                continue
-
-            elif event.get("type") == "todo_add":
-                msg_id = event.get("id")
-                if msg_id is not None:
-                    store.add_todo(int(msg_id))
-                    await broadcast_todo_update(int(msg_id), "todo")
-                continue
-
-            elif event.get("type") == "todo_toggle":
-                msg_id = event.get("id")
-                if msg_id is not None:
-                    mid = int(msg_id)
-                    status = store.get_todo_status(mid)
-                    if status == "todo":
-                        store.complete_todo(mid)
-                        await broadcast_todo_update(mid, "done")
-                    elif status == "done":
-                        store.reopen_todo(mid)
-                        await broadcast_todo_update(mid, "todo")
-                continue
-
-            elif event.get("type") == "todo_remove":
-                msg_id = event.get("id")
-                if msg_id is not None:
-                    store.remove_todo(int(msg_id))
-                    await broadcast_todo_update(int(msg_id), None)
+            elif event.get('type') in ('delete', 'todo_add', 'todo_toggle', 'todo_remove'):
+                operation = event['type']
+                try:
+                    if operation == 'delete':
+                        raw_ids = event.get('ids', [])
+                        if not isinstance(raw_ids, list) or any(type(value) is bool for value in raw_ids):
+                            raise ValueError('Message IDs must be a list.')
+                        ids = [int(value) for value in raw_ids]
+                        if not ids:
+                            continue
+                    else:
+                        if event.get('id') is None:
+                            continue
+                        if type(event['id']) is bool:
+                            raise ValueError('Message ID must be an integer.')
+                        ids = [int(event['id'])]
+                    result = await asyncio.to_thread(_history_control_sync, operation, ids=ids)
+                    if operation == 'delete':
+                        if result:
+                            await _broadcast(json.dumps({'type': 'delete', 'ids': result}))
+                    elif operation == 'todo_remove' or result is not None:
+                        await broadcast_todo_update(ids[0], result)
+                except (ChannelUnavailable, OSError, ValueError) as error:
+                    await websocket.send_text(json.dumps(_channel_error(error)))
                 continue
 
             elif event.get("type") in ("decision_propose", "rule_propose"):
@@ -2389,8 +2445,8 @@ async def get_jobs(channel: str = "", status: str = ""):
     return jobs.list_all(channel=ch, status=st)
 
 
-@app.post("/api/messages/{msg_id}/demote")
-async def demote_proposal(msg_id: int):
+@_message_writer
+def _demote_proposal_sync(msg_id):
     """Demote a proposal-style message back to a regular chat message."""
     msg = store.get_by_id(msg_id)
     if not msg:
@@ -2443,82 +2499,67 @@ async def demote_proposal(msg_id: int):
         updated_fields["text"] = "\n\n".join(p for p in parts if p).strip()
 
     updated = store.update_message(msg_id, updated_fields)
-    if updated:
-        # Broadcast the updated message to all clients
-        payload = json.dumps({"type": "edit", "message": updated})
-        dead = set()
-        for client in list(ws_clients):
-            try:
-                await client.send_text(payload)
-            except Exception:
-                dead.add(client)
-        ws_clients.difference_update(dead)
+    return updated
+
+
+@app.post("/api/messages/{msg_id}/demote")
+async def demote_proposal(msg_id: int):
+    """Demote a proposal-style message back to a regular chat message."""
+    updated = await asyncio.to_thread(_demote_proposal_sync, msg_id)
+    if isinstance(updated, JSONResponse):
+        return updated
+    await _broadcast_message_edit(updated)
     return updated or {"ok": True}
+
+
+@_message_writer
+def _resolve_decision_sync(msg_id, chosen, username):
+    # The message boundary serializes choice, card change and publication with
+    # archive/delete. No store lock is held while entering channel policy.
+    message = store.get_snapshot(msg_id)
+    if message['type'] != 'decision':
+        return JSONResponse({'error': 'not a decision message'}, status_code=400)
+    meta = dict(message.get('metadata') or {})
+    if meta.get('resolved'):
+        return JSONResponse({'error': 'already resolved'}, status_code=400)
+    choices = meta.get('choices', [])
+    if choices and chosen not in choices:
+        return JSONResponse({'error': f'invalid choice. Valid: {choices}'}, status_code=400)
+    meta.update(resolved=True, chosen=chosen)
+    updated = store.update_message(msg_id, {'metadata': meta})
+    sender = message.get('sender', '')
+    published = _publish_operator_message(sender=username,
+        text=f'@{sender} {chosen}' if sender else chosen,
+        selected_recipients=[], approved_targets=[sender] if sender else [],
+        origin='workflow', reply_to=msg_id, channel=message.get('channel', 'general'), _emit=False)
+    return updated, published
 
 
 @app.post("/api/messages/{msg_id}/resolve_decision")
 async def resolve_decision(msg_id: int, request: Request):
-    """Resolve an inline decision card by recording the chosen option."""
+    """Resolve an inline decision without completing a typed review turn."""
     body = await request.json()
-    chosen = body.get("choice", "")
+    chosen = body.get('choice', '')
     if not chosen:
-        return JSONResponse({"error": "choice is required"}, status_code=400)
-    # Atomic check + resolve under lock to prevent double-click race
-    error = None
-    channel = "general"
-    sender = ""
-    with store._lock:
-        msg = None
-        for m in store._messages:
-            if m["id"] == msg_id:
-                msg = m
-                break
-        if not msg:
-            error = ("message not found", 404)
-        elif msg.get("type") != "decision":
-            error = ("not a decision message", 400)
-        else:
-            meta = msg.get("metadata") or {}
-            if meta.get("resolved"):
-                error = ("already resolved", 400)
-            else:
-                valid_choices = meta.get("choices", [])
-                if valid_choices and chosen not in valid_choices:
-                    error = (f"invalid choice. Valid: {valid_choices}", 400)
-                else:
-                    meta["resolved"] = True
-                    meta["chosen"] = chosen
-                    msg["metadata"] = meta
-                    channel = msg.get("channel", "general")
-                    sender = msg.get("sender", "")
-                    store._rewrite()
-    if error:
-        return JSONResponse({"error": error[0]}, status_code=error[1])
-    # Post the chosen answer as a regular chat message tagged @sender
-    username = room_settings.get("username", "user")
-    reply_text = f"@{sender} {chosen}" if sender else chosen
-    try:
-        await _publish_operator_message_async(sender=username, text=reply_text, selected_recipients=[],
-            approved_targets=[sender] if sender else [], origin='workflow', reply_to=msg_id, channel=channel)
-    except Exception:
-        import traceback; traceback.print_exc()
-    # Broadcast updated decision card so the UI swaps buttons to resolved state
-    updated = store.get_by_id(msg_id)
-    if updated:
-        await _broadcast(json.dumps({"type": "message_update", "message": updated}))
-    return {"ok": True, "chosen": chosen}
+        return JSONResponse({'error': 'choice is required'}, status_code=400)
+    result = await asyncio.to_thread(_resolve_decision_sync, msg_id, chosen,
+                                     room_settings.get('username', 'user'))
+    if isinstance(result, JSONResponse):
+        return result
+    updated, published = result
+    store._emit_operator(published, authority=_OPERATOR_PUBLICATION)
+    await _broadcast_message_edit(updated, 'message_update')
+    return {'ok': True, 'chosen': chosen}
 
 
-@app.post("/api/messages/{msg_id}/resolve_rule_proposal")
-async def resolve_rule_proposal(msg_id: int, request: Request):
+@_message_writer
+def _resolve_rule_proposal_sync(msg_id, action):
     """Activate or dismiss a rule proposal."""
     msg = store.get_by_id(msg_id)
     if not msg:
         return JSONResponse({"error": "message not found"}, status_code=404)
     if msg.get("type") != "rule_proposal":
         return JSONResponse({"error": "not a rule proposal"}, status_code=400)
-    body = await request.json()
-    action = body.get("action", "")
     meta = dict(msg.get("metadata") or {})
     rule_id = meta.get("rule_id")
 
@@ -2537,21 +2578,22 @@ async def resolve_rule_proposal(msg_id: int, request: Request):
         return JSONResponse({"error": "invalid action"}, status_code=400)
 
     updated = store.update_message(msg_id, {"metadata": meta})
-    if updated:
-        # Broadcast the updated message so all clients re-render the card
-        payload = json.dumps({"type": "edit", "message": updated})
-        dead = set()
-        for client in list(ws_clients):
-            try:
-                await client.send_text(payload)
-            except Exception:
-                dead.add(client)
-        ws_clients.difference_update(dead)
+    return updated
+
+
+@app.post("/api/messages/{msg_id}/resolve_rule_proposal")
+async def resolve_rule_proposal(msg_id: int, request: Request):
+    """Activate or dismiss a rule proposal in a writable channel."""
+    body = await request.json()
+    updated = await asyncio.to_thread(_resolve_rule_proposal_sync, msg_id, body.get('action', ''))
+    if isinstance(updated, JSONResponse):
+        return updated
+    await _broadcast_message_edit(updated)
     return updated or {"ok": True}
 
 
-@app.post("/api/messages/{msg_id}/demote_rule_proposal")
-async def demote_rule_proposal(msg_id: int):
+@_message_writer
+def _demote_rule_proposal_sync(msg_id):
     """Demote a rule_proposal message back to a regular chat message and delete the rule."""
     msg = store.get_by_id(msg_id)
     if not msg:
@@ -2568,15 +2610,16 @@ async def demote_rule_proposal(msg_id: int):
         "text": text,
         "metadata": {},
     })
-    if updated:
-        payload = json.dumps({"type": "edit", "message": updated})
-        dead = set()
-        for client in list(ws_clients):
-            try:
-                await client.send_text(payload)
-            except Exception:
-                dead.add(client)
-        ws_clients.difference_update(dead)
+    return updated
+
+
+@app.post("/api/messages/{msg_id}/demote_rule_proposal")
+async def demote_rule_proposal(msg_id: int):
+    """Demote a rule card and delete its proposed rule in a writable channel."""
+    updated = await asyncio.to_thread(_demote_rule_proposal_sync, msg_id)
+    if isinstance(updated, JSONResponse):
+        return updated
+    await _broadcast_message_edit(updated)
     return updated or {"ok": True}
 
 
@@ -2630,43 +2673,48 @@ async def trigger_agent_silent(request: Request):
         return JSONResponse({'error': 'Use a valid active channel and registered target.'}, status_code=400)
 
 
+def _create_job_sync(body):
+    try:
+        policy = _channels()
+        with policy._boundary():
+            policy.catalog.snapshot()
+            channel = body.get('channel', 'general')
+            policy.require_active(channel)
+            title = body.get('title', '').strip()
+            if not title:
+                return JSONResponse({'error': 'title required'}, status_code=400)
+            anchor_id = body.get('anchor_msg_id')
+            anchor = None
+            if anchor_id is not None:
+                anchor = store.get_snapshot(anchor_id)
+                if anchor is None:
+                    return JSONResponse({'error': 'proposal anchor not found'}, status_code=404)
+                policy.require_active(anchor.get('channel', 'general'))
+            created_by = body.get('created_by', 'user')
+            result = jobs.create(title=title, job_type=body.get('type', 'job'), channel=channel,
+                created_by=created_by, anchor_msg_id=anchor_id, assignee=body.get('assignee', ''),
+                body=body.get('body', ''))
+            updated = None
+            if anchor and anchor.get('type') == 'job_proposal':
+                meta = dict(anchor.get('metadata') or {})
+                meta['status'] = 'accepted'
+                updated = store.update_message(anchor_id, {'metadata': meta})
+            store.add_notice(created_by, f'Job created: {title}', msg_type='job_created',
+                             channel=channel, metadata={'job_id': result['id']})
+            return result, updated
+    except (ChannelUnavailable, OSError, ValueError) as error:
+        return _history_write_error(error)
+
+
 @app.post("/api/jobs")
 async def create_job(request: Request):
-    """Create a new job."""
+    """Create a job after validating destination and proposal source channels."""
     body = await request.json()
-    title = body.get("title", "").strip()
-    if not title:
-        return JSONResponse({"error": "title required"}, status_code=400)
-    job_type = body.get("type", "job")
-    channel = body.get("channel", "general")
-    created_by = body.get("created_by", "user")
-    anchor_msg_id = body.get("anchor_msg_id")
-    assignee = body.get("assignee", "")
-    job_body = body.get("body", "")
-    result = jobs.create(
-        title=title, job_type=job_type, channel=channel,
-        created_by=created_by, anchor_msg_id=anchor_msg_id,
-        assignee=assignee, body=job_body,
-    )
-    # Mark the proposal message as accepted so it persists across refresh
-    if anchor_msg_id:
-        anchor_msg = store.get_by_id(anchor_msg_id)
-        if anchor_msg and anchor_msg.get("type") == "job_proposal":
-            meta = dict(anchor_msg.get("metadata", {}))
-            meta["status"] = "accepted"
-            updated_msg = store.update_message(anchor_msg_id, {"metadata": meta})
-            if updated_msg:
-                payload = json.dumps({"type": "edit", "message": updated_msg})
-                dead = set()
-                for client in list(ws_clients):
-                    try:
-                        await client.send_text(payload)
-                    except Exception:
-                        dead.add(client)
-                ws_clients.difference_update(dead)
-    # Post breadcrumb in main timeline with job_id for clickable link
-    store.add_notice(created_by, f"Job created: {title}", msg_type="job_created",
-              channel=channel, metadata={"job_id": result["id"]})
+    outcome = await asyncio.to_thread(_create_job_sync, body)
+    if isinstance(outcome, JSONResponse):
+        return outcome
+    result, updated = outcome
+    await _broadcast_message_edit(updated)
     return result
 
 

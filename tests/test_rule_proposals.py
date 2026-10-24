@@ -38,6 +38,18 @@ class RuleProposalTests(unittest.TestCase):
         self.stack.enter_context(patch.object(app, 'store', messages))
         self.stack.enter_context(patch.object(app, 'ws_clients', set()))
         self.stores = rules, messages
+        from agents import AgentTrigger
+        from registry import RuntimeRegistry
+        from session_engine import SessionEngine
+        from session_store import SessionStore
+        from tests.channel_fixture import initialize_app_channels
+        registry = RuntimeRegistry(str(self.tmp_path))
+        trigger = AgentTrigger(registry, str(self.tmp_path))
+        engine = SessionEngine(SessionStore(str(self.tmp_path / 'sessions.json')), messages, trigger, registry)
+        self.stack.enter_context(patch.object(app, 'session_engine', engine))
+        self.stack.enter_context(patch.object(app, 'agents', trigger))
+        self.stack.enter_context(patch.object(app, 'jobs', None))
+        initialize_app_channels(self, self.tmp_path, ['general'], enter_context=self.stack.enter_context)
 
     def test_more_than_fifty_rules_activate_and_survive_reload(self):
         rules, messages = self.stores
