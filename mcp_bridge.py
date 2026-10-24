@@ -421,6 +421,7 @@ def chat_send(
     return f"Sent (id={msg['id']})"
 
 
+@_channel_writer
 def chat_propose_job(
     sender: str,
     title: str,
@@ -440,6 +441,8 @@ def chat_propose_job(
     sender, err = _resolve_tool_identity(sender, ctx, field_name="sender", required=True)
     if err:
         return err
+    channel = channel or 'general'
+    channel_policy_getter().require_active(channel)
     if not title.strip():
         return "Error: title is required."
     title = title.strip()[:80]
@@ -856,6 +859,17 @@ def is_active(name: str) -> bool:
         return True
 
 
+@_channel_writer
+def _propose_rule(sender, rule, reason, channel):
+    channel = channel or 'general'
+    channel_policy_getter().require_active(channel)
+    result = rules.propose(rule, sender, reason)
+    if store:
+        store.add(sender, f"Rule proposal: {result['text']}", msg_type='rule_proposal',
+            channel=channel, metadata={'rule_id': result['id'], 'text': result['text'], 'status': 'pending'})
+    return f"Proposed rule #{result['id']}: '{result['text']}'. Human will review in the Rules panel."
+
+
 def chat_rules(
     action: str,
     sender: str,
@@ -891,16 +905,7 @@ def chat_rules(
             return "Error: rule text is required."
         if not sender.strip():
             return "Error: sender is required."
-        result = rules.propose(rule, sender, reason)
-        # Add proposal card to chat timeline
-        if store:
-            store.add(
-                sender, f"Rule proposal: {result['text']}",
-                msg_type="rule_proposal",
-                channel=channel or "general",
-                metadata={"rule_id": result["id"], "text": result["text"], "status": "pending"},
-            )
-        return f"Proposed rule #{result['id']}: '{result['text']}'. Human will review in the Rules panel."
+        return _propose_rule(sender, rule, reason, channel)
 
     if action in ("activate", "edit", "delete"):
         return f"Error: '{action}' is only available to humans via the web UI."
@@ -968,6 +973,22 @@ def chat_channels() -> str:
     return json.dumps(channels)
 
 
+@_channel_writer
+def _write_summary(sender, text, channel):
+    channel_policy_getter().require_active(channel)
+    latest_id = 0
+    if store:
+        recent = store.get_recent(1, channel=channel)
+        if recent:
+            latest_id = recent[-1]['id']
+    result = summaries.write(channel, text, sender, message_id=latest_id)
+    if result is None:
+        return 'Error: failed to write summary.'
+    if store:
+        store.add(sender, text.strip(), msg_type='summary', channel=channel)
+    return f'Summary for #{channel} updated ({len(text.strip())} chars).'
+
+
 def chat_summary(
     action: str,
     sender: str,
@@ -1006,19 +1027,7 @@ def chat_summary(
             return "Error: text is required."
         if len(text.strip()) > 1000:
             return "Error: summary too long (max 1000 characters)."
-        # Get the latest message ID for staleness tracking
-        latest_id = 0
-        if store:
-            recent = store.get_recent(1, channel=channel)
-            if recent:
-                latest_id = recent[-1]["id"]
-        result = summaries.write(channel, text, sender, message_id=latest_id)
-        if result is None:
-            return "Error: failed to write summary."
-        # Post a visual summary message to the timeline
-        if store:
-            store.add(sender, text.strip(), msg_type="summary", channel=channel)
-        return f"Summary for #{channel} updated ({len(text.strip())} chars)."
+        return _write_summary(sender, text, channel)
 
     return f"Unknown action: {action}. Valid actions: read, write."
 

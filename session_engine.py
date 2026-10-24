@@ -3,6 +3,7 @@
 import logging
 import threading
 import time
+from channel_guards import channel_write
 
 log = logging.getLogger(__name__)
 
@@ -822,6 +823,7 @@ class SessionEngine:
                         current['consumer_id'], 'local_ended' if result['local_ended'] else 'unresolved')
             return self.stop_status(session_id, manager)
 
+    @channel_write(lambda engine, args: [args['channel']])
     def send_chat(self, instance, text, *, dispatch_id=None, channel='general', publish=None, **fields):
         """Persist scoped ordinary chat or quarantined output under the fence."""
         from turn_events import validate_content

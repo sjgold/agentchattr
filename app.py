@@ -1240,6 +1240,18 @@ async def _legacy_channel_action(websocket, event):
         await websocket.send_text(json.dumps(_channel_error(error, request_id=event.get('request_id'), channel=channel)))
 
 
+def _propose_rule_sync(text, author, reason, channel, *, is_human):
+    with _channels().publication(channel):
+        rule = rules.propose(text, author, reason)
+        if rule:
+            if is_human:
+                rules.make_draft(rule['id'])
+            else:
+                store.add(author, f'Rule proposal: {text}', msg_type='rule_proposal', channel=channel,
+                    metadata={'rule_id': rule['id'], 'text': text, 'status': 'pending'})
+        return rule
+
+
 @app.get('/api/channels')
 async def get_channels(request: Request):
     return await _channel_http(request, 'view')
@@ -1862,22 +1874,11 @@ async def websocket_endpoint(websocket: WebSocket):
                 reason = event.get("reason", "")
                 is_human = author.lower() == room_settings.get("username", "user").lower()
                 if text:
-                    rule = rules.propose(text, author, reason)
-                    if rule:
-                        if is_human:
-                            # Human-created rules go straight to draft, no card
-                            rules.make_draft(rule["id"])
-                        else:
-                            # Agent proposals get a card in the timeline
-                            channel = event.get("channel", "general")
-                            msg = store.add(
-                                author, f"Rule proposal: {text}",
-                                msg_type="rule_proposal",
-                                channel=channel,
-                                metadata={"rule_id": rule["id"], "text": text, "status": "pending"},
-                            )
-                            # store.add() fires _on_store_message → broadcast already.
-                            # Do NOT call broadcast(msg) again here.
+                    channel = event.get('channel', 'general')
+                    try:
+                        await asyncio.to_thread(_propose_rule_sync, text, author, reason, channel, is_human=is_human)
+                    except (ChannelUnavailable, OSError, ValueError) as error:
+                        await websocket.send_text(json.dumps(_channel_error(error, channel=channel)))
                 continue
 
             elif event.get("type") in ("decision_approve", "rule_activate"):
