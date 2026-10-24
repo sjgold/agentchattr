@@ -204,3 +204,77 @@ Tranche2 freeze06bdc67 approved by Sonnet with C1 deterministic malformed-own-ta
 - R1: exclude Retry-fenced/superseded active attempts from logical occupancy before replacement binding. Root regression proves manual and reserved retry tasks wait before the fence, then can claim after it (physical holds remain authoritative). R2: four saved-result tests reused an older still-unconsumed setup run; their scenario helpers now explicitly Stop that older run before starting the target scenario and assert its saved result remains unacknowledged. All existing target recovery assertions retained. Ordinary Retry transport test passes unchanged after R1.
 - Added agent /continue rejection regression, restored its existing human-only notice without router reset, and removed duplicate job lookup. Root first2 new regressions actually FAILED0.072s before fixes.
 - Corrected focused84PASS5.019s (.audit-tmp/ticket17-runtime-corrected-focused.log), syntax/diff checks follow; corrected frozen full run and Sonnet substantive recheck required before bounded approval. No corrected full-suite result claimed yet. Preview/UI must explain that agent mentions during a review are display-only.
+
+## Tranche3 trusted operator ingress (proposed exact freeze, before tests)
+
+Tranche2 c1bce3a is bounded-PASS: builder full964TOTAL/960passed/four skips85.646s; reviewer70focused4.376s and corrected-source turn_recovery/corrected_restart/session_stop integrations PASS. Earlier failed962 run remains historical. No final17 acceptance.
+
+### Persistence authority and immutable UID
+
+Use one process-private capability object `_OPERATOR_PUBLICATION` in store.py, shared with jobs.py/app.py; identity comparison only, never a serializable token or metadata flag. No HMAC, new database, ticket or outbox. Add private methods:
+
+```python
+MessageStore._publish_operator(self, sender, text, *, routing, authority,
+                              channel='general', attachments=None,
+                              reply_to=None, msg_type='chat', metadata=None) -> dict
+JobStore._publish_operator(self, job_id, sender, text, *, routing, authority,
+                          attachments=None, msg_type='chat') -> dict | None
+JobStore.get_message_snapshot(self, job_id, message_id) -> dict | None
+```
+
+Only the trusted central ingress calls private publication with the capability. A wrong/missing capability rejects. Each method assigns a fresh server UUID UID (no caller UID argument) before persistence, adds that same UID to the routing receipt, and returns a detached copy AFTER successful persistence. No enqueue occurs in either store. The private methods persist without firing callbacks; central ingress resets human routing and then emits the normal message callbacks/JobStore message change exactly once. Reuse/refactor the existing atomic add_once JSONL replacement for private operator messages; ordinary agent chat keeps the existing append path. Private job publication uses existing atomic_json and rolls memory back on write failure. Preserve UID/timestamp/import behavior on generic paths.
+
+Generic MessageStore.add and add_once always deepcopy metadata and remove recipient_routing before persistence/callbacks. Generic update_message cannot introduce or replace that key; preserve an existing receipt while allowing additive UI metadata. Ordinary caller metadata never receives the capability. JobStore.add_message keeps its current signature (no arbitrary metadata input); its import path already ignores incoming job-message metadata. The new private method is the only job receipt writer. Explicitly strip recipient_routing in archive message import too, and test forged job import metadata is ignored. Imported/history/projection records never route.
+
+The private receipt is exactly:
+
+```python
+{'version': 1, 'origin': 'operator',  # operator | workflow | schedule, server chosen
+ 'message_uid': '<fresh server UUID>',
+ 'mode': 'explicit', 'tokens': [], 'ignored': [], 'recipients': [], 'warnings': [],
+ 'waiting': [{'identity_id': '<id>', 'reason': 'earlier_review_turn'}]}
+```
+
+Mode/tokens/ignored/recipients/warnings follow the frozen pure resolver. Waiting is an informational acceptance-time snapshot, not an assertion that delivery occurred. No keys, paths, process IDs or mutable name lookup tickets. For each recipient, waiting is present when allowed_review_dispatch_ids(current copied sessions, identity_id) is not None; ordinary physical queue serialization remains in force even without this annotation. No ready/free delivery promise.
+
+### Central publication and authenticated origin
+
+```python
+app._publish_operator_message(*, sender, text, selected_recipients,
+    channel='general', attachments=None, reply_to=None, job_id=None,
+    msg_type='chat', metadata=None, approved_targets=None, origin='operator') -> dict
+```
+
+This synchronous private function is the ONLY caller of the two private store publication methods. Resolve current registry/online snapshots once, preserve raw ordinary text (including Unicode/CRLF), create the accepted receipt, persist, call existing router.continue_routing(channel) AFTER persistence, then emit callbacks. Preview never resets hops. Store IO failure emits no callback/enqueue or hop reset. Channel callbacks route asynchronously through _handle_new_message; operator job endpoint explicitly awaits the same audience dispatcher after the job is saved. No automatic replay after a crash between persistence and enqueue.
+
+For authenticated human posts approved_targets is always None and origin is operator, regardless of display sender. The security middleware sets request.state.auth_origin='operator' ONLY after validating browser session header/query token, and 'agent' in the allowed bearer branch. Preview and REST operator-job publication require the operator marker; agent bearers get403. WebSocket validates its session token before handling events and calls this ingress directly as operator. Client metadata/origin/capability/UID/routing/run fields are rejected or ignored, never authority. /api/send remains bearer-agent-only and cannot choose operator selections. An agent using a human-looking display label still follows its authenticated seat identity.
+
+approved_targets is a private internal-workflow exception, forbidden in all client schemas: resolve_recipients('', approved_targets, snapshot, online), so instruction/source mentions cannot change an already-approved workflow audience. Migrate the existing schedule runner (origin schedule), decision-choice replies and request_session_draft (origin workflow) through this same ingress with their explicit server-selected targets. Preserve approved schedule targets and existing literal stored prompt/display conventions; scheduling composer union/stripping remains deferred. No new schedule mode or historic schedule rewrite. Other system/draft/rule/job-created/lifecycle adds stay display-only.
+
+Unknown generic messages with no trusted receipt or authenticated seat_identity_id are display-only; they cannot gain human routing by spelling a human sender. Authenticated ordinary agent paths keep the shared Router lexer, loop guard and nonterminal-channel suppression. Trusted receipt handling precedes display-name agent classification, so a real human whose display name matches an agent stays operator-origin. Preserve all stopped/superseded quarantine checks for actual agent chat.
+
+### Frozen audience dispatch and identity helper
+
+```python
+app._dispatch_operator_audience(message: dict, *, job_id=None) -> None  # async
+AgentTrigger.trigger_identity_sync(self, identity_id, *, dispatch_id,
+    message='', channel='general', job_id=None, prompt='') -> dict
+```
+
+Dispatcher reloads the durable message snapshot by numeric id AND matching UID (MessageStore.get_snapshot or new JobStore.get_message_snapshot); only that saved receipt/text can authorize routing, never callback-supplied replacement metadata/text. Check receipt version/message_uid/origin; no recursive Router resolution. For each saved target identity, look up its CURRENT canonical instance by immutable identity, enqueue directly to that identity with the acceptance text/context. A rename keeps the identity and works; a removed identity warns/does not reserve work for a later same-named registration. Add a small common enqueue-instance helper in AgentTrigger if needed to reuse envelope construction; no native invocation or model generation here.
+
+Dispatch ID is exactly uuid.uuid5(uuid.NAMESPACE_URL, 'agentchattr:recipient:' + message_uid + ':' + identity_id).hex. Assign/persist UID before the first enqueue; numeric IDs never participate. Same callback repeat is idempotent in the existing queue, and clear/id reuse yields distinct IDs. Catch per-target QueueConflict/unavailable identity and continue other resolved recipients; the receipt still means resolved audience, never delivered. No content regeneration, callback recovery ledger or blind retry. After message persistence a permanent enqueue failure can leave an unwoken recipient, explicitly disclosed.
+
+Move built-in human slash expansion into central trusted publication: resolve the ORIGINAL command audience, expand /roastreview,/artchallenge,/hatmaking,/poetry once, then persist the expanded text with the unchanged resolved audience. No hidden all target, no raw-command recursion. Recognize a command only at authored start after optional plain leading address tokens; quoted/code command text stays literal. No recipients means posted with no agent wake and a UI-derived no-recipient hint. Ordinary message text is never rewritten.
+
+### Operator preview and transport schemas
+
+`POST /api/recipients/preview` is operator-only, no-store. Exact required JSON keys: text, selected_recipients, channel; optional job_id. job_id is a positive strict integer; if present its stored channel is authoritative and must match supplied channel. Text and aggregate selections retain MAX_EVENT_BYTES validation; entire JSON body <=2*MAX_EVENT_BYTES (1MiB), duplicate keys rejected at all nesting levels, generic400 errors without echoing source. Unknown/ambiguous recipients produce200 with warnings, not400. Invalid auth403, missing job404, unavailable registry/store503 with no private exception path. Response has exactly the five pure result fields plus waiting as above, without version/origin/UID. Pure resolution and wait annotation are reused at acceptance, but current identities are recomputed. No preview ticket/secret/fingerprint.
+
+WebSocket message event: existing type/text/sender/channel/attachments/reply_to plus selected_recipients (default [] for old clients); no metadata/UID/authority. Bound the raw UTF8 event at1MiB, parse unique JSON keys, validate names/text/channel/attachment-list/strict nonnegative reply id (zero valid), then publish. Retain ordinary raw text. Client-facing error leaves its draft intact once the UI tranche handles it. Existing local /clear and human /continue remain explicit local controls and ignore selections. Selection defaults in the old client are already encoded into text until the UI tranche, not claimed fixed yet.
+
+REST operator job POST preserves its existing path; accepted body text, selected_recipients(default[]), sender(display), attachments, type(chat|suggestion). Server job.channel supplies routing; arbitrary metadata/UID/origin/approved_targets/run IDs reject. Body/JSON bounds match preview. A job reply target is a client selection rather than prefixed text. Only session-authenticated operator origin uses trusted publication; agent API/MCP job posts retain their separate identity-derived paths and cannot call it.
+
+### Tranche3 tests after freeze
+
+First bounded helper workorder will own new tests/test_operator_publication.py only (~12 cases): actual missing private methods/metadata strip red before production, durable UID and exact receipt callback ordering, detached snapshots, unauthorized capability, add/add_once/update spoof, JSONL/job write failure no callback/enqueue/no memory leak, archive imports and immutable receipt updates. Root owns ingress/middleware/WebSocket/identity-dispatch tests in separate files. Split publication foundation from runtime ingress if needed, with precise scope and no duplicate assignments. No UI or native acceptance until these interfaces are implemented and independently reviewed.
