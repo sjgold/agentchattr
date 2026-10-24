@@ -1,6 +1,6 @@
 # Ticket15 independent acceptance receipt
 
-Verdict: **PASS WITH NONBLOCKING NOTES**, accepted by Codex after source and evidence checks. No blocking defect or substantive fix was requested. Publication remains subject to post-merge verification.
+Verdict: **PASS WITH NONBLOCKING NOTES**, accepted by Codex after source and evidence checks. No blocking defect or substantive fix was requested. Post-merge verification passed; publication/closure are pending.
 
 - Builder: Codex GPT6.1 Sol, agent6c2a7241 (OpenAI family).
 - Reviewer: Claude Sonnet5.5 as selected by Seth and reported by agent3b53a0e1, configured alias `sonnet` (Anthropic family; exact resolved backend ID not independently attested).
@@ -34,3 +34,7 @@ The reviewer audited the new modules in full and changed call sites/queue/native
 4. Malformed stored-session KeyError handling is an unreproduced optional hardening note. No evidence of a required-flow defect; broader corruption handling deferred.
 
 The reviewer explicitly required no recheck for these dispositions. No executable code changed after its PASS.
+
+## Post-merge verification
+
+Fast-forward main43fda29, full918 total/four expected skips86.469s, node syntax and diff clean. Shellaa226c79 exit0; log .audit-tmp/ticket15-post-merge-full.log. No source changes after review. Publication hash and verified issue closure are recorded in STATUS.md after completion.

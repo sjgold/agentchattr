@@ -22,7 +22,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Final Sonnet PASS with nonblocking notes | Main merge/post-merge checks and verified publication/closure next |
+| #15 | Final Sonnet PASS with nonblocking notes | Main merged; post-merge918/four skips86.469s PASS; publication/closure next |
 | #17-26 | Authorized after15 | Continue in dependency order with independent Sonnet review |
 
 ## Non-negotiable verification
