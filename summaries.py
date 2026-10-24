@@ -6,6 +6,8 @@ import threading
 import uuid
 from pathlib import Path
 
+from channel_guards import channel_write
+
 MAX_CHARS = 1000
 
 
@@ -15,6 +17,7 @@ class SummaryStore:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._summaries: dict[str, dict] = {}  # channel → summary dict
         self._lock = threading.Lock()
+        self._channel_policy_getter = None
         self._load()
 
     def _load(self):
@@ -42,6 +45,12 @@ class SummaryStore:
         with self._lock:
             return {ch: dict(s) for ch, s in self._summaries.items()}
 
+    def bind_channel_policy(self, getter):
+        if not callable(getter):
+            raise ValueError('An explicit channel policy getter is required.')
+        self._channel_policy_getter = getter
+
+    @channel_write(lambda store, args: [args['channel']])
     def write(self, channel: str, text: str, author: str, message_id: int = 0,
               uid: str | None = None, updated_at: float | None = None) -> dict | None:
         text = text.strip()
@@ -61,6 +70,7 @@ class SummaryStore:
             self._save()
             return dict(entry)
 
+    @channel_write(lambda store, args: [args['channel']])
     def delete(self, channel: str) -> bool:
         with self._lock:
             if channel in self._summaries:

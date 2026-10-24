@@ -9,6 +9,7 @@ from copy import deepcopy
 from pathlib import Path
 
 from api_seats import atomic_json
+from channel_guards import channel_write
 
 
 _OPERATOR_PUBLICATION = object()
@@ -44,6 +45,7 @@ class MessageStore:
         self._next_id: int = 0  # monotonically increasing, survives deletions
         self._todos: dict[int, str] = {}  # msg_id → "todo" | "done"
         self._lock = threading.Lock()
+        self._channel_policy_getter = None
         self._callbacks: list = []  # called on each new message
         self._todo_callbacks: list = []  # called on todo changes
         self._delete_callbacks: list = []  # called on message deletion
@@ -76,6 +78,18 @@ class MessageStore:
         """Register a callback(msg) called whenever a message is added."""
         self._callbacks.append(callback)
 
+    def bind_channel_policy(self, getter):
+        if not callable(getter):
+            raise ValueError('An explicit channel policy getter is required.')
+        self._channel_policy_getter = getter
+
+    def _message_channels(self, ids):
+        # Called under the engine/catalog boundary, before the mutator's lock.
+        with self._lock:
+            return [message.get('channel', 'general') for message in self._messages
+                    if ids is None or message['id'] in ids]
+
+    @channel_write(lambda store, args: [args['channel']])
     def add(self, sender: str, text: str, msg_type: str = "chat",
             attachments: list | None = None, reply_to: int | None = None,
             channel: str = "general",
@@ -120,6 +134,7 @@ class MessageStore:
 
         return msg
 
+    @channel_write(lambda store, args: [args['channel']])
     def _publish_operator(self, sender, text, *, routing, authority,
                           channel='general', attachments=None, reply_to=None,
                           msg_type='chat', metadata=None):
@@ -172,6 +187,7 @@ class MessageStore:
             except Exception:
                 pass
 
+    @channel_write(lambda store, args: [args['channel']])
     def add_once(self, uid: str, sender: str, text: str, msg_type='session_result',
                  channel='general', metadata=None):
         """Atomically project a journal event, including after a missing backlink.
@@ -219,6 +235,7 @@ class MessageStore:
         with self._lock:
             self._rewrite()
 
+    @channel_write(lambda store, args: store._message_channels([args['msg_id']]))
     def update_reply_to(self, msg_id: int, reply_to: int):
         """Set reply_to on an existing message (used by import to rebuild links)."""
         with self._lock:
@@ -260,6 +277,7 @@ class MessageStore:
                 msgs = [m for m in msgs if m.get("channel", "general") == channel]
             return msgs
 
+    @channel_write(lambda store, args: store._message_channels(args['msg_ids']))
     def delete(self, msg_ids: list[int]) -> list[int]:
         """Delete messages by ID. Returns list of IDs actually deleted."""
         deleted = []
@@ -305,6 +323,8 @@ class MessageStore:
         """Register a callback(ids) called when messages are deleted."""
         self._delete_callbacks.append(callback)
 
+    @channel_write(lambda store, args: store._message_channels([args['msg_id']])
+                   + ([args['updates']['channel']] if 'channel' in args['updates'] else []))
     def update_message(self, msg_id: int, updates: dict) -> dict | None:
         """Update fields on a message in-place. Returns the updated message or None."""
         with self._lock:
@@ -340,6 +360,8 @@ class MessageStore:
             if temporary.exists():
                 temporary.unlink()
 
+    @channel_write(lambda store, args: [args['channel']] if args['channel'] is not None
+                   else store._message_channels(None))
     def clear(self, channel: str | None = None):
         """Wipe messages and rewrite the log file.
         If channel is given, only clear messages in that channel."""
@@ -386,6 +408,7 @@ class MessageStore:
                 self._rewrite_jsonl()
         return count
 
+    @channel_write(lambda store, args: [args['name']])
     def delete_channel(self, name: str):
         """Legacy complete delete; lifecycle repair uses the separate phases."""
         self.remove_channel_todos(name)
@@ -460,6 +483,7 @@ class MessageStore:
             except Exception:
                 pass
 
+    @channel_write(lambda store, args: store._message_channels([args['msg_id']]))
     def add_todo(self, msg_id: int) -> bool:
         with self._lock:
             if not any(m["id"] == msg_id for m in self._messages):
@@ -469,6 +493,7 @@ class MessageStore:
         self._fire_todo(msg_id, "todo")
         return True
 
+    @channel_write(lambda store, args: store._message_channels([args['msg_id']]))
     def complete_todo(self, msg_id: int) -> bool:
         with self._lock:
             if msg_id not in self._todos:
@@ -478,6 +503,7 @@ class MessageStore:
         self._fire_todo(msg_id, "done")
         return True
 
+    @channel_write(lambda store, args: store._message_channels([args['msg_id']]))
     def reopen_todo(self, msg_id: int) -> bool:
         with self._lock:
             if msg_id not in self._todos:
@@ -487,6 +513,7 @@ class MessageStore:
         self._fire_todo(msg_id, "todo")
         return True
 
+    @channel_write(lambda store, args: store._message_channels([args['msg_id']]))
     def remove_todo(self, msg_id: int) -> bool:
         with self._lock:
             if msg_id not in self._todos:
