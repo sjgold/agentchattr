@@ -22,7 +22,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Final Sonnet review in progress | Own reviewer full918/four skips87.682s; native/source reproduction then publication/closure |
+| #15 | Final Sonnet PASS with nonblocking notes | Main merge/post-merge checks and verified publication/closure next |
 | #17-26 | Authorized after15 | Continue in dependency order with independent Sonnet review |
 
 ## Non-negotiable verification
@@ -34,8 +34,8 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 
 ## Latest handoff
 
-Published/closed: #1-14 and #16. Ticket15 source1cebd9d/docpin9f40233 is builder-verified:918 total/four skips87.210s,4native+2UI casesPASS/cleanup[]. Application source is frozen. Final reviewer is now Seth's Sonnet5.5 agent3b53a0e1; its own918/four skips87.682s passed and source/native/corrected-restart checks continue. Gemini was stopped/archived without finalverdict; three recent nativePASS artifacts remain attributed to it, one interrupted cold run is unaccepted and separately audited absent/ended.
+Published/closed: #1-14 and #16. Ticket15 source1cebd9d/docpin9f40233 is builder-verified:918 total/four skips87.210s,4native+2UI casesPASS/cleanup[]. Application source is frozen. Final reviewer is now Seth's Sonnet5.5 agent3b53a0e1; its own918/four skips87.682s passed and source/native/corrected-restart checks PASS, final verdict accepted. Gemini was stopped/archived without finalverdict; three recent nativePASS artifacts remain attributed to it, one interrupted cold run is unaccepted and separately audited absent/ended.
 
-Next owner Sonnet returns final15findings/verdict. Codex handles fixes/recheck and verified merge/publication/closure, then continues the dependency-eligible backlog under Seth's renewed evening authorization. No live AI/provider, Omarchy or Desktop/global changes. Details in STATUS.md/TICKET-15-REVIEW.md and reviewer-retirement artifact.
+Next owner Codex handles verified merge/post-merge checks/publication/closure, then continues the dependency-eligible backlog under Seth's renewed evening authorization. No live AI/provider, Omarchy or Desktop/global changes. Details in STATUS.md/TICKET-15-REVIEW.md and reviewer-retirement artifact.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.

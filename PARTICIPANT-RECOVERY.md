@@ -1,6 +1,6 @@
 # Replace or skip a review participant
 
-Ticket15 builder Windows/local-fake and browser checks pass. Final independent acceptance and publication are pending.
+Ticket15 passed builder Windows/local-fake/browser checks and independent Sonnet review. Publication follows post-merge verification.
 
 When a review turn needs attention, open **Replace or skip participant** in its recovery controls. Earlier accepted results stay in the run.
 
@@ -24,7 +24,7 @@ The transcript records a missing-contribution notice. Later review briefs list t
 
 ## Worker lifetime and repeated requests
 
-Replacing or skipping content fences the old attempt. Its authenticated late output is rejected and quarantined. Its physical seat remains held until genuine worker and child/model exit evidence is available; other seat identities can continue.
+Replacing or skipping content fences the old attempt. Its authenticated late output is rejected and quarantined. Its physical seat remains held until genuine worker and child/model exit evidence is available; other seat identities can continue. If that same seat is assigned a later turn, the turn waits for exit evidence or explicit participant replacement.
 
 A repeated saved decision keeps its original identifiers and cannot advance twice. Stop permanently fences pending recovery. A corrected run has its own source and recovery scope.
 
