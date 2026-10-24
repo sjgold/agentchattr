@@ -713,3 +713,12 @@ Corrected large local fixture messages33897780/jobs11616874/sessions3298500B: wa
 
 
 02ff956 correction independently PASS: Sonnet81 Python5.293s plus Node12/4/12/12/2; read service/queue/module/channels/chat diffs, CSS/index stat only; no M5 rerun or full/native/rendered claim. Builder corrected full1374 tests108.219s OK(skipped4), tracked d1b3c5bb/.audit-tmp/ticket19-manage-corrected-full.log. Acceptance design draft is in TICKET-19-ACCEPTANCE.md; no resource launched.
+
+
+Acceptance design approved to draft with AC1-AC9/G1-G3 in TICKET-19-ACCEPTANCE.md. Browser adds pre-lifecycle process upgrade and clean pending-delete restart (2 exact server waits); isolated profile/screenshots on disk. Zero-global-reach guard selftests/environment containment are settled without opening other-harness configs. Existing helper owns only new tools/verify_channel_lifecycle.py + tools/fake_channel_client.py, DRAFT/compile-only; no resource runs. Root/Sonnet full-source/cleanup/hash review required next.
+
+
+First acceptance source draft independently reviewed by root/Sonnet, static compile-only only; NOT READY for execution. Original hashes/archive/findings are in TICKET-19-ACCEPTANCE.md and acceptance/root-draft-review artifact. Root confirmed wrong listener shutdown and translated exception mismatch; Sonnet found guard existence gaps/import surface/volatile map. Existing helper corrects only new draft verifier/client/stdlib guard, with no product edits or actual cases.
+
+
+Corrected acceptance static draft hashes/proof recorded in TICKET-19-ACCEPTANCE.md. Root full new guard/tool-diff read and both compile-only PASS, no actual resources/selftests. All preflight findings addressed by source inspection; independent correction review remains the execution gate. Product02ff956 unchanged.
