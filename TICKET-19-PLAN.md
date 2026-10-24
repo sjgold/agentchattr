@@ -1,6 +1,6 @@
 # Ticket 19 channel lifecycle interface freeze candidate
 
-**Status: interface candidate e492b78 confirmed with P1-P5; precisions below await short diff confirmation before pure-catalog TDD. No implementation yet.**
+**Status: interfaces/P1-P5 confirmed at981b7a5. A1 pure catalog implemented and 12 tests pass; frozen independent pure review pending. No service/app/runtime wiring.**
 
 Goal: discoverable rename, archive/reopen and deliberate deletion; preserve history/artifacts appropriately, block automatic routing into archived channels, protect general, and require finished/stopped work before removal. Scope authority specv1.7 RC-2/AT-11 and issue19. Blocker10 is verified closed. Base published main3845c5ef46ef7dbbc0453b5cf61dadc95a2c1491; baseline1040tests/four platform skips. Prior18 complete with independent acceptance/publication/closure.
 
@@ -148,7 +148,7 @@ Delete ordered steps: `messages`, `todos`, `settings`; retain jobs/schedules/sum
 
 Schedules are not deleted by archive/delete. Runner first skips inactive/held names without marking/deleting/firing, then handles each eligible due record in its own try/except. A firing failure is recorded on that schedule as a safe error and advances its next attempt through normal mark_run cadence, so a one-shot remains stored for retry and an unrelated due peer still progresses; only a successful one-shot is removed. No hot retry-every-tick loop. Reopen runs each overdue enabled schedule once at the next normal scheduler tick, not a historical catch-up burst. Disabled schedules remain disabled. Import checks reserved/inactive names before active list/autocreate, reports `channel_retired` remaps and uses service creation for truly new channels; authority-stripped imported history never routes.
 
-## Bounded work orders (not assigned until this diff is confirmed)
+## Bounded work orders (A1 executed; later stages remain gated)
 
 After contract/precise interfaces are settled, existing helper gets ONLY one new bounded state/store test module with first2 actual RED; root owns route/routing/concurrency/IO tests. Then source implementation, focused/full regression, independent frozen source review. UI uses an actual-source VM verifier with observed RED and independent review. Live Windows/local-fake and rendered acceptance need a separate script/cleanup review and one-case authorization; no real channel deletion/user data or live providers. Test archive/reopen byte preservation/reload, general protection, busy/queued/old-transport refusal, stale confirmation, atomic write failure/replay, operator auth, all automatic ingress/claim paths, peer progress, and artifact retention honestly at the available integration boundary.
 
@@ -158,4 +158,6 @@ After contract/precise interfaces are settled, existing helper gets ONLY one new
 4. **C UI.** Separate behavior freeze and actual-source VM RED/green before wiring; both layouts, archived/Retired navigation, typed confirmation, stale refresh, offline/IO inline failure, ACK-before-selection/draft retention, 14/44/390. Independent review.
 5. **D acceptance.** Separate exact-count Windows/local-fake script and cleanup review, then one-case runs + independent reproduction; real server ingress/claim suppression/queue-cancel/busy/refusal/rename-repair and rendered desktop/390. No process or provider starts in planning; no real-user channel deletion. Linux/live providers/accessibility limits explicitly retained.
 
-Current checkpoint: docs/source-read only. Next owner Sonnet confirms the P1-P5 short diff, then Codex assigns A1 only; helper remains idle until confirmation. No Ticket19 implementation/testing accepted yet.
+Current checkpoint A1: helper first EXACT2 tests failed with ModuleNotFoundError channel_lifecycle (2 errors/0.003s) before production. Root added only new channel_lifecycle.py; original2 passed0.182s. Helper expanded/froze ONLY tests/test_channel_lifecycle.py to12 methods, actual12PASS0.844s without fixture/assertion changes; root reread all cases and independently12PASS0.723s. py_compile/diff checks clean. Root separate temp-dir probe: two synchronized store writers produce exactly1 save/1 conflict, no lost revision; four malformed catalogs fail closed; reload agrees. Helper suite also tests four cross-instance writers with exactly1 winner/3 conflicts. No configured runtime/native/process evidence. Source and tests use temp JSON, existing atomic writer and kernel lock; no app/service imports or wiring.
+
+Next owner Sonnet: review frozen pure module/tests and rerun/adversarial probes before Codex starts A2. Helper frozen/idle. Full application discovery not rerun at this unused pure-module checkpoint; baseline remains Ticket18's1040/four skips. No Ticket19 runtime behavior or whole-ticket acceptance claimed.

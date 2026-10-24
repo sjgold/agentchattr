@@ -25,7 +25,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #15 | Published and closed | Source41b80f7, Sonnet independent PASS, post-merge918/four skips86.469s |
 | #17 | Published and closed | Executable4723027, originmainfd825c8, independentPASSWITHNOTES; postmerge1004/four skips86.898s; issueclosed/completedverified. Schedulingcomposer deferred. |
 | #18 | Published and closed | Main5cac753, issueclosed/completed2026-10-24T10:45:05Z verified; independentPASSWITHNOTES; postmerge1040/four skips89.765s. Receipt preserves all limits/failed fixtures. |
-| #19 | Pure catalog tests assigned | Freeze981b7a5 confirmed; helper owns only new pure12 tests, first2 actual RED before Codex module; no runtime wiring before independent pure review. |
+| #19 | Pure catalog12 pass, independent review pending | Initial2actualRED0.003s; helper12PASS0.844s/root12PASS0.723s, no fixture changes. No runtime wiring before Sonnet pure source/test review. |
 | #20-26 | Authorized, pending | Continue dependency order after current ticket |
 
 ## Non-negotiable verification
@@ -39,6 +39,6 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 
 Published/closed: #1-18. Ticket18 main5cac753 is verified on origin/main and issue18 closed/completed at2026-10-24T10:45:05Z. Independent final Sonnet PASS WITH NONBLOCKING NOTES f893bd2; productc11bdec/verifier12c9a81 unchanged. Both builder/reviewer reproduced py/mjs and ordinary py browser serve; local postmerge1040/four skips89.765s and both UI VM12PASS. Receipt REVIEW-CLAUDE-TICKET-18.md and guide DOCUMENT-INPUTS.md preserve coverage/limits/failed fixtures.
 
-Current owner Codex: Ticket19 governing choices settled by Sonnet critique. Exact catalog/service/HTTP/claim/repair interfaces in TICKET-19-PLAN.md at981b7a5 are confirmed. Helper owns only pure catalog tests (12 methods, first2 RED); Codex implements after RED, Sonnet reviews pure source/tests before any runtime wiring. No Ticket19 production implementation yet. Sonnet remains independent reviewer. No owned acceptance processes/browser sessions remain. Standing authorization continues; no live AI/Omarchy/Desktop/global changes.
+Current owner Codex: Ticket19 governing choices settled by Sonnet critique. Exact catalog/service/HTTP/claim/repair interfaces in TICKET-19-PLAN.md at981b7a5 are confirmed. Helper owns only pure catalog tests (12 methods, first2 RED); Codex implements after RED, Sonnet reviews pure source/tests before any runtime wiring. Pure ChannelStore exists after the two genuine missing-module RED; original two tests pass. Expanded bounded12 pass (helper0.844s/root0.723s); frozen pure review pending, no runtime wiring. Sonnet remains independent reviewer. No owned acceptance processes/browser sessions remain. Standing authorization continues; no live AI/Omarchy/Desktop/global changes.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.
