@@ -1,5 +1,48 @@
 """Serialize durable run eligibility with queue mutations, without store nesting."""
-from dispatch_queue import ACTIVE, QueueBusy, QueueConflict
+import math
+
+from dispatch_queue import ACTIVE, QueueBusy, QueueConflict, _identifier
+
+
+def is_nonterminal_review(run):
+    return (run.get('completion_protocol') == 1 and not run.get('stop_id')
+            and not run.get('replaced_by_run_id')
+            and run.get('state') in ('active', 'waiting', 'paused', 'awaiting_input',
+                                     'stalled', 'retrying', 'interrupted', 'prepared'))
+
+
+def allowed_review_dispatch_ids(runs, identity_id):
+    """Restrict a seat to its earliest outstanding logical review invocation."""
+    ordered, malformed = [], []
+    for run in runs:
+        if not is_nonterminal_review(run):
+            continue
+        invocation = run.get('active_invocation') or {}
+        if (invocation.get('expected_identity_id') != identity_id
+                or invocation.get('human') is True or invocation.get('consumed') is True):
+            continue
+        dispatch = invocation.get('dispatch_id')
+        try:
+            _identifier(dispatch, 'Dispatch ID')
+            valid_dispatch = True
+        except ValueError:
+            valid_dispatch = False
+        session_id = run.get('id')
+        valid_session = type(session_id) is int and session_id > 0
+        monitoring = invocation.get('monitoring')
+        created = monitoring.get('created_at') if isinstance(monitoring, dict) else None
+        valid_created = ((type(created) is int and created >= 0)
+                         or (type(created) is float and created >= 0 and math.isfinite(created)))
+        if (not valid_dispatch or not valid_session or not valid_created
+                or invocation.get('human') is not False or invocation.get('consumed') is not False):
+            malformed.append((session_id if valid_session else math.inf,
+                              dispatch if isinstance(dispatch, str) else '', valid_dispatch))
+        else:
+            ordered.append((created, session_id, dispatch))
+    if malformed:
+        _, dispatch, valid = min(malformed)
+        return {dispatch} if valid else set()
+    return {min(ordered)[2]} if ordered else None
 
 
 class CoordinatedQueue:
@@ -59,10 +102,13 @@ class CoordinatedQueue:
     def claim(self, instance, consumer_id):
         with self._lock:
             unpublished_holds = self._reconcile()
-            blocked = {run['run_id'] for run in self._sessions.list_all()
+            runs = self._sessions.list_all()
+            blocked = {run['run_id'] for run in runs
                        if run.get('dispatch_eligible') is False and not run.get('stop_id')}
+            identity = instance.get('identity_id') if isinstance(instance, dict) else None
+            allowed = allowed_review_dispatch_ids(runs, identity)
             return self._queue.claim(instance, consumer_id, blocked_run_ids=blocked,
-                                     blocked_identity_ids=unpublished_holds)
+                                     blocked_identity_ids=unpublished_holds, allowed_dispatch_ids=allowed)
 
     def __getattr__(self, name):
         attribute = getattr(self._queue, name)

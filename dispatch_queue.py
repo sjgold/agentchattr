@@ -130,9 +130,16 @@ class QueueStore:
             self._write(ledger)
             return deepcopy(record)
 
-    def claim(self, instance, consumer_id, *, blocked_run_ids=None, blocked_identity_ids=None):
+    def claim(self, instance, consumer_id, *, blocked_run_ids=None, blocked_identity_ids=None,
+              allowed_dispatch_ids=None):
         identity = _seat(instance)
         _identifier(consumer_id, 'Consumer ID')
+        if allowed_dispatch_ids is not None:
+            if not isinstance(allowed_dispatch_ids, set):
+                raise ValueError('Allowed dispatch IDs must be a set or None.')
+            allowed_dispatch_ids = set(allowed_dispatch_ids)
+            for dispatch_id in allowed_dispatch_ids:
+                _identifier(dispatch_id, 'Allowed dispatch ID')
         blocked = set(blocked_run_ids or ())
         with self._transaction() as ledger:
             records = [r for r in ledger['records'] if r['envelope']['target_identity_id'] == identity]
@@ -151,6 +158,9 @@ class QueueStore:
             for record in records:
                 if record['state'] == 'queued':
                     if record['envelope'].get('run_id') in blocked:
+                        continue
+                    if (allowed_dispatch_ids is not None
+                            and record['envelope']['dispatch_id'] not in allowed_dispatch_ids):
                         continue
                     record['consumer_id'] = consumer_id
                     self._event(record, 'dispatched')

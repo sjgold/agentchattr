@@ -74,7 +74,7 @@ class SessionChoiceTests(unittest.TestCase):
         assert sessions.get(1)['current_turn'] == 0
         messages.add('claude', 'I will use Blue.')
         assert sessions.get(1)['current_turn'] == 0
-        engine.resume_session(1)  # ordinary human answer interrupted the run
+        assert sessions.get(1)['state'] == 'waiting'  # Human chat does not pause.
         self.submit()
         assert sessions.get(1)['current_turn'] == 1
         assert trigger.trigger_sync.call_count == 2
@@ -91,17 +91,14 @@ class SessionChoiceTests(unittest.TestCase):
         assert sessions.get(1)['current_turn'] == 0
         assert trigger.trigger_sync.call_count == 1
 
-    def test_human_interruption_requires_explicit_resume_and_final(self):
+    def test_human_chat_preserves_waiting_and_requires_explicit_final(self):
         sessions, messages, engine, trigger, timers = self.fixture
         ask(messages)
         messages.add('Ben', '@claude Use red instead.')
-        assert sessions.get(1)['state'] == 'paused'
+        assert sessions.get(1)['state'] == 'waiting'
         messages.add('claude', 'Using red.')
-        with self.assertRaises(EventConflict):
-            self.submit()
         assert sessions.get(1)['current_turn'] == 0
-        engine.resume_session(1)
-        assert trigger.trigger_sync.call_count == 1  # Resume never injects twice
+        assert trigger.trigger_sync.call_count == 1
         self.submit()
         assert sessions.get(1)['current_turn'] == 1
 
@@ -168,7 +165,7 @@ class SessionChoiceTests(unittest.TestCase):
         assert sessions.get(1)['current_turn'] == 0
         messages.add('claude', 'Using Blue.')
         assert sessions.get(1)['current_turn'] == 0
-        engine.resume_session(1)
+        assert sessions.get(1)['state'] == 'waiting'
         self.submit()
         assert sessions.get(1)['current_turn'] == 1
 

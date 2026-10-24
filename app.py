@@ -953,6 +953,11 @@ async def _handle_new_message(msg: dict):
     _session_draft_re = _re.compile(r'```session\s*\n(.*?)\n```', _re.DOTALL)
     draft_match = _session_draft_re.search(text)
     is_agent_session_draft = bool(draft_match and sender in known_agents)
+    suppress_agent_wakes = bool(session_engine and sender in known_agents
+                                and session_engine.has_nonterminal_review(channel))
+    if suppress_agent_wakes and (not is_agent_session_draft or is_broadcast_cmd):
+        await broadcast(msg)
+        return
     is_hidden_session_request = msg_type == "session_request"
 
     is_agent_continue = (stripped == "/continue" and sender in known_agents)
@@ -985,13 +990,13 @@ async def _handle_new_message(msg: dict):
         await broadcast_status()
         return
 
-    if stripped == "/roastreview":
+    if not suppress_agent_wakes and stripped == "/roastreview":
         agent_names = registry.get_all_names() if registry else list(config.get("agents", {}).keys())
         mentions = " ".join(f"@{a}" for a in agent_names)
         store.add(sender, f"{mentions} Time for a roast review! Inspect each other's work and constructively roast it.", channel=channel)
         return
 
-    if stripped.startswith("/artchallenge"):
+    if not suppress_agent_wakes and stripped.startswith("/artchallenge"):
         parts = stripped.split(None, 1)
         theme = parts[1] if len(parts) > 1 else "anything you like"
         agent_names = registry.get_all_names() if registry else list(config.get("agents", {}).keys())
@@ -1005,7 +1010,7 @@ async def _handle_new_message(msg: dict):
         )
         return
 
-    if stripped == "/hatmaking":
+    if not suppress_agent_wakes and stripped == "/hatmaking":
         agent_names = registry.get_all_names() if registry else list(config.get("agents", {}).keys())
         mentions = " ".join(f"@{a}" for a in agent_names)
         all_instances = registry.get_all() if registry else {}
@@ -1026,7 +1031,7 @@ async def _handle_new_message(msg: dict):
         )
         return
 
-    if stripped.startswith("/poetry"):
+    if not suppress_agent_wakes and stripped.startswith("/poetry"):
         parts = stripped.split(None, 1)
         form = parts[1] if len(parts) > 1 else "haiku"
         if form not in ("haiku", "limerick", "sonnet"):
@@ -1085,6 +1090,8 @@ async def _handle_new_message(msg: dict):
                            "errors": ["Invalid JSON in session block"], "valid": False},
             )
 
+    if suppress_agent_wakes:
+        return  # Session draft cards may display, but never create mention work.
     raw_targets = router.get_targets(sender, text, channel)
     # Resolve base family names to actual registered instances
     # e.g. 'claude' → 'claude-prime' when slot-1 was renamed
@@ -1114,7 +1121,7 @@ async def _handle_new_message(msg: dict):
 
     # Session turn guard: if a session is active on this channel and the sender
     # is an agent, only allow triggering the agent whose turn it is.
-    # Human @mentions are always allowed (the session engine handles pausing).
+    # Human requests wait through the queue's logical review-turn guard.
     sender_is_agent = sender in known_agents
     allowed_agent = session_engine.get_allowed_agent(channel) if session_engine and sender_is_agent else None
 
@@ -2240,8 +2247,12 @@ async def trigger_agent_silent(request: Request):
     targets = [agent_name]
     if registry:
         resolved = registry.resolve_to_instances(agent_name)
-        if resolved:
-            targets = resolved
+        if not resolved:
+            candidates = sorted(item['name'] for item in registry.get_all().values()
+                                if item['base'] == agent_name and item['state'] == 'active')
+            return JSONResponse({'error': 'Agent family is ambiguous; select one seat.',
+                                 'candidates': candidates}, status_code=409)
+        targets = resolved
     for target in targets:
         if agents.is_available(target):
             await agents.trigger(target, message=message, channel=channel, prompt=custom_prompt)
@@ -2342,7 +2353,8 @@ async def post_job_message(job_id: int, request: Request):
 
     # Route @mentions in job messages to agents (with job_id context)
     job = jobs.get(job_id)
-    if job:
+    if job and not (session_engine and registry and registry.is_registered(sender)
+                    and session_engine.has_nonterminal_review(job.get('channel', 'general'))):
         channel = job.get("channel", "general")
         raw_targets = router.get_targets(sender, text, channel)
         targets = []

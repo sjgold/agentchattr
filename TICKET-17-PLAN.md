@@ -148,7 +148,7 @@ Review focus: no accidental expansion, source-data routing, name-to-new-identity
 - Corrected backtick info strings, reset quote state at fence open, restricted line boundaries, tolerated valid out-of-grammar registry names, and followed Sonnet settlement allowing literal non-grammar selections (stale selections warn unavailable). The helper deliberately moved two grammar-only negatives to positive stale-selection diagnostics, preserving malformed-shape/UTF8/NUL/empty guards.
 - Root corrected suite26PASS0.349s (22 new pure tests plus4 existing Router tests), syntax/diff checks pending final freeze. Earlier full936TOTAL tests/four skips92.293s was atf868445, before these fixes; do not attribute it to the corrected source. No runtime routing integration yet.
 
-## Tranche2 exact runtime interfaces (proposed freeze, before tests)
+## Tranche2 exact runtime interfaces (approved freeze, implementation below)
 
 Sonnet bounded-passed corrected Tranche1 at e9a6402: independent26 focused0.343s plus probe reruns (no native wiring). Builder corrected full940TOTAL tests,936passed/four expected skips89.561s, shell4686f27c/log.audit-tmp/ticket17-pure-resolver-corrected-full.log. These results do not certify the following unimplemented contracts.
 
@@ -189,3 +189,11 @@ Apply the same predicate before agent job mention loops in mcp_bridge.py (authen
 Helper assignment proposed: only new tests/test_recipient_runtime_order.py, about12 cases. First actual red: released-but-unconsumed current review must deny a queued manual claim; pure allowed_review_dispatch_ids missing method. Agent guard red is root-owned separately. Use real engine/store/registry/queue fixtures with explicitly nonnative process doubles. Extend to two runs/same seat ordering, raw queued scan past skipped record, malformed/NaN/bool timing, no occupancy default, Stop/superseded/human/consumed boundaries, owner/cancelling polling/recovery holds and byte-stable no-claim. Root owns separate Router/alias/agent-suppression tests and deliberate old Ticket8 test edit, with actual red first. No helper edits to old tests or production. Freeze approval is required before assigning this workorder.
 
 Tranche2 freeze06bdc67 approved by Sonnet with C1 deterministic malformed-own-task fallback, C2 conversion ambiguity409/caller tests, and C3 documented adjacent-turn publication gap. These corrections above precede helper tests. Runtime code remains unchanged until observed red.
+
+### Tranche2 implemented verification checkpoint (2026-10-24 Chicago)
+
+- Queue-only helper initial2 actualred0.058s (manual wrongly claimed after early release plus missing helper). Final12PASS0.405s after disclosed fixture-only monitoring nesting and32hex hold-ID corrections. Actual stores/ledger/engine fixtures; no workers or native lifecycle claims.
+- Root added10 runtime routing tests and deliberately revised the existing Ticket8 choice expectations. Initial9+one changed old test ran10/0.235s with13 failing observations/9 missing-method errors (.audit-tmp/ticket17-runtime-routing-red.log), before those source edits. Later focused34 exposed two other old choice-test resume assumptions; replaced those resumes with explicit waiting assertions for the approved behavior change. Existing explicit pause/restart tests remain unchanged.
+- Root found one additional numeric-validation edge: math.isfinite on a very large finite integer raised OverflowError; actual1test ERROR0.017s preceded the integer-safe validation fix. This preserves the frozen finite-int contract without float coercion.
+- Final focused62PASS1.742s (.audit-tmp/ticket17-runtime-focused.log): runtime routing10/order12, choices, old Router, typed projections, Stop routing and turn recovery. Python syntax/diff clean. Full regression and Sonnet bounded review follow on the frozen source; no final17 acceptance yet.
+- Implemented Router shared lexer/no human default, unique-family compatibility/conversion409, inert human-chat callback, channel-level agent guards including job paths/draft display, and logical claim whitelist. Operator trusted receipts/server preview/UI remain unimplemented; no scheduling-composer change.

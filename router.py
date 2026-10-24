@@ -1,6 +1,6 @@
 """Message routing based on @mentions with per-channel loop guard."""
 
-import re
+from recipient_routing import scan_addresses
 
 
 class Router:
@@ -12,7 +12,6 @@ class Router:
         self._online_checker = online_checker  # callable() -> set of online agent names
         # Per-channel state: { channel: { hop_count, paused, guard_emitted } }
         self._channels: dict[str, dict] = {}
-        self._build_pattern()
 
     def _get_ch(self, channel: str) -> dict:
         if channel not in self._channels:
@@ -23,28 +22,19 @@ class Router:
             }
         return self._channels[channel]
 
-    def _build_pattern(self):
-        # Sort longest-first so "gemini-2" is tried before "gemini"
-        names = [re.escape(n) for n in sorted(self.agent_names, key=len, reverse=True)]
-        alternatives = "|".join(names + ["both", "all"])
-        self._mention_re = re.compile(
-            rf"@({alternatives})(?![\w-])", re.IGNORECASE
-        )
-
     def parse_mentions(self, text: str) -> list[str]:
-        mentions = set()
-        for match in self._mention_re.finditer(text):
-            name = match.group(1).lower()
+        mentions, seen = [], set()
+        for name in scan_addresses(text)['tokens']:
             if name in ("both", "all"):
-                # Only tag online agents when using @all
-                if self._online_checker:
-                    online = self._online_checker()
-                    mentions.update(n for n in self.agent_names if n in online)
-                else:
-                    mentions.update(self.agent_names)
+                online = self._online_checker() if self._online_checker else self.agent_names
+                expanded = sorted(self.agent_names.intersection(online))
             else:
-                mentions.add(name)
-        return list(mentions)
+                expanded = [name] if name in self.agent_names else []
+            for target in expanded:
+                if target not in seen:
+                    seen.add(target)
+                    mentions.append(target)
+        return mentions
 
     def _is_agent(self, sender: str) -> bool:
         return sender.lower() in self.agent_names
@@ -59,12 +49,6 @@ class Router:
             ch["hop_count"] = 0
             ch["paused"] = False
             ch["guard_emitted"] = False
-            if not mentions:
-                if self.default_mention in ("both", "all"):
-                    return list(self.agent_names)
-                elif self.default_mention == "none":
-                    return []
-                return [self.default_mention]
             return mentions
         else:
             # Agent message: blocked while loop guard is active
@@ -97,6 +81,5 @@ class Router:
         self._get_ch(channel)["guard_emitted"] = True
 
     def update_agents(self, names: list[str]):
-        """Replace the agent name set and rebuild the mention regex."""
+        """Replace the current known agent names."""
         self.agent_names = set(n.lower() for n in names)
-        self._build_pattern()

@@ -849,6 +849,12 @@ class SessionEngine:
             return None
         return self._get_expected_agent(session)
 
+    def has_nonterminal_review(self, channel: str) -> bool:
+        """Typed scheduling owns agent wakes throughout an unfinished review."""
+        from queue_coordinator import is_nonterminal_review
+        with self._lock:
+            return any(is_nonterminal_review(run) for run in self._store.list_all(channel))
+
     def list_active(self) -> list[dict]:
         """List all active/waiting/paused sessions, enriched for the frontend."""
         channels = dict.fromkeys(s.get('channel', 'general') for s in self._store.list_all())
@@ -958,20 +964,8 @@ class SessionEngine:
     # --- Message callback ---
 
     def _on_message(self, msg: dict):
-        """Chat may interrupt a run, but never constitutes a result event."""
-        if msg.get('sender') == 'system' or msg.get('type', 'chat') not in ('chat', 'decision'):
-            return
-        with self._lock:
-            session = self._store.get_active(msg.get('channel', 'general'))
-            if not session or session.get('completion_protocol') != 1 or session['state'] == 'awaiting_input':
-                return
-            invocation = session.get('active_invocation')
-            if not invocation or invocation.get('human'):
-                return
-            expected = self._get_expected_agent(session)
-            sender = msg.get('sender', '')
-            if expected and self._is_agent(expected) and not self._is_agent(sender) and sender != expected:
-                self._store.pause(session['id'])
+        """Shared chat is display data; explicit session actions change run state."""
+        return None
 
     def _live_instance(self, instance):
         from turn_events import EventAccessError

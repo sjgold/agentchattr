@@ -26,7 +26,7 @@ Seth initially instructed Codex to finish15 and stop, then explicitly cleared co
 
 ## What's not done
 
-- Ticket17 plan incorporates Sonnet M1-M5 and settled parser/UID/whitelist refinements. Pure resolver plus22 new tests are implemented,26 focused including existing Router pass after reviewer-found fixes. Corrected full regression and Sonnet bounded recheck precede later routing/queue/UI tranches.
+- Ticket17 plan incorporates Sonnet M1-M5 and settled parser/UID/whitelist refinements. Pure resolver boundedPASS/full940; runtime Tranche2 implemented with22 further tests and62focusedPASS. Frozen full regression/Sonnet bounded review precede operator ingress/preview/UI. No final17 acceptance.
 - Native Linux/Omarchy, live AI providers/clients, Desktop/global changes and remote-compute cancellation are outside this work.
 - Future tickets are authorized after15 acceptance/publication, in dependency order. No next-ticket implementation has started.
 

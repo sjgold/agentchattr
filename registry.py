@@ -599,8 +599,8 @@ class RuntimeRegistry:
         """Resolve a name to actual registered instance names.
 
         If `name` is a registered instance, returns [name].
-        If `name` is a base family name with no exact match, returns all
-        active instances in that family (e.g. 'claude' → ['claude-prime']).
+        A base alias resolves only when exactly one active family member exists.
+        Multiple active members are ambiguous and return no targets.
         Otherwise returns [name] unchanged (for non-agent names like 'ben').
         """
         with self._lock:
@@ -610,8 +610,10 @@ class RuntimeRegistry:
             if name in self._bases:
                 members = [i.name for i in self._instances.values()
                            if i.base == name and i.state == "active"]
-                if members:
+                if len(members) == 1:
                     return members
+                if len(members) > 1:
+                    return []
             return [name]
 
     def resolve_name(self, name: str) -> str:
