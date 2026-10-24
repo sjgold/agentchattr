@@ -277,3 +277,10 @@ Acceptance DESIGN is approved to DRAFT ONLY with these settled requirements, bef
 - A6: mjs draft-launcher browser mode requires a real draft-message fixture and remains OPTIONAL, with separate authorization only after py ordinary-launcher browser PASS. VM covers draft behavior meanwhile. No implication that a raw URL query selects the channel; click its tab explicitly.
 
 Existing helper next drafts ONLY tools/verify_document_review.py + tools/fake_document_client.py, no changes to old verifiers/source/status, no integration run. Compile-only must start no processes. Root and Sonnet review the complete new script, fake client, imported cleanup shape and hashes before authorizing ONE case; failures stop the sequence and remain recorded. No claim of accepted counts or cleaned resources exists until actual runs.
+
+
+## Corrected acceptance draft frozen for independent source review (unrun)
+
+Root read the complete initial verifier/client and reused lifecycle close, then requested B1-B4 preflight corrections. Corrected draft: provider/socket construction has its own exception cleanup and starts the provider thread only after other initialization; serve-only secondary edited text/READY/adoption use exact LF while primary canonical and non-serve CRLF remain unchanged; actual pre-primary refusal matrix now checks agent/no-token403, binary/invalidUTF8/MAX+1 and tampered Start with authoritative no-effects/id/runtime snapshots; nested run/child revision+encoding checks are explicit. No product source or prior verifier was changed.
+
+Root verified the corrected source and ran compile-only (2generatedservers/1client/processes_started0); helper syntax/compile-only also clean. Verifier SHA256 fccaf8ca6a37236bebce301f2d2016740d6738c1e3bc88b06c1dd700fb6e1524; fake client f5893f5f94abb6684df0543266676639fd9dc6a7e5898d60b8522f73b28c5eae. No actual case has run. Next Sonnet independently reads full script/client/cleanup before ONE-case readiness authorization. Planned1CLI/1localAPI/2final counts remain assertions to be tested, not evidence.
