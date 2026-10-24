@@ -341,3 +341,20 @@ Root in-process self-check `.audit-tmp/ticket18_http_preamble_probe.py` passed7 
 Remaining body-close reasoning: NUL/invalidUTF8400 follows full body consumption; tampered Start and restart refusal handlers also fully read JSON. Length MAX+1 is the sole intentionally unread operator-body case and retains exact status+server audit allowance. Chunked overflow retains its independent server reader413/observed byte-count proof and explicitly labelled transport outcome. Authentication probes now contain no unread bytes; no broad body-error relaxation.
 
 Verifier SHA25646f075a9ea8bf6dcecf2c40c14e8e10339b1ade757e86a8763ad76d6bbae94f2; client unchanged. Root diff/static/compile-only verification and Sonnet short recheck are required before the third py attempt; no fresh native run/mjs/browser has started.
+
+
+## Third py at0118e27: late path-key fixture failure, cleanup complete
+
+Tracked36c2dd9e-0051-4fb3-b678-e947ca041e87, scratch `.audit-tmp/document review py 7pms_r4i`, exited1 at the final ledger digest comparison: effect map used Windows `queue\ledger.json`, lookup expected `queue/ledger.json`. No product defect or accepted result. Sonnet confirmed source/evidence diagnosis; HTTP-preamble real-socket checks passed, so the earlier condition requiring a worker-free socket test after another HTTP failure did not apply.
+
+Measured before failure: one actual CLI injection, one local fake API generation, two primary admitted finals; exactly one prepared pasted child(id3, not3children) from human parentid2 after primaryid1. All three unchanged restart variants returned400 with equal effect snapshots. Original271bytes/SHA25675e60e2aefbe89fc47a46acb84004b2157dc5b85fd54cdc89a623d1eda32a5bc matched the real CLI brief/API packet/run. HTTP auth403/no handler entry, NUL/UTF8400, early413 with labelled body reset, and chunked client413/reader413/524289bytes in3chunks passed. Chunked digest84079794567a4362a19cbd5d771303b130580e18aa40f80e23c3c4432a6fa558. Twenty-one observations102202bytes. Final path scan/result block did not execute.
+
+Cleanup2workers/1hiddenclient/1model/1true server ended; model basis retained_native_model_handle_observed_end; unresolved[]. Client1turn/console_present true/console_visible false/no error; all three run records stopped after cleanup. Serverlog Traceback/Selector/Warning/Error all0. Failed scratches mwq99nfh, pgmsqycg and7pms_r4i remain failed fixtures, not acceptance.
+
+## Portable map-key correction and unit preflight
+
+Only code change: effect map keys use path.relative_to(data).as_posix(); digests/sizes/exclusions/comparison assertions unchanged. Root whole verifier/client lookup audit found one literal effect-map lookup (`queue/ledger.json`), now consistent. Other filesystem operations use Path joins/globs; URL/package ids use their own slash syntax. Both snapshots use the same function, so before/after semantics are unchanged.
+
+Root `.audit-tmp/ticket18_effect_keys_probe.py` executed actual product_effects without Fixture construction: nested config/birth/launch/queue/brief/session targets had exact expected keys, explicit PureWindowsPath lookup succeeded, two snapshots were stable after receipt/tmp mutations, and a real target mutation changed the digest map. Popen guarded/never called, zero native processes. Read-only reconstruction of failed scratch additionally confirmed baseline/after ledger hash+size equality and original/CLI/API/run byte/hash equality; explicitly not acceptance.
+
+Verifier SHA2569445f30d215c77433967d85e7f7b8aa5bbc2e0670d9365a3e7f6e27bae21d9d9; fake client unchanged. Syntax/compile-only2servers/1client/processes0 pass. Next Sonnet diff/hash recheck before a fourth py attempt; no fresh case/mjs/browser started.

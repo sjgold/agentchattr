@@ -499,7 +499,7 @@ class Fixture:
             if path.name == 'receipt.json' and path.parent.parent.name == 'api_seat_runtime':
                 continue
             raw = path.read_bytes()
-            files[str(path.relative_to(self.data))] = {'sha256':hashlib.sha256(raw).hexdigest(),'size':len(raw)}
+            files[path.relative_to(self.data).as_posix()] = {'sha256':hashlib.sha256(raw).hexdigest(),'size':len(raw)}
         return {'files': files, 'next_session_id': self.state()['next_session_id'],
             'runtime_directories': sorted(p.name for p in (self.data / 'api_seat_runtime').iterdir() if p.is_dir()),
             'exclusions': ['api_seat_runtime/*/receipt.json (routine worker heartbeat)',
