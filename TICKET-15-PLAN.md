@@ -1,8 +1,8 @@
 # Ticket15: replace or skip a missing participant
 
-State: builder implementation and acceptance complete, final same-AGY review pending. Component checkpoints through132e598 have bounded independent PASS. Later skip/routes full918, all4 actual Windows/local-fake cases and both actual UI serves pass. Final frozen discovery, independent reproduction, merge/post-merge verification/publication/closure remain. Finish Ticket15, then stop; no next ticket.
+State: builder implementation and acceptance complete, final same-AGY review pending. Component checkpoints through132e598 have bounded independent PASS. Later skip/routes full918, all4 actual Windows/local-fake cases and both actual UI serves pass. Final independent reproduction, merge/post-merge verification/publication/closure remain. Latest evening authorization permits continuation after15; the designated final reviewer is Sonnet5.5, replacing retired Gemini.
 
-Base: published main `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Owner: Codex, claim `a99548d9-49eb-4f70-9cf1-d185414cbad5`. Independent reviewer: same AGY. Scope: issue15, specification v1.7 SC-5 and AT-21d/22. Ticket12 blocker and Tickets13/14 recovery are delivered.
+Base: published main `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Owner: Codex, claim `a99548d9-49eb-4f70-9cf1-d185414cbad5`. Independent reviewer: Sonnet5.5 agent3b53a0e1, designated by Seth on2026-10-23 evening; earlier bounded AGY reviews remain historical evidence. Scope: issue15, specification v1.7 SC-5 and AT-21d/22. Ticket12 blocker and Tickets13/14 recovery are delivered.
 
 ## Outcome
 
@@ -206,3 +206,5 @@ Skip/routes actual component results: helper initial2 missing-method errors0.102
 Final builder actual acceptance: replace-api6rmzxi21 (3 APIcalls/1CLIinjection/3events), replace-clibq9wq49w (1API/3injections/3events), skipzwilykuq (2API/1injection/2authentic events plus missing notice/footer/ZIP), repair-coldcui8g8b_ (1785.788ms same-data restart; real sync failure/no birth, zero cold auto launches until explicit repeat/repair,3API/1injection/3events). Actual UI serves ove1rbs8 APIreplacement and i0noa6tp skip replayed original stored decisions and passed original native assertions. All cleanup unresolved[]. Every case measured zero recovery termination, original source+idle peer preserved, actual old late typed output quarantined. Verifier header-only finalization changes no behavior. Builder browser artifact records exact metrics/tool limits; final same-AGY whole-ticket review remains.
 
 Affected prior integrations: turn recoveryPASS44.510s; corrected restart first k4mzwnry freshCLIbrief deadline failed with no established cause, then unchanged5g3zflf5PASS (no source/assertion edits); sessionStopPASSxbcx2yup and APIlostACKPASSv8ktfnqt. Keep initial failure visible and require independent corrected-restart reproduction before finalacceptance. No stable product regression was inferred from the unchanged pass.
+
+Latest authority update2026-10-23 evening: Seth explicitly cleared continuation beyond15 and installed Sonnet5.5 reviewer3b53a0e1. This supersedes all earlier stop-after15 limits and same-Gemini reviewer requirements. Final15review/publication remain first; no application source changed for this handoff.

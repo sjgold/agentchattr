@@ -1,14 +1,16 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-23 (#1-14 and #16 published/closed; #15 builder918/native/UI checks pass; final independent review next; stop after15)
+**Updated:** 2026-10-23 evening (#15 final Sonnet review in progress; Gemini retired; continuation beyond15 reauthorized)
 
 ## Current handoff
 
 - Active work: Ticket15, branch `codex/ticket-15-participant-replacement`, executable checkpoint `1cebd9d4244177fdedd7027f22d101bf1c58381e`. Builder acceptance complete; not final independently accepted, merged, published or closed.
 - Verified: final frozenfc7ef93 full918 TOTAL tests OK (914 passed,4 expected platform skips)87.210s, focused44/4.167s plus later options/route15/2.751s, syntax/diff clean. All4 actual Windows/local-fake cases and2 actual UI serves PASS with cleanup unresolved[]. Exact counts/scratches/failure evidence: `TICKET-15-REVIEW.md`.
-- Independent scope: same AGY bounded-PASS132e598 and earlier components;40 dedicated/95 combined tests independently executed, frozen901 full builder-run/reviewer-log-verified. Later skip/routes/UI/tools require final whole-ticket review.
-- Remaining owners: Codex records final frozen full result and sends same AGY final source/execution pack. Reviewer must reproduce actual4 cases and prior corrected restart; its first builder timeout k4mzwnry and unchanged pass5g3zflf5 are preserved without an invented cause. After finalPASS, Codex performs main merge/post-merge checks/push/verified closure and final status receipt.
-- Stop condition: finish Ticket15 completely, then stop. Do not start another ticket. Helper/browser fixtures are stopped; no live provider/nativeAI/Omarchy/Desktop/global changes are authorized. Helper is idle for concrete findings only.
+- Independent scope: historical Gemini bounded-PASS132e598 and earlier components remain attributed to that reviewer. Final review is now assigned by Seth to Claude/Sonnet5.5 agent `3b53a0e1-7bc3-4807-bf3a-0d08fa9fea86` (harness alias sonnet, agent-reported version). Its own full918 total/four skips87.682s passed; source/native/previously intermittent corrected-restart review is in progress. No final acceptance yet.
+- Remaining owners: Sonnet reports the final verdict and evidence; Codex resolves findings/recheck, then main merge/post-merge verification/push/verified closure. Application source remains frozen at1cebd9d; later commits are documentation/header only. Use `TICKET-15-REVIEW.md`.
+- Latest direction (Seth,2026-10-23 evening): "your clear to go past 15". This supersedes the earlier stop-after15 limit. Continue the approved backlog after15 is independently accepted and published, using Sonnet5.5 as designated reviewer. No routine human gates; live providers/nativeAI/Omarchy/Desktop/global settings remain outside authorization.
+- Gemini agent `ec1fbcd1-4a02-410e-9029-e498f67918c8` was explicitly stopped and archived. Three recent integration reproductions have PASS/cleanup[]; its interrupted repair-cold5xphgpv8 has no result/cleanup and is not accepted. Separate root read-only process audit confirms all recorded workers/client/servers absent, model journals ended and a single genuine no-spawn manifest, with all5 launch intents accounted. See retirement artifact. The working badge does not establish continuous inference/billing across the reported12-hour interval.
+- Existing helper is idle for concrete findings/new assigned tests. Builder browser/native fixtures are stopped. New reviewer's bounded acceptance processes are reviewer-owned.
 
 - Maintain this file in the same push as project changes: Seth's daily-review agent collects root status documents.
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
@@ -16,14 +18,13 @@
 - Root `AGENTS.md` requires agents to read this file before work and maintain current status, verification, blockers, and the next action before handing off.
 - Resume from the current handoff above and `TICKET-15-PLAN.md`. [October18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md) and older receipts describe historical checkpoints.
 
-## Autonomous execution policy (2026-10-22)
+## Autonomous execution policy (latest direction2026-10-23 evening)
 
-- Stop condition added by Seth on2026-10-23: finish the current Ticket15 through verified/reviewed publication and closure, then stop. Do not start another ticket. This supersedes backlog continuation after15.
-
-- Seth instructed: "remove my gate and continue autonomiously same setup with the agy tester". This supersedes the October 18 instruction to leave #5 unstarted and the routine per-ticket human approval/sign-off waits in older handoffs, plans and issue snapshots.
-- Continue the approved Ticket15 work, then stop under the October23 instruction. Codex builds; the same Antigravity reviewer/tester `ec1fbcd1-4a02-410e-9029-e498f67918c8` independently reviews frozen changes and rechecks substantive fixes. The existing test-writing agent may write assigned tests as before. AgY remains the independent reviewer. No self-approval or lowered verification bar.
-- Seth grants standing authorization within this agreed project scope to commit, merge, push and close Ticket15 after checks and Antigravity review/recheck pass. Routine plan/completion gates remain removed within this ticket; starting another ticket is no longer authorized. Escalate real scope decisions, destructive operations outside that authorization, live provider usage, unavailable independent verification or unresolved correctness disputes. Desktop/global credentials and deferred native Omarchy work remain outside scope.
-- Durable run tracking: `AUTONOMOUS-RUN.md`. Next active work: #15 participant replacement after published #14 selected CLI message recovery. `TICKET-11-PLAN.md` records the completed corrected-document contract. `TICKET-10-PLAN.md` retains the completed Stop contract. Historical receipts keep their original approval language as dated evidence.
+- Seth first limited this run to finishing15 and stopping, then explicitly reauthorized continuation: "your clear to go past 15". The latest instruction wins; older stop-after15 statements below are dated history.
+- Codex builds and coordinates the approved backlog. Seth installed Sonnet5.5 agent3b53a0e1 as independent reviewer, replacing the stopped/archived Gemini reviewer. Existing test helper may write assigned tests; a builder does not self-approve final acceptance.
+- Standing authorization covers routine bounded plans, commits, merge/push and issue closure after checks and independent review/recheck PASS. Complete the current ticket before starting the next dependency-eligible ticket. Escalate genuine scope/ownership disputes, destructive operations outside scope, live-provider use or unavailable verification; no repeated routine sign-off questions.
+- Native Omarchy, live AI/provider usage and Desktop/global credentials/settings remain deferred. Preserve exact source/log/reviewer attribution and actual platform limits.
+- Durable tracking: `AUTONOMOUS-RUN.md`, current `TICKET-15-PLAN.md` and review pack. Historical receipts keep their original instructions and evidence as dated records.
 
 ## Ticket #1 checkpoint
 
@@ -375,3 +376,10 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Prior integrations: turn recoveryPASS44.510s; corrected restart first timed out waiting newCLIbrief k4mzwnry, then unchanged reproduction5g3zflf5PASS without source/fixture/assertion changes. Cause unestablished; final reviewer must reproduce. SessionStopPASSxbcx2yup and APIlostACKPASSv8ktfnqt (2calls/2posts/oneevent/projection/ACK/unresolved[]). All failure evidence retained. Finalpack `TICKET-15-REVIEW.md`; usage `PARTICIPANT-RECOVERY.md`; browser artifact `ticket-15-browser-qa`. No final15 acceptance/publication yet.
 
 - Final frozenfc7ef93 full918 TOTAL tests OK/four expected skips87.210s, log .audit-tmp/ticket15-final-frozen-full.log, tracked shelld9954f50 exit0. Final same-AGY request2c541a48 sent with exact source/reproduction/failure evidence. Handoff2026-10-23-SESSION-HANDOFF-gpt-6.1-sol.md records the remaining review/publication steps and stop condition. No finalacceptance or publication claim yet.
+
+## Reviewer transition and renewed continuation (2026-10-23 evening)
+
+- Seth preferred Sonnet5.5 over Sonnet5 and offered to spawn it. Traycer Claude catalog listed sonnet/claude-sonnet-5 but not an explicit5.5 model; Codex did not silently substitute. Seth created agent3b53a0e1, which identified itself as Sonnet5.5 and claimed independent-reviewer; backend alias is sonnet. Gemini stop/archive succeeded without failed IDs. Final review moves to Sonnet; old component evidence remains historical.
+- Gemini transcript's last activity says it launched full discovery task3810 and verifiers3814/3820/3826/3832, with no final verdict. Actual integration scratch creation times (localChicago):ecsio2tn22:49:05, c_59qbq822:49:44,1a1xkjis22:50:21,5xphgpv822:50:54. First3 contain PASS/cleanup[]; cold run has neither. This establishes recent task activity, not what consumed the preceding12hours or its billing.
+- Root post-stop-audit.json for5xphgpv8 uses exact validated config/manifest/births, no process scans/control. All4 spawned workers,1 nativeclient and2servers are proven absent(error87); actual model journals show observed child exit+IPC, fifth launch is a validated synchronous failedPopen with no birth/invocations. All5 managed launch intents match the config inventory. No original cleanup/result was invented or replaced.
+- Sonnet independently ran918 total tests/four skips87.682s, log .audit-tmp/reviewer-claude/full-suite.log; read-only source audit and fresh native/corrected-restart scenarios in progress. No finalPASS/publication claimed.

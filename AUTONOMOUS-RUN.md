@@ -1,14 +1,14 @@
 # Autonomous continuation
 
-Current stop condition (Seth,2026-10-23): complete Ticket15 through independent acceptance, publication and closure, then stop. No next-ticket work.
+Current direction (Seth,2026-10-23 evening): continuation beyond15 is reauthorized. Finish15 through independent acceptance/publication/closure, then continue dependency-eligible backlog work. Sonnet5.5 replaces the stopped/archived Gemini reviewer. Earlier stop-after15 limits are superseded.
 
-Authorized by Seth on 2026-10-22: continue the approved backlog with the same Antigravity tester; remove routine human approval gates. Scope and exceptions are recorded in `STATUS.md` and the spec's execution-policy amendment.
+Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approved backlog without routine human approval gates. Current designated reviewer is Sonnet5.5 agent3b53a0e1; scope and exceptions are in `STATUS.md`.
 
 ## Operating loop
 
 1. Inspect the next eligible ticket and the delivered baseline; implement only its remaining scope.
 2. Record a bounded plan, write meaningful failing regressions and implement; use fake clients/providers for routine acceptance.
-3. Freeze the change and send the same Antigravity reviewer a concrete reproduction pack with `expectReply: true`.
+3. Freeze the change and send the designated independent reviewer a concrete reproduction pack with `expectReply: true`.
 4. Resolve findings and request recheck for substantive fixes. A pending review is a handoff, never a silent stop awaiting the user.
 5. Once checks and independent review pass, merge, push, close the ticket and update status. Continue to the next eligible ticket without asking for completion sign-off.
 
@@ -22,8 +22,8 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 | #9 | Published and closed | Source2047834; same AGY final PASS and post-merge630 OK |
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
-| #15 | Builder acceptance complete | Full918/four skips,4native+2browser cases PASS; final same AGY source/execution review then publication/closure; STOP |
-| #17-26 | Pending | Follow documented dependency graph |
+| #15 | Final Sonnet review in progress | Own reviewer full918/four skips87.682s; native/source reproduction then publication/closure |
+| #17-26 | Authorized after15 | Continue in dependency order with independent Sonnet review |
 
 ## Non-negotiable verification
 
@@ -34,8 +34,8 @@ Authorized by Seth on 2026-10-22: continue the approved backlog with the same An
 
 ## Latest handoff
 
-Published/closed: #1-14 and #16, main55bd7cb. Ticket15 executable checkpoint1cebd9d on codex/ticket-15-participant-replacement. Builder full918 total/four skips88.791s,4 actual Windows/local-fake cases and2 actual UI serves PASS, cleanup unresolved[]. Same AGY bounded-PASS through132e598; final whole-ticket review and reproduction next. Source/role/brief/queue/native/browser evidence and earlier corrected-restart timeout versus unchanged pass are in TICKET-15-REVIEW.md.
+Published/closed: #1-14 and #16. Ticket15 source1cebd9d/docpin9f40233 is builder-verified:918 total/four skips87.210s,4native+2UI casesPASS/cleanup[]. Application source is frozen. Final reviewer is now Seth's Sonnet5.5 agent3b53a0e1; its own918/four skips87.682s passed and source/native/corrected-restart checks continue. Gemini was stopped/archived without finalverdict; three recent nativePASS artifacts remain attributed to it, one interrupted cold run is unaccepted and separately audited absent/ended.
 
-Remaining owner Codex: final frozen discovery and same AGY review/recheck, then fast-forward main merge/post-merge checks/standing-authorized push/verified issue15 closure/status receipt. Finish15 thenSTOP, never start another ticket. No live AI/provider, Omarchy, Desktop/global changes or remote compute guarantee. All builder fake-client/browser resources are stopped.
+Next owner Sonnet returns final15findings/verdict. Codex handles fixes/recheck and verified merge/publication/closure, then continues the dependency-eligible backlog under Seth's renewed evening authorization. No live AI/provider, Omarchy or Desktop/global changes. Details in STATUS.md/TICKET-15-REVIEW.md and reviewer-retirement artifact.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.

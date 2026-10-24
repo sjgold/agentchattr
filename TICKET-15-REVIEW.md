@@ -1,6 +1,6 @@
 # Ticket15 final review pack
 
-State: builder acceptance complete; final independent review pending. Do not publish or close until the same AGY reviews and reproduces the frozen change. Seth's instruction is to finish Ticket15 through verified publication/closure, then stop without starting another ticket.
+State: builder acceptance complete; final independent review is assigned to Seth's Sonnet5.5 agent3b53a0e1, replacing the stopped/archived Gemini reviewer. Do not publish or close before final independent acceptance. Seth reauthorized continuation beyond15 on2026-10-23 evening; older stop-after15 statements are superseded.
 
 Base published main: `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Executable implementation checkpoint: `1cebd9d4244177fdedd7027f22d101bf1c58381e`. Subsequent verifier header and review receipts are documentation only.
 
@@ -76,4 +76,10 @@ node --check static/sessions.js
 git diff --check 55bd7cb..HEAD
 ```
 
-Review only the frozen target's source. Record reviewer identity, exact commands/logs/scratch paths, source findings and platform limits. Recheck substantive fixes. Final FULL PASS authorizes the already-approved fast-forward main merge, post-merge checks, push, verified issue closure and status receipt. Then stop and release helper/reviewer work; no next ticket.
+Review only the frozen target's source. Record reviewer identity, exact commands/logs/scratch paths, source findings and platform limits. Recheck substantive fixes. Final FULL PASS authorizes the already-approved fast-forward main merge, post-merge checks, push, verified issue closure and status receipt. Then continue the next dependency-eligible ticket under the renewed authorization, with independent review before each publication.
+
+## Final reviewer handoff update
+
+Current reviewer:3b53a0e1-7bc3-4807-bf3a-0d08fa9fea86, Claude/Sonnet5.5 as selected by Seth (harness alias sonnet). Source1cebd9d unchanged;9f40233 and later handoff updates are documentation only. Sonnet independently passed918 total/four skips87.682s, .audit-tmp/reviewer-claude/full-suite.log; source/native/corrected-restart checks remain in progress.
+
+Gemini's completed recent native reproductions:ecsio2tn API, c_59qbq8 CLI,1a1xkjis skip, eachPASS/cleanup[]. Interrupted repair-cold5xphgpv8 has no result orcleanup; nevercountPASS. Root separatepost-stop-audit.json accounts all5launchintents:4spawned workers+nativeclient+2servers verified absent(error87), allactual modelhistories ended/IPC,1syncfailedmanifest/no birth/noinvocations. Original artifacts remain untouched. Sonnet will perform a fresh cold case and prior corrected restart; any findings require recheck beforeacceptance.
