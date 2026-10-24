@@ -15,7 +15,14 @@ if str(ROOT) not in sys.path:
 
 import app
 import archive
+from agents import AgentTrigger
+from channel_lifecycle import ChannelStore
+from channel_service import ChannelService
 from jobs import JobStore
+from registry import RuntimeRegistry
+from schedules import ScheduleStore
+from session_engine import SessionEngine
+from session_store import SessionStore
 from rules import RuleStore
 from store import MessageStore
 from summaries import SummaryStore
@@ -261,6 +268,20 @@ class ImportExportApiTests(unittest.TestCase):
             app.room_settings = self._saved["room_settings"]
 
         self.addCleanup(restore)
+        # This is a partial app fixture: initialize its explicit policy rather
+        # than relying on whichever global service another test left behind.
+        registry = RuntimeRegistry(str(self.root / 'appdata'))
+        trigger = AgentTrigger(registry, str(self.root / 'appdata'))
+        engine = SessionEngine(SessionStore(str(self.root / 'appdata' / 'sessions.json')),
+                               self.store, trigger, registry)
+        catalog = ChannelStore(self.root / 'appdata' / 'channels.json')
+        catalog.initialize(['general'])
+        service = ChannelService(catalog, engine=engine, messages=self.store, jobs=self.jobs,
+            schedules=ScheduleStore(str(self.root / 'appdata' / 'schedules.json')),
+            summaries=self.summaries, queue=trigger.queue, settings=app.room_settings,
+            save_settings=app._save_settings, migrate_cursors=None, router=None, migrate_last_active=None)
+        from unittest.mock import patch
+        self.enterContext(patch.object(app, 'channel_service', service))
 
     def test_export_endpoint_returns_zip_with_manifest(self):
         seed_history(self.store, self.jobs, self.rules, self.summaries)

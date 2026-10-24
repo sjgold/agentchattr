@@ -9,6 +9,10 @@ import time
 import uuid
 import zipfile
 from copy import deepcopy
+from contextlib import contextmanager
+from itertools import islice
+
+from channel_lifecycle import ChannelConflict, ChannelInactive
 
 SCHEMA_VERSION = 1
 MAX_IMPORT_SIZE = 50 * 1024 * 1024  # 50MB uncompressed
@@ -135,7 +139,7 @@ def build_export(store, jobs_store, rules_store, summary_store,
 
 def import_archive(zip_bytes: bytes, store, jobs_store, rules_store,
                    summary_store, channel_list: list[str],
-                   max_channels: int = 8) -> dict:
+                   max_channels: int = 8, *, channel_policy=None) -> dict:
     """Import a zip archive, merging into current stores.
 
     Returns a report dict with counts and warnings.
@@ -145,14 +149,20 @@ def import_archive(zip_bytes: bytes, store, jobs_store, rules_store,
         return {"ok": False, "error": "import already running"}
 
     try:
+        if channel_policy is not None:
+            if type(max_channels) is not int or max_channels < 1:
+                raise ValueError('Import channel capacity must be a positive integer.')
+            with _import_boundary(channel_policy):
+                if channel_policy.catalog.snapshot()['intent']:
+                    raise ChannelConflict('Finish channel repair before importing.')
         return _do_import(zip_bytes, store, jobs_store, rules_store,
-                          summary_store, channel_list, max_channels)
+                          summary_store, channel_list, max_channels, channel_policy=channel_policy)
     finally:
         _import_lock.release()
 
 
 def _do_import(zip_bytes, store, jobs_store, rules_store,
-               summary_store, channel_list, max_channels):
+               summary_store, channel_list, max_channels, *, channel_policy=None):
     warnings = []
 
     # Validate zip
@@ -192,6 +202,10 @@ def _do_import(zip_bytes, store, jobs_store, rules_store,
         "channels": {"created": [], "remapped": [], "skipped": []},
         "warnings": warnings,
     }
+
+    if channel_policy is not None:
+        return _configured_import(zf, store, jobs_store, rules_store, summary_store,
+                                  channel_list, max_channels, channel_policy, report)
 
     # Collect existing UIDs for dedup
     existing_msg_uids = set()
@@ -449,4 +463,249 @@ def _do_import(zip_bytes, store, jobs_store, rules_store,
                 summary_report["created"] += 1
     report["sections"]["summaries"] = summary_report
 
+    return report
+
+
+@contextmanager
+def _import_boundary(policy):
+    with policy._boundary():
+        policy.catalog.snapshot()
+        yield
+
+
+def _chunks(rows):
+    iterator = iter(rows)
+    while batch := list(islice(iterator, 64)):
+        yield batch
+
+
+def _array_rows(zf, name, warnings):
+    if name not in zf.namelist():
+        return []
+    try:
+        rows = json.loads(zf.read(name))
+        if not isinstance(rows, list):
+            raise ValueError()
+        return [row for row in rows if isinstance(row, dict)]
+    except (ValueError, UnicodeError):
+        warnings.append(name + ' was malformed; skipped')
+        return []
+
+
+def _patch_import_messages(store, patches, policy, *, field):
+    skipped = 0
+    for batch in _chunks(patches):
+        with _import_boundary(policy):
+            active = {}
+            for message_id, value in batch:
+                saved = store.get_snapshot(message_id)
+                if saved is None:
+                    skipped += 1
+                    continue
+                try:
+                    policy.require_active(saved.get('channel', 'general'))
+                except ChannelInactive:
+                    skipped += 1
+                    continue
+                active[message_id] = value
+            if active:
+                with store._lock:
+                    staged = []
+                    for message in store._messages:
+                        if message['id'] in active:
+                            message = deepcopy(message)
+                            if field == 'reply_to':
+                                message[field] = active[message['id']]
+                            else:
+                                message.setdefault('metadata', {})[field] = active[message['id']]
+                        staged.append(message)
+                    store._rewrite_jsonl(staged)
+                    store._messages = staged
+        time.sleep(0)  # Yield only after durable commit and boundary release.
+    return skipped
+
+
+def _configured_import(zf, store, jobs_store, rules_store, summary_store,
+                       channel_list, max_channels, policy, report):
+    """Catalog-aware import; each bounded mutation releases the engine lock."""
+    warnings, remap_counts = report['warnings'], {}
+    report['channels']['remap_counts'] = []
+
+    def resolve(raw, *, redirected=True):
+        result = policy.resolve_import_channel(raw, max_channels=max_channels)
+        if result['created']:
+            report['channels']['created'].append(result['channel'])
+            if result['channel'] not in channel_list:
+                channel_list.append(result['channel'])
+        if result['reason'] and redirected:
+            entry = {'from': raw, 'to': 'general', 'reason': result['reason']}
+            report['channels']['remapped'].append(entry)
+            key = (json.dumps(raw, sort_keys=True), result['reason'])
+            counted = remap_counts.setdefault(key, {**entry, 'count': 0})
+            counted['count'] += 1
+        return result
+
+    # Copies avoid assigning missing legacy UIDs into read-only stored history.
+    message_uids = {m.get('uid') or _ensure_uid(dict(m)) for m in store.get_recent(999_999_999)}
+    job_uids = {j.get('uid') or _ensure_uid(dict(j)) for j in jobs_store.list_all()} if jobs_store else set()
+    rule_uids = {r.get('uid') or _ensure_uid(dict(r)) for r in rules_store.list_all()} if rules_store else set()
+    msg_report = dict(created=0, duplicates=0, conflicts=0, skipped=0, reply_links_skipped=0)
+    report['sections']['messages'] = msg_report
+    imported_ids, replies = {}, []
+
+    def message_rows():
+        if 'messages.jsonl' not in zf.namelist():
+            return
+        raw = zf.read('messages.jsonl').decode('utf-8', errors='replace')
+        for line in raw.splitlines():
+            if not line.strip():
+                continue
+            try:
+                message = json.loads(line)
+                if not isinstance(message, dict):
+                    raise ValueError()
+                yield message
+            except ValueError:
+                msg_report['skipped'] += 1
+
+    for batch in _chunks(message_rows()):  # Decode/parse before taking policy.
+        with _import_boundary(policy):
+            staged, reply_uids, seen = [], {}, set()
+            for message in batch:
+                uid = message.get('uid') or 'fp-' + _fingerprint(message)
+                if uid in message_uids or uid in seen:
+                    msg_report['duplicates'] += 1
+                    continue
+                channel = resolve(message.get('channel', 'general'))['channel']
+                metadata = deepcopy(message.get('metadata')) if isinstance(message.get('metadata'), dict) else {}
+                for key in ('seat_identity_id', 'provenance', 'dispatch_id', 'run_id', 'turn_id', 'attempt_id',
+                            'input_revision', 'routing_scope', 'quarantine_session_id', 'quarantine_reason', 'recipient_routing'):
+                    metadata.pop(key, None)
+                staged.append({**message, 'uid': uid, 'channel': channel, 'metadata': metadata})
+                seen.add(uid)
+                if message.get('reply_to_uid'):
+                    reply_uids[uid] = message['reply_to_uid']
+            saved = store._append_imported_batch(staged)
+            msg_report['duplicates'] += len(staged) - len(saved)
+            for message in saved:
+                imported_ids[message['uid']] = message['id']
+                if message['uid'] in reply_uids:
+                    replies.append((message['id'], reply_uids[message['uid']]))
+            message_uids.update(seen)
+            msg_report['created'] += len(saved)
+        time.sleep(0)
+
+    uid_to_id = {m.get('uid'): m['id'] for m in store.get_recent(999_999_999) if m.get('uid')}
+    msg_report['reply_links_skipped'] = _patch_import_messages(store,
+        ((mid, uid_to_id[uid]) for mid, uid in replies if uid in uid_to_id), policy, field='reply_to')
+
+    job_report = dict(created=0, updated=0, messages_created=0, duplicates=0, conflicts=0,
+                      messages_skipped=0, partial=[], breadcrumbs_skipped=0)
+    report['sections']['jobs'] = job_report
+    job_ids = {}
+    for job in _array_rows(zf, 'jobs.json', warnings) if jobs_store else []:
+        with _import_boundary(policy):
+            uid = job.get('uid') or 'fp-' + _fingerprint(job)
+            if uid in job_uids:
+                job_report['duplicates'] += 1
+                continue
+            channel = resolve(job.get('channel', 'general'))['channel']
+            saved = jobs_store.create(title=job.get('title', 'Imported job'), job_type=job.get('type', 'job'),
+                channel=channel, created_by=job.get('created_by', 'import'), body=job.get('body'),
+                assignee=job.get('assignee'), uid=uid, status=job.get('status'),
+                created_at=job.get('created_at'), updated_at=job.get('updated_at'))
+            job_uids.add(uid)
+            job_report['created'] += 1
+            if job.get('id') is not None:
+                job_ids[job['id']] = saved['id']
+        time.sleep(0)
+        conversation = job.get('messages', [])
+        landed, skipped = 0, 0
+        for index, message in enumerate(conversation):
+            with _import_boundary(policy):
+                try:
+                    policy.require_active(channel)
+                except ChannelInactive:
+                    skipped = len(conversation) - index
+                    break
+                uid = message.get('uid') or 'fp-' + hashlib.sha256(
+                    f"{message.get('sender', '')}|{message.get('text', '')}|{message.get('timestamp', '')}".encode()).hexdigest()[:16]
+                jobs_store.add_message(saved['id'], message.get('sender', 'unknown'), message.get('text', ''),
+                    attachments=message.get('attachments'), msg_type=message.get('type', 'chat'), uid=uid,
+                    timestamp=message.get('timestamp'), time_str=message.get('time'))
+                landed += 1
+                job_report['messages_created'] += 1
+            time.sleep(0)
+        with _import_boundary(policy):
+            try:
+                policy.require_active(channel)
+            except ChannelInactive:
+                pass  # An archived job freezes its latest persisted timestamp too.
+            else:
+                if job.get('updated_at') is not None:
+                    with jobs_store._lock:
+                        for current in jobs_store._jobs:
+                            if current['id'] == saved['id']:
+                                current['updated_at'] = job['updated_at']
+                                jobs_store._save()
+                                break
+        if skipped:
+            job_report['messages_skipped'] += skipped
+            job_report['partial'].append({'job_id': saved['id'], 'messages_imported': landed,
+                'messages_skipped': skipped, 'reason': 'channel_retired', 'reimport': 'existing_job_uid_skipped'})
+            warnings.append(f"Job #{saved['id']} imported partially: {landed} conversation rows saved, {skipped} skipped (channel_retired). "
+                            'Re-import skips this existing job UID and will not fill its missing rows.')
+        time.sleep(0)
+    imported_set = set(imported_ids.values())
+    breadcrumbs = [(m['id'], job_ids[m['metadata']['job_id']]) for m in store.get_recent(999_999_999)
+        if m['id'] in imported_set and m.get('type') == 'job_created'
+        and isinstance(m.get('metadata'), dict) and m['metadata'].get('job_id') in job_ids]
+    job_report['breadcrumbs_skipped'] = _patch_import_messages(store, breadcrumbs, policy, field='job_id')
+
+    rule_report = dict(created=0, duplicates=0, conflicts=0)
+    report['sections']['rules'] = rule_report
+    for rule in _array_rows(zf, 'rules.json', warnings) if rules_store else []:
+        with _import_boundary(policy):
+            uid = rule.get('uid') or 'fp-' + _fingerprint(rule)
+            if uid in rule_uids:
+                rule_report['duplicates'] += 1
+                continue
+            saved = rules_store.propose(rule.get('text', ''), rule.get('author', 'import'), rule.get('reason', ''))
+            if saved:
+                with rules_store._lock:
+                    saved['uid'] = uid
+                    status = rule.get('status', 'pending')
+                    if status != 'pending':
+                        saved['status'] = status
+                        if status == 'archived':
+                            saved['archived_at'] = rule.get('archived_at', time.time())
+                        if status == 'active':
+                            rules_store._bump_epoch()
+                    rules_store._save()
+            rule_uids.add(uid)
+            rule_report['created'] += 1
+        time.sleep(0)
+
+    summary_report = dict(created=0, updated=0, skipped=0)
+    report['sections']['summaries'] = summary_report
+    for summary in _array_rows(zf, 'summaries.json', warnings) if summary_store else []:
+        with _import_boundary(policy):
+            raw = summary.get('channel', '')
+            if not raw:
+                summary_report['skipped'] += 1
+                continue
+            resolved = resolve(raw, redirected=False)
+            if resolved['channel'] != raw:
+                summary_report['skipped'] += 1
+                warnings.append(f"Summary for {raw!r} skipped ({resolved['reason']}).")
+                continue
+            existing = summary_store.get(raw)
+            if existing and (summary.get('updated_at') or 0) <= existing.get('updated_at', 0):
+                summary_report['skipped'] += 1
+                continue
+            summary_store.write(raw, summary.get('text', ''), summary.get('author', 'import'),
+                uid=summary.get('uid'), updated_at=summary.get('updated_at'))
+            summary_report['updated' if existing else 'created'] += 1
+        time.sleep(0)
+    report['channels']['remap_counts'] = list(remap_counts.values())
     return report

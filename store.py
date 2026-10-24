@@ -199,6 +199,49 @@ class MessageStore:
             except Exception:
                 pass
 
+    @channel_write(lambda store, args: [row.get('channel', 'general') for row in args['rows']])
+    def _append_imported_batch(self, rows):
+        """Append one bounded import batch durably, without observer authority."""
+        if not rows:
+            return []
+        with self._lock:
+            staged = []
+            known = {message.get('uid') for message in self._messages}
+            for row in rows:
+                if row['uid'] in known:
+                    continue
+                known.add(row['uid'])
+                stamp = row.get('timestamp') if row.get('timestamp') is not None else time.time()
+                metadata = _message_metadata(row.get('metadata'))
+                metadata['imported'] = True
+                staged.append({'id': self._next_id + len(staged), 'uid': row['uid'],
+                    'sender': row.get('sender', 'unknown'), 'text': row.get('text', ''),
+                    'type': row.get('type', 'chat'), 'channel': row.get('channel', 'general'),
+                    'timestamp': stamp, 'time': row.get('time') or time.strftime('%H:%M:%S'),
+                    'attachments': deepcopy(row.get('attachments') or []), 'metadata': metadata})
+            if not staged:
+                return []
+            data = ''.join(json.dumps(message, ensure_ascii=False) + '\n' for message in staged).encode('utf-8')
+            existed = self._path.exists()
+            try:
+                with self._path.open('ab', buffering=0) as output:
+                    before = output.seek(0, os.SEEK_END)
+                    try:
+                        if output.write(data) != len(data):
+                            raise OSError('Import append did not complete.')
+                        output.flush()
+                        os.fsync(output.fileno())
+                    except Exception:
+                        output.truncate(before)
+                        raise
+            except Exception:
+                if not existed and self._path.exists() and self._path.stat().st_size == 0:
+                    self._path.unlink()
+                raise
+            self._messages.extend(staged)
+            self._next_id += len(staged)
+            return deepcopy(staged)
+
     @channel_write(lambda store, args: [args['channel']])
     def add_once(self, uid: str, sender: str, text: str, msg_type='session_result',
                  channel='general', metadata=None):

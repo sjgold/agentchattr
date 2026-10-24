@@ -76,6 +76,28 @@ class ChannelService:
             self.catalog.require_active(channel)
             yield
 
+    def resolve_import_channel(self, name, *, max_channels):
+        if type(max_channels) is not int or max_channels < 1:
+            raise ValueError('Import channel capacity must be a positive integer.')
+        with self._boundary():
+            value = self.catalog.snapshot()
+            name = 'general' if name is None or name == '' else name
+            try:
+                _name(name)
+            except ValueError:
+                return {'channel': 'general', 'created': False, 'reason': 'invalid_or_full'}
+            if name in self.catalog.blocked_names():
+                return {'channel': 'general', 'created': False, 'reason': 'channel_retired'}
+            if value['channels'].get(name) == 'active':
+                return {'channel': name, 'created': False, 'reason': None}
+            if value['intent']:
+                return {'channel': 'general', 'created': False, 'reason': 'channel_repair_pending'}
+            if sum(state == 'active' for state in value['channels'].values()) >= max_channels:
+                return {'channel': 'general', 'created': False, 'reason': 'invalid_or_full'}
+            value = self.catalog.create(name, expected_revision=value['revision'])
+            self._project(value)
+            return {'channel': name, 'created': True, 'reason': None}
+
     def _scope(self, channel):
         messages = deepcopy(self.messages.get_recent(count=2**63, channel=channel))
         ids = {item['id'] for item in messages}

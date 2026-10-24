@@ -2124,19 +2124,23 @@ async def import_history(file: UploadFile = File(...)):
         )
     channel_list = list(room_settings.get("channels", ["general"]))
     max_ch = room_settings.get("max_channels", 8)
-    report = _archive.import_archive(
-        content, store, jobs, rules, summaries,
-        channel_list, max_channels=max_ch,
-    )
+    try:
+        report = await asyncio.to_thread(_archive.import_archive,
+            content, store, jobs, rules, summaries, channel_list,
+            max_channels=max_ch, channel_policy=_channels())
+    except ChannelConflict as error:
+        return JSONResponse({'error': str(error)}, status_code=409)
+    except (ChannelUnavailable, OSError):
+        return JSONResponse({'error': 'Import storage is unavailable. Check history before importing again.'}, status_code=503)
+    except ValueError:
+        return JSONResponse({'error': 'Invalid import request.'}, status_code=400)
     if not report.get("ok"):
         error = report.get("error", "import failed")
         status = 409 if "already running" in error else 400
         return JSONResponse({"error": error}, status_code=status)
     # Update channel list if new channels were created
     if report["channels"]["created"]:
-        room_settings["channels"] = channel_list
-        _save_settings()
-        await broadcast_settings()
+        await _broadcast_channel_projection(_channels())
     # Tell all connected clients to reload (picks up imported messages)
     data = json.dumps({"type": "reload"})
     dead = set()
