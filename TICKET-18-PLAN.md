@@ -4,7 +4,7 @@
 
 **Goal:** Select one UTF-8 document/source file, preview its literal text and identity, then freeze that snapshot for identical CLI/API review without executing or rendering source.
 
-**Architecture:** Contract settlements incorporated, pending Sonnet diff confirmation before helper TDD. Stateless bounded byte preview plus revalidated file snapshot at Start extends existing immutable input_snapshot/brief source. No second document store or public upload surface. The server proves snapshot self-consistency and enforces limits, not native file provenance; kind=file remains an operator assertion like pasted input.
+**Architecture:** Contract settlements confirmed by Sonnet atd399cc3; pure-module TDD cleared. Stateless bounded byte preview plus revalidated file snapshot at Start extends existing immutable input_snapshot/brief source. No second document store or public upload surface. The server proves snapshot self-consistency and enforces limits, not native file provenance; kind=file remains an operator assertion like pasted input.
 
 **Tech stack:** Existing Python/FastAPI, atomic session persistence, plain browser JS/file input. No dependencies.
 
@@ -57,7 +57,7 @@ Both predefined-template and chat-draft Start paths use the samevalidated select
 
 ## Planned test/implementation sequence
 
-- [ ] Settle governing choices/exactpureinterfaces withSonnet; update thisproposal tofreeze.
+- [x] Settle governing choices/exactpureinterfaces withSonnet; d399cc3 diffconfirmed beforepureTDD.
 - [ ] Existinghelper owns new tests/test_document_inputs.py only: first2actualmissinginterfaceRED, then bounded~12cases UTF8/CRLF/BOM/Unicode/name/hash/size/binary/exactschema/noalias/noexecution. Rootimplements puremodule, focusedcheck, independentboundedreview.
 - [ ] Root route/start/brief tests observedRED before wiring: boundedstream/413/auth/invalidsnapshot/noeffects, exactsameCLI/API source/identity beyond20messages, immutableoriginaledits, retries/restarts/failureatomicity. Implement narrow engine/store/brief integration andpreviewroute, preserve pastedfixtures.
 - [ ] UIhelper/sharedstate and bothStartpaths withactual-sourceVMRED->green andtargetedbrowserfilepreview/error/norendering/Startchecks. No broadcomposer refactor.
@@ -72,3 +72,10 @@ Next owner: Sonnet confirms the settlement diff against DA-1/FileAT-04 andactual
 Source-read review at e774037 APPROVED WITH SETTLEMENTS. S1/S2/S3/S5/S6 incorporated above. S4 selectedimplementation, notdeferral: file-origin newline-normalized unchangedguard + explicitpastedrestartbadge, preservingactualstoredbytes/hashes. Root verifiedcurrentstorehashguard andUItextareaprefill. Noimplementationyet.
 
 Initialhelper scope afterdiffconfirmation: NEW tests/test_document_inputs.py only, first2actualmissingmodule/interfaces RED, then bounded12methods covering exactUTF8/CRLFmix/BOM/astral/combining/noalias; malformed/overlong/surrogateUTF8; NUL/ESC/DEL/FF codepoint+BYTEoffset;512KiB/+1;empty; nameCc/Cf/bidi/separators/colon/dot/trailing/UTF8/length; advisoryextensions/case/extensionless; exactkeys/literalversion/no boolnumeric/coercion; recomputedhash/size/sourceID/text tamper. .py/.mjs literals containing@all,$(...),<script>,fences,__import__ remain inert. Do not import/run sourcefiles or claim HTTP/engine/native proof. Root later testsinput_revision==contenthash,CRLF-heavyJSONbodybound,routeauth/rawquery/stream/noeffects, bothStartpaths, correctedrestartguard, >20messages/CLI+API payload/sourcefileedit/delete, DataTransferbrowserseam. Source identityself-consistency neverprovenanceauthority.
+
+
+## Final precision P1/P2, pure TDD cleared
+
+Sonnet confirmed e774037..d399cc3 docs-only settlement; no implementation/test run by reviewer. P1 limitation: a line-ending-only intended change(CRLF/CR->LF) is treated asUNCHANGED by correctedrestart for file-origin parents; use a genuinelyeditedsource or a separatelyselectedfile/newreview rather than using correctedrestart as a line-ending converter. P2 symmetry: normalize CRLF andbareCR->LF on BOTH frozenparenttext and proposedcorrectedtext, ONLY after revalidating parentdocumentmetadata against its frozen text; invalidparentmetadata fails closed, never falls back to exact-hash guard. Storedbytes/hashes remain unnormalized. Purepreview input type is exactbytes only, bytearray/memoryview/str rejected. These precisions do not affectpurehelpertestscope.
+
+Next owner existinghelper: firsttwoactualmissingmoduleRED innewtests/test_document_inputs.py, thenbounded12puremethods; rootimplementsnewmoduleonlyaftertheRED. Reviewer independently reruns/probes puremodulebeforewiring. NoHTTP/engine/nativeclaimfrompuretests.
