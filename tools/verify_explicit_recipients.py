@@ -352,10 +352,10 @@ def audience(f, serve=False):
             marker = ROOT / '.audit-tmp/ticket17-recipient-browser-url.txt'
             sentinel = ROOT / '.audit-tmp/ticket17-recipient-browser-stop.txt'
             marker_at = time.time()
-            ready = {'url': f.base + '/?channel=audience-run', 'channel': 'audience-run',
+            ready = {'stage': 'channel', 'url': f.base + '/?channel=audience-run', 'channel': 'audience-run',
                      'text': explicit, 'selected_names': selected, 'scratch': str(f.root),
                      'stop_sentinel': str(sentinel), 'post_click_pulse_seconds': 30,
-                     'marker_at': marker_at, 'text_input_mode': 'serve_lf_browser_textarea'}
+                     'marker_at': marker_at, 'text_input_mode': 'serve_lf_browser_channel_and_job'}
             atomic_json(marker, ready)
             print(json.dumps(ready, ensure_ascii=True), flush=True)
             try:
@@ -410,8 +410,39 @@ def audience(f, serve=False):
         f.before_dispatches = {r['envelope']['dispatch_id'] for r in f.ledger_records()}
         job_preview = f.api('/api/recipients/preview', {'text': '@' + b['name'] + ' Job raw café\r\ntext',
             'selected_recipients': [a['name']], 'channel': 'audience-run', 'job_id': job['id']})
-        job_message = f.api(path, {'text': '@' + b['name'] + ' Job raw café\r\ntext',
-            'selected_recipients': [a['name']], 'sender': 'fixture-operator'})
+        if serve:
+            job_text = '@' + b['name'] + ' Job raw café\ntext'
+            def job_rows():
+                stored = json.loads((f.data / 'jobs.json').read_text(encoding='utf-8'))
+                return next(row['messages'] for row in stored if row['id'] == job['id'])
+            baseline_job_uids = {row['uid'] for row in job_rows()}
+            marker = ROOT / '.audit-tmp/ticket17-recipient-browser-url.txt'
+            sentinel = ROOT / '.audit-tmp/ticket17-recipient-browser-job-stop.txt'
+            sentinel.unlink(missing_ok=True)
+            marker_at = time.time()
+            ready = {'stage': 'job', 'url': f.base + '/?channel=audience-run', 'job_id': job['id'],
+                'channel': 'audience-run', 'text': job_text, 'selected_names': [a['name']],
+                'scratch': str(f.root), 'stop_sentinel': str(sentinel), 'post_click_pulse_seconds': 30,
+                'marker_at': marker_at, 'text_input_mode': 'serve_lf_browser_channel_and_job'}
+            atomic_json(marker, ready)
+            print(json.dumps(ready, ensure_ascii=True), flush=True)
+            try:
+                f.wait(sentinel.exists, 'bounded root browser job post', 300)
+                new_job_rows = [row for row in job_rows() if row.get('uid') not in baseline_job_uids]
+                f.observations.append({'kind': 'actual_browser_job_post_adoption', 'job_id': job['id'],
+                    'marker_at': marker_at, 'baseline_job_uids': sorted(baseline_job_uids),
+                    'new_job_posts': new_job_rows, 'expected_exact_text': job_text})
+                atomic_json(f.root / 'observations.json', f.observations)
+                assert len(new_job_rows) == 1, 'Expected exactly one new actual browser job post'
+                job_message = dict(new_job_rows[0], job_id=job['id'])
+                assert job_message['timestamp'] >= marker_at and job_message['channel'] == 'audience-run'
+                assert job_message['text'] == job_text
+                assert job_message['metadata']['recipient_routing']['mode'] == 'explicit'
+            finally:
+                marker.unlink(missing_ok=True); sentinel.unlink(missing_ok=True)
+        else:
+            job_message = f.api(path, {'text': '@' + b['name'] + ' Job raw café\r\ntext',
+                'selected_recipients': [a['name']], 'sender': 'fixture-operator'})
         f.receipt(job_message, [b['identity_id']]); f.finish_api(7); count = 7
         assert job_preview['recipients'] == job_message['metadata']['recipient_routing']['recipients']
         identities = json.loads((f.data / 'registry.json').read_text(encoding='utf-8'))['instances']
@@ -443,7 +474,7 @@ def audience(f, serve=False):
     assert sum(v['model'] == 'recipient-model-b' for v in f.captures) == 3
     return {'case': 'audience', 'provider_calls': 7, 'cli_injections': 0,
             'offline_fixture_native_claim': False, 'serve': serve,
-            'text_input_mode': 'serve_lf_browser_textarea' if serve else 'nonserve_crlf_wire',
+            'text_input_mode': 'serve_lf_browser_channel_and_job' if serve else 'nonserve_crlf_wire',
             'ignored_only_no_selection_provider_calls': 0,
             'ignored_only_selected_a_provider_calls': 1,
             'ignored_only_behavior': 'settled_selected_fallback_not_address_leak'}

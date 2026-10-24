@@ -458,3 +458,13 @@ Family/audience/order allpassed independently bybuilder andSonnet with exactgene
 ### Serve-only LF correction ready for recheck
 
 Verifier serves anLFexpectedstring matching actualtextarea.value andready.text, with exactequality lookup, baselineUID/time, exactlyonefreshoperatorpost/explicitmode/audiencechannel,originalUID/exactAonlydispatch. NonserveCRLFliteral/assertions unchanged. Resultlabels the distinction. Root independently compile-only3/1PASS/hashmatch, noactualrestartbeforeSonnetconfirmation.
+
+
+### Full browser job send, serve-only two-stage settlement
+
+Before restarting3479186serve, root identified that an extra actual jobUIpost would make8calls because the harness still scripted that post. Sonnet settled a second serve-only adoption stage so fullUIpath is exercised with the same7calls(A4/B3). Stage1 channel READY includesstagechannel; afterits pulse/calls1-6 andactualjobcreation, stage2jobREADY includesjobID/channel/exactLFrawBtext/selectedA, freshsentinel, bounded300spreSend and30spostclick pulse. AdoptexactlyONEnewjobUID/message/receipt withrawLF/explicitmode/Bonly/exactUUID5dispatch, baseline/newrowspersistbeforeassert; readonlyjobpreviewand403/forgerychecks stay. ParentjobPOST remainsbyte-identical in nonserveCRLFpath. No generationcount/deadline/cleanup/fakeclient/productchange. Root explicitly cyclesactualreplytargettoA, postsBrawtextonce and observesackclear/receipt. Resultlabelserve_lf_browser_channel_and_job. Helperdraft/compileonly, root/SonnetdiffconfirmationbeforeONEserve; no extra347servewasrun.
+
+
+### Two-stage serve implementation ready
+
+Serve-only secondjobstage replaces scriptedjobPOST with exactonefreshactualUIrow adoption andfreshsentinel/300s pause. Existing7calls andBidentity/UUID5/preview/authchecks remain; nonserveCRLFPOST unchanged. Root verified actual jobs.json list/message format and independently compiled3/1. Sonnet shortdiff confirmation required beforeONEfreshserve; no run at this checkpoint.

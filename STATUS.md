@@ -564,3 +564,13 @@ PartialactualIAB/ElectronQA:1280x960 preview1247client==scroll,14px/12pxinset,44
 ### Ticket17 serve-only LF adoption correction ready
 
 Helper changed only serve expectedtext toLF, published sameLFready.text, kept nonserveCRLFliteral/value untouched. RecordsbaselineoperatorUIDs+markertime; adoption persistsinputs/newposts then requires exactlyONEfreshoperatorreceipt, timestampaftermarker, audience-run, exactLFtext, modeexplicit; existingAonly/exactUUID5dispatch guard stays. OriginalactualUID is adopted, no inventedACK. ResultlabelsserveLFversusnonserveCRLF. Root read/hashmatched0d5457a0d368a636a3ec963fde0e10d82e9f60b039527fd38e8779f68d8da9a1, independently compile-only3/1PASS. No provider/count/deadline/cleanup/productionchange, nofreshserve yet. Next Sonnet shortdiffconfirmation, thenonefullbrowserpass withactualUI Send/jobpreview/keyboard/error/receipt checks. Aborted0calla4aa6f49 preserved.
+
+
+### Ticket17 browser job-send count settlement before restart
+
+Rootheld3479186servebeforelaunch: fulljobUISend wouldaddan8thcall unless it replaces the scriptedjobPOST. Sonnetsettled serve-onlysecondREADY/adoption: afterchannelUIpost andcalls1-6, createjob, pause300s, actualUIreplytargetA/rawBpost once, adoptoriginaljobUID/receipt/exactBdispatch,finish7; nonserveCRLFPOST unchanged. Counts/deadlines/cleanup unchanged. Helperdraftsverifieronly+compilechecks, root/SonnetdiffreviewbeforeONEtwo-stagebrowserpass. No newresourcesstarted. RootmustprovebothactualUIposts/ACKclearing/receipts, targetoverride, keyboard/composition-level guards, errorretry/draftretention/mobile andsamecontext. Abortedpartiala4aa6f49 staysfailedfixtureevidence.
+
+
+### Ticket17 two-stage serve draft ready for confirmation
+
+Helper changed only verifier serve behavior: stagechannel READY, then aftercalls1-6 actualjobcreation/read-onlypreview stagejob READY withexactLFtext/selectedA/jobID/freshdistinctsentinel/300spreSend/30spulse. Stage2 adopts exactlyonefreshjobUID/time/channel/rawtext/explicitmode, persistsinputs beforeassert; existingBonlyUUID5delta/finish7/previewrecipient/authchecks unchanged. NonserveCRLFPOST unchanged. Root readfocused diff plus actual JobStore list format/privatewriter and GETmessage shape, independently compile-only3/1PASS/hashbce4b06b3a1c88a3de25ff113cde444000e713b5f8015d87ed2df7bdd5644c1f. No sourceproduct/fakeclient/cleanup/count/deadline changes. Next Sonnet shortdiffconfirmation, thenONEfreshtwo-stagebrowserQA; no newserve yet.
