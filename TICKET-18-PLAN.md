@@ -328,3 +328,16 @@ Required verifier-only fix: preserve received413 status; ONLY max_plus_one+413 m
 Root verified the narrow diff: status is retained before body parsing; only max_plus_one with actual413 accepts ConnectionError/IncompleteRead/ValueError body-read failure, recorded separately as body_read_error with error=None. Exact one server audit row must show HTTP413, reader413 and zero stream bytes, with unchanged effects; proof_basis explicitly status-line plus server audit, not body. Every HTTPError response is closed in finally. Other refusal bodies remain strict, and chunked cap/count/effect assertions are unchanged.
 
 Syntax and compile-only2servers/1client/processes0 pass. Verifier SHA2566f2640660714fc345cbd46f56947915e0459454194d779ae9f55898d14a4fd1a; client unchanged f5893f5f94abb6684df0543266676639fd9dc6a7e5898d60b8522f73b28c5eae. No fresh run yet; mwq99nfh remains failed fixture evidence with complete cleanup, not acceptance. Next Sonnet diff confirmation before a separately authorized single fresh py run.
+
+
+## Second py readiness at8797d48: auth-response fixture failure
+
+One fresh unchanged py run, tracked f89bca0a-d2a5-4b1c-b2d2-460387ecba3c, scratch `.audit-tmp/document review py pgmsqycg`, exited1 before Start. It received HTTP403 for the first no-token probe, then ConnectionResetError while strictly reading that response body. The413-only tolerance correctly did not accept a403 body error. Three observations/2427bytes, provider0/client0turns, no session/result; cleanup2workers/1hiddenclient/0models/1server ended, API protocol-one empty-history proof, unresolved[]. Serverlog Traceback/Selector/Warning/Error all0. No product defect or acceptance proof; both failed scratches remain preserved.
+
+Sonnet confirmed the narrow fixture correction: no-token and agent-bearer probes send valid EMPTY UTF-8 POST bodies instead of5unread bytes. Auth bypass would still yield200 for valid empty content, so403 remains discriminating. Keep strict JSON reads/close and all413/chunked exception gates unchanged. Assert preview audit file byte-for-byte unchanged and no new handler audit rows, plus unchanged product effects.
+
+Root in-process self-check `.audit-tmp/ticket18_http_preamble_probe.py` passed7 actual middleware/routes cases: empty-body no-token/bearer403 with handler never entered; authorized empty200; NUL/invalidUTF8400; length MAX+1 and chunked MAX+1 both413. Strict JSON/error responses and unchanged file effects asserted; subprocess.Popen guarded and never called. This is in-process component evidence, NOT Windows TCP or native acceptance.
+
+Remaining body-close reasoning: NUL/invalidUTF8400 follows full body consumption; tampered Start and restart refusal handlers also fully read JSON. Length MAX+1 is the sole intentionally unread operator-body case and retains exact status+server audit allowance. Chunked overflow retains its independent server reader413/observed byte-count proof and explicitly labelled transport outcome. Authentication probes now contain no unread bytes; no broad body-error relaxation.
+
+Verifier SHA25646f075a9ea8bf6dcecf2c40c14e8e10339b1ade757e86a8763ad76d6bbae94f2; client unchanged. Root diff/static/compile-only verification and Sonnet short recheck are required before the third py attempt; no fresh native run/mjs/browser has started.

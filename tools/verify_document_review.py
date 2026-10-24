@@ -364,15 +364,16 @@ class Fixture:
         bearer = identities[api_name]['token']
         url = self.base + '/api/documents/preview?filename=' + urllib.parse.quote(self.filename, safe='')
         checks = [
-            ('no_token', b'valid', {'Content-Type': 'application/octet-stream'}, 403),
-            ('agent_bearer', b'valid', {'Content-Type': 'application/octet-stream', 'Authorization': 'Bearer ' + bearer}, 403),
+            ('no_token', b'', {'Content-Type': 'application/octet-stream'}, 403),
+            ('agent_bearer', b'', {'Content-Type': 'application/octet-stream', 'Authorization': 'Bearer ' + bearer}, 403),
             ('nul', b'before\x00after', {'Content-Type': 'application/octet-stream', 'x-session-token': self.token}, 400),
             ('invalid_utf8', b'\xff', {'Content-Type': 'application/octet-stream', 'x-session-token': self.token}, 400),
             ('max_plus_one', b'x' * (524288 + 1), {'Content-Type': 'application/octet-stream', 'x-session-token': self.token}, 413)]
         baseline = self.product_effects()
         for label, content, headers, expected_status in checks:
             status, error, transport_error, body_read_error = None, None, None, None
-            audit_before = len(json.loads((self.audit/'preview-requests.json').read_text(encoding='utf-8')))
+            audit_bytes_before = (self.audit/'preview-requests.json').read_bytes()
+            audit_before = len(json.loads(audit_bytes_before))
             try:
                 with urllib.request.urlopen(urllib.request.Request(url, data=content, headers=headers), timeout=75) as response:
                     status = response.status
@@ -405,6 +406,9 @@ class Fixture:
                     'exact_server_observed_early_413' if any(row.get('http_status')==413 for row in observed) else 'unproven_transport_outcome'),
                 expected_status=expected_status, baseline=baseline, after=after)
             assert (status == expected_status or (label == 'max_plus_one' and transport_error and observed[-1]['http_status'] == 413)) and after == baseline
+            if label in ('no_token', 'agent_bearer'):
+                assert observed == [], 'Unauthenticated preview entered its handler'
+                assert (self.audit/'preview-requests.json').read_bytes() == audit_bytes_before
             if body_read_error:
                 assert label=='max_plus_one' and status==413 and error is None and len(observed)==1
                 assert observed[0]['http_status']==413 and observed[0]['reader_error_status']==413
