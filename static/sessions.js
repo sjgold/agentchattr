@@ -1374,6 +1374,23 @@ function renderRestartControls(bar) {
     if (start && !start.dataset.busy) start.disabled = !ready || panel.dataset.dirty === 'true';
 }
 
+// DOCUMENT RESTART BADGE BEGIN
+function appendOriginalFileBadge(section, session) {
+    const snapshot = session.input_snapshot;
+    const file = snapshot?.document;
+    if (!file || file.kind !== 'file' || typeof file.name !== 'string' || typeof snapshot.text !== 'string') return;
+    const kinds = new Set((snapshot.text.match(/\r\n|\r|\n/g) || []).map(x => x === '\r\n' ? 'CRLF' : x === '\r' ? 'CR' : 'LF'));
+    const endings = kinds.size > 1 ? 'mixed line endings' : [...kinds][0] || 'no line breaks';
+    const badge = document.createElement('p');
+    badge.className = 'document-original-badge';
+    badge.textContent = `Original file: ${file.name} (${endings})`;
+    const hint = document.createElement('p');
+    hint.className = 'document-restart-hint';
+    hint.textContent = 'This restart creates a pasted snapshot. Edit the source itself; changing only line endings is treated as unchanged.';
+    section.append(badge, hint);
+}
+// DOCUMENT RESTART BADGE END
+
 function buildRestartControls(panel, s, prepared) {
     const draft = restartDrafts.get(s.id) || {text: s.input_snapshot?.text || '', operations: new Map()};
     restartDrafts.set(s.id, draft);
@@ -1386,6 +1403,7 @@ function buildRestartControls(panel, s, prepared) {
         `Replacement of review ${s.parent_session_id}. Its source, goal, design and rules are frozen. Old answers and continuation text are excluded.` :
         'Edit the source for a linked review. Goal, design, rules and roles are retained. Old source and answers stay readable in history.';
     section.appendChild(explanation);
+    if (!prepared) appendOriginalFileBadge(section, s);
     const source = document.createElement('details');
     const sourceHeading = document.createElement('summary');
     sourceHeading.textContent = prepared ? 'Preview frozen replacement source' : 'Read original source';
@@ -1649,14 +1667,96 @@ function selectedRecoveryPolicy() {
     return {ack_timeout: values[0], response_timeout: values[1], monitor_interval: values[2]};
 }
 
+// DOCUMENT LAUNCHER HELPERS BEGIN
+function updateDocumentStart(modal) {
+    const state = modal._documentInput?.state;
+    const blocked = modal.dataset.submitting === 'true' || state === 'reading' || state === 'error';
+    modal.querySelectorAll('.session-start-btn').forEach(button => { button.disabled = blocked; });
+}
+
+function initializeDocumentInput(modal) {
+    if (!modal._documentInput) {
+        modal._documentInput = DocumentInput.attach(modal.querySelector('.session-source-editor'));
+        modal._documentStateListener = () => updateDocumentStart(modal);
+        modal.addEventListener('document-input-state', modal._documentStateListener);
+    }
+    updateDocumentStart(modal);
+    return modal._documentInput;
+}
+
+function closeSessionLauncher(modal = document.getElementById('session-launcher-modal')) {
+    if (!modal) return;
+    modal._documentInput?.dispose();
+    if (modal._documentStateListener) modal.removeEventListener('document-input-state', modal._documentStateListener);
+    modal.remove();
+}
+
+function sessionStartError(modal, message) {
+    let error = modal.querySelector('.document-start-error');
+    if (!error) {
+        error = document.createElement('p');
+        error.className = 'document-start-error';
+        error.setAttribute('role', 'alert');
+        modal.querySelector('.session-source-editor').appendChild(error);
+    }
+    error.textContent = message;
+    error.hidden = !message;
+}
+
+async function submitSessionStart(fields) {
+    const modal = document.getElementById('session-launcher-modal');
+    if (!modal || modal.dataset.submitting === 'true') return;
+    let facade, source, policy;
+    try {
+        facade = initializeDocumentInput(modal);
+        source = facade.requestFields();
+        policy = selectedRecoveryPolicy();
+    } catch (failure) {
+        sessionStartError(modal, failure.message || 'Choose another file or use pasted text.');
+        return;
+    }
+    const cast = {};
+    modal.querySelectorAll('.session-cast-select').forEach(select => { cast[select.dataset.role] = select.value; });
+    const body = {...fields, channel: window.activeChannel, cast,
+        goal: modal.querySelector('#session-goal-input')?.value.trim() || '', ...source,
+        recovery_policy: policy, started_by: window.username};
+    modal.dataset.submitting = 'true';
+    facade.setSubmitting(true);
+    updateDocumentStart(modal);
+    sessionStartError(modal, '');
+    try {
+        const response = await fetch('/api/sessions/start', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN},
+            body: JSON.stringify(body)
+        });
+        if (!modal.isConnected) return;
+        if (!response.ok) {
+            const result = await response.json();
+            sessionStartError(modal, (typeof result.error === 'string' ? result.error : 'Start was refused.') + ' Your draft is kept.');
+        } else {
+            closeSessionLauncher(modal);
+        }
+    } catch (failure) {
+        if (modal.isConnected) sessionStartError(modal,
+            'Start could not be confirmed. Check the conversation before starting again. Your draft is kept.');
+    } finally {
+        if (modal.isConnected) {
+            delete modal.dataset.submitting;
+            facade.setSubmitting(false);
+            updateDocumentStart(modal);
+        }
+    }
+}
+// DOCUMENT LAUNCHER HELPERS END
+
 function showSessionLauncher() {
     let existing = document.getElementById('session-launcher-modal');
-    if (existing) existing.remove();
+    if (existing) closeSessionLauncher(existing);
 
     const modal = document.createElement('div');
     modal.id = 'session-launcher-modal';
     modal.className = 'session-launcher-overlay';
-    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    modal.onclick = (e) => { if (e.target === modal) closeSessionLauncher(modal); };
 
     let templateOptions = sessionTemplates.map(t =>
         `<div class="session-tmpl-card" onclick="showCastPreview('${window.escapeHtml(t.id)}')" title="${window.escapeHtml(t.description || '')}">
@@ -1687,7 +1787,7 @@ function showSessionLauncher() {
         <div class="session-launcher-dialog">
             <div class="session-launcher-header">
                 <span>Start a Session</span>
-                <button onclick="this.closest('.session-launcher-overlay').remove()">&times;</button>
+                <button onclick="closeSessionLauncher(this.closest('.session-launcher-overlay'))">&times;</button>
             </div>
             <div class="session-launcher-goal">
                 <input id="session-goal-input" type="text" placeholder="Goal (optional) -- what should this session achieve?" />
@@ -1706,6 +1806,7 @@ function showSessionLauncher() {
         </div>
     `;
     document.body.appendChild(modal);
+    initializeDocumentInput(modal);
     fetchSessionCapacity();
     document.getElementById('session-goal-input')?.focus();
 }
@@ -1715,7 +1816,7 @@ async function sendDesignRequest() {
     const desc = document.getElementById('session-design-desc')?.value?.trim();
     if (!agent || !desc) return;
     const modal = document.getElementById('session-launcher-modal');
-    if (modal) modal.remove();
+    if (modal) closeSessionLauncher(modal);
     try {
         const res = await fetch('/api/sessions/request-draft', {
             method: 'POST',
@@ -1755,6 +1856,7 @@ function showCastPreview(templateId) {
         <div class="session-cast-list">${roleRows}</div>
         <button class="session-start-btn" onclick="launchSessionWithCast('${window.escapeHtml(templateId)}')">Start Session</button>
     `;
+    updateDocumentStart(document.getElementById('session-launcher-modal'));
 }
 
 function sessionCastBack() {
@@ -1765,41 +1867,7 @@ function sessionCastBack() {
 }
 
 async function launchSessionWithCast(templateId) {
-    const goalInput = document.getElementById('session-goal-input');
-    const goal = goalInput ? goalInput.value.trim() : '';
-    const inputText = document.getElementById('session-source-input')?.value || '';
-
-    // Read cast from dropdowns
-    const cast = {};
-    document.querySelectorAll('#session-step-cast .session-cast-select').forEach(sel => {
-        cast[sel.dataset.role] = sel.value;
-    });
-
-    const modal = document.getElementById('session-launcher-modal');
-
-    try {
-        const res = await fetch('/api/sessions/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
-            body: JSON.stringify({
-                template_id: templateId,
-                channel: window.activeChannel,
-                cast: cast,
-                goal: goal,
-                input_text: inputText,
-                recovery_policy: selectedRecoveryPolicy(),
-                started_by: window.username,
-            }),
-        });
-        if (!res.ok) {
-            const data = await res.json();
-            alert(data.error || 'Failed to start session');
-        } else if (modal) {
-            modal.remove();
-        }
-    } catch (e) {
-        alert('Error starting session: ' + e.message);
-    }
+    return submitSessionStart({template_id: templateId});
 }
 
 // ---------------------------------------------------------------------------
@@ -1920,12 +1988,12 @@ function showDraftCastPreview(tmpl, draftMsgId) {
     const assignees = [...agents, window.username];
 
     let existing = document.getElementById('session-launcher-modal');
-    if (existing) existing.remove();
+    if (existing) closeSessionLauncher(existing);
 
     const modal = document.createElement('div');
     modal.id = 'session-launcher-modal';
     modal.className = 'session-launcher-overlay';
-    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    modal.onclick = (e) => { if (e.target === modal) closeSessionLauncher(modal); };
 
     const roleRows = buildSessionCastEditor(tmpl, cast, assignees);
 
@@ -1933,7 +2001,7 @@ function showDraftCastPreview(tmpl, draftMsgId) {
         <div class="session-launcher-dialog">
             <div class="session-launcher-header">
                 <span>${window.escapeHtml(tmpl.name || '?')} -- Cast</span>
-                <button onclick="this.closest('.session-launcher-overlay').remove()">&times;</button>
+                <button onclick="closeSessionLauncher(this.closest('.session-launcher-overlay'))">&times;</button>
             </div>
             <div class="session-launcher-goal">
                 <input id="session-goal-input" type="text" placeholder="Goal (optional)" />
@@ -1952,44 +2020,12 @@ function showDraftCastPreview(tmpl, draftMsgId) {
         </div>
     `;
     document.body.appendChild(modal);
+    initializeDocumentInput(modal);
     fetchSessionCapacity();
 }
 
 async function launchDraftSession(draftMsgId) {
-    const goalInput = document.getElementById('session-goal-input');
-    const goal = goalInput ? goalInput.value.trim() : '';
-    const inputText = document.getElementById('session-source-input')?.value || '';
-
-    const cast = {};
-    document.querySelectorAll('#session-step-cast .session-cast-select').forEach(sel => {
-        cast[sel.dataset.role] = sel.value;
-    });
-
-    const modal = document.getElementById('session-launcher-modal');
-
-    try {
-        const res = await fetch('/api/sessions/start', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN },
-            body: JSON.stringify({
-                draft_message_id: draftMsgId,
-                channel: window.activeChannel,
-                cast: cast,
-                goal: goal,
-                input_text: inputText,
-                recovery_policy: selectedRecoveryPolicy(),
-                started_by: window.username,
-            }),
-        });
-        if (!res.ok) {
-            const data = await res.json();
-            alert(data.error || 'Failed to start session from draft');
-        } else if (modal) {
-            modal.remove();
-        }
-    } catch (e) {
-        alert('Error: ' + e.message);
-    }
+    return submitSessionStart({draft_message_id: draftMsgId});
 }
 
 async function saveDraft(msgId, btn) {
@@ -2217,6 +2253,7 @@ function _sessionsInit() {
 // ---------------------------------------------------------------------------
 
 window.showSessionLauncher = showSessionLauncher;
+window.closeSessionLauncher = closeSessionLauncher;
 window.runDraft = runDraft;
 window.saveDraft = saveDraft;
 window.dismissDraft = dismissDraft;

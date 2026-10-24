@@ -28,6 +28,7 @@ class DocumentRoutesTests(unittest.TestCase):
             app._install_security_middleware('operator-routing-test', {'server': {'port': 18300}})
         api.add_api_route('/api/documents/preview', app.preview_document_input, methods=['POST'])
         api.add_api_route('/api/sessions/start', app.start_session, methods=['POST'])
+        api.add_api_route('/api/sessions/active', app.get_active_session, methods=['GET'])
         client = TestClient(api, client=('127.0.0.1', 40000))
         self.addCleanup(client.close)
         return client
@@ -117,6 +118,12 @@ class DocumentRoutesTests(unittest.TestCase):
             snap = response.json()['input_snapshot']
             self.assertEqual(snap['text'], document['text'] if 'source_file' in source else 'paste')
             self.assertEqual('document' in snap, 'source_file' in source)
+            app.session_engine.stop_session(response.json()['id'])
+            stopped = client.get('/api/sessions/active?channel='+channel, headers=self.fixture.headers)
+            self.assertEqual(stopped.status_code, 200)
+            self.assertEqual(stopped.json()['input_snapshot'], snap)
+            self.assertIn(stopped.json()['state'], ('stopping', 'stopped'))
+
 
     def test_draft_start_threads_file_snapshot_through_same_route(self):
         client = self.client()

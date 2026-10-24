@@ -850,3 +850,25 @@
     background: var(--bg-input);
     color: var(--text);
 }
+
+
+/* Document intake uses the existing launcher surface, with literal source text. */
+.document-input { min-width:0; font-size:14px; }
+.document-actions { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 12px; }
+.document-actions button { min-height:44px; padding:12px; font:inherit; color:var(--text); background:var(--bg-input); border:1px solid var(--border); border-radius:var(--radius-md); cursor:pointer; }
+.document-actions button:hover { border-color:var(--accent); }
+.document-actions button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.document-actions button:disabled { opacity:.55; cursor:wait; }
+.document-input textarea { font-size:14px; max-height:320px; overflow:auto; white-space:pre; }
+.document-input p { font-size:14px; color:var(--text); overflow-wrap:anywhere; }
+.document-input textarea::placeholder { color:var(--text-muted); }
+.document-input .document-error, .document-input .document-start-error { color:var(--text); }
+.document-metadata { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px 12px; font-size:14px; line-height:1.5; margin:12px 0 0; }
+.document-metadata dt { color:var(--text-muted); }
+.document-metadata dd { min-width:0; margin:0; overflow-wrap:anywhere; }
+.document-input [hidden] { display:none; }
+.document-original-badge, .document-restart-hint { font-size:14px; overflow-wrap:anywhere; }
+@media (max-width:480px) {
+    .document-metadata { grid-template-columns:minmax(0,1fr); gap:4px; }
+    .document-metadata dd { margin-bottom:8px; }
+}
