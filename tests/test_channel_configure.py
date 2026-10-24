@@ -267,6 +267,29 @@ class ChannelConfigureTests(unittest.TestCase):
         self.assertEqual(marker.read_bytes(), b'do not replace this directory')
         self.assertTrue(path.is_dir())
 
+    def test_configured_rename_uses_owned_cursor_file_and_migrates_runtime_maps(self):
+        (self.data / 'settings.json').write_text(json.dumps({'channels': ['general', 'dev', 'peer']}), encoding='utf-8')
+        cursor_path = self.data / 'mcp_cursors.json'
+        cursor_path.write_text(json.dumps({'reader': {'dev': 8, 'peer': 4, 'job:7': 99}}), encoding='utf-8')
+        foreign = self.root / 'foreign-cursors.json'
+        with patch.object(mcp_bridge, '_cursors', {}), patch.object(mcp_bridge, '_CURSORS_FILE', foreign), patch.object(mcp_bridge, '_last_read_channel', {'reader': 'dev', 'peer': 'peer'}), patch.object(app, '_last_active_channel', 'dev'), patch.object(app, '_agent_last_channel', {'reader': 'dev', 'peer': 'peer'}):
+            self.configure()
+            message = app.store.add('operator', 'Retained source', channel='dev')
+            app.router._get_ch('dev')['hop_count'] = 2
+            preview = app.channel_service.preview('rename', 'dev', new_name='qa')
+            result = app.channel_service.apply('rename', 'dev', new_name='qa', request_id=uuid.uuid4().hex,
+                confirmation='dev', preview_token=preview['preview_token'])
+            self.assertEqual(result['channel'], 'qa')
+            self.assertEqual(app.store.get_snapshot(message['id']), {**message, 'channel': 'qa'})
+            self.assertEqual(json.loads(cursor_path.read_text(encoding='utf-8')),
+                             {'reader': {'qa': 8, 'peer': 4, 'job:7': 99}})
+            self.assertFalse(foreign.exists())
+            self.assertEqual(mcp_bridge._last_read_channel, {'reader': 'qa', 'peer': 'peer'})
+            self.assertEqual(app._last_active_channel, 'qa')
+            self.assertEqual(app._agent_last_channel, {'reader': 'qa', 'peer': 'peer'})
+            self.assertNotIn('dev', app.router._channels)
+            self.assertEqual(app.router._channels['qa']['hop_count'], 2)
+
     def test_summary_upgrade_preserves_odd_names_and_optional_legacy_fields(self):
         (self.data / 'settings.json').write_text(json.dumps({'channels': ['general', 'dev']}), encoding='utf-8')
         saved = {'general': {'text': 'Valid general summary', 'author': 'operator',

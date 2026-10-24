@@ -216,8 +216,11 @@ def _initialize_channel_lifecycle(data_dir):
                 pass  # A held owner stays closed; never replace it with empty saved data.
     channel_service = ChannelService(catalog, engine=session_engine, messages=store,
         jobs=jobs, schedules=schedules, summaries=summaries, queue=agents.queue,
-        settings=room_settings, save_settings=_save_settings, migrate_cursors=None,
-        router=router, migrate_last_active=None, unregistered_channels=data_names)
+        settings=room_settings, save_settings=_save_settings,
+        migrate_cursors=lambda old, new: mcp_bridge.migrate_cursors_rename(
+            old, new, strict=True, path=Path(data_dir) / 'mcp_cursors.json'),
+        router=router, migrate_last_active=_migrate_channel_last_active,
+        migrate_fallbacks=mcp_bridge.migrate_fallbacks_rename, unregistered_channels=data_names)
     channel_service.on_change(_on_channel_change)
 
 
@@ -864,6 +867,16 @@ _last_active_channel: str = "general"  # last channel any message was sent in
 _agent_last_channel: dict[str, str] = {}
 
 
+def _migrate_channel_last_active(old_name: str, new_name: str):
+    """Replayable channel rename phase under the engine/catalog boundary."""
+    global _last_active_channel
+    if _last_active_channel == old_name:
+        _last_active_channel = new_name
+    for sender, channel in list(_agent_last_channel.items()):
+        if channel == old_name:
+            _agent_last_channel[sender] = new_name
+
+
 def _migrate_agent_last_channel(old_name: str, new_name: str):
     """Re-key _agent_last_channel across an agent rename.
 
@@ -1419,6 +1432,16 @@ async def retry_channel_action(request: Request):
     return await _channel_http(request, 'retry')
 
 
+def _route_chat_sync(sender, text, channel):
+    with _channels().publication(channel):
+        targets = router.get_targets(sender, text, channel)
+        paused = router.is_paused(channel)
+        announce = paused and not router.is_guard_emitted(channel)
+        if announce:
+            router.set_guard_emitted(channel)
+        return targets, paused, announce
+
+
 async def _handle_new_message(msg: dict):
     """Broadcast message to web clients + check for @mention triggers."""
     # For broadcast slash commands, suppress the raw message — only the expanded
@@ -1458,20 +1481,17 @@ async def _handle_new_message(msg: dict):
         await broadcast(msg)
         return  # A display sender is never evidence of authenticated authorship.
 
+    global _last_active_channel
     try:
-        _channels().require_active(channel)
+        with _channels().publication(channel):
+            if msg_type not in ("system", "leave", "join"):
+                _last_active_channel = channel
+                if sender and sender != "system":
+                    _agent_last_channel[sender] = channel
     except (ChannelUnavailable, ValueError):
         await broadcast(msg)
         return  # A delayed callback may display history, never route inactive work.
 
-    # Track last active channel for leave/join messages (skip system messages)
-    global _last_active_channel
-    if msg_type not in ("system", "leave", "join"):
-        _last_active_channel = channel
-        # Remember where this specific sender was last active so their
-        # disconnect message follows them to the right channel.
-        if sender and sender != "system":
-            _agent_last_channel[sender] = channel
     # Strip @mentions to find the slash command (e.g. "@claude @codex /hatmaking")
     stripped = _re.sub(r"@[\w-]+\s*", "", text).strip().lower()
     _broadcast_cmds = ("/hatmaking", "/artchallenge", "/roastreview", "/poetry")
@@ -1622,7 +1642,10 @@ async def _handle_new_message(msg: dict):
 
     if suppress_agent_wakes:
         return  # Session draft cards may display, but never create mention work.
-    raw_targets = router.get_targets(sender, text, channel)
+    try:
+        raw_targets, paused, announce_guard = await asyncio.to_thread(_route_chat_sync, sender, text, channel)
+    except (ChannelUnavailable, ValueError):
+        return  # Rename/archive while broadcast awaited: history only, no stale volatile state.
     # Resolve base family names to actual registered instances
     # e.g. 'claude' → 'claude-prime' when slot-1 was renamed
     targets = []
@@ -1633,10 +1656,9 @@ async def _handle_new_message(msg: dict):
             targets.append(t)
     targets = list(dict.fromkeys(targets))  # dedupe, preserve order
 
-    if router.is_paused(channel):
+    if paused:
         # Only emit the loop guard notice once per pause
-        if not router.is_guard_emitted(channel):
-            router.set_guard_emitted(channel)
+        if announce_guard:
             store.add_notice(
                 "system",
                 f"Loop guard: {router.max_hops} agent-to-agent hops reached. "

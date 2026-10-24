@@ -6,7 +6,7 @@ import json
 import time
 
 from channel_lifecycle import (ChannelConflict, ChannelInactive, ChannelUnavailable,
-                               _name, _request_id)
+                               _destination, _name, _request_id, RENAME_STEPS)
 from dispatch_queue import ACTIVE
 from session_engine import PROJECTION_REPAIR_STATES
 
@@ -19,12 +19,13 @@ _OPS = {'create', 'archive', 'reopen', 'delete', 'rename', 'cancel_queued', 'rec
 class ChannelService:
     def __init__(self, catalog, *, engine, messages, jobs, schedules, summaries,
                  queue, settings, save_settings, migrate_cursors, router,
-                 migrate_last_active, unregistered_channels=()):
+                 migrate_last_active, unregistered_channels=(), migrate_fallbacks=None):
         self.catalog, self.engine, self.messages = catalog, engine, messages
         self.jobs, self.schedules, self.summaries = jobs, schedules, summaries
         self.queue, self.settings = queue, settings
         self._save_settings, self._migrate_cursors = save_settings, migrate_cursors
         self.router, self._migrate_last_active = router, migrate_last_active
+        self._migrate_fallbacks = migrate_fallbacks
         self._callbacks = []
         self._unregistered = set(settings.get('unregistered_channels', []))
         with self._boundary():
@@ -60,6 +61,18 @@ class ChannelService:
     def on_change(self, callback):
         """Register a channel-level invalidation observer before publication starts."""
         self._callbacks.append(callback)
+
+    def _heal_projection(self, value):
+        projected = value
+        intent = value['intent']
+        # Delete deliberately projects removal before finish. Preserve that
+        # accepted ordering when a retry starts after its settings mark.
+        if intent and intent['op'] == 'delete' and 'settings' in intent['completed_steps']:
+            projected = deepcopy(value)
+            projected['channels'][intent['old']] = 'retired'
+        active = [name for name, state in projected['channels'].items() if state == 'active']
+        if self.settings.get('channels') != active:
+            self._project(projected)
 
     def _emit(self, event):
         for callback in list(self._callbacks):
@@ -174,6 +187,7 @@ class ChannelService:
     def catalog_view(self):
         with self._boundary():
             value = self.catalog.snapshot()
+            self._heal_projection(value)
             rows = []
             for name, state in value['channels'].items():
                 counts, _, _, overdue, _ = self._scope(name)
@@ -189,6 +203,7 @@ class ChannelService:
             raise ValueError('Choose a supported channel action.')
         if op == 'rename':
             _name(new_name)
+            _destination(value, channel, new_name)
         elif new_name is not None:
             raise ValueError('Only rename accepts a destination name.')
         state = value['channels'].get(channel)
@@ -211,16 +226,30 @@ class ChannelService:
     def preview(self, op, channel, *, new_name=None):
         with self._boundary():
             value = self.catalog.snapshot()
+            self._heal_projection(value)
             self._action(value, op, channel, new_name)
             counts, blockers, queued, overdue, stable = self._scope(channel)
+            destination = None
+            if op == 'rename':
+                destination_counts, destination_blockers, _, _, destination = self._scope(new_name)
+                if any(destination_counts.values()) or destination_blockers:
+                    raise ChannelConflict('Destination contains saved data or unresolved work; choose an unused name.')
+                # Terminal queue history is immutable audit, not destination occupancy.
+                destination['transport'] = []
             token = hashlib.sha256(json.dumps([op, channel, new_name, value['revision'], stable],
+                # Destination preflight is repeated at apply, before begin.
                 sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+            if destination is not None:
+                token = hashlib.sha256((token + json.dumps(destination, sort_keys=True,
+                    separators=(',', ':'), allow_nan=False)).encode('utf-8')).hexdigest()
             return {'op': op, 'channel': channel, 'new_name': new_name, 'revision': value['revision'],
                     'state': value['channels'].get(channel), 'counts': counts, 'blockers': blockers,
                     'queued_dispatch_ids': queued, 'overdue_schedules': overdue, 'preview_token': token}
 
     def apply(self, op, channel, *, new_name=None, request_id, confirmation, preview_token):
         _request_id(request_id)
+        if op == 'rename':
+            return self._apply_rename(channel, new_name, request_id, confirmation, preview_token)
         with self._boundary():
             pending = self.catalog.snapshot()['intent']
             if pending and (pending['request_id'], pending['op'], pending['old'], pending['new']) == (
@@ -274,8 +303,86 @@ class ChannelService:
         except Exception:
             raise ChannelUnavailable('History repair did not finish; reload management and retry.') from None
 
+    def _apply_rename(self, channel, new_name, request_id, confirmation, preview_token):
+        with self._boundary():
+            value = self.catalog.snapshot()
+            self._heal_projection(value)
+            pending = value['intent']
+            if type(confirmation) is not str or confirmation != channel:
+                raise ChannelConflict('Type the exact channel name to confirm.')
+            if not (pending and (pending['request_id'], pending['op'], pending['old'], pending['new']) ==
+                    (request_id, 'rename', channel, new_name)):
+                preview = self.preview('rename', channel, new_name=new_name)
+                if type(preview_token) is not str or preview_token != preview['preview_token']:
+                    raise ChannelConflict('Channel contents or work changed; refresh the preview.')
+                if preview['blockers']:
+                    raise ChannelConflict('Channel work is still pending; inspect its blocking scope first.')
+                self.catalog.begin('rename', channel, new_name, request_id=request_id,
+                                   expected_revision=preview['revision'])
+        # Never retain an outer apply boundary across the seven step boundaries.
+        return self.retry(request_id)
+
+    def _retry_rename(self, request_id):
+        try:
+            for step in RENAME_STEPS:
+                with self._boundary():
+                    value = self.catalog.snapshot()
+                    intent = value['intent']
+                    if not intent or intent['request_id'] != request_id or intent['op'] != 'rename':
+                        raise ChannelConflict('That operation is no longer pending; reload the catalog.')
+                    if step in intent['completed_steps']:
+                        continue
+                    old, new = intent['old'], intent['new']
+                    if step == 'messages':
+                        self.messages.rename_channel(old, new)
+                    elif step == 'jobs':
+                        self.jobs.rename_channel(old, new)
+                    elif step == 'schedules':
+                        self.schedules.rename_channel(old, new)
+                    elif step == 'summaries':
+                        self.summaries.rename_channel(old, new)
+                    elif step == 'sessions':
+                        self.engine._store.rename_channel(old, new)
+                    elif step == 'cursors':
+                        if self._migrate_cursors:
+                            self._migrate_cursors(old, new)
+                    else:
+                        self._project(value)  # Flush OLD names before the catalog commit.
+                    self.catalog.complete_step(request_id, step)
+            with self._boundary():
+                value = self.catalog.snapshot()
+                intent = value['intent']
+                if not intent or intent['request_id'] != request_id or intent['op'] != 'rename':
+                    raise ChannelConflict('That operation is no longer pending; reload the catalog.')
+                old, new = intent['old'], intent['new']
+                if self.router:
+                    self.router.rename_channel(old, new)
+                if self._migrate_last_active:
+                    self._migrate_last_active(old, new)
+                if self._migrate_fallbacks:
+                    self._migrate_fallbacks(old, new)
+                value = self.catalog.finish(request_id)
+                result = {'ok': True, 'op': 'rename', 'channel': new, 'old_name': old,
+                          'new_name': new, 'state': value['channels'][new], 'revision': value['revision']}
+                try:
+                    self._project(value)
+                except OSError:
+                    result['projection_warning'] = 'Rename committed. Reload channel management to refresh navigation.'
+                self._emit({'type': 'channel_renamed', 'old_name': old, 'new_name': new,
+                            'revision': value['revision']})
+                return result
+        except OSError:
+            raise ChannelUnavailable('Channel rename could not finish; reload management and retry its pending intent.') from None
+
     def retry(self, request_id):
         _request_id(request_id)
+        with self._boundary():
+            value = self.catalog.snapshot()
+            self._heal_projection(value)
+            intent = value['intent']
+            rename = bool(intent and intent['request_id'] == request_id and intent['op'] == 'rename')
+        if rename:
+            return self._retry_rename(request_id)
         with self._boundary():
             value = self.catalog.snapshot()
             intent = value['intent']

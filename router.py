@@ -83,3 +83,11 @@ class Router:
     def update_agents(self, names: list[str]):
         """Replace the current known agent names."""
         self.agent_names = set(n.lower() for n in names)
+
+    def rename_channel(self, old_name, new_name):
+        """Replayable volatile phase, called under the engine/catalog boundary."""
+        from channel_lifecycle import _name
+        _name(old_name)
+        _name(new_name)
+        if old_name != new_name and old_name in self._channels:
+            self._channels[new_name] = self._channels.pop(old_name)
