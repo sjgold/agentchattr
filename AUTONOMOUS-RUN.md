@@ -24,7 +24,8 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
 | #15 | Published and closed | Source41b80f7, Sonnet independent PASS, post-merge918/four skips86.469s |
 | #17 | Published and closed | Executable4723027, originmainfd825c8, independentPASSWITHNOTES; postmerge1004/four skips86.898s; issueclosed/completedverified. Schedulingcomposer deferred. |
-| #18-26 | Authorized, pending | Continue dependency order after current ticket |
+| #18 | Planning proposal, not implementation | TICKET-18-PLAN.md, stateless filepreview/existing frozenbrief; Sonnet contractcritique beforeTDD. |
+| #19-26 | Authorized, pending | Continue dependency order after current ticket |
 
 ## Non-negotiable verification
 
@@ -37,6 +38,6 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 
 Published/closed: #1-16. Ticket15 source41b80f7 is verified on origin/main and issue15 is confirmed closed. Sonnet5.5 independent PASS WITH NONBLOCKING NOTES; full918/four skips87.682s, four actual scenarios plus prior corrected restart/Retry/Stop/APIlostACK independently PASS. Builder post-merge918/four skips86.469s and syntax/diff PASS; executable1cebd9d unchanged since review.
 
-Current next owner Codex: readnextdependency-eligiblebacklogticket andsettletechnicalcontract withSonnet beforetests/code. Ticket17 ispublished/closed, receiptREVIEW-CLAUDE-TICKET-17.md; originmainfd825c8verified, issue17closed/completed2026-10-24T08:06:16Z. Postmerge1004/four skips86.898s,VM12/syntax/diffPASS; executable4723027 unchanged. Schedulinggap/notes/failurespreserved. Existinghelperidle,noliveresources. No liveAI/provider,Omarchy,Desktop/globalchanges.
+Current next owner Sonnet: critique proposedTicket18contract, thenCodexsettlesexactinterfacesbeforeexistinghelperpureTDD. Branchcodex/ticket-18-document-input/basepublished d787f4f, blocker6closed. No18source/tests yet. Ticket17publishedclosed, finalreceipt/notes/schedulingdeferral retained. Standingauthorizationcontinuesbacklog; no liveAI/Omarchy/Desktop/globalchanges.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.
