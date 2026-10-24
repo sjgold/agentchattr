@@ -36,7 +36,11 @@ class RecipientRuntimeRoutingTests(unittest.TestCase):
         return stack
 
     def request(self, body):
-        return Mock(json=AsyncMock(return_value=body))
+        return Mock(json=AsyncMock(return_value=body), body=AsyncMock(return_value=json.dumps(body).encode()),
+                    state=Mock(auth_origin='operator'))
+
+    def agent_message(self, text, sender='claude', channel='general'):
+        return self.f.engine.send_chat(self.f.registry.get_instance(sender), text, channel=channel)
 
     def test_router_uses_authored_addresses_and_never_human_default(self):
         self.assertEqual(self.router.parse_mentions('"@codex" `@claude` @unknown'), [])
@@ -83,8 +87,7 @@ class RecipientRuntimeRoutingTests(unittest.TestCase):
         self.router._get_ch('general').update(paused=True, hop_count=9, guard_emitted=True)
         before = deepcopy(self.router._channels)
         with self.patched():
-            asyncio.run(app._handle_new_message({'sender': 'claude', 'text': '/continue',
-                'channel': 'general', 'type': 'chat'}))
+            asyncio.run(app._handle_new_message(self.agent_message('/continue')))
         self.assertEqual(self.router._channels, before)
         self.assertTrue(any('only humans can /continue' in message['text']
                             for message in self.f.messages.get_recent(100)))
@@ -105,21 +108,19 @@ class RecipientRuntimeRoutingTests(unittest.TestCase):
             before = self.f.trigger.queue.path.read_bytes()
             channels = deepcopy(self.router._channels)
             with self.subTest(state=state), self.patched():
-                asyncio.run(app._handle_new_message({'sender': 'claude', 'text': '@codex follow up',
-                    'channel': 'general', 'type': 'chat'}))
+                asyncio.run(app._handle_new_message(self.agent_message('@codex follow up')))
                 self.assertEqual(self.f.trigger.queue.path.read_bytes(), before)
                 self.assertEqual(self.router._channels, channels)
 
     def test_agent_slash_is_literal_and_draft_card_stays_display_only(self):
         with self.patched():
+            message = self.agent_message('/roastreview')
             before = self.f.messages.get_recent(100)
-            asyncio.run(app._handle_new_message({'sender': 'claude', 'text': '/roastreview',
-                'channel': 'general', 'type': 'chat'}))
+            asyncio.run(app._handle_new_message(message))
             self.assertEqual(self.f.messages.get_recent(100), before)
             template = dict(self.f.template, name='New proposal')
             before_ledger = self.f.trigger.queue.path.read_bytes()
-            asyncio.run(app._handle_new_message({'sender': 'claude',
-                'text': '```session\n' + json.dumps(template) + '\n```', 'channel': 'general', 'type': 'chat'}))
+            asyncio.run(app._handle_new_message(self.agent_message('```session\n' + json.dumps(template) + '\n```')))
             self.assertEqual(self.f.trigger.queue.path.read_bytes(), before_ledger)
             self.assertTrue(any(m['type'] == 'session_draft' for m in self.f.messages.get_recent(100)))
 
@@ -137,20 +138,21 @@ class RecipientRuntimeRoutingTests(unittest.TestCase):
         self.f.registry.register('claude')
         agents = Mock(is_available=Mock(return_value=True), trigger=AsyncMock())
         with self.patched(agents):
-            asyncio.run(app._handle_new_message({'sender': 'operator', 'text': '@claude hello',
-                'channel': 'discussion', 'type': 'chat'}))
+            asyncio.run(app._handle_new_message(self.agent_message('@claude hello', sender='codex', channel='discussion')))
         agents.trigger.assert_not_awaited()
 
-    def test_app_job_agent_guard_and_ambiguous_family_do_not_wake(self):
+    def test_app_job_operator_origin_overrides_display_agent_and_ambiguity_still_denies(self):
         job = self.jobs.create('Review task', 'job', 'general', 'operator')
         agents = Mock(is_available=Mock(return_value=True), trigger=AsyncMock())
         with self.patched(agents):
             asyncio.run(app.post_job_message(job['id'], self.request({'sender': 'claude', 'text': '@codex hello'})))
-        agents.trigger.assert_not_awaited()
+        agents.trigger_identity_sync.assert_called_once()
+        self.assertEqual(agents.trigger_identity_sync.call_args.args[0], self.f.owner['identity_id'])
+        agents.trigger_identity_sync.reset_mock()
         self.f.registry.register('claude')
         with self.patched(agents):
             asyncio.run(app.post_job_message(job['id'], self.request({'sender': 'operator', 'text': '@claude hello'})))
-        agents.trigger.assert_not_awaited()
+        agents.trigger_identity_sync.assert_not_called()
 
     def test_mcp_job_agent_guard_and_ambiguous_family_do_not_wake(self):
         agents = Mock(is_available=Mock(return_value=True))

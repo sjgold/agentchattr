@@ -13,6 +13,7 @@ from session_engine import SessionEngine
 from session_store import SessionStore
 from store import MessageStore
 from registry import RuntimeRegistry
+from router import Router
 from turn_events import EventConflict
 
 
@@ -34,6 +35,10 @@ def setup_session(tmp_path, stack):
         return result
     stack.enter_context(patch('session_engine.threading.Timer', timer))
     stack.enter_context(patch.object(app, 'store', messages))
+    stack.enter_context(patch.object(app, 'registry', registry))
+    stack.enter_context(patch.object(app, 'router', Router(['claude', 'codex'])))
+    stack.enter_context(patch.object(app, 'session_engine', engine))
+    stack.enter_context(patch.object(app, 'session_store', sessions))
     stack.enter_context(patch.object(app, 'room_settings', {'username': 'Ben'}))
     stack.enter_context(patch.object(app, 'ws_clients', set()))
     engine.start_session('test', 'general', {'asker': 'claude', 'finisher': 'codex'}, 'Ben')

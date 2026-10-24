@@ -313,6 +313,10 @@ class MessageStore:
             for m in self._messages:
                 if m["id"] == msg_id:
                     copied = deepcopy(updates)
+                    if (m.get('metadata') or {}).get('recipient_routing'):
+                        for field in ('id', 'uid', 'sender', 'channel', 'text', 'timestamp',
+                                      'time', 'type', 'attachments', 'reply_to'):
+                            copied.pop(field, None)
                     if 'metadata' in copied:
                         metadata = _message_metadata(copied['metadata'])
                         receipt = (m.get('metadata') or {}).get('recipient_routing')

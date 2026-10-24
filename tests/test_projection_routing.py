@@ -70,8 +70,7 @@ class ProjectionRoutingTests(unittest.TestCase):
         self.assertTrue(any(message['text'] == question for message in projected))
 
     def test_ordinary_chat_mentions_still_enqueue_the_intended_peer(self):
-        message = {'sender': 'codex', 'channel': 'discussion', 'type': 'chat',
-                   'text': '@claude please discuss', 'metadata': {}}
+        message = self.f.engine.send_chat(self.f.owner, '@claude please discuss', channel='discussion')
         before = self.ledger()
         self.callback(message)
         after = self.ledger()

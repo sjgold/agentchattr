@@ -251,6 +251,7 @@ class JobStore:
                 return None
             stamp = time.time()
             message = {'id': len(job['messages']), 'uid': uid, 'sender': sender, 'text': text,
+                       'channel': job['channel'],
                        'time': time.strftime('%H:%M:%S'), 'timestamp': stamp,
                        'attachments': deepcopy(attachments or []),
                        'metadata': {'recipient_routing': receipt}}

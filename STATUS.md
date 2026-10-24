@@ -1,13 +1,13 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 00:34 Chicago (#1-16 published/closed; #17 publication foundations tested, review next)
+**Updated:** 2026-10-24 00:56 Chicago (#1-16 published/closed; #17 trusted ingress backend tested, UI unbuilt)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
 - Active Ticket17 branch `codex/ticket-17-explicit-recipients`, base published61315f7. Codex owns implementation; Sonnet5.5 agent3b53a0e1 independently reviews. Pure resolver and runtime order/agent guards are implemented and bounded-PASS at c1bce3a; corrected full964TOTAL/four skips85.646s, independent70focused plus corrected-source Retry/restart/Stop integrations.
-- Current work: Tranche3 trusted publication foundation contract1b4fb46 approved with corrections. Private store/jobs/archive foundations and12 helper tests are implemented after actual red;56 affected tests PASS3.957s. Next frozen full regression and Sonnet bounded review. Operator ingress, preview, identity dispatch and UI remain planned. Scheduling composer union/stripping is explicitly deferred. No final17 acceptance or publication.
+- Current work: Tranche3b trusted ingress/preview/identity dispatch backend implemented after publication foundations passed full976/four skips98.270s and independent72focused/probes. New helper12 direct units plus root12 real in-process middleware/WebSocket tests, affected126PASS3.000s. Next frozen full regression and Sonnet source/reproduction review before UI. Client still prefixes selected names until Tranche4; scheduling composer union/stripping remains deferred. No final17 acceptance/publication.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
@@ -447,3 +447,9 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 
 - Private capability/UID-before-persistence/publication and explicit emit implemented in store/jobs; generic receipt metadata protection and archive stripping added. Private JSONL rollback preserves exact old bytes/memory/id on partial append/fsync errors; job write faults preserve disk/memory. No app ingress/auth/preview/identity dispatcher/UI yet.
 - Helper12 finalized, initial2red0.010s before production, root12PASS0.076s and affected56PASS3.957s. No fixture/assertion corrections; only explicit unit sequencing, no app/HTTP/queue/native acceptance claimed. Syntax/diff clean. Next Codex frozen full regression plus Sonnet bounded source/reproduction review before wiring.
+
+## Ticket17 Tranche3b backend checkpoint
+
+- Server-resolved operator receipts, strict preview/WS/job input/auth, identity/UID-bound dispatch and explicit internal workflows implemented. Namespace spoofing is blocked; unknown generic/MCP human-looking labels are display-only. Private job messages keep acceptance channel; trusted content fields resist generic mutation. Agent scope/Stop and logical waits preserved. UI still unbuilt.
+- Initial helper2red0.037s; root3red0.042s plus2 genuine IO/status failures0.094s retained. Helper absent-file fixture correction and old sender-only/context fixtures are documented, no target assertions weakened. Final affected126PASS3.000s; compile/diff clean. New evidence is direct unit + real in-process HTTP/WebSocket, no native/browser or actual nightly scheduler acceptance.
+- Next Codex frozen full suite and Sonnet substantive bounded review, then UI preview/raw-send and native acceptance. No Tranche4 code yet. Source remains frozen during reviewer runs.

@@ -304,7 +304,7 @@ def chat_send(
         job = jobs.get(job_id)
         suppress_agent_wakes = bool(session_engine and instance and job
             and session_engine.has_nonterminal_review(job.get('channel', 'general')))
-        if router and agents and not scope.get('routing_suppressed') and not suppress_agent_wakes:
+        if router and agents and instance and not scope.get('routing_suppressed') and not suppress_agent_wakes:
             if job:
                 job_channel = job.get("channel", "general")
                 raw_targets = router.get_targets(sender, text, job_channel)

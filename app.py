@@ -7,6 +7,7 @@ import sys
 import threading
 import uuid
 import logging
+from contextlib import nullcontext
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
@@ -14,7 +15,7 @@ from fastapi.requests import Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from store import MessageStore
+from store import MessageStore, _OPERATOR_PUBLICATION
 from rules import RuleStore
 from summaries import SummaryStore
 from jobs import JobStore
@@ -263,6 +264,7 @@ def _install_security_middleware(token: str, cfg: dict):
                     status_code=403,
                 )
 
+            request.state.auth_origin = 'operator'
             return await call_next(request)
 
     app.add_middleware(SecurityMiddleware)
@@ -717,13 +719,9 @@ def configure(cfg: dict, session_token: str = ""):
                     sender = s.get("created_by", "user")
                     mention_str = " ".join(f"@{t}" for t in targets)
                     full_text = f"{mention_str} {prompt}" if mention_str else prompt
-                    # store.add triggers _handle_new_message via callback,
-                    # which routes @mentions to agents — no manual trigger needed.
-                    store.add(
-                        sender,
-                        full_text,
-                        channel=channel,
-                    )
+                    _publish_operator_message(sender=sender, text=full_text,
+                        selected_recipients=[], approved_targets=targets,
+                        origin='schedule', channel=channel)
                     if s.get("one_shot"):
                         schedules.delete(s["id"])
                     else:
@@ -909,6 +907,182 @@ def _resolve_draft_lineage(text: str, channel: str) -> tuple[str, int]:
     return str(uuid.uuid4())[:8], 1
 
 
+def _recipient_json(raw):
+    from turn_events import MAX_EVENT_BYTES
+    if len(raw) > 2 * MAX_EVENT_BYTES:
+        raise ValueError('Message request exceeds its byte limit.')
+    def unique(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError('Duplicate message fields are not allowed.')
+            value[key] = item
+        return value
+    try:
+        value = json.loads(raw, object_pairs_hook=unique)
+    except (ValueError, UnicodeError, RecursionError):
+        raise ValueError('Use valid message JSON with unique fields.') from None
+    if not isinstance(value, dict):
+        raise ValueError('Message requests must be JSON objects.')
+    return value
+
+
+def _recipient_resolution(text, selected_recipients, channel, job_id=None):
+    from recipient_routing import resolve_recipients
+    from queue_coordinator import allowed_review_dispatch_ids
+    if not isinstance(channel, str) or not _re.fullmatch(r'[a-z0-9][a-z0-9-]{0,19}', channel):
+        raise ValueError('Use a valid message channel.')
+    if job_id is not None:
+        if type(job_id) is not int or job_id <= 0:
+            raise ValueError('Job ID must be a positive integer.')
+        if jobs is None:
+            raise OSError('Job storage is unavailable.')
+        job = jobs.get(job_id)
+        if job is None:
+            raise LookupError('Job not found.')
+        if job.get('channel', 'general') != channel:
+            raise ValueError('The job channel must match the stored conversation.')
+    if registry is None or store is None:
+        raise OSError('Recipient registry or storage is unavailable.')
+    import mcp_bridge
+    snapshot = registry.get_all()
+    online = {name for name in snapshot if mcp_bridge.is_online(name)}
+    result = resolve_recipients(text, selected_recipients, snapshot, online)
+    runs = session_store.list_all() if session_store else []
+    result['waiting'] = [{'identity_id': target['identity_id'], 'reason': 'earlier_review_turn'}
+        for target in result['recipients']
+        if allowed_review_dispatch_ids(runs, target['identity_id']) is not None]
+    return result
+
+
+def _expand_operator_command(text, recipients):
+    match = _re.match(r'^\s*(?:@[A-Za-z0-9_][A-Za-z0-9_-]*\s+)*'
+                      r'/(roastreview|artchallenge|hatmaking|poetry)(?=\s|$)(.*)$', text,
+                      _re.IGNORECASE | _re.DOTALL)
+    if not match:
+        return text
+    command, argument = match[1].lower(), match[2].strip()
+    mentions = ' '.join('@' + target['name'] for target in recipients)
+    if command == 'roastreview':
+        prompt = "Time for a roast review! Inspect each other's work and constructively roast it."
+    elif command == 'artchallenge':
+        prompt = (f"Art challenge! Create an SVG artwork with the theme: **{argument or 'anything you like'}**. "
+                  "Write your SVG code to a .svg file, then attach it using chat_send(image_path=...). "
+                  "Make it creative, keep it under 5KB. Let's see what you've got!")
+    elif command == 'hatmaking':
+        snapshot = registry.get_all() if registry else {}
+        colors = ', '.join(target['name'] + '=' + snapshot.get(target['name'], {}).get('color', '#888')
+                           for target in recipients)
+        prompt = ('Hat making time! Design a new hat for your avatar using SVG. '
+                  'Use viewBox="0 0 32 16" so it fits on top of a 32px avatar circle. '
+                  f'Background is dark (#0f0f17). Avatar colors: {colors}. Design for good contrast! '
+                  "Call chat_set_hat(sender=your_name, svg='<svg ...>...</svg>') to wear it. "
+                  'Be creative: top hats, party hats, crowns, propeller beanies, whatever you want!')
+    else:
+        form = argument if argument in ('haiku', 'limerick', 'sonnet') else 'haiku'
+        prompt = f'Write a {form} about the current state of this codebase.'
+    return (mentions + ' ' + prompt).lstrip()
+
+
+def _publish_operator_message(*, sender, text, selected_recipients, channel='general',
+                              attachments=None, reply_to=None, job_id=None, msg_type='chat',
+                              metadata=None, approved_targets=None, origin='operator'):
+    from recipient_routing import _text
+    if (not isinstance(sender, str) or not sender or '\0' in sender
+            or not isinstance(attachments if attachments is not None else [], list)
+            or (reply_to is not None and (type(reply_to) is not int or reply_to < 0))
+            or msg_type not in ('chat', 'suggestion', 'session_request')
+            or origin not in ('operator', 'workflow', 'schedule')
+            or (approved_targets is not None and origin == 'operator')):
+        raise ValueError('Use valid operator message fields.')
+    _text(sender)
+    _text(text)
+    if router is None:
+        raise OSError('Routing state is unavailable.')
+    if not text.strip() and not attachments:
+        raise ValueError('Message text or attachments are required.')
+    if any(not isinstance(item, dict) for item in (attachments or [])):
+        raise ValueError('Message attachments must be objects.')
+    with session_engine._lock if session_engine else nullcontext():
+        resolution = _recipient_resolution(text if approved_targets is None else '',
+            selected_recipients if approved_targets is None else approved_targets, channel, job_id)
+        stored_text = (_expand_operator_command(text, resolution['recipients'])
+                       if approved_targets is None else text)
+        routing = dict(resolution, origin=origin)
+        if job_id is None:
+            if store is None:
+                raise OSError('Message storage is unavailable.')
+            message = store._publish_operator(sender, stored_text, routing=routing,
+                authority=_OPERATOR_PUBLICATION, channel=channel, attachments=attachments,
+                reply_to=reply_to, msg_type=msg_type, metadata=metadata)
+        else:
+            message = jobs._publish_operator(job_id, sender, stored_text, routing=routing,
+                authority=_OPERATOR_PUBLICATION, attachments=attachments, msg_type=msg_type)
+            if message is None:
+                raise LookupError('Job not found.')
+        router.continue_routing(channel)
+        publisher = store if job_id is None else jobs
+        publisher._emit_operator(message, authority=_OPERATOR_PUBLICATION)
+        return message
+
+
+def _saved_operator_message(message, job_id=None):
+    if (not isinstance(message, dict) or type(message.get('id')) is not int
+            or message['id'] < 0 or not isinstance(message.get('uid'), str)):
+        return None
+    if job_id is None:
+        saved = store.get_snapshot(message['id']) if store else None
+    else:
+        saved = jobs.get_message_snapshot(job_id, message['id']) if jobs else None
+    if not saved or saved.get('uid') != message['uid']:
+        return None
+    metadata = saved.get('metadata') or {}
+    receipt = metadata.get('recipient_routing') or {}
+    if (metadata.get('imported') is True or receipt.get('version') != 1
+            or receipt.get('message_uid') != saved['uid']
+            or receipt.get('origin') not in ('operator', 'workflow', 'schedule')):
+        return None
+    return saved
+
+
+async def _dispatch_operator_audience(message: dict, *, job_id=None):
+    from dispatch_queue import QueueConflict
+    saved = _saved_operator_message(message, job_id)
+    if saved is None:
+        return
+    receipt = saved['metadata']['recipient_routing']
+    for target in receipt['recipients']:
+        identity = target['identity_id']
+        dispatch_id = uuid.uuid5(uuid.NAMESPACE_URL,
+            'agentchattr:recipient:' + saved['uid'] + ':' + identity).hex
+        try:
+            await asyncio.to_thread(agents.trigger_identity_sync, identity, dispatch_id=dispatch_id,
+                message=saved['sender'] + ': ' + saved['text'], channel=saved.get('channel', 'general'),
+                job_id=job_id, prompt=saved['text'] if saved.get('type') == 'session_request' else '')
+        except (QueueConflict, ValueError, OSError):
+            log.info('Resolved recipient is unavailable or already conflicted; message retained.')
+
+
+@app.post('/api/recipients/preview')
+async def preview_recipients(request: Request):
+    if getattr(request.state, 'auth_origin', None) != 'operator':
+        return JSONResponse({'error': 'Operator session required.'}, status_code=403)
+    try:
+        body = _recipient_json(await request.body())
+        if not {'text', 'selected_recipients', 'channel'} <= body.keys() or body.keys() - {
+                'text', 'selected_recipients', 'channel', 'job_id'}:
+            raise ValueError('Use only the supported recipient preview fields.')
+        with session_engine._lock if session_engine else nullcontext():
+            value = _recipient_resolution(body['text'], body['selected_recipients'], body['channel'], body.get('job_id'))
+        return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except ValueError:
+        return JSONResponse({'error': 'Invalid recipient preview request.'}, status_code=400)
+    except LookupError:
+        return JSONResponse({'error': 'Job not found.'}, status_code=404)
+    except OSError:
+        return JSONResponse({'error': 'Recipient preview is unavailable.'}, status_code=503)
+
+
 async def _handle_new_message(msg: dict):
     """Broadcast message to web clients + check for @mention triggers."""
     # For broadcast slash commands, suppress the raw message — only the expanded
@@ -923,6 +1097,15 @@ async def _handle_new_message(msg: dict):
     if msg_type in ('session_result', 'session_question', 'session_input'):
         await broadcast(msg)
         return
+    saved_operator = _saved_operator_message(msg)
+    if saved_operator is not None:
+        if saved_operator.get('type') != 'session_request':
+            await broadcast(saved_operator)
+        await _dispatch_operator_audience(saved_operator)
+        return
+    if (msg.get('metadata') or {}).get('imported') is True:
+        await broadcast(msg)
+        return
     routing_scope = {}
     if session_engine and registry:
         instance = registry.get_instance(sender)
@@ -934,6 +1117,10 @@ async def _handle_new_message(msg: dict):
     if (msg.get('metadata') or {}).get('routing_suppressed') or routing_scope.get('routing_suppressed'):
         await broadcast(msg)
         return
+    if (not routing_scope.get('seat_identity_id')
+            or (msg.get('metadata') or {}).get('seat_identity_id') != routing_scope['seat_identity_id']):
+        await broadcast(msg)
+        return  # A display sender is never evidence of authenticated authorship.
 
     # Track last active channel for leave/join messages (skip system messages)
     global _last_active_channel
@@ -993,7 +1180,8 @@ async def _handle_new_message(msg: dict):
     if not suppress_agent_wakes and stripped == "/roastreview":
         agent_names = registry.get_all_names() if registry else list(config.get("agents", {}).keys())
         mentions = " ".join(f"@{a}" for a in agent_names)
-        store.add(sender, f"{mentions} Time for a roast review! Inspect each other's work and constructively roast it.", channel=channel)
+        store.add(sender, f"{mentions} Time for a roast review! Inspect each other's work and constructively roast it.",
+                  channel=channel, metadata=routing_scope)
         return
 
     if not suppress_agent_wakes and stripped.startswith("/artchallenge"):
@@ -1006,7 +1194,7 @@ async def _handle_new_message(msg: dict):
             f"{mentions} Art challenge! Create an SVG artwork with the theme: **{theme}**. "
             "Write your SVG code to a .svg file, then attach it using chat_send(image_path=...). "
             "Make it creative, keep it under 5KB. Let's see what you've got!",
-            channel=channel,
+            channel=channel, metadata=routing_scope,
         )
         return
 
@@ -1027,7 +1215,7 @@ async def _handle_new_message(msg: dict):
             f"Background is dark (#0f0f17). Avatar colors: {color_parts}. Design for good contrast! "
             "Call chat_set_hat(sender=your_name, svg='<svg ...>...</svg>') to wear it. "
             "Be creative — top hats, party hats, crowns, propeller beanies, whatever you want!",
-            channel=channel,
+            channel=channel, metadata=routing_scope,
         )
         return
 
@@ -1043,7 +1231,7 @@ async def _handle_new_message(msg: dict):
             "limerick": "Write a limerick about the current state of this codebase.",
             "sonnet": "Write a sonnet about the current state of this codebase.",
         }
-        store.add(sender, f"{mentions} {prompts[form]}", channel=channel)
+        store.add(sender, f"{mentions} {prompts[form]}", channel=channel, metadata=routing_scope)
         return
 
     # Detect session draft blocks from agents only.
@@ -1375,7 +1563,8 @@ async def websocket_endpoint(websocket: WebSocket):
     
     history = []
     for ch in room_settings["channels"]:
-        history.extend(store.get_recent(count, channel=ch))
+        history.extend(message for message in store.get_recent(count, channel=ch)
+                       if message.get('type') != 'session_request')
     
     # Sort history by timestamp to interleave messages from different channels correctly
     history.sort(key=lambda m: m.get("timestamp", 0))
@@ -1395,43 +1584,46 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             raw = await websocket.receive_text()
-            event = json.loads(raw)
+            try:
+                event = _recipient_json(raw.encode('utf-8'))
+            except (ValueError, UnicodeError):
+                await websocket.send_text(json.dumps({'type': 'message_error',
+                    'error': 'Use valid message JSON within the supported size limit.'}))
+                continue
 
             if event.get("type") == "message":
-                text = event.get("text", "").strip()
-                attachments = event.get("attachments", [])
-                sender = event.get("sender") or room_settings.get("username", "user")
-                channel = event.get("channel", "general")
-
-                if not text and not attachments:
-                    continue
-
-                # Command handling
-                if text.startswith("/"):
-                    cmd_parts = text.split()
-                    cmd = cmd_parts[0].lower()
-                    if cmd == "/clear":
+                try:
+                    if event.keys() - {'type', 'text', 'attachments', 'sender', 'channel',
+                                       'reply_to', 'selected_recipients'}:
+                        raise ValueError('Unsupported message fields.')
+                    text = event.get('text', '')
+                    from recipient_routing import _text
+                    _text(text)
+                    attachments = event.get('attachments', [])
+                    sender = event.get('sender') or room_settings.get('username', 'user')
+                    channel = event.get('channel', 'general')
+                    if not text.strip() and not attachments:
+                        continue
+                    # Explicit local controls retain their existing behavior.
+                    command = text.strip().split()[0].lower() if text.strip() else ''
+                    if command == '/clear':
                         store.clear(channel=channel)
                         await broadcast_clear(channel=channel)
                         continue
-                    if cmd == "/continue":
+                    if command == '/continue':
                         router.continue_routing()
-                        store.add("system", "Resuming agent conversation...", msg_type="system", channel=channel)
+                        store.add('system', 'Resuming agent conversation...', msg_type='system', channel=channel)
                         await broadcast_status()
                         continue
-                    # Broadcast slash commands — expand without storing the raw command.
-                    # _handle_new_message will store the expanded version.
-                    if cmd in ("/hatmaking", "/artchallenge", "/roastreview", "/poetry"):
-                        await _handle_new_message({"sender": sender, "text": text, "channel": channel})
-                        continue
-
-                # Store message — the on_message callback handles broadcast + triggers
-                reply_to = event.get("reply_to")
-                if reply_to is not None:
-                    reply_to = int(reply_to)
-
-                store.add(sender, text, attachments=attachments, reply_to=reply_to,
-                          channel=channel)
+                    _publish_operator_message(sender=sender, text=text,
+                        selected_recipients=event.get('selected_recipients', []),
+                        attachments=attachments, reply_to=event.get('reply_to'), channel=channel)
+                except (ValueError, PermissionError):
+                    await websocket.send_text(json.dumps({'type': 'message_error',
+                        'error': 'Invalid message or recipient fields.'}))
+                except OSError:
+                    await websocket.send_text(json.dumps({'type': 'message_error',
+                        'error': 'Message storage is unavailable; the message was not accepted.'}))
 
             elif event.get("type") == "delete":
                 ids = event.get("ids", [])
@@ -2138,7 +2330,8 @@ async def resolve_decision(msg_id: int, request: Request):
     username = room_settings.get("username", "user")
     reply_text = f"@{sender} {chosen}" if sender else chosen
     try:
-        store.add(username, reply_text, reply_to=msg_id, channel=channel)
+        _publish_operator_message(sender=username, text=reply_text, selected_recipients=[],
+            approved_targets=[sender] if sender else [], origin='workflow', reply_to=msg_id, channel=channel)
     except Exception:
         import traceback; traceback.print_exc()
     # Broadcast updated decision card so the UI swaps buttons to resolved state
@@ -2338,45 +2531,31 @@ async def get_job_messages(job_id: int):
 
 @app.post("/api/jobs/{job_id}/messages")
 async def post_job_message(job_id: int, request: Request):
-    """Post a message to a job."""
-    body = await request.json()
-    text = body.get("text", "").strip()
-    sender = body.get("sender", "user")
-    attachments = body.get("attachments", [])
-    if not text and not attachments:
-        return JSONResponse({"error": "text or attachments required"}, status_code=400)
-    msg_type = body.get("type", "chat")
-    msg = jobs.add_message(job_id, sender, text,
-                           attachments=attachments, msg_type=msg_type)
-    if msg is None:
-        return JSONResponse({"error": "job not found"}, status_code=404)
-
-    # Route @mentions in job messages to agents (with job_id context)
-    job = jobs.get(job_id)
-    if job and not (session_engine and registry and registry.is_registered(sender)
-                    and session_engine.has_nonterminal_review(job.get('channel', 'general'))):
-        channel = job.get("channel", "general")
-        raw_targets = router.get_targets(sender, text, channel)
-        targets = []
-        for t in raw_targets:
-            if registry:
-                targets.extend(registry.resolve_to_instances(t))
-            else:
-                targets.append(t)
-        targets = list(dict.fromkeys(targets))
-
-        import mcp_bridge
-        chat_msg = f"{sender}: {text}" if text else ""
-        for target in targets:
-            if registry:
-                inst = registry.get_instance(target)
-                if inst and inst.get("state") == "pending":
-                    continue
-            if agents.is_available(target):
-                await agents.trigger(target, message=chat_msg, channel=channel,
-                                     job_id=job_id)
-
-    return msg
+    """Publish a session-authenticated human post, independently of its label."""
+    if getattr(request.state, 'auth_origin', None) != 'operator':
+        return JSONResponse({'error': 'Operator session required.'}, status_code=403)
+    try:
+        body = _recipient_json(await request.body())
+        if body.keys() - {'text', 'selected_recipients', 'sender', 'attachments', 'type'}:
+            raise ValueError('Unsupported job message fields.')
+        job = jobs.get(job_id) if jobs else None
+        if job is None:
+            raise LookupError('Job not found.')
+        kind = body.get('type', 'chat')
+        if kind not in ('chat', 'suggestion'):
+            raise ValueError('Unsupported job message type.')
+        message = _publish_operator_message(sender=body.get('sender') or room_settings.get('username', 'user'),
+            text=body.get('text', ''), selected_recipients=body.get('selected_recipients', []),
+            channel=job.get('channel', 'general'), job_id=job_id,
+            attachments=body.get('attachments', []), msg_type=kind)
+        await _dispatch_operator_audience(message, job_id=job_id)
+        return JSONResponse(message, headers={'Cache-Control': 'no-store'})
+    except ValueError:
+        return JSONResponse({'error': 'Invalid job message or recipient fields.'}, status_code=400)
+    except LookupError:
+        return JSONResponse({'error': 'Job not found.'}, status_code=404)
+    except OSError:
+        return JSONResponse({'error': 'Job message storage is unavailable.'}, status_code=503)
 
 
 @app.delete("/api/jobs/{job_id}/messages/{msg_id}")
@@ -3334,9 +3513,9 @@ async def request_session_draft(request: Request):
         f"Requested session draft from {mention_str}. Wait for a proposal.",
         channel=channel,
     )
-    store.add(
-        sender,
-        f"{mention_str} Design a session workflow for: **{description}**\n\n"
+    _publish_operator_message(
+        sender=sender,
+        text=f"{mention_str} Design a session workflow for: **{description}**\n\n"
         "Respond with a single chat message containing a fenced JSON code block with this exact structure:\n"
         "```session\n"
         '{"name": "...", "description": "...", "roles": ["role1", "role2", ...], '
@@ -3346,7 +3525,7 @@ async def request_session_draft(request: Request):
         "Mark exactly one phase as `is_output: true` (the final deliverable). "
         f"Keep it focused and sequential. Use the chat_send tool to post your response in the #{channel} channel. "
         "Do NOT respond only in your terminal.",
-        channel=channel,
+        channel=channel, selected_recipients=[], approved_targets=[agent_name], origin='workflow',
         msg_type="session_request",
         metadata={"session_request": True, "mentions": [f"@{agent_name}"], "request": description},
     )

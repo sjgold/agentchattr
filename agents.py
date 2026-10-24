@@ -42,6 +42,18 @@ class AgentTrigger:
         instance = self._registry.get_instance(agent_name)
         if not instance:
             raise ValueError('The target seat is not registered; no future identity was assigned this work.')
+        return self._enqueue_instance(instance, message, channel, job_id, **kwargs)
+
+    def trigger_identity_sync(self, identity_id, *, dispatch_id, message='',
+                              channel='general', job_id=None, prompt=''):
+        matches = [value for value in self._registry.get_all().values()
+                   if value['identity_id'] == identity_id and value['state'] == 'active']
+        if len(matches) != 1:
+            raise ValueError('The resolved seat identity is no longer available.')
+        return self._enqueue_instance(matches[0], message, channel, job_id,
+                                      dispatch_id=dispatch_id, prompt=prompt)
+
+    def _enqueue_instance(self, instance, message, channel, job_id, **kwargs):
         entry = {'sender': message.split(':')[0].strip() if ':' in message else '?',
                  'text': message, 'channel': channel}
         prompt = kwargs.get('prompt', '')
@@ -54,5 +66,5 @@ class AgentTrigger:
                 entry[key] = kwargs[key]
         record = self.queue.enqueue(instance, entry)
         log.info('Persisted dispatch %s for %s (channel=%s)',
-                 record['envelope']['dispatch_id'], agent_name, channel)
+                 record['envelope']['dispatch_id'], instance['name'], channel)
         return record
