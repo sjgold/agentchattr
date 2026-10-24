@@ -1,13 +1,13 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 03:35 Chicago (#1-17 closed; #18 pure bounded PASS, wiring interface review next)
+**Updated:** 2026-10-24 03:39 Chicago (#1-17 closed; #18 wiring confirmed, integration RED next)
 
 ## Current handoff
 
 - Ticket15 is complete, independently accepted (PASS WITH NONBLOCKING NOTES), fast-forward merged and published on origin/main41b80f7262fcd283ad3ce4a50e229803781c13cb. Remote exact hash and GitHub issue15 closed/completed were independently reread after publication.
 - Verification: builder frozen918 total/four skips87.210s, reviewer918/four skips87.682s, post-merge918/four skips86.469s plus node syntax/diff. All4 actual Windows/local-fake cases independently reproduced by both, cleanup[]. Actual UI replacement/skip builder-only evidence. Receipt REVIEW-CLAUDE-TICKET-15.md; source executable1cebd9d unchanged after review.
-- Active Ticket18 planning branch `codex/ticket-18-document-input`, base publishedmain d787f4f. Codex claimed implementation-owner56b000d9; Sonnet remains independent reviewer. Issue18 scope DA-1/FileAT-04 and blocker6closed verified. TICKET-18-PLAN.md statelessfilepreview/existingrun snapshot approvedwithsettlements; amendmentsawaitSonnetdiffconfirmationbeforepureTDD. No production/helpertests yet.
-- Current work: Ticket18 pure405b136/docsade99d3 independently bounded-PASS: Sonnet12PASS0.257s plus~65adversarialprobes, nofixesrequired. ContentC1controls andtrailingUnicode-spacefilename acceptance explicitlyfollowsettledC0+DEL/ASCII-spacepolicy. Exactbackendwiring/UIfacadeproposal appendedtoTICKET-18-PLAN; Sonnetinterfaceconfirmationnext beforeanynewintegrationtests/code. ProposedstreambufferMAX+1/operatorauth/strictquery, source_filethroughStart/freeze/briefmetadata, failclosedreads andfile-originrestartguard. Existingmoduleunwired; noHTTP/UI/native/full18claim. Ticket17publishedclosed d787f4f,receiptlimits/schedulinggapretained.
+- Active Ticket18 branch `codex/ticket-18-document-input`, base published main d787f4f. Codex owns implementation; Sonnet reviews independently. Issue18 scope DA-1/FileAT-04 and blocker6 closed verified. Pure module is implemented and independently reviewed; backend wiring is not implemented.
+- Current work: Ticket18 pure source405b136 independently bounded-PASS (12 tests and reviewer adversarial probes). Sonnet confirmed wiring interfaces at e047e33 with W1-W4, now recorded in TICKET-18-PLAN.md: early Content-Length refusal, encoded-plus filename handling, existing seal/typed-event compatibility, and persistence/legacy/no-effects tests. Existing helper next owns new test_document_briefs.py (first two actual RED, at most12); root owns route/restart tests. Backend wiring starts after observed RED. No HTTP/UI/native/full18 acceptance claim.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
@@ -15,7 +15,7 @@
 - This file plus [the specification](docs/agentchattr-fork-spec.md) should be enough to resume.
 - Update actual results and next steps, not intended features presented as shipped.
 - Root `AGENTS.md` requires agents to read this file before work and maintain current status, verification, blockers, and the next action before handing off.
-- Resume from the current handoff above and `TICKET-17-PLAN.md`. [October18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md) and older receipts describe historical checkpoints.
+- Resume from the current handoff above and `TICKET-18-PLAN.md`. [October18 handoff](2026-10-18-SESSION-HANDOFF-gpt-6.md) and older receipts describe historical checkpoints.
 
 ## Autonomous execution policy (latest direction2026-10-23 evening)
 
@@ -625,3 +625,8 @@ Existinghelper captured first2actual ModuleNotFoundError(document_inputs) errors
 ## Ticket18 pure bounded PASS and wiring interface proposal
 
 Sonnet independentlyread79linemodule andran12tests0.257s plus~65adversarialprobes(perf~0.04s at512KiB), boundedPUREPASS source405b136/docsade99d3; noimplementationfixesneeded. Policylimitsnoted: C1sourcecontrolsaccepted(C0+DELgate),trailingNBSP/Zsfilenameaccepted(onlyASCIIspace/dottrailingrule), noprovencenativefileclaim. Rootwroteexactnextbackendinterfaces+UIfacadeproposal beforetests/code: rawquery/stream/auth, keypresencefileStart, internalkeywordcompatibility,7fielddocumentmetadata/untrustedbriefpacket/BriefStorerevalidation, P1/P2guard, per-modalUIcanonicalobject. NextownerSonnetconfirmthenexistinghelpernewbriefintegrationtestsfirstRED; rootroute/restarttestsandwiringafterRED. Noapp/engine/UI/nativechangesyet.
+
+
+## Ticket18 wiring interfaces confirmed, integration TDD next
+
+Sonnet confirmed e047e33 with W1-W4, source-read only. The plan now requires Content-Length refusal before stream reads, generic rejection of raw query plus (encoded plus preserved), unchanged existing result/typed-event identity gates with compatibility tests, and exact persistence/legacy/invalid-create atomicity tests. Both launcher source-editor wrappers exist. Next: helper captures first2 actual RED in new test_document_briefs.py (max12 methods); root captures route/restart RED, implements backend only afterward, then runs focused/full regression and obtains independent review. Pure12 results remain the only completed Ticket18 execution evidence; no app/session/brief/UI wiring or native/provider run yet.
