@@ -51,12 +51,15 @@ class SessionEngine:
     # --- Public API ---
 
     def start_session(self, template_id: str, channel: str, cast: dict,
-                      started_by: str, goal: str = "", input_text: str = "", recovery_policy=None) -> dict | None:
+                      started_by: str, goal: str = "", input_text: str = "", recovery_policy=None, *, source_file=None) -> dict | None:
         with self._lock:
-            return self._start_session(template_id, channel, cast, started_by, goal, input_text, recovery_policy)
+            return self._start_session(template_id, channel, cast, started_by, goal, input_text, recovery_policy, source_file=source_file)
 
-    def _start_session(self, template_id, channel, cast, started_by, goal, input_text, recovery_policy=None):
+    def _start_session(self, template_id, channel, cast, started_by, goal, input_text, recovery_policy=None, *, source_file=None):
         """Start a new session. Returns the session dict or None on failure."""
+        if source_file is not None:
+            from review_brief import _file_snapshot
+            source_file = _file_snapshot(source_file, input_text)
         bindings = {}
         from turn_recovery import recovery_policy as validate_policy
         policy = dict(self._recovery_policy)
@@ -86,6 +89,7 @@ class SessionEngine:
             started_by=started_by,
             goal=goal,
             input_text=input_text,
+            source_file=source_file,
             rules_snapshot=self._rules.active_list() if self._rules is not None else None,
             participant_bindings=bindings,
             recovery_policy=policy,

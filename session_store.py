@@ -152,7 +152,7 @@ class SessionStore:
 
     def create(self, template_id: str, channel: str, cast: dict,
                started_by: str, goal: str = "", input_text: str = "", rules_snapshot=None,
-               participant_bindings=None, recovery_policy=None) -> dict | None:
+               participant_bindings=None, recovery_policy=None, *, source_file=None) -> dict | None:
         """Create and persist a new session run."""
         tmpl = self._templates.get(template_id)
         if not tmpl:
@@ -160,7 +160,7 @@ class SessionStore:
         from review_brief import BriefError, freeze_inputs
         from turn_recovery import recovery_policy as validate_policy
         policy = validate_policy(recovery_policy)
-        frozen = freeze_inputs(tmpl, goal, input_text, rules_snapshot, capacity_policy=self._capacity_policy)
+        frozen = freeze_inputs(tmpl, goal, input_text, rules_snapshot, capacity_policy=self._capacity_policy, source_file=source_file)
         if (not isinstance(cast, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not v for k, v in cast.items())
                 or set(cast) != set(tmpl['roles'])):
             raise BriefError('Assign every design role to a named participant before Start.')
@@ -375,9 +375,18 @@ class SessionStore:
                     or parent['state'] not in ('stopped', 'unresolved')):
                 raise EventConflict('Stop the original run and resolve its stopping state before preparing a replacement.')
             from session_capacity import LEGACY_POLICY
+            file_origin = 'document' in parent['input_snapshot']
+            if file_origin:
+                from review_brief import _validated_document
+                _validated_document(parent['input_snapshot']['document'], parent['input_snapshot']['text'])
             frozen = freeze_inputs(parent['design_snapshot'], parent['goal'], input_text, parent['rules_snapshot'],
                                    capacity_policy=parent.get('capacity_policy') or LEGACY_POLICY)
-            if frozen['input_revision'] == parent['input_revision']:
+            unchanged = frozen['input_revision'] == parent['input_revision']
+            if file_origin:
+                def newlines(text):
+                    return text.replace('\r\n', '\n').replace('\r', '\n')
+                unchanged = newlines(parent['input_snapshot']['text']) == newlines(input_text)
+            if unchanged:
                 raise BriefError('The source is unchanged. Use turn Retry for the same document; correct the source before restarting.')
             bindings = deepcopy(parent['participant_bindings'] if participant_bindings is None else participant_bindings)
             if not isinstance(bindings, dict) or set(bindings) != set(parent['cast']):

@@ -144,3 +144,10 @@ Sonnet confirmed the interfaces at e047e33 with these four precisions. No backen
 Both existing `.session-source-editor` wrappers were verified in static/sessions.js (the ordinary launcher and draft launcher). No wrapper invention is needed; UI implementation remains a later tranche.
 
 Next owner: existing helper writes ONLY new tests/test_document_briefs.py, at most 12 methods, capturing the first two actual failing tests before production wiring. Root writes new tests/test_document_routes.py and restart tests. After observed RED, root implements backend wiring, runs focused/full regression, then requests Sonnet's independent frozen-source review. No UI, native scenario or provider execution is authorized by this test assignment.
+
+
+## Backend execution checkpoint (review pending)
+
+Observed RED before wiring: helper2 missing source_file keyword errors0.006s; root missing preview error and incorrect newline-only restart failure0.053s. Implemented the agreed backend interfaces, optional document/source_document validation and file-parent restart guard. Existing identity/seal field sets and algorithms were not changed. Root route/restart tests cover both existing Start paths, 512KiB CRLF-heavy JSON, preview auth/query/media/stream bounds, no-effects refusal, and no context/Popen/callback on unchanged restart. Related98 tests passed7.455s; root12 plus existing engine2 passed14/0.995s. Helper brief12 finalization, frozen full regression and independent Sonnet backend review remain required. No UI/native acceptance is claimed.
+
+Helper brief12 finalized PASS0.502s; root document36 PASS1.350s (pure12, brief12, route/restart12). Static syntax and whitespace checks clean. Frozen full discovery and Sonnet independent backend review are next; no UI/native work.

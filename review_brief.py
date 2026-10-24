@@ -42,7 +42,24 @@ def _revision(value):
                                      separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
 
 
-def freeze_inputs(template, goal='', input_text='', rules=None, capacity_policy=None):
+def _file_snapshot(source_file, input_text=''):
+    from document_inputs import validate_document_snapshot, DocumentInputError
+    if type(input_text) is not str or input_text != '':
+        raise BriefError('Choose either a file snapshot or pasted source.')
+    try:
+        return validate_document_snapshot(source_file)
+    except DocumentInputError as exc:
+        raise BriefError(str(exc)) from None
+
+
+def _validated_document(metadata, text):
+    if type(metadata) is not dict or 'text' in metadata:
+        raise BriefError('Frozen file metadata is malformed.')
+    canonical = _file_snapshot({**metadata, 'text': text})
+    return {key: value for key, value in canonical.items() if key != 'text'}
+
+
+def freeze_inputs(template, goal='', input_text='', rules=None, capacity_policy=None, *, source_file=None):
     from session_store import validate_session_template
     from session_capacity import capacity_policy as validate_capacity
     limits = validate_capacity(capacity_policy)
@@ -54,6 +71,11 @@ def freeze_inputs(template, goal='', input_text='', rules=None, capacity_policy=
     except (TypeError, ValueError) as exc:
         raise BriefError('Invalid session design: ' + str(exc)) from None
     _text(goal, MAX_BRIEF_BYTES, 'Task brief')
+    document = None
+    if source_file is not None:
+        canonical = _file_snapshot(source_file, input_text)
+        input_text = canonical['text']
+        document = {key: value for key, value in canonical.items() if key != 'text'}
     source = _text(input_text, MAX_INPUT_BYTES, 'Pasted source')
     rules = deepcopy(rules if rules is not None else {'epoch': 0, 'rules': []})
     if (not isinstance(rules, dict) or not isinstance(rules.get('rules', []), list)
@@ -61,9 +83,12 @@ def freeze_inputs(template, goal='', input_text='', rules=None, capacity_policy=
         raise BriefError('Frozen rules must contain a list of text rules.')
     _text(json.dumps(rules, ensure_ascii=False, allow_nan=False), MAX_RULES_BYTES, 'Frozen rules')
     revision = hashlib.sha256(source).hexdigest()
+    snapshot = {'text': input_text, 'revision': revision, 'encoding': 'utf-8'}
+    if document is not None:
+        snapshot['document'] = document
     return {'run_id': uuid.uuid4().hex, 'goal': goal, 'design_snapshot': design, 'capacity_policy': limits,
             'design_revision': _revision(design), 'input_revision': revision,
-            'input_snapshot': {'text': input_text, 'revision': revision, 'encoding': 'utf-8'},
+            'input_snapshot': snapshot,
             'rules_snapshot': rules, 'rules_revision': _revision(rules)}
 
 
@@ -80,7 +105,7 @@ def build_brief(session, phase_index, turn_index, agent, identity_id='', prior_r
     role = phase['participants'][turn_index]
     prior = deepcopy(prior_results or [])
     _text(json.dumps(prior, ensure_ascii=False, allow_nan=False), MAX_PRIOR_BYTES, 'Prior review results')
-    return {'brief_id': uuid.uuid4().hex, 'run_id': session['run_id'],
+    envelope = {'brief_id': uuid.uuid4().hex, 'run_id': session['run_id'],
             'attempt_id': uuid.uuid4().hex, 'turn_id': f"{session['run_id']}:{phase_index}:{turn_index}",
             'session_id': session['id'], 'channel': session.get('channel', 'general'),
             'expected_agent': agent, 'expected_identity_id': identity_id,
@@ -90,6 +115,9 @@ def build_brief(session, phase_index, turn_index, agent, identity_id='', prior_r
             'input_revision': session['input_revision'], 'design_revision': session['design_revision'],
             'prior_results': prior, 'continuation_context': deepcopy(session.get('continuation_context', [])),
             'missing_contributions': missing_contributions(session)}
+    if 'document' in session['input_snapshot']:
+        envelope['source_document'] = _validated_document(session['input_snapshot']['document'], envelope['source'])
+    return envelope
 
 
 def brief_messages(envelope, recent_messages, agent_name, system_prompt=''):
@@ -110,9 +138,12 @@ def brief_messages(envelope, recent_messages, agent_name, system_prompt=''):
                    'A status update is not a final result. Do not include fences or conversational text outside JSON.')
     else:
         system += '\nReturn your result as text.'
+    source_packet = {'kind': 'untrusted_review_source',
+                     'input_revision': envelope['input_revision'], 'text': envelope['source']}
+    if 'source_document' in envelope:
+        source_packet['source_document'] = _validated_document(envelope['source_document'], envelope['source'])
     messages = [{'role': 'system', 'content': system},
-                {'role': 'user', 'content': json.dumps({'kind': 'untrusted_review_source',
-                    'input_revision': envelope['input_revision'], 'text': envelope['source']}, ensure_ascii=False)},
+                {'role': 'user', 'content': json.dumps(source_packet, ensure_ascii=False)},
                 {'role': 'user', 'content': json.dumps({'kind': 'prior_review_results',
                     'results': envelope['prior_results']}, ensure_ascii=False)}]
     if recent_messages and envelope.get('completion_protocol') != 1:
@@ -142,6 +173,8 @@ class BriefStore:
         source = _text(value['source'], MAX_INPUT_BYTES, 'Pasted source')
         if hashlib.sha256(source).hexdigest() != value['input_revision']:
             raise BriefError('Review source revision does not match its saved text.')
+        if 'source_document' in value:
+            _validated_document(value['source_document'], value['source'])
         _text(value['goal'], MAX_BRIEF_BYTES, 'Task brief')
         if '_result_seal' in value:
             private = value['_result_seal']

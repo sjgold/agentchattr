@@ -2955,6 +2955,69 @@ async def get_all_active_sessions():
     return JSONResponse(session_engine.list_active())
 
 
+def _document_filename(request):
+    from urllib.parse import parse_qsl
+    from fastapi import HTTPException
+    raw = request.scope.get('query_string', b'')
+    try:
+        if (type(raw) is not bytes or len(raw) > 4096 or b'+' in raw
+                or _re.search(rb'%(?![0-9a-fA-F]{2})', raw)):
+            raise ValueError
+        pairs = parse_qsl(raw.decode('ascii'), keep_blank_values=True, strict_parsing=True,
+                          encoding='utf-8', errors='strict')
+        if len(pairs) != 1 or pairs[0][0] != 'filename' or not pairs[0][1]:
+            raise ValueError
+        return pairs[0][1]
+    except (ValueError, UnicodeError):
+        raise HTTPException(400, 'Provide one valid UTF-8 filename query field.') from None
+
+
+async def _document_bytes(request):
+    from fastapi import HTTPException
+    from document_inputs import MAX_DOCUMENT_BYTES
+    lengths = request.headers.getlist('content-length')
+    if lengths:
+        if len(lengths) != 1 or not _re.fullmatch(r'[0-9]+', lengths[0]):
+            raise HTTPException(400, 'Invalid file request length.')
+        # Compare decimal strings without an unbounded integer conversion.
+        length = lengths[0].lstrip('0') or '0'
+        limit = str(MAX_DOCUMENT_BYTES)
+        if len(length) > len(limit) or (len(length) == len(limit) and length > limit):
+            raise HTTPException(413, 'File exceeds the 512 KiB limit; nothing was truncated.')
+    content = bytearray()
+    try:
+        async for chunk in request.stream():
+            content.extend(chunk[:MAX_DOCUMENT_BYTES + 1 - len(content)])
+            if len(content) > MAX_DOCUMENT_BYTES:
+                raise HTTPException(413, 'File exceeds the 512 KiB limit; nothing was truncated.')
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, 'The file request could not be read completely.') from None
+    return bytes(content)
+
+
+@app.post('/api/documents/preview')
+async def preview_document_input(request: Request):
+    from fastapi import HTTPException
+    from document_inputs import preview_document, DocumentInputError, DocumentTooLarge
+    if getattr(request.state, 'auth_origin', None) != 'operator':
+        return JSONResponse({'error': 'Operator authentication is required.'}, status_code=403)
+    if request.headers.get('content-type', '').split(';', 1)[0].strip().lower() != 'application/octet-stream':
+        return JSONResponse({'error': 'Send the file as application/octet-stream.'}, status_code=415)
+    try:
+        name = _document_filename(request)
+        content = await _document_bytes(request)
+        snapshot = preview_document(name, content)
+    except HTTPException as exc:
+        return JSONResponse({'error': exc.detail}, status_code=exc.status_code)
+    except DocumentTooLarge as exc:
+        return JSONResponse({'error': str(exc)}, status_code=413)
+    except DocumentInputError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+    return JSONResponse(snapshot, headers={'Cache-Control': 'no-store'})
+
+
 @app.post("/api/sessions/start")
 async def start_session(request: Request):
     if not session_engine or not session_store:
@@ -2970,6 +3033,19 @@ async def start_session(request: Request):
         return JSONResponse({'error': 'Session Start requires valid JSON.'}, status_code=400)
     if not isinstance(body, dict):
         return JSONResponse({'error': 'Session Start requires a JSON object.'}, status_code=400)
+    source_file = None
+    if 'source_file' in body:
+        from document_inputs import validate_document_snapshot, DocumentInputError, DocumentTooLarge
+        if getattr(request.state, 'auth_origin', None) != 'operator':
+            return JSONResponse({'error': 'Operator authentication is required.'}, status_code=403)
+        if 'input_text' in body:
+            return JSONResponse({'error': 'Choose either a file snapshot or pasted source.'}, status_code=400)
+        try:
+            source_file = validate_document_snapshot(body['source_file'])
+        except DocumentTooLarge as exc:
+            return JSONResponse({'error': str(exc)}, status_code=413)
+        except DocumentInputError as exc:
+            return JSONResponse({'error': str(exc)}, status_code=400)
     if (not isinstance(body.get('template_id', ''), str) or
             not isinstance(body.get('channel', 'general'), str) or
             not _CHANNEL_NAME_RE.fullmatch(body.get('channel', 'general')) or
@@ -3030,7 +3106,7 @@ async def start_session(request: Request):
 
     try:
         session = await asyncio.to_thread(session_engine.start_session, template_id, channel, cast,
-            started_by, goal, input_text=input_text, recovery_policy=body.get('recovery_policy'))
+            started_by, goal, input_text=input_text, recovery_policy=body.get('recovery_policy'), source_file=source_file)
     except (BriefError, EventValidationError) as exc:
         return JSONResponse({'error': str(exc)}, status_code=400)
     except OSError:
