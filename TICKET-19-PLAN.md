@@ -1,6 +1,6 @@
 # Ticket 19 channel lifecycle interface freeze candidate
 
-**Status: A1 pure catalog independently PASS at2a43104 (12 tests/0.868s plus reviewer probes). A2 queue/persistence primitives implemented after observed RED; piece review and full regression pending. No ChannelService/app wiring yet.**
+**Status: A1 independently PASS; A2 queue/persistence piece independently PASS dd1b6d8, builder full1059/four skips93.526s. Direct ChannelService component now12PASS/related69PASS; component review/full regression pending. No app/HTTP/WS/startup integration yet.**
 
 Goal: discoverable rename, archive/reopen and deliberate deletion; preserve history/artifacts appropriately, block automatic routing into archived channels, protect general, and require finished/stopped work before removal. Scope authority specv1.7 RC-2/AT-11 and issue19. Blocker10 is verified closed. Base published main3845c5ef46ef7dbbc0453b5cf61dadc95a2c1491; baseline1040tests/four platform skips. Prior18 complete with independent acceptance/publication/closure.
 
@@ -53,7 +53,7 @@ One labelled Manage channels action accessible in both tab and sidebar layouts. 
 
 ### Durable catalog, no channel UUIDs
 
-New `channel_lifecycle.py` owns `ChannelStore` and the configured `ChannelService`. File `channel_lifecycle.json` has exactly these top-level fields:
+New `channel_lifecycle.py` owns pure `ChannelStore`; configured `ChannelService` lives in `channel_service.py` so the catalog stays independent of engine/stores. Public signatures are unchanged. File `channel_lifecycle.json` has exactly these top-level fields:
 
 ```json
 {"version":1,"revision":0,"channels":{"general":"active"},"retired":{},"intent":null}
@@ -166,4 +166,10 @@ A2 first piece: root new tests/test_channel_transport.py. Initial2 actual RED0.0
 
 Delete-order adjustment settled by Sonnet after source discovery: the old messages-first order loses the IDs required to clean todos after restart. Reorder to todos->messages->settings, no intent schema growth; pending hold must also block new todo writes. Root changed test step constant FIRST: focused delete case actual1ERROR0.096s, ChannelConflict on todo-first; then production constant changed and combined suite green. Rename steps unchanged. Only lifecycle phase completion emits notifications; partial steps are silent and retry-safe. No helper edits beyond root-authorized delete-order constant update.
 
-Next owner Sonnet: recheck small delete-order diff and review frozen A2 queue/persistence piece. Codex holds further executable changes while full regression/review runs. Helper idle. ChannelService, HTTP/WS ingress, startup/claim catalog derivation, busy/preview race enforcement and UI remain unimplemented; no configured/native/whole-ticket acceptance claim.
+A2 queue/persistence independent result: Sonnet PASS dd1b6d8, personally read executable diff and first80 lines of new tests; ran catalog+transport19PASS0.947s and probes19/19b/19c. His exact-cancel and todo-fault probe limitations remain attributed; root tests cover those seams. Builder full discovery atdd1b6d8:1059 tests/93.526s OK(skipped4), log.audit-tmp/ticket19-queue-persistence-full.log, shell516850c5exit0. This is builder full evidence, not a reviewer full run.
+
+A2 next component (direct service only): root new tests/test_channel_service.py first2 genuine missing-module RED0.035s before production, then original2PASS0.085s. Root first expanded12 run0.339s:8PASS/1FAIL/3ERROR; two incomplete delete paths, monitor-token change, and absent message-file fixture. Corrected only fixture setup: compare optional absent bytes and establish the invocation before mutating ONLY its monitoring; corrected run0.355s:9PASS/1FAIL/2ERROR, confirming the token defect and missing delete paths. Implemented deletion/retry phases and a logical session timestamp, then12PASS0.405s. Expanded busy subcases within the same method cover all eight live states. Related69PASS2.757s plus syntax/diff clean on the final component.
+
+Service currently enforces policy when callers explicitly use publication/apply: engine RLock -> catalog RLock -> one store lock, no store callback held; stable preview/CAS, active/archive/reopen/create, separate scoped cancellation, exact busy/audit scope, pending delete with IO hold/retry/deferred notifications, retained counts, active settings projection plus persistent settings.unregistered_channels, and fail-closed reads. New QueueStore.records supplies detached all/channel ledger views. SessionStore._event_update keeps channel_updated_at stable for monitoring-only changes while ordinary updated_at still advances; substantive logical changes advance both. No brief/seal/input shape changes. Rename/repair remains explicitly unavailable until tranche B migration implementation; no endpoint exposes this partial component yet.
+
+Next owner Sonnet: review frozen ChannelService/direct-store test component and small SessionStore timestamp seam. Codex holds executable changes while full regression/review runs; helper idle. App/HTTP/WS/startup integration, automatic coordinator policy derivation, per-record schedule/import wiring, all actual ingress call sites and UI remain pending. Direct race and busy tests are component evidence, not configured-server acceptance. No native/whole-ticket acceptance claim.

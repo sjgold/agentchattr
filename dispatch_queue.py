@@ -300,6 +300,14 @@ class QueueStore:
         with self._transaction() as ledger:
             return deepcopy([r for r in ledger['records'] if r['envelope']['target_identity_id'] == identity])
 
+    def records(self, channel=None):
+        """Detached ledger view for channel policy, without claiming or rewriting."""
+        if channel is not None:
+            _routing({'channel': channel})
+        with self._transaction() as ledger:
+            return deepcopy([record for record in ledger['records'] if channel is None
+                             or record['envelope'].get('channel', 'general') == channel])
+
     def cancellation_receipt(self, instance, dispatch_id, consumer_id, status, *, remote_compute='unverified'):
         identity = _seat(instance)
         _identifier(dispatch_id, 'Dispatch ID')

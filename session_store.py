@@ -261,11 +261,22 @@ class SessionStore:
             if not session or session.get('completion_protocol') != 1:
                 raise EventConflict('Session has no explicit completion protocol; legacy history is read-only.')
             before = deepcopy(self._sessions)
+            previous = deepcopy(session)
             try:
                 change(session)
                 if skip_if_unchanged and self._sessions == before:
                     return deepcopy(session)
-                session['updated_at'] = time.time()
+                stamp = time.time()
+                def logical(value):
+                    value = deepcopy(value)
+                    value.pop('updated_at', None)
+                    value.pop('channel_updated_at', None)
+                    if isinstance(value.get('active_invocation'), dict):
+                        value['active_invocation'].pop('monitoring', None)
+                    return value
+                session['channel_updated_at'] = (stamp if logical(session) != logical(previous)
+                    else previous.get('channel_updated_at', previous.get('updated_at')))
+                session['updated_at'] = stamp
                 self._save()
                 result = deepcopy(session)
             except Exception:
