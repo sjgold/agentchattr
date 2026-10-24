@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 01:08 Chicago (#1-16 published/closed; #17 backend review fixes tested, full/recheck next)
+**Updated:** 2026-10-24 01:23 Chicago (#1-16 published/closed; #17 backend bounded PASS, UI behavior freeze next)
 
 ## Current handoff
 
@@ -459,3 +459,9 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - 5ed4403 full1000TOTAL failed one capacity-fixture error/four skips89.858s, no backendPASS issued. Sonnet independently103focused reproduced that fixture and passed10 native integrations at that source. Source otherwise approved pendingF1: hidden coordinator prompt persisted into readers/export.
 - Corrected hiddenworkflow removal after dispatch with ID/UID guard and endpoint await; actual queue retains prompt. Capacity fixture supplies real router/coordinator and checks the same policy text in the queued prompt, with no target assertion weakened. Root F1actualFAIL0.046s; bounded unexpected-WS-error actualFAIL0.043s beforegenericframe handling. Earlier unbounded fault test was interrupted, not counted as a completed run; no native workers/providers involved.
 - Corrected67focusedPASS1.376s; next frozen full and Sonnet substantive recheck. UI raw-send/preview/native17/browser acceptance remain unbuilt. No final17 acceptance/publication.
+
+## Ticket17 backend accepted, UI planning
+
+- Corrected53b63b4 full1002TOTAL/998passed/four expected skips89.148s exit0. Sonnet independently105focused2.184s and corrected-source session_events/review_brief/dispatch_queue integrations PASS; hidden-request fix/source rechecked -> boundedPASS. No final17/native17/browser acceptance.
+- Tranche4 proposed behavior freeze now covers shared250ms server preview, raw text/separate selections, clear warnings/ignored/waits, draft-preserving pending states, minimal per-socket saved-content ACK (no ticket/outbox/retry), job raw POST and mobile/keyboard rules. Impeccable local context ran successfully using existing binary, incumbent CSS tokens retained; no install/settings change.
+- Next Sonnet short UI/ACK contract review before Node/server red tests and frontend implementation. Current client prefixing remains unchanged until that work. Scheduling composer explicitly deferred.

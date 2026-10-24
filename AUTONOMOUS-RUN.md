@@ -23,7 +23,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #13 | Published and closed | Source5e6a796, same AGY final PASS; post-merge734 OK |
 | #14 | Published and closed | Source4999c39, same AGY source-grounded final PASS; post-merge806 total/four skips |
 | #15 | Published and closed | Source41b80f7, Sonnet independent PASS, post-merge918/four skips86.469s |
-| #17 | Tranche2 boundedPASS | Corrected full964/four skips85.646s, independent70focused+3integrations; Tranche3a boundedPASS/full976; Tranche3b backend126focusedPASS, frozen full/review next; client UI unbuilt; scheduling composer deferred |
+| #17 | Tranche2 boundedPASS | Corrected full964/four skips85.646s, independent70focused+3integrations; Tranche3a boundedPASS/full976; Tranche3b boundedPASS/full1002; Tranche4 UI/ACK behavior freeze next, client UI unbuilt; scheduling composer deferred |
 | #18-26 | Authorized, pending | Continue dependency order after current ticket |
 
 ## Non-negotiable verification

@@ -314,3 +314,59 @@ Sonnet confirmed C1-C4 by diff at1b4fb46. Helper is assigned ONLY new tests/test
 - Capacity fixture now supplies Router and a genuinely registered coordinator. Original policy/execution assertions remain; prompt-limit equality is checked against the actual queued prompt rather than a hidden stored message. Added explicit hidden-message absence assertion.
 - Root F1 standalone actualFAIL0.046s before fix. An initial combined F1/unexpected-WS-error attempt had a missing error frame and was interrupted through its owned exec session (no native workers/providers); that partial log is not a completed suite result. Replaced only that fault test's transport fixture with a bounded scripted WebSocket handler, observed genuine missing-error-frame FAIL0.043s, then added generic per-message error handling. Fault details never reach the client; the next message remains usable. Other route tests use actual TestClient middleware/WebSocket flows.
 - Corrected67focusedPASS1.376s (.audit-tmp/ticket17-ingress-corrected-focused.log). Syntax/diff and corrected full regression plus Sonnet substantive recheck are required before bounded backendPASS. Offline feedback remains in accepted warnings/preview for Tranche4 UI; no delivery promise or live-provider acceptance.
+
+## Tranche4 composer/job UI (proposed behavior freeze, before tests/code)
+
+Backend53b63b4 is bounded-PASS: builder full1002TOTAL/998passed/four expected skips89.148s; Sonnet105focused2.184s and corrected-source session_events/review_brief/dispatch_queue integrations PASS. Root hidden-workflow test already asserts exactly one coordinator dispatch. None of this fixes E10 until this UI tranche removes prefixing.
+
+### Incumbent surface and direction
+
+Scoped Operate extension, preserving static/style.css dark tokens, existing layout/type/buttons and channel/job navigation. New inline preview sits between target controls and the input in each composer; no modal, new design world, image assets or page redesign. Existing14px/44px recovery controls are the reference. Impeccable context ran via the already-installed local binary; it found no PRODUCT.md/DESIGN.md, so existing implementation is visual authority for this scoped change. No install or generated product narrative. Mechanical detector runs once after UI completion, then bounded desktop/mobile inspection plus at most one confirmation round.
+
+Direction contract: THESIS, make the audience visible beside the act of sending. OWN-WORLD, incumbent dark surfaces/text/semantic warning colors, flat12px-inset status regions and wrapping @names. STORY, see who is addressed, understand overrides/waits, post shared text without accidental extra responses. FIRST VIEWPORT, selected controls above a compact preview, textarea and Send remain the primary action; extra ignored-address detail is collapsible. FORM, ordinary inline status section, no replacement-world seed needed. FINISH, unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance. For this incumbent extension, design documentation is this source-grounded component contract; no new raster or full-app DESIGN.md rewrite is needed.
+
+### Shared server-only audience preview
+
+Add static/recipients.js and static/recipients.css, loaded before jobs.js/chat.js. No JS address parser. Proposed shared API:
+
+```javascript
+const preview = RecipientPreview.attach(element);
+preview.schedule(requestOrNull); // debounce250ms; dedup unchanged input
+await preview.prepare(request);  // always a fresh immediate server preview before send
+preview.invalidate();            // cancel stale request/context and clear old audience
+preview.error(message);          // local generic status, never inject raw HTML
+```
+
+Request is exactly {text,selected_recipients,channel,job_id?}. Use the approved POST /api/recipients/preview and X-Session-Token. Abort superseded fetches; an incrementing generation discards late responses. Network/HTTP/invalid JSON error shows a generic error and leaves the draft intact. Bound preview fetch at8s. No background network poll: debounce on input/composition-end/target change, refresh on relevant membership/availability changes and channel/job switches. Existing voice-typing fallback calls updateSendButton; route that through a deduplicated preview schedule. Null request for a genuinely empty composer clears the preview to a static hint. Attachments affect whether the composer has content, never parser input.
+
+One fresh prepare is required on Send even if the last preview matches. Snapshot text/selections/channel or job/attachments/reply before awaiting. If any draft/context field changes before prepare returns, cancel the send and schedule the new preview, rather than posting a stale snapshot. No automatic send/retry. While preparing, disable Send, label it Checking audience, and expose busy state. Multiple clicks/Enter cannot create multiple posts.
+
+### Channel send and minimal content ACK refinement
+
+Remove sendMessage's activeMentions prefix union. Send the original input.value (no trimming/rewrite) and separate selected_recipients array; attachments and reply id keep their current shape. Local /clear and /continue keep existing explicit local behavior and bypass audience preview; all other text/commands use the server resolver. Remove client needsMention regex rewriting for /summary: buttons are valid selections under RC-1. Update four broadcast-command descriptions from all agents to addressed agents. No scheduling composer code changes.
+
+Proposed small backend transport refinement: after successful `_publish_operator_message`, the WS handler sends ONLY that socket `{'type':'message_accepted','uid':message['uid'],'channel':message['channel']}`. It confirms saved content/resolved audience, NEVER enqueue/delivery. This is not a client ticket, new outbox, idempotency key or automatic retry; no new request fields. Server message_error remains the rejection/unconfirmed path. Add focused backend tests for ACK-after-persistence/no ACK on failure and retain all receipt-first tests.
+
+Keep at most ONE channel post awaiting ACK per WebSocket. Leave the draft visible until message_accepted, disable Send while waiting, and clear only if the current channel and full draft snapshot still match the submitted snapshot. If the operator edited or switched context, preserve the current draft. Bind handlers/pending state to the specific WS instance so a retired socket cannot clear a newer send. On error/close retain text/attachments/reply and show Draft kept; never resend. ACK timeout10s marks unconfirmed and closes that specific socket before allowing another post, so an old ACK cannot be mistaken for a new send on the same socket. Reconnect only reloads history, never resubmits. On token-restart4003, keep a nonempty draft visible with Copy your draft before refreshing; preserve existing automatic reload when no draft exists. No cross-reload draft persistence or exactly-once recovery is claimed.
+
+### Job send and recipient controls
+
+Remove sendJobMessage's regex extraction and recipient prefixing. Its current reply target becomes selected_recipients=[target] (or []); explicit raw text overrides it at the server. Preserve existing inferred reply-default/cycle/clear interactions, but do not reinterpret authored addresses in JS or silently select the first parsed name after send. Server preview/accepted receipt owns the current message audience.
+
+Snapshot activeJobId, stored job channel, raw input.value and attachments before the final prepare. Disable job Send during prepare/POST; POST the raw text/selection to the existing operator job endpoint, wait for its content ACK200, then clear only the unchanged draft in the same job. HTTP/network/timeout errors preserve everything, show a visible error, and do not retry. A job change or edited text while awaiting never loses the new draft. The channel composer has its own pending state; the two UIs cannot clear one another.
+
+Existing target buttons remain selected when explicit mentions override them; the preview explains the override for this message. aria-pressed must reflect channel button state. Job reply target is a selection, not private visibility; label/copy makes shared-thread visibility clear. Existing per-channel selection persistence and job reply-cycle behavior remain. No newly inferred default audience.
+
+### Copy, rendering and accessibility
+
+Preview heading: Addressed agents. Show canonical @names and one source label (Explicit addresses / Selected recipients / Shared note). No recipients: No agents addressed. This stays in the shared conversation. Explicit mode with selected buttons: Explicit @mentions replace the selected buttons for this message. Unknown/ambiguous/unavailable/offline warnings use server data; no wider fallback. Ambiguity lists candidate names. Offline: Work will queue for this identity. Waiting: Waits for the earlier review turn on this seat; recover or Stop that turn. Include Agent mentions during a review are display-only in the wait help. Accepted receipts say Resolved audience, not delivered/notified.
+
+Ignored-address details list every token and reason (quoted text / inline code / fenced code), collapsed when long; no hidden swallowed address. Render names/warnings via textContent/DOM, never server strings into innerHTML. aria-live polite and atomic, no focus stealing or modal traps. Preview updates announce only meaningful changes. Error messages are generic and never echo transport paths/HTML exceptions.
+
+All new content-bearing text >=14px, inset>=12px inside the preview, interactive targets>=44px, visible keyboard focus, natural wrapping/min-width0 at390px. Details use native keyboard semantics. Preserve Enter to Send/Shift+Enter newline and existing autocomplete shortcuts, but composing IME Enter must not send. Inputs remain editable while checking/waiting; successful Send refocuses only the unchanged current composer, never a different context. Do not fix inherited page/header overflow or unrelated design-hook findings without scope evidence.
+
+### Tranche4 verification before acceptance
+
+Freeze this behavior with Sonnet before frontend tests/code. Root owns UI implementation; helper may own one new Node VM regression script after the exact shared module API freezes, observed-red first. Cover raw text versus selections, unknown/quote/all responses, stale preview cancellation, final prepare/draft mutation, disconnect/ACK/error retention, duplicate Send, job context changes, safe rendering and IME Enter. Server tests cover the minimal ACK refinement separately. Node syntax plus existing composer audit must exercise actual sendMessage/sendJobMessage, not reimplement them.
+
+Actual Windows/local-fake server acceptance still follows: native invocation counts for explicit subset/none/quotes/busy ordering plus actual /ws, preview and job routes; bounded tracked cleanup reviewed before execution. Root browser QA batches desktop/mobile/keyboard/error states on the actual server; no live AI/Omarchy/Desktop/global changes. Independent final review covers the whole ticket after UI/native evidence, then post-merge checks and publication. No UI or ACK refinement has been implemented at this freeze.
