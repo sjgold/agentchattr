@@ -3261,6 +3261,99 @@ async def preview_document_input(request: Request):
     return JSONResponse(snapshot, headers={'Cache-Control': 'no-store'})
 
 
+def _require_session_channel(policy, channel):
+    from turn_events import EventValidationError
+    try:
+        policy.require_active(channel)
+    except ChannelInactive:
+        raise
+    except ValueError:
+        raise EventValidationError('Use a valid saved channel name before starting or restarting a review.') from None
+
+
+def _session_channel_error(error):
+    if isinstance(error, ChannelInactive):
+        message = str(error)
+        if 'archived' in message:
+            message += ' Reopen the channel before starting or restarting a review.'
+        return JSONResponse({'error': message, 'reason': 'channel_inactive'}, status_code=409)
+    return JSONResponse({'error': 'Channel storage is unavailable. Session changes are held.',
+                         'reason': 'channel_unavailable'}, status_code=503)
+
+
+def _start_session_sync(body, source_file):
+    policy = _channels()
+    with policy.publication(body.get('channel', 'general')):
+        template_id = body.get("template_id", "")
+        draft_message_id = body.get("draft_message_id")
+        channel = body.get("channel", "general")
+        cast = body.get("cast", {})
+        goal = body.get("goal", "")
+        input_text = body.get('input_text', '')
+        started_by = body.get("started_by", "user")
+
+        # If running from a draft, load the inline template from message metadata
+        tmpl = None
+        if draft_message_id is not None:
+            if type(draft_message_id) is not int or draft_message_id < 0:
+                return JSONResponse({'error': 'Draft message ID must be an integer.'}, status_code=400)
+            draft_msg = store.get_snapshot(draft_message_id)
+            if not draft_msg:
+                return JSONResponse({"error": "draft message not found"}, status_code=404)
+            _require_session_channel(policy, draft_msg.get('channel', 'general'))
+            meta = draft_msg.get("metadata", {})
+            from copy import deepcopy
+            tmpl = deepcopy(meta.get("template"))
+            if not tmpl:
+                return JSONResponse({"error": "draft has no template"}, status_code=400)
+            errors = validate_session_template(tmpl, session_store.capacity_policy)
+            if errors:
+                return JSONResponse({'error': '; '.join(errors), 'errors': errors}, status_code=400)
+            # Register as a temporary template
+            template_id = tmpl.get("id", f"draft-{draft_message_id}")
+            tmpl["id"] = template_id
+            tmpl["is_custom"] = True
+
+        # Validate template exists
+        if not tmpl:
+            tmpl = session_store.get_template(template_id)
+        if not tmpl:
+            return JSONResponse({"error": f"unknown template: {template_id}"}, status_code=400)
+
+        errors = validate_session_template(tmpl, session_store.capacity_policy)
+        if errors:
+            return JSONResponse({'error': '; '.join(errors), 'errors': errors}, status_code=400)
+        if draft_message_id is not None:
+            session_store._templates[template_id] = tmpl
+
+        # Auto-fill cast from available agents if not fully provided
+        if not cast:
+            online = registry.get_active_names() if registry else []
+            roles = tmpl.get("roles", [])
+            cast = _auto_cast(roles, online, started_by)
+            if not cast:
+                return JSONResponse(
+                    {"error": "not enough agents online to fill all roles"},
+                    status_code=400,
+                )
+
+        session = session_engine.start_session(template_id, channel, cast,
+            started_by, goal, input_text=input_text, recovery_policy=body.get('recovery_policy'), source_file=source_file)
+        if not session:
+            return JSONResponse({"error": "could not start session (one may already be active)"}, status_code=409)
+
+        # Add start banner to chat (only after confirmed success)
+        store.add_notice(
+            sender="system",
+            text=f"Session started: {tmpl.get('name', template_id)}",
+            msg_type="session_start",
+            channel=channel,
+            metadata={"template_id": template_id, "goal": goal, "session_id": session["id"]},
+        )
+        session_engine.emit_current_phase_banner(session)
+
+        return JSONResponse(session)
+
 @app.post("/api/sessions/start")
 async def start_session(request: Request):
     if not session_engine or not session_store:
@@ -3295,79 +3388,15 @@ async def start_session(request: Request):
             not isinstance(body.get('cast', {}), dict) or
             not isinstance(body.get('started_by', 'user'), str)):
         return JSONResponse({'error': 'Invalid session template, channel, cast or participant fields.'}, status_code=400)
-    template_id = body.get("template_id", "")
-    draft_message_id = body.get("draft_message_id")
-    channel = body.get("channel", "general")
-    cast = body.get("cast", {})
-    goal = body.get("goal", "")
-    input_text = body.get('input_text', '')
-    started_by = body.get("started_by", "user")
-
-    # If running from a draft, load the inline template from message metadata
-    tmpl = None
-    if draft_message_id:
-        if isinstance(draft_message_id, bool) or not isinstance(draft_message_id, int):
-            return JSONResponse({'error': 'Draft message ID must be an integer.'}, status_code=400)
-        draft_msg = store.get_by_id(draft_message_id)
-        if not draft_msg:
-            return JSONResponse({"error": "draft message not found"}, status_code=404)
-        meta = draft_msg.get("metadata", {})
-        from copy import deepcopy
-        tmpl = deepcopy(meta.get("template"))
-        if not tmpl:
-            return JSONResponse({"error": "draft has no template"}, status_code=400)
-        errors = validate_session_template(tmpl, session_store.capacity_policy)
-        if errors:
-            return JSONResponse({'error': '; '.join(errors), 'errors': errors}, status_code=400)
-        # Register as a temporary template
-        template_id = tmpl.get("id", f"draft-{draft_message_id}")
-        tmpl["id"] = template_id
-        tmpl["is_custom"] = True
-
-    # Validate template exists
-    if not tmpl:
-        tmpl = session_store.get_template(template_id)
-    if not tmpl:
-        return JSONResponse({"error": f"unknown template: {template_id}"}, status_code=400)
-
-    errors = validate_session_template(tmpl, session_store.capacity_policy)
-    if errors:
-        return JSONResponse({'error': '; '.join(errors), 'errors': errors}, status_code=400)
-    if draft_message_id:
-        session_store._templates[template_id] = tmpl
-
-    # Auto-fill cast from available agents if not fully provided
-    if not cast:
-        online = registry.get_active_names() if registry else []
-        roles = tmpl.get("roles", [])
-        cast = _auto_cast(roles, online, started_by)
-        if not cast:
-            return JSONResponse(
-                {"error": "not enough agents online to fill all roles"},
-                status_code=400,
-            )
-
     try:
-        session = await asyncio.to_thread(session_engine.start_session, template_id, channel, cast,
-            started_by, goal, input_text=input_text, recovery_policy=body.get('recovery_policy'), source_file=source_file)
+        return await asyncio.to_thread(_start_session_sync, body, source_file)
+    except (ChannelInactive, ChannelUnavailable) as error:
+        return _session_channel_error(error)
     except (BriefError, EventValidationError) as exc:
         return JSONResponse({'error': str(exc)}, status_code=400)
     except OSError:
         return JSONResponse({'error': 'Frozen session input could not be saved; no successful Start is claimed.'}, status_code=503)
-    if not session:
-        return JSONResponse({"error": "could not start session (one may already be active)"}, status_code=409)
 
-    # Add start banner to chat (only after confirmed success)
-    store.add_notice(
-        sender="system",
-        text=f"Session started: {tmpl.get('name', template_id)}",
-        msg_type="session_start",
-        channel=channel,
-        metadata={"template_id": template_id, "goal": goal, "session_id": session["id"]},
-    )
-    session_engine.emit_current_phase_banner(session)
-
-    return JSONResponse(session)
 
 
 @app.get('/api/review-briefs/{brief_id}')
@@ -3739,6 +3768,16 @@ def _restart_error(error):
     return _session_event_error(error)
 
 
+def _session_primary_sync(method, session_id, *args, **kwargs):
+    policy = _channels()
+    with policy._boundary():
+        policy.catalog.snapshot()
+        session = session_store.get(session_id)
+        if session is not None:
+            _require_session_channel(policy, session.get('channel', 'general'))
+        return getattr(session_engine, method)(session_id, *args, **kwargs)
+
+
 @app.post('/api/sessions/{session_id}/correct-and-restart')
 async def correct_and_restart_session(session_id: int, request: Request):
     from review_brief import BriefError
@@ -3746,9 +3785,11 @@ async def correct_and_restart_session(session_id: int, request: Request):
     from api_seats import SeatError
     try:
         body = await _restart_body(request, ('input_text', 'request_id'), ('replacements', 'confirmations'))
-        value = await asyncio.to_thread(session_engine.correct_and_restart, session_id,
+        value = await asyncio.to_thread(_session_primary_sync, 'correct_and_restart', session_id,
             body['input_text'], body['request_id'], replacements=body.get('replacements'), confirmations=body.get('confirmations'))
         return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (ChannelInactive, ChannelUnavailable) as error:
+        return _session_channel_error(error)
     except (BriefError, SeatError, EventConflict, EventValidationError, OSError) as exc:
         return _restart_error(exc)
 
@@ -3759,9 +3800,11 @@ async def prepare_restart_contexts(session_id: int, request: Request):
     from api_seats import SeatError
     try:
         body = await _restart_body(request, ('context_request_id',), ('replacements', 'confirmations', 'retry_attempts'))
-        value = await asyncio.to_thread(session_engine.prepare_contexts, session_id, body['context_request_id'],
+        value = await asyncio.to_thread(_session_primary_sync, 'prepare_contexts', session_id, body['context_request_id'],
             replacements=body.get('replacements'), confirmations=body.get('confirmations'), retry_attempts=body.get('retry_attempts'))
         return JSONResponse(value, headers={'Cache-Control': 'no-store'})
+    except (ChannelInactive, ChannelUnavailable) as error:
+        return _session_channel_error(error)
     except (SeatError, EventConflict, EventValidationError, OSError) as exc:
         return _restart_error(exc)
 
@@ -3772,7 +3815,9 @@ async def activate_corrected_session(session_id: int, request: Request):
     from api_seats import SeatError
     try:
         await _restart_body(request, ())
-        return JSONResponse(await asyncio.to_thread(session_engine.activate_restart, session_id))
+        return JSONResponse(await asyncio.to_thread(_session_primary_sync, 'activate_restart', session_id))
+    except (ChannelInactive, ChannelUnavailable) as error:
+        return _session_channel_error(error)
     except (SeatError, EventConflict, EventValidationError, OSError) as exc:
         return _restart_error(exc)
 

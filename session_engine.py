@@ -60,6 +60,12 @@ class SessionEngine:
             raise ValueError('An explicit channel policy getter is required.')
         self._channel_policy_getter = getter
 
+    def _session_channels(self, session_id):
+        # channel_write already owns engine/catalog before this store read.
+        session = self._store.get(session_id)
+        return [session.get('channel', 'general')] if session else []
+
+    @channel_write(lambda engine, args: [args['channel']])
     def start_session(self, template_id: str, channel: str, cast: dict,
                       started_by: str, goal: str = "", input_text: str = "", recovery_policy=None, *, source_file=None) -> dict | None:
         with self._lock:
@@ -557,6 +563,7 @@ class SessionEngine:
                    and r['envelope'].get('run_id') not in allowed_runs for r in records):
                 raise EventConflict('This seat has unrelated pending or active work; finish it before preparing contexts.')
 
+    @channel_write(lambda engine, args: engine._session_channels(args['parent_id']))
     def correct_and_restart(self, parent_id, input_text, request_id, *, replacements=None, confirmations=None):
         """Prepare a linked corrected packet; activation is a separate action."""
         from review_brief import _revision
@@ -588,6 +595,7 @@ class SessionEngine:
                 participant_bindings=bindings, intent_fingerprint=intent)
             return self.prepare_contexts(child['id'], 'initial.' + _revision(request_id), confirmations=confirmations)
 
+    @channel_write(lambda engine, args: engine._session_channels(args['child_id']))
     def prepare_contexts(self, child_id, context_request_id, *, replacements=None, confirmations=None, retry_attempts=None):
         from review_brief import _revision
         from turn_events import EventConflict, EventValidationError
@@ -697,6 +705,7 @@ class SessionEngine:
                     child = self._store._event_update(child_id, lambda s: s.update(preparation_contexts=contexts))
             return self._enrich(child)
 
+    @channel_write(lambda engine, args: engine._session_channels(args['child_id']))
     def activate_restart(self, child_id):
         from turn_events import EventConflict
         with self._lock:
@@ -943,6 +952,14 @@ class SessionEngine:
                 if (session['id'] not in self._restart_session_ids or session.get('stop_id')
                         or session.get('completion_protocol') != 1 or session['state'] in ('complete', 'prepared')):
                     continue
+                if self._channel_policy_getter is not None:
+                    from channel_lifecycle import ChannelUnavailable
+                    try:
+                        self._channel_policy_getter().require_active(session.get('channel', 'general'))
+                    except (ChannelUnavailable, ValueError):
+                        # Retain the original invocation/checkpoint for a later
+                        # same-boot reconciliation after lifecycle repair.
+                        continue
                 phase = session['design_snapshot']['phases'][session['current_phase']]
                 role = phase['participants'][session['current_turn']]
                 replacement = session.get('pending_replacement')

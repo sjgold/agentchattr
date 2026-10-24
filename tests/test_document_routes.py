@@ -21,6 +21,9 @@ class DocumentRoutesTests(unittest.TestCase):
         self.fixture.setUp()
         self.addCleanup(self.fixture.doCleanups)
         self.headers = {**self.fixture.headers, 'Content-Type': 'application/octet-stream'}
+        catalog = app._channels().catalog
+        for name in ('file-room', 'paste-room', 'draft-room', 'large-room'):
+            catalog.create(name, expected_revision=catalog.snapshot()['revision'])
 
     def client(self):
         api = FastAPI()
