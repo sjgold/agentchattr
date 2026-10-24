@@ -1,6 +1,6 @@
 # Ticket17: explicit recipients are authoritative
 
-State: Tranches1-3 are implemented and independently bounded-PASS through53b63b4 (corrected full1002TOTAL/four skips89.148s). Tranche4 approved U1-U5 UI/ACK code is frozen at3f653e5; actual-source VM12 and40 focused Python tests pass. Full discovery passed1004TOTAL/four skips89.097s at3f653e5; Sonnet confirmed targeted UI fixes033ac8a with VM12 and65Python1.320s. Actual-server/browser/native acceptance and final Ticket17 publication remain outstanding. Earlier sections below preserve their dated planning/checkpoint evidence. Routine per-ticket human gates remain removed under Seth's renewed October23 evening authorization.
+State: final independent PASS WITH NONBLOCKING NOTES at executable4723027. Reviewer full1004TOTAL/four skips87.107s, actual-sourceVM12, independent three live scenarios and actualtwo-stagebrowserPASS. Receipt REVIEW-CLAUDE-TICKET-17.md records exactpins/failures/limits. Publication remains after docs-onlypin/ffmain/postmergefull, then authorizedpush/closure. Scheduling composer remains deferred. Earlier planning/tranche sections preserve their original checkpoint context.
 
 Base: published main61315f7a8fc173577455718d7406645673f53da6. Branch codex/ticket-17-explicit-recipients. Codex owns implementation/follow-through (claim5ac077c7); Sonnet5.5 agent3b53a0e1 is independent reviewer. Scope: issue17, specv1.7 RC-1/AT-09. Blockers8/10 and recovery9/13/14/15 are delivered. Full baseline918 total tests/four platform skips.
 
@@ -473,3 +473,8 @@ Serve-only secondjobstage replaces scriptedjobPOST with exactonefreshactualUIrow
 ### Full browser path and receipt placement correction
 
 Root two-stage89875f7 browser functionalPASS: actualchannel+jobUIposts/ACKclears/originalUIDs/exact7calls/cleanup[]. Rendered channelreceiptwasbesideflexrowbubble; SonnetconfirmednewUIdefect. CentralappendReceipt nowtargets.chat-bubble||element,reusesrow,actionsstaylast,compact14px/wrap; jobfallbackunchanged. ActualmoduleVM placementred->12PASS includesrepeat/rebuilt/history-callseams (notfullbrowserhistoryproof). Assetcachev2. Sonnet ownserve confirmsactualrender/390/reload beforefinalticketreview; rootskipsreplayfixture/extra nativecalls. Browserlimits(controlledheaderfault,DOMIME/shiftguardonly,nativeTab/OSIME/screenreaderunexercised) remainexplicit.
+
+
+## Final acceptance
+
+Final independentPASS at4723027, receiptREVIEW-CLAUDE-TICKET-17.md. No sourcechangedafterfreeze. Finalfull1004/four skips87.107s independentlyexecuted, ownrenderedreceiptsinsidebubble/390localfit confirmed; allnative/localfakecases independentlyreproduced. Nonblockingnotes preserved inreceipt/STATUS, especiallyschedulingdeferral. Nextpublicationgateff/postmergefull/push/close under standingauthorization.
