@@ -1417,6 +1417,32 @@ async def get_channels(request: Request):
     return await _channel_http(request, 'view')
 
 
+@app.get('/api/channels/retained')
+async def get_retained_channel(request: Request):
+    try:
+        if getattr(request.state, 'auth_origin', None) != 'operator':
+            return JSONResponse({'error': 'Operator session required.'}, status_code=403,
+                                headers={'Cache-Control': 'no-store'})
+        from urllib.parse import unquote_to_bytes
+        raw = request.scope.get('query_string', b'')
+        key, separator, encoded = raw.partition(b'=')
+        if (not raw or len(raw) > 4096 or key != b'channel' or not separator
+                or not encoded or b'&' in raw or _re.search(rb'%(?![0-9A-Fa-f]{2})', raw)):
+            raise ValueError('Invalid retained query.')
+        channel = unquote_to_bytes(encoded).decode('utf-8', errors='strict')
+        result = await asyncio.to_thread(_channels().retained_view, channel)
+        return JSONResponse(result, headers={'Cache-Control': 'no-store'})
+    except LookupError:
+        return JSONResponse({'error': 'Retained channel not found.'}, status_code=404,
+                            headers={'Cache-Control': 'no-store'})
+    except (ChannelUnavailable, OSError):
+        return JSONResponse({'error': 'Channel storage is unavailable; reload after repair.'}, status_code=503,
+                            headers={'Cache-Control': 'no-store'})
+    except (ValueError, UnicodeError):
+        return JSONResponse({'error': 'Invalid retained channel request.'}, status_code=400,
+                            headers={'Cache-Control': 'no-store'})
+
+
 @app.post('/api/channels/preview')
 async def preview_channel_action(request: Request):
     return await _channel_http(request, 'preview')

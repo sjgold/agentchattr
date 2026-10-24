@@ -25,7 +25,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #15 | Published and closed | Source41b80f7, Sonnet independent PASS, post-merge918/four skips86.469s |
 | #17 | Published and closed | Executable4723027, originmainfd825c8, independentPASSWITHNOTES; postmerge1004/four skips86.898s; issueclosed/completedverified. Schedulingcomposer deferred. |
 | #18 | Published and closed | Main5cac753, issueclosed/completed2026-10-24T10:45:05Z verified; independentPASSWITHNOTES; postmerge1040/four skips89.765s. Receipt preserves all limits/failed fixtures. |
-| #19 | Backend rename independently PASS; UI contract pending | c43e7ff independently PASS86 tests4.686s + local shape rerun; builder full1339/four skips107.555s. Settle Manage/Retired UI/read API/upload metadata before tests/code, then cleanup-reviewed native/rendered/final acceptance. Unpublished. |
+| #19 | Backend rename PASS; C0 retained data awaits review | c43e7ff independently PASS, builder full1339/four skips107.555s. Retained metadata/read API C0 now140 focusedPASS6.478s, full/review next; UI contract settled and code/tests pending. Native/rendered/final acceptance remains. Unpublished. |
 | #20-26 | Authorized, pending | Continue dependency order after current ticket |
 
 ## Non-negotiable verification

@@ -249,6 +249,19 @@ class JobStore:
             except Exception:
                 pass
 
+    def retained_metadata(self, channel, *, limit=100):
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise ValueError('Invalid retained row limit.')
+        with self._lock:
+            self._check_readable()
+            rows, count = [], 0
+            for job in self._jobs:
+                if job.get('channel') == channel:
+                    count += 1
+                    if len(rows) < limit:
+                        rows.append({key: deepcopy(job.get(key)) for key in ('id', 'title', 'status', 'channel')})
+            return {'rows': rows, 'count': count, 'truncated': count > len(rows)}
+
     def list_all(self, channel: str | None = None,
                  status: str | None = None) -> list[dict]:
         """List jobs, optionally filtered by channel and/or status."""

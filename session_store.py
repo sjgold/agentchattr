@@ -67,6 +67,52 @@ class SessionStore:
     def _save(self):
         atomic_json(self._path, self._sessions)
 
+    def retained_metadata(self, channel, *, limit=100):
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise ValueError('Invalid retained row limit.')
+        with self._lock:
+            try:
+                if self._path.exists():
+                    info = self._path.stat()
+                    stamp = info.st_mtime_ns, info.st_size
+                    if stamp != getattr(self, '_retained_stamp', None):
+                        def unique(pairs):
+                            result = {}
+                            for key, value in pairs:
+                                if key in result:
+                                    raise ValueError('Duplicate session field.')
+                                result[key] = value
+                            return result
+                        def invalid(value):
+                            raise ValueError('Invalid session number.')
+                        def finite(value):
+                            import math
+                            result = float(value)
+                            if not math.isfinite(result):
+                                raise ValueError('Invalid session number.')
+                            return result
+                        saved = json.loads(self._path.read_text(encoding='utf-8'),
+                            object_pairs_hook=unique, parse_constant=invalid, parse_float=finite)
+                        after = self._path.stat()
+                        if (type(saved) is not list or any(type(row) is not dict
+                                or type(row.get('id')) is not int or row['id'] < 1
+                                or type(row.get('channel')) is not str for row in saved)
+                                or saved != self._sessions or (after.st_mtime_ns, after.st_size) != stamp):
+                            raise ValueError('Saved sessions changed or are unreadable.')
+                        self._retained_stamp = stamp
+                elif self._sessions:
+                    raise ValueError('Saved sessions disappeared.')
+            except (ValueError, TypeError, OSError):
+                raise ChannelUnavailable('Saved sessions are unavailable; no reset was performed.') from None
+            rows, count = [], 0
+            for session in self._sessions:
+                if session.get('channel') == channel:
+                    count += 1
+                    if len(rows) < limit:
+                        rows.append({key: deepcopy(session.get(key)) for key in
+                                     ('id', 'run_id', 'state', 'channel', 'completion_protocol')})
+            return {'rows': rows, 'count': count, 'truncated': count > len(rows)}
+
     def rename_channel(self, old_name, new_name):
         """Move only retained runs' top-level channel, never frozen authority."""
         _name(old_name)

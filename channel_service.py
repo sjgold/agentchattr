@@ -9,6 +9,7 @@ from channel_lifecycle import (ChannelConflict, ChannelInactive, ChannelUnavaila
                                _destination, _name, _request_id, RENAME_STEPS)
 from dispatch_queue import ACTIVE
 from session_engine import PROJECTION_REPAIR_STATES
+from retained_artifacts import RetainedArtifactStore, safe_upload_url
 
 
 _LIVE_REVIEW = {'active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'retrying',
@@ -27,6 +28,7 @@ class ChannelService:
         self.router, self._migrate_last_active = router, migrate_last_active
         self._migrate_fallbacks = migrate_fallbacks
         self._callbacks = []
+        self.artifacts = RetainedArtifactStore(catalog.path.with_name('retained_artifacts.json'))
         self._unregistered = set(settings.get('unregistered_channels', []))
         with self._boundary():
             value = catalog.snapshot()
@@ -34,6 +36,11 @@ class ChannelService:
                                       if name not in value['channels'] and name not in value['retired'])
             self._unregistered.update(name for name in settings.get('channels', [])
                                       if name not in value['channels'] and name not in value['retired'])
+            try:
+                self._unregistered.update(name for name in self.artifacts.channel_names()
+                    if name not in value['channels'] and name not in value['retired'])
+            except ChannelUnavailable:
+                pass  # Hold retained metadata operations, not chat startup.
             self._project(value)
 
     @contextmanager
@@ -123,7 +130,8 @@ class ChannelService:
         summary = deepcopy(self.summaries.get(channel))
         transport = self.queue.records(channel)
         counts = dict(messages=len(messages), todos=len(todos), jobs=len(jobs),
-                      schedules=len(schedules), sessions=len(runs), summaries=int(summary is not None))
+                      schedules=len(schedules), sessions=len(runs), summaries=int(summary is not None),
+                      uploads=sum(len(item.get('attachments') or []) for item in messages))
         blockers = []
         def block(kind, run=None, record=None, audit=None, reason=None):
             run, record, audit = run or {}, record or {}, audit or {}
@@ -173,7 +181,7 @@ class ChannelService:
         blockers.sort(key=lambda item: json.dumps(item, sort_keys=True))
         overdue = sum(bool(item.get('active')) and item.get('next_run', 0) <= time.time() for item in schedules)
         stable = {'messages': sorted((item['id'], item.get('uid')) for item in messages),
-                  'max_id': max(ids, default=-1), 'todos': sorted(todos),
+                  'max_id': max(ids, default=-1), 'todos': sorted(todos), 'uploads': counts['uploads'],
                   'jobs': sorted((item['id'], item.get('updated_at')) for item in jobs),
                   'schedules': sorted((item['id'], item.get('next_run'), item.get('active')) for item in schedules),
                   'summary': [summary.get('uid'), summary.get('updated_at')] if summary else None,
@@ -183,6 +191,38 @@ class ChannelService:
                   'blockers': blockers}
         queued = sorted(item['envelope']['dispatch_id'] for item in transport if item['state'] == 'queued')
         return counts, blockers, queued, overdue, stable
+
+    def retained_view(self, channel):
+        with self._boundary():
+            value = self.catalog.snapshot()
+            if type(channel) is not str:
+                raise ValueError('Choose a retained channel name.')
+            if channel not in value['channels'] and channel not in self._unregistered:
+                raise LookupError('Retained channel not found.')
+            state = value['channels'].get(channel, 'unregistered')
+            if value['intent'] and channel in (value['intent']['old'], value['intent']['new']):
+                state = 'held'
+            packet = {'channel': channel, 'state': state, 'counts': {}, 'truncated': {}, 'errors': {}}
+            for owner, reader in (('jobs', self.jobs.retained_metadata),
+                    ('sessions', self.engine._store.retained_metadata),
+                    ('schedules', self.schedules.retained_metadata), ('uploads', self.artifacts.read)):
+                try:
+                    result = reader(channel, limit=100)
+                    packet[owner], packet['counts'][owner], packet['truncated'][owner] = (
+                        result['rows'], result['count'], result['truncated'])
+                except (ChannelUnavailable, OSError):
+                    packet[owner] = packet['counts'][owner] = packet['truncated'][owner] = None
+                    packet['errors'][owner] = 'Saved records are held; repair storage and reload.'
+            for entry in packet['uploads'] or []:
+                entry['safe_links'] = [{'url': url, 'name': item.get('name') if type(item.get('name')) is str
+                                       else url.removeprefix('/uploads/')}
+                    for item in entry['attachments'] if (url := safe_upload_url(item.get('url')))]
+            try:
+                packet['summary'] = self.summaries.get(channel)
+            except (ChannelUnavailable, OSError):
+                packet['summary'] = None
+                packet['errors']['summary'] = 'Saved summary is held; repair storage and reload.'
+            return packet
 
     def catalog_view(self):
         with self._boundary():
@@ -228,6 +268,8 @@ class ChannelService:
             value = self.catalog.snapshot()
             self._heal_projection(value)
             self._action(value, op, channel, new_name)
+            if op == 'delete':
+                self.artifacts.check()
             counts, blockers, queued, overdue, stable = self._scope(channel)
             destination = None
             if op == 'rename':
@@ -282,6 +324,10 @@ class ChannelService:
                 self.queue.cancel_queued_channel(channel, preview['queued_dispatch_ids'], request_id)
                 value = self.catalog.snapshot()
             elif op == 'delete':
+                try:
+                    self.artifacts.probe()
+                except OSError:
+                    raise ChannelUnavailable('Retained upload storage is unavailable; no delete intent was started.') from None
                 self.catalog.begin('delete', channel, None, request_id=request_id,
                                    expected_revision=preview['revision'])
                 return self.retry(request_id)
@@ -398,6 +444,7 @@ class ChannelService:
                     if step == 'todos':
                         self.messages.remove_channel_todos(channel)
                     elif step == 'messages':
+                        self.artifacts.retain(channel, self.messages.get_recent(count=2**63, channel=channel))
                         removed = self.messages.remove_channel_messages(channel)
                     else:
                         projected = self.catalog.snapshot()
