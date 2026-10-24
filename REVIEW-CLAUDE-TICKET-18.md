@@ -1,6 +1,6 @@
 # Ticket 18 independent review receipt
 
-Whole-ticket verdict: **pending final receipt review**. Pure, backend and UI component reviews, native py/mjs and ordinary-launcher rendered reproductions have passed independently. This receipt does not pre-empt the reviewer's final verdict.
+Whole-ticket verdict: **PASS WITH NONBLOCKING NOTES** at reviewed HEAD `f893bd2167c02b3df44faf3c768660a39d9c43b8`. Reviewer final artifact: `epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/ticket-18-final-review-claude/index.md`. Pure/backend/UI, native py/mjs and ordinary rendered browser evidence were independently accepted.
 
 Product executable: `c11bdec1c0d39ec5bfd5aba7cf253821c9f551d4`.
 Acceptance verifier: `12c9a81d300f9c1613c74cc856146bbb551b07ca`.
@@ -55,4 +55,15 @@ Preflight verifier fixes covered constructor resources, all-run cleanup, known D
 |pgmsqycg at8797d48 |Early auth403 response body reset from unread5byte probe, before Start;0provider/clientturns; same complete cleanup. Empty valid UTF8 auth probes fixed it without relaxing403 checks. |
 |7pms_r4i at0118e27 |Final Windows path-key lookup failed after1CLI/1API/2finals and child checks;2workers/1client/1model/1server ended/unresolved[]. Portable map keys fixed it; remains failed fixture, not retroactive acceptance. |
 
-No accepted native cases were rerun on every later docs-only descendant. Final whole-ticket verdict, fast-forward merge, post-merge full verification, push/issue closure and remote reread remain pending under the recorded standing authorization.
+No accepted native cases were rerun on every later docs-only descendant. Final whole-ticket PASS was received and the reviewer verified empty product/tool diffs atf893bd2. Remaining publication steps: fast-forward merge, post-merge full verification, push/issue closure and remote reread under the recorded standing authorization.
+
+## Final nonblocking notes N1-N7
+
+1. mjs draft-launcher browser serve was not run by anyone; VM and draft HTTP tests cover that path.
+2. Reviewer measured1280px only;390px figures remain builder evidence.
+3. No OS picker, native Tab, OS IME or screen-reader verification.
+4. Existing Start Session button32px, inherited styling outside new44px file actions.
+5. mjs observations about8.9MB embed source copies; acceptable, do not grow them.
+6. File-parent line-ending-only corrected restart is deliberately refused and documented.
+7. Initial acceptance script review combined analyst checklist with the reviewer's verified findings/compile-only; later changed diffs were read personally.
+
