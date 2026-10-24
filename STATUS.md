@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 01:23 Chicago (#1-16 published/closed; #17 backend bounded PASS, UI behavior freeze next)
+**Updated:** 2026-10-24 01:26 Chicago (#1-16 published/closed; #17 UI freeze approved, ACK/tests next)
 
 ## Current handoff
 
@@ -465,3 +465,5 @@ Build preference: Sol for the next steps. Tickets #7-14 and #24 flag optional As
 - Corrected53b63b4 full1002TOTAL/998passed/four expected skips89.148s exit0. Sonnet independently105focused2.184s and corrected-source session_events/review_brief/dispatch_queue integrations PASS; hidden-request fix/source rechecked -> boundedPASS. No final17/native17/browser acceptance.
 - Tranche4 proposed behavior freeze now covers shared250ms server preview, raw text/separate selections, clear warnings/ignored/waits, draft-preserving pending states, minimal per-socket saved-content ACK (no ticket/outbox/retry), job raw POST and mobile/keyboard rules. Impeccable local context ran successfully using existing binary, incumbent CSS tokens retained; no install/settings change.
 - Next Sonnet short UI/ACK contract review before Node/server red tests and frontend implementation. Current client prefixing remains unchanged until that work. Scheduling composer explicitly deferred.
+
+- Tranche4 UI behavior17fc398 approved with U1-U5 now written before tests: per-socket content ACK only, timeout uncertainty/no-resend, broadcast/ACK order independence, fail-closed preview with Check again, local-control token parity, and single-flight/IME/voice guards. Next Codex ACK regressions/server change; existing helper Node VM actual-source red, then preview/UI wiring. No UI/ACK code yet.
