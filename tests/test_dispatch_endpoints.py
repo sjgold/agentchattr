@@ -1,5 +1,8 @@
 import tempfile
+import threading
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 from unittest.mock import Mock
 
@@ -8,6 +11,8 @@ from fastapi.testclient import TestClient
 import app
 from agents import AgentTrigger
 from registry import RuntimeRegistry
+from channel_lifecycle import ChannelStore
+from channel_service import ChannelService
 
 
 class DispatchEndpointTests(unittest.TestCase):
@@ -19,12 +24,20 @@ class DispatchEndpointTests(unittest.TestCase):
             jobs, messages = Mock(), Mock()
             messages.get_recent.return_value = [{'sender': 'user', 'text': 'unrelated channel source'}]
             jobs.get_messages.return_value = [{'sender': 'user', 'text': 'job eleven source'}]
+            jobs.get.return_value = {'id': 11, 'channel': 'alpha'}
             jobs.add_message.return_value = {'id': 1, 'text': 'job eleven answer'}
+            catalog = ChannelStore(Path(directory) / 'fixture_channels.json')
+            catalog.initialize(['general', 'alpha'])
+            policy = ChannelService(catalog, engine=SimpleNamespace(_lock=threading.RLock()),
+                messages=messages, jobs=jobs, schedules=None, summaries=None, queue=None,
+                settings={'channels': ['general', 'alpha']}, save_settings=Mock(),
+                migrate_cursors=None, router=None, migrate_last_active=None)
             api = FastAPI()
             api.add_api_route('/api/messages', app.get_messages, methods=['GET'])
             api.add_api_route('/api/send', app.api_send, methods=['POST'])
             client = TestClient(api)
-            with patch.object(app, 'registry', registry), patch.object(app, 'jobs', jobs), patch.object(app, 'store', messages):
+            with patch.object(app, 'registry', registry), patch.object(app, 'jobs', jobs), patch.object(app, 'store', messages), \
+                 patch.object(app, 'channel_service', policy), patch.object(app, 'session_engine', None):
                 history = client.get('/api/messages?channel=alpha&job_id=11')
                 self.assertEqual(history.json()[0]['text'], 'job eleven source')
                 reply = client.post('/api/send', headers={'Authorization': 'Bearer ' + one['token']},

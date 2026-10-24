@@ -26,6 +26,8 @@ class ProjectionRoutingTests(unittest.TestCase):
             broadcast = stack.enter_context(patch.object(app, 'broadcast', AsyncMock()))
             stack.enter_context(patch.object(app, 'broadcast_status', AsyncMock()))
             stack.enter_context(patch('mcp_bridge.is_online', return_value=True))
+            from tests.channel_fixture import initialize_app_channels
+            initialize_app_channels(self, self.f.root, ['general', 'discussion'], enter_context=stack.enter_context)
             asyncio.run(app._handle_new_message(message))
             broadcast.assert_awaited_once_with(message)
 
