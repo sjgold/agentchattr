@@ -5,6 +5,7 @@ from contextlib import ExitStack
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import app
+from tests.channel_fixture import initialize_app_channels
 
 
 class RestartRoutesTests(unittest.TestCase):
@@ -26,8 +27,9 @@ class RestartRoutesTests(unittest.TestCase):
             ('restart-status', 'GET', app.corrected_session_status)):
             self.api.add_api_route('/api/sessions/{session_id}/' + path, handler, methods=[method])
         self.client = TestClient(self.api, client=('127.0.0.1', 40000))
-        for name, value in (('registry', f.registry), ('session_engine', f.engine), ('session_store', f.sessions)):
+        for name, value in (('registry', f.registry), ('session_engine', f.engine), ('session_store', f.sessions), ('store', f.messages), ('agents', f.trigger), ('jobs', None)):
             self.stack.enter_context(patch.object(app, name, value))
+        initialize_app_channels(self, f.root, ['general'], enter_context=self.stack.enter_context)
         self.operator = {'X-Session-Token': 'operator-test'}
         self.agent = {'Authorization': 'Bearer ' + f.helper['token']}
         self.path = f'/api/sessions/{f.parent_id}/correct-and-restart'

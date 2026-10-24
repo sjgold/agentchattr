@@ -7,6 +7,7 @@ import uuid
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import app
+from tests.channel_fixture import initialize_app_channels
 
 
 class RecoveryRoutesTests(unittest.TestCase):
@@ -24,8 +25,9 @@ class RecoveryRoutesTests(unittest.TestCase):
         stack = ExitStack()
         self.addCleanup(stack.close)
         for name, value in (('registry', self.f.registry), ('session_engine', self.f.engine),
-                            ('session_store', self.f.sessions), ('store', self.f.messages)):
+                            ('session_store', self.f.sessions), ('store', self.f.messages), ('agents', self.f.trigger), ('jobs', None)):
             stack.enter_context(patch.object(app, name, value))
+        initialize_app_channels(self, self.f.root, ['general', 'override'], enter_context=stack.enter_context)
         self.operator = {'X-Session-Token': 'operator-test'}
         self.agent = {'Authorization': 'Bearer ' + self.f.owner['token']}
         self.body = {'checkpoint_id': self.checkpoint['checkpoint_id'], 'attempt_id': self.f.original['attempt_id']}

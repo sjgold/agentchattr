@@ -12,6 +12,7 @@ from session_engine import SessionEngine
 from session_store import SessionStore
 from store import MessageStore
 from review_brief import MAX_INPUT_BYTES
+from tests.channel_fixture import initialize_app_channels
 
 
 class FrozenReviewStartTests(unittest.TestCase):
@@ -31,8 +32,9 @@ class FrozenReviewStartTests(unittest.TestCase):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
         for name, value in [('session_store', self.sessions), ('session_engine', self.engine),
-                            ('store', self.messages), ('registry', self.registry)]:
+                            ('store', self.messages), ('registry', self.registry), ('agents', self.trigger), ('jobs', None)]:
             self.stack.enter_context(patch.object(app, name, value))
+        initialize_app_channels(self, root, ['general'], enter_context=self.stack.enter_context)
         api = FastAPI()
         with patch.object(app, 'app', api):
             app._install_security_middleware('start-test', {'server': {'port': 18300}})
