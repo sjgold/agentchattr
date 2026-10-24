@@ -8,16 +8,29 @@ from copy import deepcopy
 from pathlib import Path
 
 import api_seats
+from channel_lifecycle import ChannelConflict, ChannelUnavailable
+from channel_guards import channel_write
 from store import _operator_authority, _operator_receipt
 
 
+def _unbound_job_policy():
+    raise ChannelUnavailable('Job publication is held until channel policy is bound.')
+
+
 class JobStore:
-    def __init__(self, path: str):
+    def __init__(self, path: str, *, migrate_sort_orders=True):
+        if type(migrate_sort_orders) is not bool:
+            raise ValueError('Sort migration mode must be boolean.')
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._jobs: list[dict] = []
         self._next_id = 1
         self._lock = threading.Lock()
+        self._configured = not migrate_sort_orders
+        self._channel_policy_getter = _unbound_job_policy if self._configured else None
+        self._had_file = False
+        self._durable_jobs = []
+        self._durable_next_id = 1
         self._callbacks: list = []  # (action, job) on any change
         self._load()
 
@@ -25,25 +38,98 @@ class JobStore:
         if not self._path.exists():
             return
         try:
-            raw = json.loads(self._path.read_text("utf-8"))
+            raw = self._read_jobs()
             if isinstance(raw, list):
                 self._jobs = raw
+                self._had_file = True
                 if self._jobs:
                     self._next_id = max(a["id"] for a in self._jobs) + 1
-                    if self._ensure_sort_orders_locked():
+                    self._durable_jobs = deepcopy(raw)
+                    self._durable_next_id = self._next_id
+                    if not self._configured and self._ensure_sort_orders_locked():
                         self._save()
-        except (json.JSONDecodeError, KeyError):
+        except (ValueError, KeyError, TypeError, OSError) as error:
+            if self._configured:
+                raise ChannelUnavailable('Saved jobs are unreadable; no reset was performed.') from None
+            if not isinstance(error, (json.JSONDecodeError, KeyError)):
+                raise
             self._jobs = []
 
+    def _read_jobs(self):
+        def unique(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError('Duplicate job field.')
+                value[key] = item
+            return value
+        def invalid(value):
+            raise ValueError('Invalid JSON constant.')
+        options = {'object_pairs_hook': unique, 'parse_constant': invalid} if self._configured else {}
+        value = json.loads(self._path.read_text(encoding='utf-8'), **options)
+        if self._configured:
+            if type(value) is not list:
+                raise ValueError('Jobs must be a list.')
+            seen = set()
+            for job in value:
+                if (type(job) is not dict or type(job.get('id')) is not int or job['id'] <= 0
+                        or job['id'] in seen or type(job.get('channel')) is not str
+                        or not job['channel'] or type(job.get('messages')) is not list
+                        or any(type(message) is not dict for message in job['messages'])):
+                    raise ValueError('Invalid saved job.')
+                seen.add(job['id'])
+        return value
+
+    def _check_readable(self):
+        if self._configured:
+            try:
+                if self._path.exists():
+                    self._read_jobs()
+                elif self._had_file:
+                    raise OSError('Saved jobs disappeared.')
+            except (ValueError, KeyError, TypeError, OSError):
+                raise ChannelUnavailable('Saved jobs are unreadable; no reset was performed.') from None
+
+    def bind_channel_policy(self, getter):
+        if not callable(getter):
+            raise ValueError('An explicit channel policy getter is required.')
+        self._configured = True
+        self._channel_policy_getter = getter
+        with self._lock:
+            self._check_readable()
+
+    def _job_channels(self, job_id):
+        with self._lock:
+            self._check_readable()
+            return [job.get('channel', 'general') for job in self._jobs if job['id'] == job_id]
+
+    def _reorder_channels(self, status, ids):
+        if type(ids) is not list or any(type(value) is not int or value <= 0 for value in ids):
+            raise ValueError('Ordered job IDs must be positive integers.')
+        with self._lock:
+            self._check_readable()
+            selected = {job['id']: job for job in self._jobs}
+            if any(value not in selected or selected[value].get('status') != status for value in ids):
+                raise ChannelConflict('Refresh jobs; a selected job is no longer in this lane.')
+            return [selected[value].get('channel', 'general') for value in ids]
+
     def _save(self):
-        self._path.write_text(
-            json.dumps(self._jobs, indent=2, ensure_ascii=False) + "\n",
-            "utf-8",
-        )
+        try:
+            self._check_readable()
+            api_seats.atomic_json(self._path, self._jobs)
+        except Exception:
+            self._jobs = deepcopy(self._durable_jobs)
+            self._next_id = self._durable_next_id
+            raise
+        self._durable_jobs = deepcopy(self._jobs)
+        self._durable_next_id = self._next_id
+        self._had_file = True
 
     def _next_sort_order_locked(self, status: str) -> int:
         max_order = 0
-        for a in self._jobs:
+        projected = deepcopy(self._jobs)
+        self._ensure_sort_orders_locked(status, jobs=projected)
+        for a in projected:
             if a.get("status") != status:
                 continue
             try:
@@ -52,10 +138,12 @@ class JobStore:
                 continue
         return max_order + 1
 
-    def _ensure_sort_orders_locked(self):
+    def _ensure_sort_orders_locked(self, status=None, *, jobs=None):
+        rows = self._jobs if jobs is None else jobs
+        rows = [job for job in rows if status is None or job.get('status', 'open') == status]
         max_by_group: dict[str, int] = {}
         changed = False
-        for a in self._jobs:
+        for a in rows:
             key = a.get("status", "open")
             try:
                 cur = int(a.get("sort_order", 0))
@@ -64,7 +152,7 @@ class JobStore:
             if cur > 0:
                 max_by_group[key] = max(max_by_group.get(key, 0), cur)
 
-        for a in self._jobs:
+        for a in rows:
             key = a.get("status", "open")
             try:
                 cur = int(a.get("sort_order", 0))
@@ -93,10 +181,15 @@ class JobStore:
                  status: str | None = None) -> list[dict]:
         """List jobs, optionally filtered by channel and/or status."""
         with self._lock:
-            changed = self._ensure_sort_orders_locked()
-            if changed:
-                self._save()
-            result = list(self._jobs)
+            self._check_readable()
+            if self._configured:
+                result = deepcopy(self._jobs)
+                self._ensure_sort_orders_locked(jobs=result)
+            else:
+                changed = self._ensure_sort_orders_locked()
+                if changed:
+                    self._save()
+                result = list(self._jobs)
         if channel:
             result = [a for a in result if a.get("channel") == channel]
         if status:
@@ -105,11 +198,13 @@ class JobStore:
 
     def get(self, job_id: int) -> dict | None:
         with self._lock:
+            self._check_readable()
             for a in self._jobs:
                 if a["id"] == job_id:
-                    return dict(a)
+                    return deepcopy(a) if self._configured else dict(a)
             return None
 
+    @channel_write(lambda jobs, args: [args['channel']])
     def create(self, title: str, job_type: str, channel: str,
                created_by: str, anchor_msg_id: int | None = None,
                assignee: str | None = None,
@@ -144,6 +239,7 @@ class JobStore:
         self._fire("create", a)
         return a
 
+    @channel_write(lambda jobs, args: jobs._job_channels(args['job_id']))
     def update_status(self, job_id: int, status: str) -> dict | None:
         """Update job status. Valid: open, done, archived."""
         if status not in ("open", "done", "archived"):
@@ -169,6 +265,7 @@ class JobStore:
         self._fire("update", result)
         return result
 
+    @channel_write(lambda jobs, args: jobs._job_channels(args['job_id']))
     def update_title(self, job_id: int, title: str) -> dict | None:
         with self._lock:
             for a in self._jobs:
@@ -183,6 +280,7 @@ class JobStore:
         self._fire("update", result)
         return result
 
+    @channel_write(lambda jobs, args: jobs._job_channels(args['job_id']))
     def update_assignee(self, job_id: int, assignee: str) -> dict | None:
         with self._lock:
             for a in self._jobs:
@@ -197,6 +295,7 @@ class JobStore:
         self._fire("update", result)
         return result
 
+    @channel_write(lambda jobs, args: jobs._job_channels(args['job_id']))
     def add_message(self, job_id: int, sender: str, text: str,
                     attachments: list | None = None,
                     msg_type: str = "chat",
@@ -234,11 +333,13 @@ class JobStore:
     def get_messages(self, job_id: int) -> list[dict] | None:
         """Get all messages for a job."""
         with self._lock:
+            self._check_readable()
             for a in self._jobs:
                 if a["id"] == job_id:
-                    return list(a["messages"])
+                    return deepcopy(a['messages']) if self._configured else list(a['messages'])
             return None
 
+    @channel_write(lambda jobs, args: jobs._job_channels(args['job_id']))
     def _publish_operator(self, job_id, sender, text, *, routing, authority,
                           attachments=None, msg_type='chat'):
         """Save an operator job message without emitting or routing it."""
@@ -261,7 +362,7 @@ class JobStore:
             job['messages'].append(message)
             job['updated_at'] = stamp
             try:
-                api_seats.atomic_json(self._path, self._jobs)
+                self._save()
             except Exception:
                 self._jobs = before
                 raise
@@ -271,6 +372,7 @@ class JobStore:
         if type(job_id) is not int or job_id <= 0 or type(message_id) is not int or message_id < 0:
             raise ValueError('Job and message IDs must be valid integers.')
         with self._lock:
+            self._check_readable()
             job = next((value for value in self._jobs if value['id'] == job_id), None)
             if job:
                 for message in job['messages']:
@@ -292,6 +394,7 @@ class JobStore:
             except Exception:
                 pass
 
+    @channel_write(lambda jobs, args: jobs._job_channels(args['job_id']))
     def delete_message(self, job_id: int, msg_id: int) -> dict | None:
         """Soft-delete a message from a job conversation by message id."""
         with self._lock:
@@ -326,6 +429,25 @@ class JobStore:
         self._fire("message_delete", payload)
         return payload
 
+    @channel_write(lambda jobs, args: jobs._job_channels(args['job_id']))
+    def resolve_message(self, job_id, index, resolution):
+        if type(index) is not int or index < 0 or resolution not in ('accepted', 'dismissed'):
+            raise ValueError('Use a valid suggestion index and resolution.')
+        with self._lock:
+            job = next((job for job in self._jobs if job['id'] == job_id), None)
+            if job is None:
+                return None
+            if index >= len(job['messages']):
+                raise ValueError('Invalid message index.')
+            message = job['messages'][index]
+            message['resolved'] = resolution
+            self._save()
+            saved = dict(deepcopy(message), job_id=job_id, channel=job['channel'])
+            updated = deepcopy(job)
+        self._fire('update', updated)
+        return saved
+
+    @channel_write(lambda jobs, args: jobs._job_channels(args['job_id']))
     def delete(self, job_id: int) -> dict | None:
         """Permanently delete a job."""
         with self._lock:
@@ -340,15 +462,22 @@ class JobStore:
         self._fire("delete", result)
         return result
 
+    @channel_write(lambda jobs, args: jobs._reorder_channels(args['status'], args['ordered_ids']))
     def reorder(self, status: str, ordered_ids: list[int]) -> list[dict]:
         """Reorder jobs within a status group by explicit id order (top to bottom)."""
         if status not in ("open", "done", "archived"):
             return []
+        active_channels = None
+        if self._channel_policy_getter is not None:
+            policy = self._channel_policy_getter()
+            value = policy.catalog.snapshot()
+            active_channels = {name for name, state in value['channels'].items() if state == 'active'} - policy.catalog.blocked_names()
         with self._lock:
-            self._ensure_sort_orders_locked()
+            if active_channels is None:
+                self._ensure_sort_orders_locked()
             group = [
                 a for a in self._jobs
-                if a.get("status") == status
+                if a.get("status") == status and (active_channels is None or a.get('channel', 'general') in active_channels)
             ]
             if not group:
                 return []
@@ -368,8 +497,10 @@ class JobStore:
             if not ordered:
                 return []
 
+            projected = deepcopy(group)
+            self._ensure_sort_orders_locked(status, jobs=projected)
             existing_sorted = sorted(
-                group,
+                projected,
                 key=lambda x: (int(x.get("sort_order", 0) or 0), float(x.get("updated_at", 0) or 0)),
                 reverse=True,
             )
@@ -385,7 +516,10 @@ class JobStore:
                 if not item:
                     continue
                 new_order = n - idx
-                old_order = int(item.get("sort_order", 0) or 0)
+                try:
+                    old_order = int(item.get("sort_order", 0) or 0)
+                except (TypeError, ValueError):
+                    old_order = 0
                 if old_order != new_order:
                     item["sort_order"] = new_order
                     changed.append(dict(item))

@@ -195,6 +195,7 @@ def _initialize_channel_lifecycle(data_dir):
     # Bind the fail-closed getter first, including the corrupt-file case.
     channel_service = None
     agents.queue.bind_channel_policy(_channels)
+    jobs.bind_channel_policy(_channels)
     import mcp_bridge
     mcp_bridge.channel_policy_getter = _channels
     catalog = ChannelStore(Path(data_dir) / 'channel_lifecycle.json')
@@ -534,7 +535,7 @@ def configure(cfg: dict, session_token: str = ""):
     if not jobs_path.exists() and legacy_activities.exists():
         legacy_activities.rename(jobs_path)
 
-    jobs = JobStore(str(jobs_path))
+    jobs = JobStore(str(jobs_path), migrate_sort_orders=False)
     jobs.on_change(_on_job_change)
 
     schedules = ScheduleStore(str(Path(data_dir) / "schedules.json"))
@@ -2442,7 +2443,10 @@ async def get_jobs(channel: str = "", status: str = ""):
     """List jobs, optionally filtered."""
     ch = channel if channel else None
     st = status if status else None
-    return jobs.list_all(channel=ch, status=st)
+    try:
+        return await asyncio.to_thread(jobs.list_all, channel=ch, status=st)
+    except (ChannelUnavailable, OSError) as error:
+        return _history_write_error(error)
 
 
 @_message_writer
@@ -2722,41 +2726,79 @@ async def create_job(request: Request):
     return result
 
 
+def _job_mutation_sync(action, *, job_id=None, body=None, msg_id=None, permanent=False):
+    """Keep validation, saved resolution and enqueue under one channel boundary."""
+    try:
+        policy = _channels()
+        with policy._boundary():
+            policy.catalog.snapshot()
+            if job_id is not None:
+                job = jobs.get(job_id)
+                if job is None:
+                    return JSONResponse({'error': 'not found'}, status_code=404)
+                policy.require_active(job.get('channel', 'general'))
+            body = body or {}
+            if action == 'update':
+                result = None
+                for field, writer in (('status', jobs.update_status), ('title', jobs.update_title),
+                                      ('assignee', jobs.update_assignee)):
+                    if field in body:
+                        result = writer(job_id, body[field])
+            elif action == 'reorder':
+                ordered_ids = body.get('ordered_ids', [])
+                if type(ordered_ids) is not list or not ordered_ids:
+                    raise ValueError('Ordered job IDs required.')
+                updated = jobs.reorder(status=body.get('status', 'open'), ordered_ids=ordered_ids)
+                return {'ok': True, 'updated': len(updated)}
+            elif action == 'delete_message':
+                result = jobs.delete_message(job_id, msg_id)
+                if result is not None:
+                    return {'ok': True, **result}
+            elif action == 'resolve':
+                resolution = body.get('resolution', 'dismissed')
+                message = jobs.resolve_message(job_id, msg_id, resolution)
+                if message is not None:
+                    if resolution == 'accepted' and message.get('sender') and agents.is_available(message['sender']):
+                        agents.trigger_sync(message['sender'],
+                            message=f"Your suggestion was accepted: {message.get('text', '')}",
+                            channel=job.get('channel', 'general'), job_id=job_id)
+                    return {'ok': True, 'resolution': resolution}
+                result = None
+            elif action == 'delete':
+                result = jobs.delete(job_id) if permanent else jobs.update_status(job_id, 'archived')
+            else:
+                raise ValueError('Unknown job change.')
+            if result is None:
+                return JSONResponse({'error': 'not found or invalid'}, status_code=404)
+            return result
+    except (ChannelUnavailable, OSError, ValueError) as error:
+        return _history_write_error(error)
+
+
 @app.patch("/api/jobs/{job_id}")
 async def update_job(job_id: int, request: Request):
     """Update a job's status, title, or assignee."""
     body = await request.json()
-    result = None
-    if "status" in body:
-        result = jobs.update_status(job_id, body["status"])
-    if "title" in body:
-        result = jobs.update_title(job_id, body["title"])
-    if "assignee" in body:
-        result = jobs.update_assignee(job_id, body["assignee"])
-    if result is None:
-        return JSONResponse({"error": "not found or invalid"}, status_code=404)
-    return result
+    return await asyncio.to_thread(_job_mutation_sync, 'update', job_id=job_id, body=body)
 
 
 @app.post("/api/jobs/reorder")
 async def reorder_jobs(request: Request):
-    """Reorder jobs within a status group (globally, not per-channel)."""
+    """Reorder active-channel jobs within a global status group."""
     body = await request.json()
-    status = body.get("status", "open")
-    ordered_ids = body.get("ordered_ids", [])
-    if not isinstance(ordered_ids, list) or len(ordered_ids) == 0:
-        return JSONResponse({"error": "ordered_ids required"}, status_code=400)
-    updated = jobs.reorder(status=status, ordered_ids=ordered_ids)
-    return {"ok": True, "updated": len(updated)}
+    return await asyncio.to_thread(_job_mutation_sync, 'reorder', body=body)
 
 
 @app.get("/api/jobs/{job_id}/messages")
 async def get_job_messages(job_id: int):
-    """Get all messages in a job."""
-    msgs = jobs.get_messages(job_id)
-    if msgs is None:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return msgs
+    """Read retained threads, including inactive channels."""
+    try:
+        msgs = await asyncio.to_thread(jobs.get_messages, job_id)
+        if msgs is None:
+            return JSONResponse({'error': 'not found'}, status_code=404)
+        return msgs
+    except (ChannelUnavailable, OSError) as error:
+        return _history_write_error(error)
 
 
 @app.post("/api/jobs/{job_id}/messages")
@@ -2768,7 +2810,7 @@ async def post_job_message(job_id: int, request: Request):
         body = _recipient_json(await request.body())
         if body.keys() - {'text', 'selected_recipients', 'sender', 'attachments', 'type'}:
             raise ValueError('Unsupported job message fields.')
-        job = jobs.get(job_id) if jobs else None
+        job = await asyncio.to_thread(jobs.get, job_id) if jobs else None
         if job is None:
             raise LookupError('Job not found.')
         kind = body.get('type', 'chat')
@@ -2779,6 +2821,10 @@ async def post_job_message(job_id: int, request: Request):
             channel=job.get('channel', 'general'), job_id=job_id,
             attachments=body.get('attachments', []), msg_type=kind)
         return JSONResponse(message, headers={'Cache-Control': 'no-store'})
+    except ChannelConflict as error:
+        return _history_write_error(error)
+    except ChannelUnavailable as error:
+        return _history_write_error(error)
     except ValueError:
         return JSONResponse({'error': 'Invalid job message or recipient fields.'}, status_code=400)
     except LookupError:
@@ -2789,51 +2835,22 @@ async def post_job_message(job_id: int, request: Request):
 
 @app.delete("/api/jobs/{job_id}/messages/{msg_id}")
 async def delete_job_message(job_id: int, msg_id: int):
-    """Soft-delete a message in a job thread."""
-    result = jobs.delete_message(job_id, msg_id)
-    if result is None:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return {"ok": True, **result}
+    """Soft-delete a message in an active job thread."""
+    return await asyncio.to_thread(_job_mutation_sync, 'delete_message', job_id=job_id, msg_id=msg_id)
 
 
 @app.post("/api/jobs/{job_id}/messages/{msg_index}/resolve")
 async def resolve_job_message(job_id: int, msg_index: int, request: Request):
-    """Resolve a suggestion message (accept/dismiss)."""
+    """Resolve and, when accepted, enqueue within the same channel boundary."""
     body = await request.json()
-    resolution = body.get("resolution", "dismissed")
-    job = jobs.get(job_id)
-    if not job:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    msgs = job.get("messages", [])
-    if msg_index < 0 or msg_index >= len(msgs):
-        return JSONResponse({"error": "invalid message index"}, status_code=400)
-    msg = msgs[msg_index]
-    msg["resolved"] = resolution
-    jobs._save()
-
-    # If accepted, trigger the suggesting agent with context
-    if resolution == "accepted" and msg.get("sender"):
-        agent_name = msg["sender"]
-        channel = job.get("channel", "general")
-        if agents.is_available(agent_name):
-            await agents.trigger(agent_name,
-                                 message=f"Your suggestion was accepted: {msg.get('text', '')}",
-                                 channel=channel, job_id=job_id)
-
-    return {"ok": True, "resolution": resolution}
+    return await asyncio.to_thread(_job_mutation_sync, 'resolve', job_id=job_id, msg_id=msg_index, body=body)
 
 
 @app.delete("/api/jobs/{job_id}")
 async def delete_job(job_id: int, request: Request):
-    """Delete or archive a job. ?permanent=true for real delete."""
-    permanent = request.query_params.get("permanent", "").lower() == "true"
-    if permanent:
-        result = jobs.delete(job_id)
-    else:
-        result = jobs.update_status(job_id, "archived")
-    if result is None:
-        return JSONResponse({"error": "not found"}, status_code=404)
-    return result
+    """Delete or archive a job. Inactive-channel artifacts remain read-only."""
+    permanent = request.query_params.get('permanent', '').lower() == 'true'
+    return await asyncio.to_thread(_job_mutation_sync, 'delete', job_id=job_id, permanent=permanent)
 
 
 @app.get("/api/roles")
