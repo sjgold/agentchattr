@@ -66,4 +66,3 @@ No accepted native cases were rerun on every later docs-only descendant. Final w
 5. mjs observations about8.9MB embed source copies; acceptable, do not grow them.
 6. File-parent line-ending-only corrected restart is deliberately refused and documented.
 7. Initial acceptance script review combined analyst checklist with the reviewer's verified findings/compile-only; later changed diffs were read personally.
-
