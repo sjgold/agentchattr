@@ -806,3 +806,6 @@ Authority amendments R1/G1-G5 are docs-only: operator-only terminal-transport re
 
 
 Authority Q1/Q2 simplification accepted: compare signed consumer/seat to the retained queue record via owned; claim events stay unchanged. No new queue metadata/retention or diagnostics scan. R1 requires ACTIVE request and no quarantined outbox disposition. Next Codex freezes exact helper interfaces/payloads; Sonnet reviews those before the <=12 helper brief.
+
+
+Exact authority helper payload review candidate is appended to TICKET-20-AUTHORITY.md: concrete constructors, protocol/brief/outbox operations, return schemas/error families, service state/queue effects and <=12 helper ownership. Q1 retains signed consumer_id but no shared claim-event changes; Q2 no diagnostic-list inference. No helper briefing, authority tests or product code until Sonnet clears these payloads.
