@@ -239,3 +239,7 @@ Store independently cleared5024c06, reviewer174/141.161s plus separate benchmark
 ## Ticket20 pure codec correction (2026-10-25)
 
 D1-D3 reproduced on actual zlib/EOF/backing-stream I/O/Unicode-year paths before fixes; D4/D5 reordered headers before inflation and added64KiB manifest cap. New real ZIP/ZIP64 and full negative matrices, second literal API/revision/first-origin golden; final69 PASS5.303s. Corrected-codec recheck next. archive.py remains unchanged, so schema2 driver/private sentinel/owner routes/report and measured export errors are still pending. Capability empty.
+
+## Ticket20 driver preparation receipt (2026-10-25)
+
+Pure codec cleared23fba31 (reviewer210/144.462s). Private staging receipt rootRED4/1FAIL+3ERROR0.189s -> affected49 PASS7.174s; no persisted/public schema or helper changes. Actual pre-driver legacy large-manifest reports captured, guards2 PASS0.029s; discriminator remains bounded with legacy fallback for oversized/no-artifact manifests as ruled. archive.py still unchanged. Small receipt recheck then driver integration; no activation.

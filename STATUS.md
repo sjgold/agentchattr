@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 11:12 UTC (#20 pure codec review correction verified)
+**Updated:** 2026-10-25 11:32 UTC (#20 private staging receipt verified; archive driver next)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store import independently cleared5024c06 (reviewer174 PASS141.161s plus independent benchmark PASS). Corrected pure codec69 PASS5.303s awaits recheck (real deflate/EOF, fatal I/O503, ASCII dates,64KiB manifest cap and header-first ordering); archive.py/app threading and reports remain pending; capability stays empty |
+| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store import independently cleared5024c06 (reviewer174 PASS141.161s plus independent benchmark PASS). Pure codec independently cleared23fba31 (reviewer210 PASS144.462s). Private staging receipt49 PASS7.174s is ready for its small recheck; actual old large-manifest guards2 PASS0.029s captured before driver edits. archive.py/app threading and reports remain pending; capability stays empty |
 
 ## Current handoff
+
+- Driver preparation, no archive.py edits yet: reviewer-approved private staging receipt tracks actual newly created objects without persisted/public fields; root4 RED1 FAIL+3 missing-field ERROR0.189s -> affected49 PASS7.174s. Counts run under store lock with stat/metadata only; duplicate/reused zero, uncertain staging I/O null with fixed private reason, no deletion. Actual old importer large-manifest schema1/2 report capture and primitive-schema guards2 PASS0.029s, all zero-write. Small receipt recheck next, then driver sentinel/schema2 writer/app threading/section reports; capability remains empty.
 
 - Pure codec review correction: root D1-D3 actual-runtime red3/2 FAIL+5 ERROR0.109s, expanded D4/D5 red4/5 FAIL+5 ERROR0.115s. Fixed zlib/EOF safe mapping, fatal backing-I/O503 at both boundaries, ASCII dates,65536-byte manifest cap and hazards/header-bounds before decompression/index-derived limits. Updated superseded root precedence/large-history-name fixtures without dropping assertions. Real ZIP/ZIP64/size-limit/negative matrices and second literal revision/API/first-origin golden added; final69 PASS5.303s including unchanged archive/channel-import suites. archive.py unchanged; measured export budget/errors remain DRIVER work. Corrected-codec independent recheck next, no activation.
 

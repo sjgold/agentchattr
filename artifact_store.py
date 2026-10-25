@@ -51,10 +51,11 @@ class ArtifactUnavailable(ChannelUnavailable):
 
 
 class ArtifactImportCollision(ArtifactConflict):
-    def __init__(self, reason, collision_kinds):
+    def __init__(self, reason, collision_kinds, *, created_objects=()):
         super().__init__('Artifact lineage conflicts with retained immutable storage.')
         self.reason = reason
         self.collision_kinds = tuple(sorted(collision_kinds))
+        self._created_objects = created_objects
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,7 @@ class _PreparedLineage:
     metadata: bytes
     objects: tuple
     skipped: bool = False
+    created_objects: tuple = ()
 
 
 def _hex(value, width=32):
@@ -453,7 +455,7 @@ class ArtifactStore:
                         prior = stream.read(len(raw) + 1)
                     if prior != raw:
                         raise ArtifactConflict('Different bytes already occupy this immutable artifact object.')
-                    return
+                    return False
                 path.parent.mkdir(parents=True, exist_ok=True)
                 self._safe(path)
                 temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
@@ -462,6 +464,7 @@ class ArtifactStore:
                     stream.flush()
                     os.fsync(stream.fileno())
                 temporary.replace(path)
+            return True
         except (OSError, LaunchError):
             raise ArtifactUnavailable('Artifact object write did not complete.') from None
         finally:
@@ -704,11 +707,12 @@ class ArtifactStore:
                         for key, row in references.items()):
                     raise ArtifactImportCollision('uid_collision', result['collision_kinds'])
                 return _PreparedLineage(_path_key(self.root), _canonical(value), (), skipped=True)
-        stamps = []
+        stamps, created_objects = [], []
         for (kind, identifier), reference in sorted(references.items()):
             path = self._object_path(kind, identifier)
             try:
-                self._put_bytes(path, objects[(kind, identifier)])
+                if self._put_bytes(path, objects[(kind, identifier)]):
+                    created_objects.append((kind, identifier, len(objects[(kind, identifier)])))
                 stat = path.stat()
             except ArtifactConflict:
                 # The object file lock has already been released. Never nest
@@ -717,11 +721,39 @@ class ArtifactStore:
                     self._check_index()
                     current = self._classify_import(value)
                 raise ArtifactImportCollision('uid_collision' if current else 'object_conflict',
-                    current['collision_kinds'] if current else [kind]) from None
-            except OSError:
-                raise ArtifactUnavailable('Artifact import staging is unavailable.') from None
+                    current['collision_kinds'] if current else [kind], created_objects=tuple(created_objects)) from None
+            except (OSError, ArtifactUnavailable):
+                error = ArtifactUnavailable('Artifact import staging is unavailable.')
+                error._created_objects = None
+                error._orphan_reason = 'staging_io_unconfirmed'
+                raise error from None
             stamps.append((kind, identifier, stat.st_mtime_ns, stat.st_size))
-        return _PreparedLineage(_path_key(self.root), _canonical(value), tuple(stamps))
+        return _PreparedLineage(_path_key(self.root), _canonical(value), tuple(stamps),
+                                created_objects=tuple(created_objects))
+
+    def _import_orphans(self, created_objects):
+        """Private observation: only objects this invocation actually created."""
+        if created_objects is None:
+            return None
+        if not created_objects:
+            return {'objects': 0, 'bytes': 0}
+        with self._lock:
+            try:
+                self._check_index()
+                references = self._import_references(self._data)
+                count, size = 0, 0
+                for kind, identifier, _ in set(created_objects):
+                    if (kind, identifier) in references:
+                        continue
+                    try:
+                        actual = self._object_path(kind, identifier).stat().st_size
+                    except FileNotFoundError:
+                        continue
+                    count += 1
+                    size += actual
+                return {'objects': count, 'bytes': size}
+            except (OSError, ArtifactUnavailable):
+                return None
 
     def _prepared_import(self, prepared):
         if not isinstance(prepared, _PreparedLineage) or prepared.root != _path_key(self.root):
