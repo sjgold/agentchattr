@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 07:14 UTC (#20 worker12 passed; HTTP-error cleanup fixed; unchanged rerun next)
+**Updated:** 2026-10-25 07:26 UTC (#20 worker12 warning-free/frozen; manifest upgrade compatibility fix next)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
-| Next | Helper reruns unchanged worker12 once after source HTTP-error cleanup, then static-finalizes. Codex holds source during that run and completes entry/transport/MCP/factory/races afterward. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Codex implements separately reviewed manifest metadata/capability split with red-first old-worker compatibility tests, then completes entry/transport/MCP/factory/races. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -938,3 +938,12 @@ Helper ONE unchanged expanded run at ea9ac2a:12 PASS7.115s, all cases reached, n
 Root inspected local stdlib HTTPError/response ownership and added test_artifact_worker_http3 with explicit buffered bodies and cleanup. Before fix:6 genuine failing close assertions1.592s (CLI403/409/503 and API delivery/parent/rejection errors remained open); the third saved-result retry test ALREADY passed because shared sealed_result_io.deliver_saved closes every HTTP error before retry. The fix changes only the worker's three handled-error paths to close the error response, without reading/echoing the body, preserving wait/reject/held decisions. Root3 PASS1.589s afterward. No shared review/delivery mechanics or helper double/assertion changed. This is component resource-lifetime evidence, not an observed live socket leak.
 
 Next owner helper: ONE unchanged corrective12 run on the frozen cleanup pin, report any warnings/source or fixture attribution, then hold for static finalization. Codex holds all source unchanged during it. Actual API entry test remains RED until entry/observation/transport/factory/race implementation. Production capability remains empty; no final wrapper/component-package or Ticket20 acceptance yet.
+
+
+## Helper frozen; callback codec checkpoint, 2026-10-25 07:26 UTC
+
+Helper ONE unchanged corrective12 run at12a9425 PASS7.305s, no ResourceWarnings or other warnings. No helper file/double/assertion edits. Static-only finalization then PASS with exact12/UTF8/AST/noBOM/whitespace/newline/diff, SHA2567550ecb68cfc979696d208b78f48ca8b74c950d1918719449c2bac4653114c0b. Earlier12PASS7.115s with two warnings remains separate; root resource-close RED/green belongs root. Helper is idle/frozen.
+
+Root bounded loopback callback adapter ArtifactHTTP: transport codec2 first missing-class ERROR0.001s, then2 PASS0.002s after implementation. Buffered opener doubles verify exact fixed127.0.0.1 paths, bearer placement, request bodies,10s deadline, closed successful/malformed response bodies, bounded reads, duplicate/nonfinite/invalidUTF8 rejection and validated path ids. No sockets or actual endpoints are exercised by these codec tests. Actual producer routes/MCP/factory and entry wiring remain pending.
+
+Root found and reproduced a source-manifest upgrade hazard: a valid prior13-file CLI v1 manifest now raises ValueError solely because the current closure has24 files. Sonnet ruled that metadata validation must accept structurally valid bounded prior maps while current capability/source matching remains exact. This protects old ownership/provenance/adoption/Stop evidence without granting new artifact support. No validator change yet; next is a SEPARATE red-first manifest-compatibility pin and its unchanged capability/runtime/cold-recovery checks before entry wiring continues. Production capability stays empty and no wrapper package acceptance is claimed.

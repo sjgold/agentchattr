@@ -2,13 +2,15 @@
 from copy import deepcopy
 import hashlib
 import json
+import math
 from pathlib import Path
 import re
 import time
 import urllib.error
+import urllib.request
 
 from artifact_delivery import ArtifactOutbox, ArtifactRejected
-from artifact_protocol import (MAX_BRIEF_RECORD_BYTES, MAX_RESULT_RECORD_BYTES, _owned_path,
+from artifact_protocol import (MAX_ACK_BYTES, MAX_BRIEF_RECORD_BYTES, MAX_RESULT_RECORD_BYTES, _owned_path,
                                validate_brief, verify_result, validate_owner, parse_response)
 from artifact_store import (MAX_PACKET_BYTES, MAX_ARTIFACT_BYTES, _fields, _hex, _number,
                             _integer, _observation, _packet_scope, _path_key, _text, request_ids,
@@ -27,6 +29,79 @@ class ArtifactWorkerError(ValueError):
     def __init__(self, code='artifact_invalid_dispatch'):
         super().__init__('Artifact work is unavailable. Check its assigned request before retrying.')
         self.code = code if code in REASONS else 'artifact_invalid_dispatch'
+
+
+class ArtifactHTTP:
+    """Owned loopback JSON callbacks; the worker handles/ closes raised HTTPError."""
+    def __init__(self, port, get_token):
+        if type(port) is not int or not 1 <= port <= 65535 or not callable(get_token):
+            raise ArtifactWorkerError()
+        self.port, self.get_token = port, get_token
+
+    def _request(self, path, *, body=None, maximum=MAX_ACK_BYTES):
+        token = self.get_token()
+        if not isinstance(token, str) or not token or '\r' in token or '\n' in token:
+            raise ArtifactWorkerError('artifact_capability_missing')
+        encoded = None
+        if body is not None:
+            try:
+                encoded = json.dumps(body, ensure_ascii=True, allow_nan=False).encode('utf-8')
+            except (ValueError, TypeError, UnicodeError, RecursionError):
+                raise ArtifactWorkerError() from None
+            cap = 6 * MAX_RESULT_RECORD_BYTES + 32768 if path.endswith('/reject') else MAX_RESULT_RECORD_BYTES
+            if len(encoded) > cap:
+                raise ArtifactWorkerError('artifact_context_too_large')
+        request = urllib.request.Request('http://127.0.0.1:' + str(self.port) + path, data=encoded,
+            method='POST' if encoded is not None else 'GET',
+            headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Cache-Control': 'no-store'})
+        with urllib.request.urlopen(request, timeout=10) as response:
+            raw = response.read(maximum + 1)
+            if len(raw) > maximum:
+                raise ArtifactWorkerError('artifact_context_too_large')
+            def unique(pairs):
+                value = {}
+                for key, item in pairs:
+                    if key in value:
+                        raise ValueError('Duplicate response field')
+                    value[key] = item
+                return value
+            def finite(value):
+                if isinstance(value, float) and not math.isfinite(value):
+                    raise ValueError('Nonfinite response')
+                if isinstance(value, dict):
+                    for item in value.values():
+                        finite(item)
+                elif isinstance(value, list):
+                    for item in value:
+                        finite(item)
+            try:
+                value = json.loads(raw.decode('utf-8'), object_pairs_hook=unique)
+                finite(value)
+                return value
+            except (ValueError, TypeError, UnicodeError, RecursionError):
+                raise ArtifactWorkerError('artifact_context_unavailable') from None
+
+    @staticmethod
+    def _brief_path(brief_id):
+        try:
+            return '/api/artifact-briefs/' + _hex(brief_id)
+        except (ValueError, TypeError):
+            raise ArtifactWorkerError() from None
+
+    def fetch_brief(self, brief_id):
+        return self._request(self._brief_path(brief_id), maximum=MAX_CONTEXT_BYTES)
+
+    def fetch_delivery(self, brief_id):
+        return self._request(self._brief_path(brief_id) + '/delivery', maximum=MAX_CONTEXT_BYTES)
+
+    def fetch_parent(self, brief_id):
+        return self._request(self._brief_path(brief_id) + '/parent', maximum=MAX_CONTEXT_BYTES)
+
+    def submit_saved(self, record):
+        return self._request('/api/artifact-results', body=record)
+
+    def reject_response(self, brief_id, report):
+        return self._request(self._brief_path(brief_id) + '/reject', body=report)
 
 
 def _read(runtime, name):
