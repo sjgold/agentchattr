@@ -182,3 +182,6 @@ Corrected unchanged helper12 PASS/100.557s at f0e984b; all previously blocked va
 
 
 Review correction checkpoint: f0e984b full1391/four skips218.861s PASS (implementation owner, tracked7944fb64), but independent review found S1-S5 and N2. New root review/index cases observed8 tests/5 failures+9 errors1.013s before fixes; imported-unversioned row separately1FAIL0.305s. Corrections now root12 PASS3.328s. Helper12 remains unchanged/frozen. Version ownership is bidirectional, packet input errors are typed, pagination is offset-aware, invalid producer strings are hash-only diagnostics, object observations are referenced-only/bounded256, and full-group overflow keeps its own counter. Persistent locks and packet checks on reason-only changes are documented. A new frozen full run and independent recheck are required before expansion.
+
+
+Store ef7f896 independently PASS: reviewer probe6/0.435s plus root modules12/3.489s, diff read, S1-S5/N2 closed. Full correction run590a3db7 remains pending. The next capability contract is TICKET-20-CAPABILITY.md, review-only; no tests/code before its review. The later import package must revisit any imported request without an owned version before changing the accepted store invariant.
