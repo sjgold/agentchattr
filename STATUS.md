@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 06:23 UTC (#20 authority full1467 passed; exact wrapper helper payload draft awaiting review)
+**Updated:** 2026-10-25 06:34 UTC (#20 wrapper outcome/release and cancellation-race payload amendments drafted)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
-| Next | Sonnet reviews exact wrapper helper function/callback/payload freeze; Codex revises/briefs helper only after clearance. No wrapper tests/code yet. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Sonnet reviews P1-P5 exact wrapper payload amendments, including the proposed read-only queue inspect operation; Codex briefs helper only after clearance. No wrapper tests/code yet. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -891,3 +891,10 @@ TICKET-20-WRAPPERS.md D1-D3/W1-W6 are amended docs-only: reject-report accepts e
 A-1 source7ba8ade full discovery PASS1467 tests242.152s, four skips, tracked552dcdbc-2265-48fc-ba69-d40dfff323d9, .audit-tmp/ticket20-authority-delivery-settlement-full-7ba8ade.log. Implementation-owner run only; source stayed unchanged during the run. Sonnet independently cleared A-1 with234 focused29.952s plus own probes, not full discovery. Current authority component remains accepted, capability empty/unbound.
 
 Wrapper contract amendments760417e are independently ACCEPTED by docs diff read, no execution. Exact helper function/callback/payload proposal is now appended to TICKET-20-WRAPPERS.md: managed-dispatch validation, prompt/messages, explicit CLI preflight decisions and optional consumer callback, API one-generation/redelivery entry, invocation/cancellation inspection, service parent/rejection signatures, router and MCP JSON/error literals, and exact legacy comparisons. Proposed helper ownership stays only NEW tests/test_artifact_workers.py/exactly up to12 methods, no briefing or tests/code before review. Root owns actual wrapper nested-entry behavioral REDs, HTTP/MCP/factory/closure, service amendments and legacy goldens. This payload section is a proposal, not independently cleared yet. Next owner Sonnet reviews it; Codex resolves feedback then freezes the brief. No native/provider/app resources started by this docs checkpoint.
+
+
+## Wrapper outcome/queue payload amendments, 2026-10-25 06:34 UTC
+
+Sonnet conditionally accepted64356d2 payload freeze and requested P1-P5. Docs-only amendments now specify every CLI decision/API outcome versus dispatched/acknowledged/uncertain/cancelling and work evidence. A transient503/timeout/OSError BEFORE CLI injection is wait/retry on next normal poll, with no held latch; definitive refusal releases failed, and post-injection uncertainty holds without replay. API idle held/quarantined outcomes release failed/local_delivery_failure where allowed, retaining saved results for operator recovery; uncertain possibly live invocation never pretends to be idle. Existing fixed categories stay unchanged.
+
+Every artifact release uses current exact-dispatch state and rechecks after refusal/lost response, branching to proven API cancellation receipt or unsupported CLI hold. New read-only QueueClient.inspect/POST queue inspect is PROPOSED for review because using claim as a post-release reread could accidentally claim a successor. It reuses owned-record/consumer validation, changes no ledger event/state and gets actual auth/no-store/no-mutation tests. Fixed receipt guidance plus one optional validated held_artifact status entry make holds visible without granting ownership or falsifying liveness. Root Event tests cover cancel between result response and release, cancel after ACK, and cancel after inspection before release. Root also captures actual unmodified ordinary/review injected prompt bytes and queue call order before any purpose edit. Activation at preflight is explicitly intended; parent failure can leave ACTIVE until failed delivery is settled by resume/startup or cancel. No wrapper tests/code/helper briefing before this changed-paragraph review; authority source stays frozen7ba8ade and full1467/four skips242.152s remains its accepted implementation-owner evidence.
