@@ -82,7 +82,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
     def import_graph(self, graph, *, owner=None, channel='review', archive_id='archive-fixture'):
         owner = owner or self.target
         portable, objects = graph
-        prepared = owner.prepare_import_lineage(portable, objects, archive_id=archive_id)
+        prepared = owner.prepare_import_lineage(portable, objects)
         with self.service._boundary():
             result = owner.import_lineage(prepared, channel=channel)
         return result
@@ -156,7 +156,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
 
     def test_index_failure_after_staging_preserves_head_metadata_and_orphan_retry_never_overwrites(self):
         graph, audit, version = self.source_graph(attempts=False)
-        prepared = self.target.prepare_import_lineage(*graph, archive_id='archive-fixture')
+        prepared = self.target.prepare_import_lineage(*graph)
         old_index = self.target.path.read_bytes() if self.target.path.exists() else None
         old_metadata = self.target.list_lineages()
         with patch('artifact_store.atomic_json', side_effect=OSError('Controlled final index failure')):
@@ -172,7 +172,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
         changed['versions'][0].update(sha256=hashlib.sha256(different).hexdigest(), byte_length=len(different))
         objects[('version', version['id'])] = different
         with self.assertRaises(artifact_store.ArtifactConflict):
-            self.target.prepare_import_lineage(changed, objects, archive_id='archive-fixture')
+            self.target.prepare_import_lineage(changed, objects)
         self.assertEqual((self.root / 'target' / 'artifacts' / 'objects' / (version['id'] + '.md')).read_bytes(),
                          graph[1][('version', version['id'])])
         fresh = artifact_store.ArtifactStore(self.root / 'target')
@@ -271,7 +271,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
                     request['scope'] = None
                 before = self.metadata_baseline(self.target)
                 with self.assertRaises(artifact_store.ArtifactValidationError):
-                    self.target.prepare_import_lineage(portable, graph[1], archive_id='archive-fixture')
+                    self.target.prepare_import_lineage(portable, graph[1])
                 self.assert_no_metadata(self.target, before)
         legacy = self.audit(artifact_store, self.source)
         local = self.source.reserve_request(legacy, legacy['request_id'])
@@ -288,7 +288,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
     def test_duplicate_whole_graph_local_or_imported_and_partial_uid_collisions_skip_without_merge(self):
         graph, audit, version = self.source_graph()
         before = self.files(self.source)
-        prepared = self.source.prepare_import_lineage(*graph, archive_id='different-export')
+        prepared = self.source.prepare_import_lineage(*graph)
         expected = {'status': 'skipped', 'reason': 'duplicate', 'collision_kinds': [],
                     'created_versions': 0, 'created_requests': 0}
         with self.service._boundary():
@@ -301,7 +301,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
         self.assertEqual(self.files(self.target), imported_before)
         changed = deepcopy(graph[0])
         changed['lineage_id'] = uuid.uuid4().hex
-        prepared = self.target.prepare_import_lineage(changed, graph[1], archive_id='archive-fixture')
+        prepared = self.target.prepare_import_lineage(changed, graph[1])
         with self.service._boundary():
             result = self.target.classify_import_lineage(prepared)
             self.assertEqual(result, self.target.import_lineage(prepared, channel='review'))
@@ -318,7 +318,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
                 row['expected_parent']['sha256'] = hashlib.sha256(changed_bytes).hexdigest()
         objects[('version', version['id'])] = changed_bytes
         with self.assertRaises(artifact_store.ArtifactImportCollision) as caught:
-            self.target.prepare_import_lineage(divergent, objects, archive_id='archive-fixture')
+            self.target.prepare_import_lineage(divergent, objects)
         self.assertEqual(caught.exception.reason, 'uid_collision')
         self.assertIn('version', caught.exception.collision_kinds)
         self.assertEqual(self.files(self.target), imported_before)
@@ -389,25 +389,25 @@ class ArtifactImportedStoreTests(unittest.TestCase):
             with self.subTest(index=index):
                 before = self.metadata_baseline(self.target)
                 with self.assertRaises(artifact_store.ArtifactValidationError):
-                    self.target.prepare_import_lineage(portable, objects, archive_id='archive-fixture')
+                    self.target.prepare_import_lineage(portable, objects)
                 self.assert_no_metadata(self.target, before)
 
     def test_prepared_plan_detaches_inputs_is_root_bound_and_detects_staged_file_change(self):
         graph, _, version = self.source_graph(attempts=False)
         portable, objects = deepcopy(graph[0]), dict(graph[1])
-        prepared = self.target.prepare_import_lineage(portable, objects, archive_id='archive-fixture')
+        prepared = self.target.prepare_import_lineage(portable, objects)
         portable['requests'][0]['instruction'] = 'EXTERNAL_MUTATION'
         objects.clear()
         foreign = artifact_store.ArtifactStore(self.root / 'foreign')
         foreign.bind_channel_policy(lambda: self.service)
-        with self.service._boundary(), self.assertRaises((artifact_store.ArtifactValidationError, artifact_store.ArtifactConflict)):
+        with self.service._boundary(), self.assertRaises(artifact_store.ArtifactValidationError):
             foreign.import_lineage(prepared, channel='review')
         with self.service._boundary():
             self.assertEqual(self.target.import_lineage(prepared, channel='review')['status'], 'created')
         self.assertEqual(self.target.get_version(version['id'])['metadata']['provenance']['instruction'],
                          graph[0]['requests'][0]['instruction'])
         other, _, other_version = self.source_graph(attempts=False)
-        prepared = self.target.prepare_import_lineage(*other, archive_id='archive-fixture')
+        prepared = self.target.prepare_import_lineage(*other)
         staged = self.root / 'target' / 'artifacts' / 'objects' / (other_version['id'] + '.md')
         staged.write_bytes(b'CHANGED_AFTER_VALIDATION')
         before = self.metadata_baseline(self.target)
@@ -425,7 +425,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
             return replace(path, target)
         before = self.metadata_baseline(self.target)
         with patch.object(Path, 'replace', fail_exact_object), self.assertRaises(artifact_store.ArtifactUnavailable):
-            self.target.prepare_import_lineage(*graph, archive_id='archive-fixture')
+            self.target.prepare_import_lineage(*graph)
         self.assert_no_metadata(self.target, before)
         self.assertFalse(destination.exists())
         self.assertFalse(list((self.root / 'target').rglob('*.tmp')))
@@ -479,7 +479,7 @@ class ArtifactImportedStoreTests(unittest.TestCase):
                      if key.startswith('artifacts/objects/') or key.startswith('artifact_briefs/packets/')}
         staged_graph, _, _ = self.source_graph(attempts=False)
         self.catalog.set_state('review', 'archived', expected_revision=self.catalog.snapshot()['revision'])
-        prepared = self.target.prepare_import_lineage(*staged_graph, archive_id='archive-fixture')
+        prepared = self.target.prepare_import_lineage(*staged_graph)
         before = self.metadata_baseline(self.target)
         with self.service._boundary(), self.assertRaises(ChannelInactive):
             self.target.import_lineage(prepared, channel='review')

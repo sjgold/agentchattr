@@ -23,15 +23,15 @@ class ArtifactImportPlanTests(unittest.TestCase):
         portable['requests'][0]['scope'].update(sha256=hashlib.sha256(raw).hexdigest(), byte_length=len(raw))
         objects[('packet', audit['scope']['packet_id'])] = raw
         with self.assertRaises(artifact_store.ArtifactValidationError):
-            self.target.prepare_import_lineage(portable, objects, archive_id='archive-fixture')
+            self.target.prepare_import_lineage(portable, objects)
         self.assertFalse(self.target.path.exists())
         self.assertFalse(list(self.target.root.rglob('*.md')))
         self.assertFalse(list(self.target.root.rglob('*.json')))
 
     def test_two_commits_of_same_prepared_lineage_create_once_without_merging(self):
         graph, audit, version = self.source_graph(attempts=False)
-        first = self.target.prepare_import_lineage(*graph, archive_id='archive-fixture')
-        second = self.target.prepare_import_lineage(*graph, archive_id='archive-fixture')
+        first = self.target.prepare_import_lineage(*graph)
+        second = self.target.prepare_import_lineage(*graph)
         barrier = threading.Barrier(2)
         def commit(plan):
             barrier.wait(timeout=5)

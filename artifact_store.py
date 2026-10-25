@@ -62,6 +62,7 @@ class _PreparedLineage:
     root: str
     metadata: bytes
     objects: tuple
+    skipped: bool = False
 
 
 def _hex(value, width=32):
@@ -664,9 +665,7 @@ class ArtifactStore:
                            for row in value['requests'].values()})
         return references
 
-    def prepare_import_lineage(self, portable_lineage, objects, *, archive_id):
-        if not isinstance(archive_id, str) or not re.fullmatch(r'[A-Za-z0-9._-]{1,64}', archive_id):
-            raise ArtifactValidationError('Invalid artifact import archive identifier.')
+    def prepare_import_lineage(self, portable_lineage, objects):
         try:
             value = self._import_metadata(portable_lineage)
             references = self._import_references(value)
@@ -696,6 +695,15 @@ class ArtifactStore:
             raise ArtifactValidationError('Artifact import lineage is malformed.') from None
         with self._lock:
             self._check_index()
+            result = self._classify_import(value)
+            if result is not None:
+                local_refs = self._import_references(self._data)
+                if result['reason'] == 'uid_collision' and any(
+                        key in local_refs and (row['sha256'], row['byte_length']) !=
+                        (local_refs[key]['sha256'], local_refs[key]['byte_length'])
+                        for key, row in references.items()):
+                    raise ArtifactImportCollision('uid_collision', result['collision_kinds'])
+                return _PreparedLineage(_path_key(self.root), _canonical(value), (), skipped=True)
         stamps = []
         for (kind, identifier), reference in sorted(references.items()):
             path = self._object_path(kind, identifier)
@@ -707,10 +715,9 @@ class ArtifactStore:
                 # a metadata owner lock inside the immutable-file lock.
                 with self._lock:
                     self._check_index()
-                    indexed = (identifier in self._data['versions'] if kind == 'version' else
-                        any(row['audit']['scope']['packet_id'] == identifier
-                            for row in self._data['requests'].values()))
-                raise ArtifactImportCollision('uid_collision' if indexed else 'object_conflict', [kind]) from None
+                    current = self._classify_import(value)
+                raise ArtifactImportCollision('uid_collision' if current else 'object_conflict',
+                    current['collision_kinds'] if current else [kind]) from None
             except OSError:
                 raise ArtifactUnavailable('Artifact import staging is unavailable.') from None
             stamps.append((kind, identifier, stat.st_mtime_ns, stat.st_size))
@@ -745,7 +752,11 @@ class ArtifactStore:
         collisions = [kind for kind in incoming if incoming[kind] & local[kind]]
         if not collisions:
             return None
-        if all(incoming[kind] <= local[kind] for kind in incoming):
+        if (all(incoming[kind] <= local[kind] for kind in incoming)
+                and all(self._data['requests'][key]['audit']['lineage_id'] == row['audit']['lineage_id']
+                        for key, row in value['requests'].items())
+                and all(self._data['versions'][key]['lineage_id'] == row['lineage_id']
+                        for key, row in value['versions'].items())):
             local_refs = self._import_references(self._data)
             if all((row['sha256'], row['byte_length']) ==
                    (local_refs[key]['sha256'], local_refs[key]['byte_length'])
@@ -756,7 +767,10 @@ class ArtifactStore:
     def classify_import_lineage(self, prepared):
         with self._lock:
             self._check_index()
-            return self._classify_import(self._prepared_import(prepared))
+            result = self._classify_import(self._prepared_import(prepared))
+            if prepared.skipped and result is None:
+                raise ArtifactConflict('Artifact import classification changed; prepare again.')
+            return result
 
     @channel_write(lambda self, args: [_channel(args['channel'])])
     def import_lineage(self, prepared, *, channel):
@@ -766,6 +780,8 @@ class ArtifactStore:
             result = self._classify_import(imported)
             if result is not None:
                 return result
+            if prepared.skipped:
+                raise ArtifactConflict('Artifact import classification changed; prepare again.')
             value = deepcopy(self._data)
             for group in ('lineages', 'requests', 'versions'):
                 for identifier, row in imported[group].items():
@@ -1195,6 +1211,12 @@ class ArtifactStore:
             lineage = value['lineages'].get(audit['lineage_id'])
             if lineage is None or lineage.get('channel') != row['channel']:
                 raise ArtifactValidationError('Artifact request lineage is unavailable.')
+            parent = audit['expected_parent']
+            if row['state'] == 'imported' and parent is not None:
+                metadata = value['versions'].get(parent['version_id'])
+                if (metadata is None or metadata['lineage_id'] != audit['lineage_id']
+                        or metadata['sequence'] != parent['sequence'] or metadata['sha256'] != parent['sha256']):
+                    raise ArtifactValidationError('Imported artifact request parent differs from its lineage.')
         used_versions = set()
         for identifier, lineage in value['lineages'].items():
             _fields(lineage, ('id', 'channel', 'head_version_id', 'pending_request_id', 'version_ids', 'updated_at'))

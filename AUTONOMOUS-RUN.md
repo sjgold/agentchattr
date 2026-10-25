@@ -227,3 +227,7 @@ Reviewer45 PASS12.293s atc336166 identified imported diagnostic attachment and m
 ## Ticket20 slice3 store import checkpoint (2026-10-25)
 
 Slice2 independently cleared fec0571 (reviewer151/143.080s). Store staging/classification/whole-lineage commit now implemented; first assertion scaffoldRED1/0.069s, actual initial2 PASS0.157s, malformed JSON projection rootRED then focused32 PASS6.210s. Helper12 run next at frozen checkpoint. Codec/ZIP/app threading, leak golden, section reports, required4MiB import benchmark and retained/cancel UI remain pending; capability stays empty.
+
+## Ticket20 store import ordering correction (2026-10-25)
+
+Root F1/F2 red4/6FAIL before fixes -> metadata classification BEFORE any staging, strict imported parent references, same-lineage duplicate rule. Final45 PASS7.543s includes adapted imported-store12 (only approved signature/exception edits). Exact4MiB/128-version import into100-existing,10 independent default-writer/fsync commits: max0.1834773s <=0.300s, benchmark PASS35.053s, full samples in TICKET-20-LIFECYCLE-BACKUP.md. Independent corrected-store recheck next; codec/archive/app threading still pending and capability empty.

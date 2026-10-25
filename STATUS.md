@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 10:24 UTC (#20 slice2 cleared; slice3 store import checkpoint)
+**Updated:** 2026-10-25 10:37 UTC (#20 slice3 store correction and timing gate verified)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store staging/classify/atomic whole-lineage commit checkpoint is ready for the helper12 run; codec/archive threading and benchmark remain pending; capability stays empty |
+| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store classification-first correction ready for recheck: root45 PASS7.543s including adapted import12; exact4MiB benchmark10/10 <=0.300s (max0.1834773s). Codec/archive threading remains pending; capability stays empty |
 
 ## Current handoff
+
+- Slice3 store checkpoint review found a real ordering defect: staging could write to known indexed/live ids before collision refusal. Root4/6 FAIL0.260s (contract-precise repeat0.254s) -> classification-before-staging, imported unversioned parent binding and same-local-lineage duplicate checks; root final45 PASS7.543s includes adapted imported-store12. Original helper12 PASS1.886s/static SHA a530b07e remains old-signature evidence; reviewer-authorized removal of12 archive_id call keywords and exact foreign-root assertion yields SHA7e20e856, no other helper assertions changed. Required exact4MiB/100-existing/10-commit benchmark PASS35.053s, maximum boundary0.1834773s with default writer/fsync; all samples/limitations in contract receipt. Corrected store independent recheck next; codec/ZIP/private sentinel/app threading/section errors and lifecycle metadata/cancel bridge still pending. Capability stays empty.
 
 - Slice2 correction independently PASSfec0571: reviewer151 PASS143.080s, excluding the two pending imported-store/archive reds. Slice3 store methods now stage validated immutable objects outside the boundary, return a frozen root-bound plan with observed file fingerprints, classify duplicates/UID collisions before channel resolution and commit one whole imported graph atomically. Root scaffold-only first behavioral assertion RED1 FAIL0.069s, then actual first2 PASS0.157s; malformed packet error projection RED1 ERROR plus concurrency PASS0.084s, fixed to ArtifactValidationError, focused32 PASS6.210s. Helper12 has not yet run against these methods; freeze then authorize one unchanged run. Codec/ZIP threading, allowlist leak golden, app owner call sites, section wire errors, import benchmark and retained/catalog/cancel bridge remain pending. No capability activation.
 

@@ -144,7 +144,7 @@ Imported audit EXACT keys are version,purpose,request_id,lineage_id,attempt_id,d
 - ArtifactStore.export_lineage_ids()->tuple[32hex,...]. One healthy-index read under the store lock freezes sorted ALL lineage ids in this data directory, including active/archived/retired/data-only/imported/zero-version lineages. This is the same unfiltered all-channel scope as the existing history export. Empty tuple proves healthy+zero for configured schema1 fallback; a held owner raises ArtifactUnavailable. Later new lineages are outside this frozen selection.
 - ArtifactStore.export_metadata(lineage_id)->{lineage:detached_existing_lineage_row, requests:[detached_stored_request_rows], versions:[detached_stored_version_metadata]}. One consistent metadata snapshot under the store lock; no bodies, diagnostics or private brief access. Unknown lineage ->ArtifactConflict. The codec projects every Portable field explicitly; additional source fields cannot leak by accident.
 - ArtifactStore.read_archive_object(kind,object_id,*,sha256,byte_length)->bytes, kind exactly version|packet. Only currently referenced ids; validate stored reference and exact body hash/length/binding with current object caps. Read outside the engine/catalog boundary. Unknown/corrupt object ->generic ArtifactUnavailable, with referenced-only bounded diagnostics as today.
-- ArtifactStore.prepare_import_lineage(portable_lineage,objects,*,archive_id)->opaque PreparedLineage. objects is an exact map {(version|packet,32hex):bytes} for that lineage only, not paths/callables. Fully validate, detach into immutable canonical metadata, strip authority through the explicit imported projection, and stage every immutable object OUTSIDE the outer boundary. Return a root-bound immutable plan with object-id/hash/length and observed file fingerprints; no source body survives in a callback or request API. Staged conflicts never overwrite. ArtifactImportCollision(ArtifactConflict) exposes reason="uid_collision" when the conflicting id is currently indexed or reason="object_conflict" for an unreferenced immutable object, plus collision_kinds (CollisionKind values), never ids/paths. Classify that distinction under a store metadata read AFTER the object file lock is released; inability to read the index is fatal storage failure. Both are whole-lineage skips, not staging I/O failures.
+- ArtifactStore.prepare_import_lineage(portable_lineage,objects)->opaque PreparedLineage. objects is an exact map {(version|packet,32hex):bytes} for that lineage only, not paths/callables. Fully validate and detach into immutable canonical metadata, strip authority through the explicit imported projection, then classify under a SHORT store metadata lock BEFORE staging. Duplicate/uid_collision lineages stage NOTHING. Release the lock and stage only new lineages OUTSIDE the outer boundary. The archive id belongs only to the first-origin portable record; the preparation API has no redundant archive_id argument. Return a root-bound immutable plan with object-id/hash/length and observed file fingerprints; no source body survives in a callback or request API. Staged conflicts never overwrite. ArtifactImportCollision(ArtifactConflict) exposes reason="uid_collision" when the conflicting id is currently indexed or reason="object_conflict" for an unreferenced immutable object, plus collision_kinds (CollisionKind values), never ids/paths. Known indexed collisions are classified BEFORE staging, with the full set of colliding id classes. A late staging conflict is checked under a store metadata read AFTER the object file lock is released; inability to read the index is fatal storage failure. Both are whole-lineage skips, not staging I/O failures.
 - ArtifactStore.classify_import_lineage(prepared)->null|ImportResult. Under the outer boundary, take only the store lock and compare current UID/dispatch membership and the staged immutable object fingerprints BEFORE resolving/creating a channel. A duplicate/collision therefore cannot create an unused channel. No owner callback or body read under the store lock. import_lineage rechecks again before commit.
 - ArtifactStore.import_lineage(prepared,*,channel)->{status:created|skipped, reason:null|duplicate|uid_collision, collision_kinds:[CollisionKind,...], created_versions:int, created_requests:int}. Internal operator-import path only, under the catalog boundary and normal active-channel guard before its store lock. Verify plan root, recheck current UID/dispatch collisions and staged object fingerprints, construct one complete staged index, then persist once before memory. No full body parse/hash or object staging inside that boundary. Import none of the live pending slot, diagnostics/quarantine ids, overflow counters or dispatch records. A current collision skips whole with zero created counts. Local commit_version/reserve/set_attempt_state never accept this plan or imported authority.
 - NEW artifact_archive.py owns portable projection/validation, member assembly and the archive driver; it imports store constants/errors, never workers/providers. Store low-level methods never call the catalog getter while holding their lock. Archive driver first classifies current collisions inside policy._boundary, then resolves a channel only for a new lineage and calls import_lineage; manager and store locks are never held together.
@@ -326,3 +326,57 @@ Slice2 independently cleared fec0571: reviewer151 PASS143.080s, excluding pendin
 Before the algorithm, the helper first method was run against a minimal no-commit scaffold patched only in a separate interpreter: actual source/export fixtures reached the FIRST result assertion (None versus created),1 FAIL0.069s. This is scaffold behavioral evidence, not proof of the final algorithm. Actual first2 now PASS0.157s, including final-index fault/no partial head/orphan/same-byte retry and differing-byte refusal. Root malformed packet preparation emitted JSONDecodeError (1 ERROR, peer concurrency method PASS0.084s); a fixed ArtifactValidationError now projects malformed JSON without staging. Focused32 PASS6.210s (root import-plan2, export-store6, store_review/integrity/saturation/oversize, lifecycle/factory and manifest checks). No helper assertion edited; expanded12 remains pending one frozen run, SHA a530b07e...452c.
 
 This checkpoint contains NO codec, ZIP/schema2 writer, archive.py/app threading, section reports or benchmark execution. Those remain slice3 requirements. The prepared4MiB/100-existing/10-commit <=0.300s gate is still REQUIRED, as are the portable metadata leak golden and no-body-reads-in-outer-export-boundary test. No whole package acceptance or activation is claimed.
+
+## Slice3 store review correction and timing gate
+
+Reviewer42 PASS104.475s at669f11b identified staging-before-classification and unversioned parent checks. Root4 reproduced6 assertion FAIL0.260s; a contract-precise variant expecting ArtifactImportCollision for conflicting indexed bytes reproduced the same6 FAIL0.254s, BEFORE source fixes. Preparation now classifies briefly under the store lock BEFORE writing any object; duplicate/collision plans stage nothing and cannot later become a new creation without preparation. Known conflicting indexed hashes return uid_collision with ALL colliding id classes. A live local request owns its deterministic version path before the version exists, via the request/packet/dispatch join. Imported non-null parents, including unversioned attempts, must reference a same-lineage version with exact hash/sequence. Duplicate additionally requires each incoming request/version to belong to the SAME local lineage; an archive subset of a longer local lineage remains duplicate regardless of current local state.
+
+The store lock is NOT held across staging. The reviewer explicitly accepted the residual race where a local reserve of the SAME request id arrives after classification: commit reclassifies, one metadata owner wins, and staged leftovers are reported orphans, never deleted. The local author may receive a clean ArtifactConflict for differing immutable bytes; low-level cancellation remains usable. Event-interleaved regression demonstrates that path and cancellation, while the existing Barrier test admits one of two simultaneous imports and skips the other duplicate. File fingerprints (mtime_ns,size) are a weak observation, not authentication: acceptable under put-once objects, root-bound plans and commit reclassification; disk tampering remains outside the guarantee. Foreign-root is EXACT ArtifactValidationError; changed-file is EXACT ArtifactUnavailable.
+
+Removed the unused prepare_import_lineage archive_id keyword as ruled. The helper applied ONLY12 call adaptations and the one exact foreign-root exception tightening; other assertions unchanged, frozen SHA2567e20e8566eb62736612c2b5d54a9dc05e42228fb0502103e5f64b10110634947. Initial12PASS1.886s remains evidence for the old signature/pin, not the adapted file. Root final combined45 PASS7.543s includes the adapted imported-store12, stage-review9, import-plan2, export-store6, fast store review/integrity/saturation/oversize and manifest checks. No helper-owned corrective suite rerun is claimed.
+
+Root stage-review negatives cover packet bytes/hash/scope digest/kind/input revision/channel/run, parent chain/sequence/head/order, missing or repeated version owners, wrong derived version/extra dispatch, origin token/version relation, non-dict/bool/float/bytearray/string/deep/duplicate request types; missing/inactive/retired/reserved/repair/invalid channels and a real retired-to-general remap; second-owner stale index refusal; body-free classification; unchanged files outside the store root; lineage-only collision and subset duplicate. Root new9 passes within the45; earlier focused8 PASS0.709s before adding the subset/lineage-only case. No callbacks, dispatches, registry or workers are created.
+
+The required benchmark ran1 PASS35.053s, tracked8f0d5a64, using EXACT4194304-byte canonical single-lineage envelope,128 versioned requests/128 versions/128 small copied packets,100 pre-existing lineages/100 versions in each of10 independent stores. Calculated archive-member compatibility is262 (256 objects+index+five history members); no ZIP was built in this store benchmark. Concurrent require_active progressed between commits. Entire engine/catalog/store boundary, metadata JSON parse, whole-index _persist validation, default atomic_json and fsync are included; no writer patch. Every measured import was <=0.300s; maximum0.18347729998640716s. An independent stdlib JSON length/count check confirmed the exact envelope, and receipt maxima were recomputed. This is this Windows host/component evidence, not a provider/native/ZIP or whole-ticket claim.
+
+```json
+{
+  "method": "store/catalog real-files Windows default atomic_json",
+  "portable_envelope_bytes": 4194304,
+  "existing_lineages": 100,
+  "existing_versions": 100,
+  "requests": 128,
+  "versions": 128,
+  "packet_objects": 128,
+  "zip_member_count": 262,
+  "baseline_seconds": [
+    0.0004686999600380659,
+    0.000380899989977479,
+    0.0003901999443769455,
+    0.0005472999764606357,
+    0.00038920005317777395,
+    0.0005005999701097608,
+    0.0003722000401467085,
+    0.000391000066883862,
+    0.00045219995081424713,
+    0.00036860001273453236
+  ],
+  "samples_seconds": [
+    0.1646363000618294,
+    0.17625409993343055,
+    0.18347729998640716,
+    0.18007260002195835,
+    0.15909289999399334,
+    0.1666061000432819,
+    0.15444900002330542,
+    0.16303479997441173,
+    0.17128829995635897,
+    0.1629646000219509
+  ],
+  "maximum_seconds": 0.18347729998640716,
+  "limit_seconds": 0.3,
+  "includes_metadata_parse": true,
+  "includes_whole_index_validation": true,
+  "fsync_mocked": false
+}
+```
