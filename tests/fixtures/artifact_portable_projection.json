@@ -1,0 +1,243 @@
+{
+  "method": "hand-authored expected portable DTO; synthetic internal authority extras, no codec capture",
+  "canary": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+  "snapshot": {
+    "lineage": {
+      "id": "efae0fe2f9525ed682f567e297474610",
+      "channel": "review",
+      "updated_at": 20,
+      "head_version_id": "5b917f0fd6355cb0a4d3bb80cf6f5ee9",
+      "pending_request_id": null,
+      "version_ids": [
+        "5b917f0fd6355cb0a4d3bb80cf6f5ee9"
+      ],
+      "path": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+    },
+    "requests": [
+      {
+        "audit": {
+          "version": 1,
+          "purpose": "artifact-v1",
+          "request_id": "11111111111111111111111111111111",
+          "lineage_id": "efae0fe2f9525ed682f567e297474610",
+          "attempt_id": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+          "dispatch_id": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+          "brief_id": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+          "original_channel": "review",
+          "requester": "operator",
+          "producer": {
+            "name": "fixture-author",
+            "identity_id": "44444444444444444444444444444444",
+            "adapter": "cli",
+            "requested_model": null,
+            "requested_model_reason": "cli_model_unverified",
+            "launch_attempt": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "launch_nonce": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "fingerprint": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "capabilities": [
+              "APP_AUTHORITY_CANARY_LITERAL_7df2"
+            ],
+            "token": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "path": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "owner": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+          },
+          "source_run": {
+            "session_id": 1,
+            "run_id": "88888888888888888888888888888888",
+            "input_revision": "9999999999999999999999999999999999999999999999999999999999999999",
+            "state_at_request": "stopped",
+            "token": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+          },
+          "scope": {
+            "kind": "run_accepted_messages",
+            "packet_id": "97f9814be17057c185ad4cd2e0c9e3ee",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "byte_length": 321,
+            "message_refs": [
+              {
+                "id": 0,
+                "uid": "source-0",
+                "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+                "owner": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+              }
+            ],
+            "input_revision": "9999999999999999999999999999999999999999999999999999999999999999",
+            "seal": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+          },
+          "instruction": "Write the requested Markdown.",
+          "format": "Markdown",
+          "expected_parent": null,
+          "created_at": 10,
+          "seal": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+        },
+        "channel": "review",
+        "state": "fulfilled",
+        "reason": null,
+        "updated_at": 20,
+        "version_id": "5b917f0fd6355cb0a4d3bb80cf6f5ee9",
+        "quarantine_ids": [],
+        "owner": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+      }
+    ],
+    "versions": [
+      {
+        "id": "5b917f0fd6355cb0a4d3bb80cf6f5ee9",
+        "request_id": "11111111111111111111111111111111",
+        "sequence": 1,
+        "parent_version_id": null,
+        "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+        "byte_length": 12,
+        "created_at": 20,
+        "attempt_id": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+        "dispatch_id": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+        "path": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+        "provenance": {
+          "producer": {
+            "name": "fixture-author",
+            "identity_id": "44444444444444444444444444444444",
+            "adapter": "cli",
+            "requested_model": null,
+            "requested_model_reason": "cli_model_unverified",
+            "launch_attempt": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "launch_nonce": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "fingerprint": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "capabilities": [
+              "APP_AUTHORITY_CANARY_LITERAL_7df2"
+            ],
+            "token": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "path": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+            "owner": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+          },
+          "scope": {
+            "kind": "run_accepted_messages",
+            "packet_id": "97f9814be17057c185ad4cd2e0c9e3ee",
+            "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "byte_length": 321,
+            "message_refs": [
+              {
+                "id": 0,
+                "uid": "source-0",
+                "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+                "owner": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+              }
+            ],
+            "input_revision": "9999999999999999999999999999999999999999999999999999999999999999",
+            "seal": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+          },
+          "owner": "APP_AUTHORITY_CANARY_LITERAL_7df2",
+          "observation": {
+            "confirmed_model": null,
+            "confirmation_reason": "cli_model_unverified",
+            "token": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+          }
+        }
+      }
+    ]
+  },
+  "history": {
+    "schema_version": 1,
+    "archive_id": "literal-archive",
+    "created_at": "2026-10-25T00:00:00Z",
+    "product": "agentchattr",
+    "app_version": "literal-test",
+    "counts": {
+      "messages": 1,
+      "jobs": 2,
+      "rules": 3,
+      "summaries": 4,
+      "token": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+    },
+    "attachments_included": false,
+    "owner": "APP_AUTHORITY_CANARY_LITERAL_7df2"
+  },
+  "expected_lineage": {
+    "lineage_id": "efae0fe2f9525ed682f567e297474610",
+    "channel": "review",
+    "updated_at": 20,
+    "head_version_id": "5b917f0fd6355cb0a4d3bb80cf6f5ee9",
+    "requests": [
+      {
+        "request_id": "11111111111111111111111111111111",
+        "original_channel": "review",
+        "requester": "operator",
+        "producer": {
+          "name": "fixture-author",
+          "identity_id": "44444444444444444444444444444444",
+          "adapter": "cli",
+          "requested_model": null,
+          "requested_model_reason": "cli_model_unverified"
+        },
+        "source_run": {
+          "session_id": 1,
+          "run_id": "88888888888888888888888888888888",
+          "input_revision": "9999999999999999999999999999999999999999999999999999999999999999",
+          "state_at_request": "stopped"
+        },
+        "scope": {
+          "kind": "run_accepted_messages",
+          "packet_id": "97f9814be17057c185ad4cd2e0c9e3ee",
+          "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "byte_length": 321,
+          "message_refs": [
+            {
+              "id": 0,
+              "uid": "source-0",
+              "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+            }
+          ],
+          "input_revision": "9999999999999999999999999999999999999999999999999999999999999999"
+        },
+        "instruction": "Write the requested Markdown.",
+        "format": "Markdown",
+        "expected_parent": null,
+        "created_at": 10,
+        "updated_at": 20,
+        "import_source": {
+          "archive_id": "literal-archive",
+          "original_state": "fulfilled",
+          "original_reason": null
+        }
+      }
+    ],
+    "versions": [
+      {
+        "version_id": "5b917f0fd6355cb0a4d3bb80cf6f5ee9",
+        "request_id": "11111111111111111111111111111111",
+        "sequence": 1,
+        "parent_version_id": null,
+        "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+        "byte_length": 12,
+        "created_at": 20,
+        "observation": {
+          "confirmed_model": null,
+          "confirmation_reason": "cli_model_unverified"
+        }
+      }
+    ]
+  },
+  "expected_manifest": {
+    "schema_version": 2,
+    "archive_id": "literal-archive",
+    "created_at": "2026-10-25T00:00:00Z",
+    "product": "agentchattr",
+    "app_version": "literal-test",
+    "counts": {
+      "messages": 1,
+      "jobs": 2,
+      "rules": 3,
+      "summaries": 4,
+      "artifacts": 1
+    },
+    "attachments_included": false,
+    "artifacts": {
+      "version": 1,
+      "lineages": 1,
+      "requests": 1,
+      "versions": 1,
+      "packets": 1,
+      "markdown_bytes": 12,
+      "source_bytes": 321,
+      "copied_source_text": true
+    }
+  }
+}

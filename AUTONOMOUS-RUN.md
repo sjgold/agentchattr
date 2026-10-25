@@ -231,3 +231,7 @@ Slice2 independently cleared fec0571 (reviewer151/143.080s). Store staging/class
 ## Ticket20 store import ordering correction (2026-10-25)
 
 Root F1/F2 red4/6FAIL before fixes -> metadata classification BEFORE any staging, strict imported parent references, same-lineage duplicate rule. Final45 PASS7.543s includes adapted imported-store12 (only approved signature/exception edits). Exact4MiB/128-version import into100-existing,10 independent default-writer/fsync commits: max0.1834773s <=0.300s, benchmark PASS35.053s, full samples in TICKET-20-LIFECYCLE-BACKUP.md. Independent corrected-store recheck next; codec/archive/app threading still pending and capability empty.
+
+## Ticket20 pure codec checkpoint (2026-10-25)
+
+Store independently cleared5024c06, reviewer174/141.161s plus separate benchmark1/33.864s. New pure artifact_archive projection/validation code: codec12 + affected groups43 PASS3.697s, literal contract metadata golden and raw packet equality separately verified. Manifest4-failure strictness red fixed before final checks. archive.py remains SHA22ce91d4...0a24, so configured writer/importer, private sentinel, owner call sites and section reports still pending. Pure-codec independent review next; capability empty.
