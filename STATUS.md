@@ -1,25 +1,26 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-24 21:36 UTC (#1-18 closed; #19 UI correction ready for review)
+**Updated:** 2026-10-25 01:59 UTC (#1-18 closed; #19 final independent PASS; publication checks next)
 
 ## At a glance
 
-**Ticket 19, safe channel management: core implemented; final UI corrections and browser acceptance remain.** Nothing from Ticket 19 has been pushed.
+**Ticket 19, safe channel management: implementation and correction reviews complete; native and browser checks independently reproduced; final review passed.** Nothing from Ticket 19 has been pushed.
 
 | Checkpoint | Status |
 | --- | --- |
 | Tickets 1-18 | Published and closed |
-| Ticket 19 implementation | Core complete locally; final UI corrections are tested and awaiting review |
-| Full regression | 1,374 tests, four skips, passed at the backend freeze |
-| Independent review | Backend/UI components and focus fix `294364d` accepted; latest correction batch awaits recheck |
+| Ticket 19 implementation | Implemented locally; latest UI fixes tested and independently accepted at `90078e1` |
+| Full regression | Latest freeze90078e1: 1,374 tests, four skips, passed in104.844s |
+| Independent review | Backend, UI and latest correction batch `90078e1` accepted |
 | Windows native check | Passed by Codex and independently by Sonnet; cleanup complete |
 | First browser run | Stopped after finding a dialog-focus bug; evidence retained |
 | Focus correction | Fixed, regression tested and independently reviewed |
 | Second browser run | Focus fix passed at both widths; stopped on hidden action icons and a browser-tool runtime handoff |
-| Next | Sonnet reviews the tested UI correction batch, then a fresh complete browser run and independent reproduction |
+| Browser run 3 | Root PASS and independently reproduced by Sonnet at90078e1; both clean cleanup |
+| Next | Codex commits documentation, fast-forward merges and runs post-merge checks before publication |
 | Before shipping | Final whole-ticket verdict, merge/post-merge checks, push and issue closure |
 
-Codex owns implementation and verification; Sonnet is the independent reviewer. The next browser run awaits review of the latest correction. All test servers, workers and browser sessions are stopped. The inherited mobile page overflow is documented; this ticket's dialog fits the mobile viewport.
+Codex owns implementation and verification; Sonnet is the independent reviewer. The latest correction passed Sonnet's independent review. Root's fresh browser run passed in Traycer-managed isolated Electron Chromium at both widths. Sonnet independently reproduced the bounded browser flow and returned final PASS WITH NONBLOCKING NOTES. See CHANNELS.md and REVIEW-CLAUDE-TICKET-19.md for coverage and limits. All acceptance servers, workers and browser sessions are stopped; the final unit regression passed. The inherited mobile page overflow is documented; this ticket's dialog fits the mobile viewport.
 
 ## Current handoff
 
@@ -38,7 +39,8 @@ Codex owns implementation and verification; Sonnet is the independent reviewer. 
 - Bounded correction now implemented: stable control focus keys/caret/in-dialog fallback; actual removal-toBODY modeled in VM. Initial12/11PASS1genuineFAIL, corrected-source fixture lacked comma selectors, standard capability fix preserves assertions, final helper/root12PASS plus prior document12/recipient12/policy4/storage2+2 and syntax/compile-only PASS. Generated server only suppresses upstream release fetch, strict guard unchanged. No CSS edit: static ticket-base390 diagnostic EXACTLY reproduces476page/header475.67/timeline590, inherited/outofscope; new dialog356fits. Client/guard unchanged, new verifier7427750e. Full receipt/source/fixture attribution in acceptance doc.
 - Correction294364d independently passed source/VM review and actual focus checks in fresh browser2 at both widths. Browser2 (pu_r7m_m, tracked180297f1) is NON-ACCEPTANCE: hidden sidebar action icons are a product regression; an environment electron-to-headless handoff during tool dragTo lost page state, so root stopped. Both servers and isolated session closed;0workers/clients/models, guard0/unresolved[], version seam2 calls. Many valid partial UI observations remain investigation only; drag completion/reopen/retained/delete were not completed.
 - Latest batch fixes wrapper hover/focus/editing/touch visibility in scoped CSS only and visible close-focus fallbacks. Public VM first10PASS/2genuineFAIL (CSS and hidden-trigger fallbacks), then helper/root12PASS; all previous Node checks remain PASS. No global layout, Python backend, harness/client or guard change. Existing native passes stand.
-- Next owner Codex: freeze the batch and obtain Sonnet recheck before one fresh full browser run, using clearly labeled synthetic DOM DragEvents with separate network and persisted-order evidence. Then Sonnet's own browser reproduction and final verdict precede publication. All acceptance resources are stopped; Ticket19 remains unpublished/incomplete.
+- Browser3 at90078e1 root PASS, tracked292c9128, scratch6e90vfld. Actual isolated Electron Chromium revision1 stayed stable;144 ordered observations/four hashed screenshots at1280 and390. Public pending retry/one event, separate queued cancel, one rename, archive/reopen/delete, peer post, retained expansions, hover/pure focus and detached-trigger fallback were exercised. Synthetic actual job DragEvents produced200 with only active IDs[2,3], matching persisted descending order; inactive drag sent no request. Cleanup2servers/0workers/clients/models/API, guard2PIDs23selftests each/0attempts, version seam1call, unresolved[], nofailure. Receipt explicitly separates initial text/attachment error retention from later full reply-draft archive retention and records an extra non-intercepted archive probe. Root PASS is not independent browser acceptance. Sonnet independently reproduced bounded browser acceptance in zaucfc23 and returned final PASS WITH NONBLOCKING NOTES; Codex final configured full tracked748f8265 passed1374 tests104.844s OK(skipped4). No Ticket19 publication.
+- Final review: Sonnet artifact ticket-19-final-review-claude copied verbatim to REVIEW-CLAUDE-TICKET-19.md. No open findings. Nine nonblocking notes and the exact root/reviewer attribution remain in the receipt. CHANNELS.md operator guide and README link checked by Sonnet; its two wording additions are applied. Next owner Codex: local documentation commit, ff-merge/postmerge full, authorized push, exact remote verification and issue19 closure. No publication yet.
 - Latest direction (Seth,2026-10-23 evening): continuation beyond15 is authorized, superseding the earlier stop limit. Codex builds, Sonnet reviews frozen plans/changes and rechecks substantive fixes, existing helper writes assigned tests. Routine per-ticket gates remain removed; live AI/provider/Omarchy/Desktop/global changes remain outside authorization.
 - Gemini reviewer ec1fbcd1 is stopped/archived. Its interrupted cold run remains unaccepted; exact-record post-stop audit found no recorded live resource. Retirement artifact retains the distinction between reported activity and verified work. Builder/reviewer acceptance resources are stopped; helper and Sonnet await their next bounded brief.
 
