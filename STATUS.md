@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 08:28 UTC (#20 wrapper cleared/full1516 PASS; lifecycle-backup contract review next)
+**Updated:** 2026-10-25 08:39 UTC (#20 lifecycle/backup amended payload draft awaiting review)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Sonnet reviews DOCS-ONLY [lifecycle/backup contract](TICKET-20-LIFECYCLE-BACKUP.md), then exact payload freeze before tests/code. Codex owns implementation after clearance. Production capability stays empty; operator creation/K6, reader, acceptance and activation remain later |
+| Next | Sonnet reviews the DOCS-ONLY amended [lifecycle/backup payload freeze](TICKET-20-LIFECYCLE-BACKUP.md) before tests/code/helper briefing. Codex owns implementation after clearance. Production capability stays empty; operator creation/K6, reader, acceptance and activation remain later |
 
 ## Current handoff
+
+- Lifecycle/backup contract P1-P3 conditionally accepted; reviewer amendments are folded into the payload proposal. Empty artifact exports preserve schema1 bytes; artifact-bearing exports use schema2. Portable index is an explicit allowlist, imported-only history strips authority and keeps first origin on request rows, whole-lineage commit has no pending work. Existing local CLI-null-ref storage compatibility is preserved by explicit reviewer clarification; managed service still requires launch refs for both adapters. Payload review pending, no next-package tests/code/helper briefing.
 
 - Wrapper c5ae029 independently COMPONENT-cleared (reviewer341/161.176s) and corrected full1516/259.504s PASS/four skips (implementation owner, tracked1599dba8). No source changes during the run. Next contract is [lifecycle/backup](TICKET-20-LIFECYCLE-BACKUP.md), docs-only, with imported unversioned attempts/authority stripping and archive format proposals explicitly awaiting review. No next-package tests or code yet.
 
