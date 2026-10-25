@@ -26,7 +26,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #17 | Published and closed | Executable4723027, originmainfd825c8, independentPASSWITHNOTES; postmerge1004/four skips86.898s; issueclosed/completedverified. Schedulingcomposer deferred. |
 | #18 | Published and closed | Main5cac753, issueclosed/completed2026-10-24T10:45:05Z verified; independentPASSWITHNOTES; postmerge1040/four skips89.765s. Receipt preserves all limits/failed fixtures. |
 | #19 | Published and closed | origin/main21fac29 verified, issue19 closed/completed2026-10-25T02:02:50Z reread; final SonnetPASSWITHNOTES; postmerge1374/four skips110.873s |
-| #20 | Standalone store candidate; expanded tests next | Task0 independent PASS65bcb56; first2 RED0.026s -> root2GREEN0.106s; candidate store awaiting helper12/root2 verification |
+| #20 | Store/capability/authority/wrappers component-cleared; lifecycle slice1 review next | Local unpublished, capability empty. Root lifecycle8 PASS1.848s and affected106 PASS8.165s; helper imported-store12 compile-only. Backup, retained metadata, operator routes/K6, reader and acceptance remain |
 
 ## Non-negotiable verification
 
@@ -211,3 +211,7 @@ Root initial6 run1.136s:3 genuine queued-blocker failures +5 errors (four OWN fi
 
 
 Lifecycle root red b2aa254 independently accepted; final wording fixes landed. Imported-store helper initial2 infrastructure RED2 AttributeError(export_metadata)/0.080s, initial file frozen/read by root, no production code yet. Ordered implementation starts with lifecycle owner binding/blockers/eighth rename step; helper expansion compile-only, held.
+
+## Ticket20 lifecycle slice1 checkpoint (2026-10-25)
+
+Configured authored owner binding, metadata-only joined artifact blockers and the eighth named rename step are implemented. Root8 PASS1.848s; affected106 initially7 errors7.377s from known seven-step fixture copies, then unchanged assertions with eight-step fixture/range updates106 PASS8.165s. Independent review is the next gate. Helper imported-store12 is static-only and frozen; initial2 infrastructure reds remain separate. Cancellation bridge, retained/catalog counts, store/archive import/export and later operator/reader/acceptance work are pending. No capability activation or publication.

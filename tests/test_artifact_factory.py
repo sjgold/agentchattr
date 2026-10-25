@@ -52,6 +52,8 @@ class ArtifactFactoryTests(unittest.TestCase):
                     return recover(service,**kwargs)
                 stack.enter_context(patch.object(ArtifactService,'recover_startup',recovery))
                 app.configure({'server':{'data_dir':directory,'port':18300},'images':{'upload_dir':str(root/'uploads')},'agents':{}},session_token='FIXTURE')
+                self.assertIs(app.channel_service.authored_artifacts,app.artifacts)
+                self.assertIs(app.channel_service.artifact_service_getter(),app.artifact_authority)
                 self.assertIs(app.artifact_authority.store,app.artifacts)
                 self.assertIs(app.artifact_authority.seats,app.api_seat_manager)
                 self.assertIs(app.artifact_authority.agents,app.agents)

@@ -147,7 +147,7 @@ class ChannelImportTests(unittest.TestCase):
         request=uuid.uuid4().hex
         self.catalog.begin('rename','old','owner',request_id=request,expected_revision=current['revision'])
         # Catalog lineage fixture only: no claim of configured cross-store rename migration.
-        for step in ('messages','jobs','schedules','summaries','sessions','cursors','settings'):
+        for step in ('messages','jobs','schedules','summaries','sessions','cursors','settings','artifacts'):
             self.catalog.complete_step(request,step)
         self.catalog.finish(request)
         request=uuid.uuid4().hex

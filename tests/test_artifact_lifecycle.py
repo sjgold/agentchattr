@@ -89,4 +89,55 @@ class ArtifactLifecycleTests(unittest.TestCase):
                 with self.assertRaises(ChannelUnavailable):
                     ChannelStore(case.catalog.path).snapshot()
 
+    def test_terminal_and_missing_transport_joins_are_metadata_only(self):
+        for scenario in ('terminal_queued','active_missing','terminal_missing'):
+            with self.subTest(scenario=scenario):
+                case=self.context();audit,packet=case.new_request()
+                if scenario=='terminal_missing':
+                    case.artifacts.reserve_request(audit,audit['request_id'])
+                    case.artifacts.set_attempt_state(audit['request_id'],audit['attempt_id'],'prepared',
+                        {'state':'failed','reason':'generation_failed'})
+                else:
+                    case.authority.prepare_request(audit,packet,audit['request_id'])
+                    if scenario=='terminal_queued':
+                        with patch.object(case.authority,'_fence',side_effect=OSError('Controlled fence failure')):
+                            case.authority.cancel_request(audit['request_id'])
+                    else:
+                        case.claim(audit)
+                        case.authority.get_brief(audit['brief_id'],case.instance)
+                        raw=case.trigger.queue._queue
+                        ledger=json.loads(raw.path.read_text(encoding='utf-8'))
+                        ledger['records']=[]  # Explicit retained-ledger loss fixture, no worker-exit claim.
+                        raw.path.write_text(json.dumps(ledger),encoding='utf-8')
+                with patch.object(case.artifacts,'get_packet',side_effect=AssertionError('Packet body read in scope')):
+                    preview=case.service.preview('archive','review')
+                rows=[row for row in preview['blockers'] if row['kind']=='artifact']
+                if scenario=='terminal_missing':
+                    self.assertEqual(rows,[])
+                    continue
+                self.assertEqual(len(rows),1)
+                self.assertEqual(rows[0]['request_id'],audit['request_id'])
+                self.assertEqual(rows[0]['transport_state'],'queued' if scenario=='terminal_queued' else None)
+                self.assertEqual(rows[0]['request_state'],'cancelled' if scenario=='terminal_queued' else 'active')
+                self.assertEqual(rows[0]['reason'],'transport_pending' if scenario=='terminal_queued' else 'transport_missing')
+                self.assertEqual(rows[0]['held'],scenario=='active_missing')
+
+    def test_unreadable_authored_index_refuses_mutation_preview(self):
+        case=self.context();audit,packet=case.new_request()
+        case.artifacts.reserve_request(audit,audit['request_id'])
+        case.artifacts.path.write_bytes(b'BROKEN_INDEX')
+        with self.assertRaises(ChannelUnavailable):
+            case.service.preview('archive','review')
+        self.assertEqual(case.artifacts.path.read_bytes(),b'BROKEN_INDEX')
+
+    def test_unknown_rename_step_does_not_fall_through_to_settings(self):
+        import channel_lifecycle
+        import channel_service
+        case=self.context();request=self.old_intent(case)
+        extended=channel_lifecycle.RENAME_STEPS+('unsupported_future_step',)
+        with patch.object(channel_lifecycle,'RENAME_STEPS',extended), \
+                patch.object(channel_service,'RENAME_STEPS',extended):
+            with self.assertRaises(ChannelConflict):
+                case.service.retry(request)
+
 if __name__=='__main__':unittest.main()

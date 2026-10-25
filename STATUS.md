@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 09:48 UTC (#20 lifecycle red accepted; implementation slice1 starts)
+**Updated:** 2026-10-25 09:59 UTC (#20 lifecycle slice1 green; independent review next)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Sonnet accepted the b2aa254 root red and cleared production. Codex implements slice1: lifecycle binding/blockers/eighth rename step, then sends its green pin. Helper expands the new imported-store tests compile-only; production capability stays empty |
+| Next | Sonnet reviews the lifecycle slice1 pin: authored owner binding, joined blockers and eighth rename step. Root8 PASS1.848s and affected106 PASS8.165s. Store/archive import/export and retained metadata remain later ordered slices; helper12 is frozen compile-only; capability stays empty |
 
 ## Current handoff
+
+- Lifecycle slice1 implemented, tested, awaiting independent review: configured authored owner and late authority getter are bound; prepared/queued/active requests and terminal rows with remaining transport join into exact artifact blockers; missing live transport is held; old ordered seven-name intents run only the eighth artifacts step; unknown steps refuse. Root expanded8 before source:11 assertion failures +2 missing-attribute errors1.943s; after source8 PASS1.848s. First affected106 had7 errors7.377s from old copied seven-step fixture lists; only those lists and the boundary range were updated, then SAME106 PASS8.165s (tracked8e7b21b6). No assertion removed; intentional OLD_STEPS remains seven. Helper imported-store12 is compile-only/unexecuted, SHA a530b07e...452c, initial2 AST unchanged. Counts/retained UI, queued-cancel bridge and backup remain pending; no whole lifecycle/package or native/provider acceptance.
 
 - Root lifecycle/archive red independently reproduced and accepted atb2aa254. Final payload wording folded without meaning changes; no further doc re-review required. Helper initial2 imported-store tests are infrastructure RED2 AttributeError(export_metadata)/0.080s; frozen initial file read by root, source/target real stores and no native/managed producer claim. Slice1 production now authorized; archive/store interfaces wait for later ordered slices.
 

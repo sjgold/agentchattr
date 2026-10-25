@@ -10,7 +10,7 @@ from unittest.mock import patch
 import uuid
 
 
-RENAME_STEPS = ('messages', 'jobs', 'schedules', 'summaries', 'sessions', 'cursors', 'settings')
+RENAME_STEPS = ('messages', 'jobs', 'schedules', 'summaries', 'sessions', 'cursors', 'settings', 'artifacts')
 DELETE_STEPS = ('todos', 'messages', 'settings')
 
 

@@ -21,7 +21,8 @@ _OPS = {'create', 'archive', 'reopen', 'delete', 'rename', 'cancel_queued', 'rec
 class ChannelService:
     def __init__(self, catalog, *, engine, messages, jobs, schedules, summaries,
                  queue, settings, save_settings, migrate_cursors, router,
-                 migrate_last_active, unregistered_channels=(), migrate_fallbacks=None):
+                 migrate_last_active, unregistered_channels=(), migrate_fallbacks=None,
+                 authored_artifacts=None, artifact_service_getter=None):
         self.catalog, self.engine, self.messages = catalog, engine, messages
         self.jobs, self.schedules, self.summaries = jobs, schedules, summaries
         self.queue, self.settings = queue, settings
@@ -29,6 +30,8 @@ class ChannelService:
         self.router, self._migrate_last_active = router, migrate_last_active
         self._migrate_fallbacks = migrate_fallbacks
         self._callbacks = []
+        self.authored_artifacts = authored_artifacts
+        self.artifact_service_getter = artifact_service_getter
         self.artifacts = RetainedArtifactStore(catalog.path.with_name('retained_artifacts.json'))
         self._unregistered = set(settings.get('unregistered_channels', []))
         with self._boundary():
@@ -42,6 +45,12 @@ class ChannelService:
                     if name not in value['channels'] and name not in value['retired'])
             except ChannelUnavailable:
                 pass  # Hold retained metadata operations, not chat startup.
+            if self.authored_artifacts is not None:
+                try:
+                    self._unregistered.update(name for name in self.authored_artifacts.channel_names()
+                        if name not in value['channels'] and name not in value['retired'])
+                except ChannelUnavailable:
+                    pass  # Keep the held owner bound; management previews will refuse.
             self._project(value)
 
     @contextmanager
@@ -121,6 +130,54 @@ class ChannelService:
             self._project(value)
             return {'channel': name, 'created': True, 'reason': None}
 
+    def _artifact_scope(self, channel, transport):
+        """Join detached metadata only; release every owner lock before the next."""
+        if self.authored_artifacts is None:
+            return [], None
+        scope = self.authored_artifacts.lifecycle_scope(channel)
+        records = {row['envelope']['dispatch_id']: row for row in transport
+                   if row['envelope'].get('purpose') == 'artifact-v1'}
+        candidates = {row['dispatch_id'] for row in scope['pending']}
+        candidates.update(dispatch for dispatch, row in records.items()
+                          if row['state'] in ACTIVE | {'queued'})
+        blockers = []
+        for dispatch in sorted(candidates):
+            record = records.get(dispatch)
+            envelope = record['envelope'] if record else {}
+            request = self.authored_artifacts.get_request_by_dispatch(dispatch)
+            request_state = request['state'] if request else None
+            transport_state = record['state'] if record else None
+            live = request_state in ('prepared', 'queued', 'active')
+            work = transport_state in ACTIVE | {'queued'}
+            if not live and not work:
+                continue
+            audit = request['audit'] if request else {}
+            request_id = audit.get('request_id') or envelope.get('artifact_request_id')
+            try:
+                _request_id(dispatch)
+                _request_id(request_id)
+            except ValueError:
+                raise ChannelUnavailable('Saved artifact transport references are unavailable.') from None
+            identity = audit.get('producer', {}).get('identity_id')
+            target = envelope.get('target_identity_id')
+            mismatch = bool(record and request and (
+                target != identity or envelope.get('artifact_request_id') != request_id
+                or request['channel'] != channel))
+            if identity is None and record:
+                try:
+                    _request_id(target)
+                    identity = target
+                except ValueError:
+                    mismatch = True
+            missing = request_state in ('queued', 'active') and record is None
+            blockers.append({'kind': 'artifact', 'request_id': request_id, 'dispatch_id': dispatch,
+                'identity_id': identity, 'state': transport_state if work else request_state,
+                'request_state': request_state, 'transport_state': transport_state,
+                'held': mismatch or missing,
+                'reason': 'ownership_mismatch' if mismatch else 'transport_missing' if missing else
+                          'request_pending' if live else 'transport_pending'})
+        return blockers, scope
+
     def _scope(self, channel):
         self.artifacts.check()
         self.engine._store.retained_metadata(channel, limit=1)  # Validate retained authority before a mutation preview.
@@ -138,7 +195,7 @@ class ChannelService:
         counts = dict(messages=len(messages), todos=len(todos), jobs=len(jobs),
                       schedules=len(schedules), sessions=len(runs), summaries=int(summary is not None),
                       uploads=sum(len(item.get('attachments') or []) for item in messages))
-        blockers = []
+        blockers, artifact_scope = self._artifact_scope(channel, transport)
         def block(kind, run=None, record=None, audit=None, reason=None):
             run, record, audit = run or {}, record or {}, audit or {}
             envelope = record.get('envelope', {})
@@ -180,7 +237,9 @@ class ChannelService:
             if run.get('turn_recovery') and run['turn_recovery'].get('status') not in ('complete', 'resolved'):
                 block('recovery', run=run)
         for record in transport:
-            if record['state'] in ACTIVE | {'queued'}:
+            if (record['state'] in ACTIVE | {'queued'}
+                    and not (self.authored_artifacts is not None
+                             and record['envelope'].get('purpose') == 'artifact-v1')):
                 block('transport', record=record)
             if record.get('recovery_hold') and record['recovery_hold'].get('cleared') is not True:
                 block('recovery', record=record)
@@ -195,6 +254,8 @@ class ChannelService:
                                for item in sorted(runs, key=lambda item: item['id'])],
                   'transport': sorted((item['envelope']['dispatch_id'], item['state']) for item in transport),
                   'blockers': blockers}
+        if artifact_scope is not None:
+            stable['artifacts'] = artifact_scope
         queued = sorted(item['envelope']['dispatch_id'] for item in transport if item['state'] == 'queued')
         return counts, blockers, queued, overdue, stable
 
@@ -442,8 +503,13 @@ class ChannelService:
                     elif step == 'cursors':
                         if self._migrate_cursors:
                             self._migrate_cursors(old, new)
-                    else:
+                    elif step == 'settings':
                         self._project(value)  # Flush OLD names before the catalog commit.
+                    elif step == 'artifacts':
+                        if self.authored_artifacts is not None:
+                            self.authored_artifacts.rename_channel(old, new)
+                    else:
+                        raise ChannelConflict('Unsupported channel rename step; repair requires supported code.')
                     self.catalog.complete_step(request_id, step)
             with self._boundary():
                 value = self.catalog.snapshot()

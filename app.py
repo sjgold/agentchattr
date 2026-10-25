@@ -224,7 +224,8 @@ def _initialize_channel_lifecycle(data_dir):
         migrate_cursors=lambda old, new: mcp_bridge.migrate_cursors_rename(
             old, new, strict=True, path=Path(data_dir) / 'mcp_cursors.json'),
         router=router, migrate_last_active=_migrate_channel_last_active,
-        migrate_fallbacks=mcp_bridge.migrate_fallbacks_rename, unregistered_channels=data_names)
+        migrate_fallbacks=mcp_bridge.migrate_fallbacks_rename, unregistered_channels=data_names,
+        authored_artifacts=artifacts, artifact_service_getter=lambda: artifact_authority)
     channel_service.on_change(_on_channel_change)
 
 

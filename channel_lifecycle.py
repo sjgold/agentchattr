@@ -11,7 +11,7 @@ from api_seats import atomic_json
 from launcher import LaunchError, startup_lock
 
 
-RENAME_STEPS = ('messages', 'jobs', 'schedules', 'summaries', 'sessions', 'cursors', 'settings')
+RENAME_STEPS = ('messages', 'jobs', 'schedules', 'summaries', 'sessions', 'cursors', 'settings', 'artifacts')
 DELETE_STEPS = ('todos', 'messages', 'settings')
 _FIELDS = {'version', 'revision', 'channels', 'retired', 'intent'}
 _INTENT_FIELDS = {'request_id', 'op', 'old', 'new', 'completed_steps'}

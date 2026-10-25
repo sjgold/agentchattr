@@ -227,7 +227,7 @@ class ChannelRenameServiceTests(unittest.TestCase):
             result = self.service.apply('rename', 'review', new_name='renamed', request_id=request,
                 confirmation='review', preview_token='lost-ack-old-token')
         self.assertEqual(result['channel'], 'renamed')
-        self.assertTrue(all(tuple(RENAME_STEPS[:index]) in boundaries for index in range(1, 8)))
+        self.assertTrue(all(tuple(RENAME_STEPS[:index]) in boundaries for index in range(1, len(RENAME_STEPS) + 1)))
 
     def test_final_projection_fault_is_committed_success_then_live_self_heal(self):
         self.seed()
