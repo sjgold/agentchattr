@@ -261,7 +261,9 @@ def preflight_cli_artifact(record, *, runtime_path, manifest, consumer_id,
     except urllib.error.HTTPError as exc:
         code = exc.code
         exc.close()
-        return _decision('wait' if code >= 500 else 'reject', 'artifact_context_unavailable')
+        return _decision('wait' if code >= 500 or code in (408, 429) else 'reject', 'artifact_context_unavailable')
+    except ArtifactWorkerError as exc:
+        return _decision('reject', exc.code)
     except OSError:
         return _decision('wait', 'artifact_context_unavailable')
     except (ValueError, KeyError, TypeError, RuntimeError):
@@ -480,8 +482,8 @@ def settle_api_artifact(client, dispatch_id, *, runtime_path, admitted, local_en
         if result is not None:
             return result
         try:
-            client.release(dispatch_id, failed=not admitted,
-                error_category='' if admitted else error_category,
+            client.release(dispatch_id, failed=admitted is not True,
+                error_category='' if admitted is True else error_category,
                 **({'http_status': http_status} if http_status is not None else {}))
             return 'settled'
         except Exception as error:

@@ -256,7 +256,8 @@ def _resolve_authenticated_agent(request: Request) -> dict | None:
 
 
 from artifact_transport import create_router as _artifact_router
-app.include_router(_artifact_router(lambda: artifact_authority, _resolve_authenticated_agent))
+for _route in _artifact_router(lambda: artifact_authority, _resolve_authenticated_agent).routes:
+    app.add_api_route(_route.path, _route.endpoint, methods=_route.methods)
 
 
 # --- Security middleware ---

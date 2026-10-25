@@ -2,6 +2,7 @@
 import asyncio
 import json
 import math
+import logging
 import re
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -9,6 +10,8 @@ from artifact_service import ArtifactAccessError, ArtifactInputError
 from artifact_store import ArtifactConflict, ArtifactUnavailable, ArtifactValidationError
 from artifact_protocol import MAX_RESULT_RECORD_BYTES
 from artifact_worker import MAX_CONTEXT_BYTES
+
+log = logging.getLogger(__name__)
 
 ERRORS = {
     'artifact_access_denied': (403, 'Authenticated managed seat and assigned dispatch required.'),
@@ -35,7 +38,7 @@ def failure(error):
     code = ('artifact_access_denied' if isinstance(error, (ArtifactAccessError, PermissionError)) else
             'artifact_conflict' if isinstance(error, ArtifactConflict) else
             'artifact_storage_unavailable' if isinstance(error, (ArtifactUnavailable, OSError)) else
-            'artifact_invalid_request' if isinstance(error, (ArtifactValidationError, ValueError, UnicodeError)) else
+            'artifact_invalid_request' if isinstance(error, (ArtifactValidationError, ValueError, UnicodeError, RecursionError)) else
             'artifact_unavailable')
     return code, error_body(code)
 
@@ -120,6 +123,8 @@ def create_router(service_getter, resolve_agent):
             code='artifact_request_too_large'; body=error_body(code)
         except Exception as error:
             code,body=failure(error)
+            if code == 'artifact_unavailable':
+                log.warning('Artifact transport unavailable (%s).', type(error).__name__)
         return JSONResponse(body,status_code=ERRORS[code][0],headers={'Cache-Control':'no-store'})
 
     @router.get('/api/artifact-briefs/{brief_id}')

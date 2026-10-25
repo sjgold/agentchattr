@@ -76,15 +76,22 @@ def run(snapshot_path):
                 or action not in ('inject', 'wait', 'complete', 'hold', 'reject')
                 or reason is not None and reason not in REASONS):
             return
+        held_text = 'Artifact work is held. Check its request and queue before restarting this seat.'
+        wait_text = 'Artifact context is temporarily unavailable. The worker will check again on its next poll.'
+        values = {'held_artifact': None}
+        guidance = None
         if action == 'hold':
-            receipt.update(held_artifact={'dispatch_id': dispatch_id,
-                'reason': reason or 'artifact_generation_uncertain'},
-                error='Artifact work is held. Check its request and queue before restarting this seat.')
+            values['held_artifact'] = {'dispatch_id': dispatch_id,
+                                      'reason': reason or 'artifact_generation_uncertain'}
+            guidance = held_text
         elif action == 'wait' and reason:
-            receipt.update(held_artifact=None,
-                error='Artifact context is temporarily unavailable. The worker will check again on its next poll.')
-        else:
-            receipt.update(held_artifact=None, error=None)
+            guidance = wait_text
+        # Compare and update under one receipt lock. Heartbeat/authentication
+        # failures have their own owner and must survive this callback.
+        with receipt.lock:
+            if receipt.value.get('error') in (None, held_text, wait_text):
+                values['error'] = guidance
+            receipt.update(**values)
 
     def start_watcher(inject):
         # Platform runner calls this only after its owned child/session exists.

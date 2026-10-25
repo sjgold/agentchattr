@@ -251,7 +251,7 @@ class Receipt:
     def __init__(self, path, attempt):
         import threading
         self.path, self.attempt = Path(path), attempt
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.value = {'attempt': attempt, 'state': 'starting', 'confirmed_model': None,
                       'authentication': 'unknown', 'adapter_connected': False}
 

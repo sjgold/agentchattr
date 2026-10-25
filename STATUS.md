@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 08:05 UTC (#20 wrapper bridge/factory209 PASS; full and independent review next)
+**Updated:** 2026-10-25 08:18 UTC (#20 wrapper review corrections222 PASS; corrected full/recheck next)
 
 ## At a glance
 
@@ -17,10 +17,12 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
-| Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
-| Next | Codex freezes the wrapper candidate for full discovery and Sonnet independent review. After clearance, lifecycle/public creation/K6, reader/backup and acceptance remain. Production capability stays empty. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
+| Latest checks | Wrapper correction222 focused PASS32.696s; prior692e50d full1512 failed2 route-enumeration errors/four skips. Source registration corrected with original fixtures unchanged; fresh full pending |
+| Next | Codex runs a fresh full discovery and Sonnet rechecks wrapper F1-F4 plus ordinary route registration. After clearance, lifecycle/public creation/K6, reader/backup and acceptance remain. Production capability stays empty. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
+
+- Wrapper correction:222 focused PASS32.696s. New root4 observed9 assertion failures before F1-F4 fixes; correction plus original route fixtures6 PASS1.171s. Prior full1512/255.489s had two lazy-router enumeration errors; final source uses ordinary app route registration and both existing tests remain unchanged. Reviewer candidate132+196 suites passed but correction recheck/full remain pending. Production capability empty.
 
 - Latest wrapper candidate:209 focused PASS30.089s, including unchanged151 baseline, real in-process HTTP/MCP/factory boundaries and existing proxy tests. Actual source entries/races were green180/22.998s in prior12b7268. Two HTTPError resource warnings reproduce in unchanged proxy tests (isolated5 PASS4.742s); artifact helper cleanup stays warning-free. Full discovery and independent wrapper review next; production capability remains disabled.
 
