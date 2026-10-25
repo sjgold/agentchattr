@@ -164,3 +164,6 @@ Task0 independent PASS at65bcb56: Sonnet personally executed unchanged82 tests9.
 K4 clarified: startup prepared/queued repair is enqueue/queue-state repair only. Saved-outbox redelivery is separately allowed only for matching LIVE ACTIVE request with same dispatch/request/brief/seat claim, never enqueue/regenerate. Unmatched/terminal/cancelled saved results quarantined. A single startup pass must not both repair-enqueue and redeliver the same dispatch; test this explicitly.
 
 TICKET-20-STORE-SCHEMA.md now freezes proposed exact store method/payload/state/read/error/IO semantics for reviewer approval before helper tests or product store code. No store implementation exists yet.
+
+
+Store-schema conditional PASS M1-M5/S1-S6 has a docs-only amendment for recheck: request-less unmatched diagnostics, deterministic keys/first timestamps, bounded8/group256groups1024details8MiB-body overflow with explicit last-key-only dedupe, same-state reason changes/fresh reason null, progressed request replay ignoring created_at only, and object-scoped corruption (index still globally held). Lock/order/error/canonical/CRLF/sort/UID semantics and the <=12-test plan are explicit. No helper briefing, new tests or store code until changed-section approval.

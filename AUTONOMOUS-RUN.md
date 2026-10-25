@@ -26,7 +26,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #17 | Published and closed | Executable4723027, originmainfd825c8, independentPASSWITHNOTES; postmerge1004/four skips86.898s; issueclosed/completedverified. Schedulingcomposer deferred. |
 | #18 | Published and closed | Main5cac753, issueclosed/completed2026-10-24T10:45:05Z verified; independentPASSWITHNOTES; postmerge1040/four skips89.765s. Receipt preserves all limits/failed fixtures. |
 | #19 | Published and closed | origin/main21fac29 verified, issue19 closed/completed2026-10-25T02:02:50Z reread; final SonnetPASSWITHNOTES; postmerge1374/four skips110.873s |
-| #20 | Foundation PASS; store schemas under review | Task0 independent PASS65bcb56; exact store payloads under review before helper tests/store code |
+| #20 | Foundation PASS; store schemas under review | Task0 independent PASS65bcb56; amended exact store payloads await recheck before helper tests/store code |
 
 ## Non-negotiable verification
 
