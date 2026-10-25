@@ -176,3 +176,6 @@ Task1 candidate: actual helper first2 missing-module RED0.026s, reviewer reprodu
 
 
 Store correction checkpoint: first expanded helper12 yielded11 PASS/1 category ERROR100.946s; reviewer approved the narrow expectation correction, preserving no-effects checks and strict malformed-value cases. Source behavior for that case is unchanged. Root-owned integrity3 observed7 genuine failing subcases0.485s before changes, then integrity3 plus saturation2 PASS5/2.703s after parent cross-reference and lazy packet binding fixes. Corrected helper12 and independent source review are next; no app wiring or artifact authoring acceptance is claimed.
+
+
+Corrected unchanged helper12 PASS/100.557s at f0e984b; all previously blocked validation cases reached. Static finalization passed, file frozen SHA2561cc5725510fd2dbf9af4d3fb4d6992600ba40f5876b47ec1a2adfd44a442bc22. Full discovery tracked7944fb64 is running; independent review is pending. These remain standalone store tests, with no factory/native/provider claim.

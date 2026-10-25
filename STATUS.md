@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 03:30 UTC (#20 store integrity fixes tested; focused recheck and independent review next)
+**Updated:** 2026-10-25 03:33 UTC (#20 focused store tests pass; full regression and independent review running)
 
 ## At a glance
 
@@ -16,8 +16,8 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Task0 independently PASS; store implemented; root integrity/saturation5 PASS; corrected helper12 recheck pending |
-| Next | Helper runs corrected12 once; Sonnet reviews store and root integrity cases before any app wiring |
+| Ticket20 | Task0 independently PASS; store implemented; root integrity/saturation5 PASS; corrected helper12 PASS/100.557s; independent review pending |
+| Next | Full discovery tracked7944fb64 running; Sonnet reviews store before any app wiring |
 
 ## Current handoff
 
@@ -26,9 +26,9 @@
 - Known limits: inherited390px PAGE overflow476px (new dialog356px fits), coarse-pointer static/VM coverage, synthetic DOM drag only, one Windows fake CLI family, component-only additional crash/busy/scheduler/repair cases, broad held-storage management closure, retained-artifacts metadata excluded from archive export/import. No live AI/provider, Omarchy, installed-browser/OS-picker/assistive-technology claim. Review receipt lists all nine nonblocking notes and guard blind spots.
 - Postmerge Node actual-source groups12/4/12/12/2/2 all0failures, JavaScript syntax/diff clean. Git checkout CRLF conversion was verified against identical repository blobs; reviewed LF working bytes reproduce all three pinned acceptance-tool hashes. No source change.
 - Ticket20 on codex/ticket-20-artifacts/base400d6de. Contract, plan and store schema approved. Task0 pure shared-mechanics extraction independently PASS at65bcb56; unchanged82 before/after and full1374/four skips108.397s (implementation owner), reviewer82/9.855s and3000 old/new MAC comparisons with no mismatch.
-- Standalone artifact_store.py is implemented, with no app binding, routes, dispatch/admission, adapter branch or reader UI yet. Helper first2 actual missing-module RED0.026s remains separate. Expanded12:11 PASS/1 exception-category ERROR100.946s. Reviewer ruled known-but-forbidden state transitions are conflicts, malformed values are validation errors; only that expectation was corrected, source behavior unchanged. Corrected helper12 has not run yet.
+- Standalone artifact_store.py is implemented, with no app binding, routes, dispatch/admission, adapter branch or reader UI yet. Helper first2 actual missing-module RED0.026s remains separate. Expanded12:11 PASS/1 exception-category ERROR100.946s. Reviewer ruled known-but-forbidden state transitions are conflicts, malformed values are validation errors; only that expectation was corrected, source behavior unchanged. Corrected unchanged helper12 PASS/100.557s at f0e984b; every subcase reached. Static finalization passed with exactly12 methods and no further edits.
 - Root-owned integrity regression BEFORE fixes:3 tests/7 genuine failing subcases0.485s (five parent hash/sequence/head-reference cases and two lazy packet channel/source-run cases). Fixes validate parent metadata on index load and bind packet content to its frozen request on access or queued/active advancement. Bodies remain lazy; a bad packet does not hold unrelated requests. Root integrity3 plus saturation2 now PASS5/2.703s. Near-limit counters reach exactly2147483647 without wrap. No native/provider/factory claim.
-- Next owner helper: ONE corrected12 focused run at the frozen correction pin. Owner Sonnet: independently review store, helper/root tests and probes. Codex records results and resolves findings before capability/admission or runtime integration. No Ticket20 acceptance launched.
+- Current source freeze f0e984b. Full discovery runs in tracked shell7944fb64, log .audit-tmp/ticket20-store-full-f0e984b.log; result pending. Owner Sonnet: independently review store, helper/root tests and probes. Codex records results and resolves findings before capability/admission or runtime integration. No Ticket20 acceptance launched.
 - Standing authorization continues past15 through the approved backlog. Codex builds; existing Sonnet reviewer rechecks frozen plans/changes; existing helper writes bounded assigned regressions. No new agents. Live AI/provider/Omarchy/Desktop/global changes remain outside scope. Older issue human/model-pool gates are superseded by that later direction.
 - Use explicit `--repo sjgold/agentchattr` with gh-axi; implicit lookup selected upstream during a read-only check and was corrected before mutation.
 - Maintain this file with meaningful work, verification and ownership changes. Root status plus [specification](docs/agentchattr-fork-spec.md), current versionv1.7 RC-2/DA-2, is the resume entry point. Documentation maintenance alone is not implementation authorization; the standing autonomous backlog instruction supplies the current authorization.
