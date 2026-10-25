@@ -238,3 +238,6 @@ Implementation entry checkpoint: helper initial2 infrastructureERROR0.023s (arti
 
 
 Controlled admission scaffold behavior evidence: initial2 selected after valid fixture setup produce1PASS/1FAIL0.329s. Claimed exact-byte/ACK behavior passes; unclaimed admission bypasses the missing scaffold guard and fails the expected-refusal assertion. This is an explicit local TDD scaffold, never routed or enabled in production. It follows a disclosed2fixtureERROR0.027s corrected only by adding the declared fake CLI model argument mapping. Protocol/private-brief/outbox6PASS0.225s and rawqueue/dispatch/ingress25PASS1.097s are separate component evidence. Expanded helper12 not run yet.
+
+
+C1 diagnostic namespace correction is the separately accepted store enum6ae86a1: omitted oversized bodies use response_too_large (not the ordinary invalid_content/invalid_response diagnostic key). CLI error code and API terminal state reason are unchanged. Existing store modules plus root oversize tests26PASS107.438s; independent fast14PASS3.789s. Root core protocol/delivery/queue/API/cancel11PASS0.711s after two missing API/cancel methods were observedERROR0.995s. First expanded helper12 is next; root recovery/concurrency/crash/timing remains unfinished.

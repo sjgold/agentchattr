@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 05:15 UTC (#20 oversize diagnostic enum isolated; authority remains in progress)
+**Updated:** 2026-10-25 05:29 UTC (#20 core admission candidate ready for first bounded12 run; recovery tests pending)
 
 ## At a glance
 
@@ -828,3 +828,8 @@ Confirmed C1 diagnostic-key collision: content empty-string followed by None wit
 
 
 Separate store enum amendment: root oversize regression1ERROR0.010s (new fixed reason absent), then2PASS0.308s after adding ONLY response_too_large to QUARANTINE_REASONS. Retained-empty id/bytes remain unchanged; oversize no-body id differs and has byte_count0/not_retainedtrue. Root valid at-bound metadata fixtures exercise unchanged8/group,256groups,1024records and latest_reason on fresh reload. No state-reason/key/schema/cap/migration change. Unchanged store modules plus these2 are next; authority service wiring of the new diagnostic reason remains a separate change.
+
+
+Store enum6ae86a1 closed again: unchanged helper12+review7+integrity3+saturation2+new oversize2 PASS26/107.438s, trackeda2005c74. Reviewer fast14 PASS3.789s and one-line store diff read; helper12 remains implementation-owner evidence. Authority now uses response_too_large only for omitted oversize diagnostic body, preserving CLI invalid_content error and API invalid_response terminal state reasons.
+
+Root API/cancel2 observed missing-methodERROR0.995s, then protocol/brief/outbox/rawqueue/API/cancel11 PASS0.711s after basic service implementation. Core helper12 methods are ready for first expanded run, source held frozen during it. Recovery/R1, crash seams, Barrier/fail-closed/golden coverage and source-cap timing are NOT complete; service is not bound to app routes, wrappers or factory and production capability remains empty. No authority acceptance/publication claim.
