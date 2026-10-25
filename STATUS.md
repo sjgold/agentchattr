@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 06:10 UTC (#20 A-1 delivery-settlement amendment passed201 focused tests; review pending)
+**Updated:** 2026-10-25 06:15 UTC (#20 A-1 amendment independently cleared; wrapper contract conditions folded in)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Corrected52d52f1 full1463 tests256.029s OK, four skips (implementation owner); independent230 focused26.298s plus probes PASS |
-| Next | Sonnet rechecks the A-1 authority amendment; Codex amends the conditionally accepted wrapper contract docs-only, then freezes helper payloads. No wrapper tests/code before that clearance. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Sonnet skims D1-D3/W1-W6 wrapper contract amendments; Codex freezes exact helper signatures/payloads next, before any wrapper tests/code. Fresh A-1 full regression is running. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -879,3 +879,8 @@ Next owner Codex/Sonnet: new TICKET-20-WRAPPERS.md is a docs-only contract propo
 Wrapper-contract review approved D1-D3 with documentation conditions but independently found an authority table gap: terminal transport without saved bytes left a live request/pending lineage, and startup silently omitted an ACTIVE request missing transport. This amendment is separate from all wrapper implementation. Root test_artifact_delivery_settlement4 observed22 genuine failing subcases3.202s before the fix (no fixture error), then4 PASS3.541s. The matrix exercises prepared/queued/active requests versus released/failed/settled_recovered transport in both startup and normal resume, plus late-result quarantine, unreadable result storage/cancel-fence refusal and absent-active-transport reporting. The settled_recovered transport is a validated ledger-state fixture, not native exit evidence.
 
 Implementation validates retained envelope/claim and owned outbox absence before the exact failed/delivery_unconfirmed transition; saved results keep operator recovery, and unreadable storage does not become a false empty. Startup reports the terminal transition via its existing held list with the fixed delivery_unconfirmed reason; it does not leave a pending slot or imply worker-exit proof. Source packet/current producer gates are intentionally not prerequisites for low-level terminal settlement. All50 authority component cases plus the same unchanged151 baseline PASS201/26.005s, tracked103ee390-6882-459d-8b95-4b6e55cc1f62, .audit-tmp/ticket20-authority-terminal-delivery-focused.log. Helper files unchanged. Prior independent clearance/full1463 applies to52d52f1, not this new amendment until rechecked. Next owner Sonnet reviews this separate source pin; Codex amends wrapper contract docs-only afterward, with no wrapper tests/code yet.
+
+
+Wrapper contract conditions, 2026-10-25 06:15 UTC: Sonnet independently closed A-1 at7ba8ade, probe46 now failed/delivery_unconfirmed with free pending slot and idempotent terminal resume, combined234 focused29.952s and seven earlier probes PASS. It read the source diff, not every new test body; no full-discovery/native/app claim. New full tracked552dcdbc is still running on frozen7ba8ade. Source unchanged during that run.
+
+TICKET-20-WRAPPERS.md D1-D3/W1-W6 are amended docs-only: reject-report accepts exactly string/false or null/true; CLI403/no effects and bearer-holder trust boundary explicit. Parent read is strictly read-only, checks actual bytes/stored hash+length and frozen expected-parent id/sequence/hash, with untrusted-data treatment and bounded combined context15,974,400 serialized bytes. Client limits cannot be guessed or silently truncated. Generated isolated server-only capability seam records fixture-controlled activation without editing product/child constants; managed snapshots/birth/hashes and server gates remain real. Operator-cookie/token versus seat-bearer route refusals, delivery no-store and log/error redaction are required; source manifests grow to actual AST closure. CLI same-watcher duplicate and new-consumer QueueBusy tests gate no-journal continuation; tool-list addition gets a named explicit test preserving legacy tools; API seats stay sequential, observation isolation spans sequential calls/two independent seats. Premature CLI release refuses later submission immediately; terminal request settlement occurs only at resume/startup. No wrapper tests, helper briefing or implementation before contract skim and exact payload freeze.
