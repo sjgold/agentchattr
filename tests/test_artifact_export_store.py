@@ -1,0 +1,130 @@
+"""Export reads and imported-only index validation; storage fixtures, no import driver."""
+from copy import deepcopy
+import hashlib
+import json
+import unittest
+from unittest.mock import patch
+import uuid
+
+import artifact_store as module
+from tests import test_artifact_store as fixture
+
+
+class ArtifactExportStoreTests(unittest.TestCase):
+    setUp = fixture.ArtifactStoreTests.setUp
+    packet = fixture.ArtifactStoreTests.packet
+    audit = fixture.ArtifactStoreTests.audit
+    owner = fixture.ArtifactStoreTests.owner
+
+    def seed(self):
+        _, store = self.owner('export-source')
+        audit = self.audit(module, store)
+        store.reserve_request(audit, audit['request_id'])
+        store.set_attempt_state(audit['request_id'], audit['attempt_id'], 'prepared',
+                                {'state': 'queued', 'reason': 'queued'})
+        text = '\ufeff# Caf\u00e9\r\nExact bytes.\r\n'
+        version = store.commit_version(audit['request_id'], audit['attempt_id'], audit['dispatch_id'],
+            text, {'confirmed_model': None, 'confirmation_reason': 'cli_model_unverified'})
+        parent = {key: version[key] for key in ('sequence', 'sha256')}
+        parent['version_id'] = version['id']
+        second = self.audit(module, store, lineage_id=audit['lineage_id'], parent=parent)
+        store.reserve_request(second, second['request_id'])
+        return store, audit, second, version, text.encode('utf-8')
+
+    def imported_index(self):
+        store, audit, second, version, raw = self.seed()
+        index = json.loads(store.path.read_bytes())
+        for row in index['requests'].values():
+            row['import_source'] = {'archive_id': 'archive-fixture',
+                'original_state': row['state'], 'original_reason': row['reason']}
+            row.update(state='imported', reason='imported', quarantine_ids=[])
+            producer = row['audit']['producer']
+            producer.update(adapter='openai-compatible', launch_attempt=None,
+                launch_nonce=None, fingerprint=None, capabilities=[])
+        index['versions'][version['id']]['provenance']['producer'] = deepcopy(
+            index['requests'][audit['request_id']]['audit']['producer'])
+        index['versions'][version['id']]['provenance']['observation'] = {
+            'confirmed_model': None, 'confirmation_reason': 'provider_did_not_report_model'}
+        index['lineages'][audit['lineage_id']]['pending_request_id'] = None
+        return index, audit, second, version
+
+    def test_export_snapshot_is_detached_metadata_only_and_objects_are_bound(self):
+        _, empty = self.owner('export-empty')
+        self.assertEqual(empty.export_lineage_ids(), ())
+        self.assertFalse(empty.path.exists())
+        store, audit, second, version, raw = self.seed()
+        with patch.object(store, '_read_object', side_effect=AssertionError('metadata read a body')):
+            self.assertEqual(store.export_lineage_ids(), (audit['lineage_id'],))
+            snapshot = store.export_metadata(audit['lineage_id'])
+        self.assertEqual(len(snapshot['requests']), 2)
+        self.assertEqual([row['id'] for row in snapshot['versions']], [version['id']])
+        snapshot['requests'][0]['audit']['instruction'] = 'DETACHED'
+        self.assertNotEqual(store.get_request(audit['request_id'])['audit']['instruction'], 'DETACHED')
+        self.assertEqual(store.read_archive_object('version', version['id'],
+            sha256=version['sha256'], byte_length=len(raw)), raw)
+        scope = audit['scope']
+        packet = store.read_archive_object('packet', scope['packet_id'],
+            sha256=scope['sha256'], byte_length=scope['byte_length'])
+        self.assertEqual(hashlib.sha256(packet).hexdigest(), scope['sha256'])
+        for kind, identifier, digest, length in (
+            ('version', version['id'], 'f'*64, len(raw)),
+            ('packet', uuid.uuid4().hex, scope['sha256'], scope['byte_length'])):
+            with self.subTest(kind=kind), self.assertRaises(module.ArtifactUnavailable):
+                store.read_archive_object(kind, identifier, sha256=digest, byte_length=length)
+        with self.assertRaises(module.ArtifactValidationError):
+            store.read_archive_object('other', version['id'], sha256=version['sha256'], byte_length=len(raw))
+        store.path.write_bytes(b'BROKEN')
+        with self.assertRaises(module.ArtifactUnavailable):
+            store.export_lineage_ids()
+        self.assertEqual(store.path.read_bytes(), b'BROKEN')
+
+    def test_imported_index_accepts_unversioned_attempts_and_reuses_version_validator(self):
+        index, audit, second, version = self.imported_index()
+        _, target = self.owner('imported-format')
+        target.path.parent.mkdir(parents=True)
+        target.path.write_text(json.dumps(index), encoding='utf-8')
+        with patch.object(module.ArtifactStore, '_validate_version',
+                autospec=True, side_effect=module.ArtifactStore._validate_version) as validate:
+            fresh = module.ArtifactStore(target.root)
+        self.assertEqual(validate.call_count, 1)
+        self.assertEqual(fresh.pending('review'), [])
+        self.assertIsNone(fresh.get_request(second['request_id'])['version_id'])
+        self.assertEqual(fresh.get_request(audit['request_id'])['state'], 'imported')
+        before = target.path.read_bytes()
+        with self.assertRaises(module.ArtifactConflict):
+            fresh.set_attempt_state(second['request_id'], second['attempt_id'], 'imported',
+                {'state': 'queued', 'reason': 'queued'})
+        self.assertEqual(target.path.read_bytes(), before)
+        index['versions'][version['id']]['provenance']['producer']['name'] = 'TAMPER'
+        target.path.write_text(json.dumps(index), encoding='utf-8')
+        with self.assertRaises(module.ArtifactUnavailable):
+            module.ArtifactStore(target.root)
+
+    def test_imported_shape_never_weakens_local_audit_or_origin_validation(self):
+        index, audit, second, version = self.imported_index()
+        for mutation in ('missing_origin', 'bad_origin', 'local_empty_caps', 'local_api_null', 'extra_key'):
+            with self.subTest(mutation=mutation):
+                value = deepcopy(index)
+                row = value['requests'][second['request_id']]
+                if mutation == 'missing_origin':
+                    del row['import_source']
+                elif mutation == 'bad_origin':
+                    row['import_source']['archive_id'] = '../unsafe/token'
+                elif mutation == 'extra_key':
+                    row['import_source']['token'] = 'EXTRA'
+                else:
+                    row.pop('import_source')
+                    row.update(state='failed', reason='generation_failed')
+                    if mutation == 'local_api_null':
+                        row['audit']['producer']['capabilities'] = ['artifact-v1']
+                _, target = self.owner('shape-' + mutation)
+                target.path.parent.mkdir(parents=True)
+                target.path.write_text(json.dumps(value), encoding='utf-8')
+                with self.assertRaises(module.ArtifactUnavailable):
+                    module.ArtifactStore(target.root)
+        # The accepted CLI/null-ref local storage contract remains valid.
+        self.assertEqual(module._audit(audit), audit)
+
+
+if __name__ == '__main__':
+    unittest.main()

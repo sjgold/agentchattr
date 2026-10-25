@@ -247,6 +247,41 @@ def _audit(value):
     return deepcopy(value)
 
 
+def _audit_imported(value):
+    """Validate the closed imported exception without changing local _audit."""
+    if not isinstance(value, dict) or not isinstance(value.get('producer'), dict):
+        raise ArtifactValidationError('Invalid imported artifact audit.')
+    producer = value['producer']
+    if (producer.get('adapter') not in ('cli', 'openai-compatible')
+            or producer.get('capabilities') != []
+            or any(producer.get(key) is not None for key in
+                   ('launch_attempt', 'launch_nonce', 'fingerprint'))):
+        raise ArtifactValidationError('Imported artifact authority must be absent.')
+    # Reuse the unchanged common grammar through its existing CLI/null-ref
+    # storage exception. This validation-only view is never stored or returned.
+    local_view = deepcopy(value)
+    local_view['producer'].update(adapter='cli', capabilities=['artifact-v1'])
+    _audit(local_view)
+    return deepcopy(value)
+
+
+def _validate_imported(row):
+    _fields(row, ('audit', 'channel', 'state', 'reason', 'updated_at', 'version_id',
+                  'quarantine_ids', 'import_source'))
+    if row['state'] != 'imported' or row['reason'] != 'imported' or row['quarantine_ids'] != []:
+        raise ArtifactValidationError('Imported artifact requests are terminal and read-only.')
+    origin = row['import_source']
+    _fields(origin, ('archive_id', 'original_state', 'original_reason'))
+    if (not isinstance(origin['archive_id'], str)
+            or not re.fullmatch(r'[A-Za-z0-9._-]{1,64}', origin['archive_id'])
+            or not isinstance(origin['original_state'], str)
+            or origin['original_state'] not in LIVE | TERMINAL
+            or (origin['original_reason'] is not None and not isinstance(origin['original_reason'], str))
+            or origin['original_reason'] not in STATE_REASONS):
+        raise ArtifactValidationError('Invalid imported artifact origin.')
+    return _audit_imported(row['audit'])
+
+
 def _observation(value, adapter):
     _fields(value, ('confirmed_model', 'confirmation_reason'))
     model, reason = value['confirmed_model'], value['confirmation_reason']
@@ -502,6 +537,52 @@ class ArtifactStore:
         with self._lock:
             self._check_index()
             return deepcopy(self._packet(packet_id)[0])
+
+    def export_lineage_ids(self):
+        with self._lock:
+            self._check_index()
+            return tuple(sorted(self._data['lineages']))
+
+    def export_metadata(self, lineage_id):
+        _hex(lineage_id)
+        with self._lock:
+            self._check_index()
+            lineage = self._data['lineages'].get(lineage_id)
+            if lineage is None:
+                raise ArtifactConflict('Artifact lineage is unknown.')
+            requests = [row for _, row in sorted(self._data['requests'].items())
+                        if row['audit']['lineage_id'] == lineage_id]
+            return deepcopy({'lineage': lineage, 'requests': requests,
+                'versions': [self._data['versions'][identifier] for identifier in lineage['version_ids']]})
+
+    def read_archive_object(self, kind, object_id, *, sha256, byte_length):
+        if kind not in ('version', 'packet'):
+            raise ArtifactValidationError('Invalid artifact archive object kind.')
+        _hex(object_id); _hex(sha256, 64)
+        _integer(byte_length, 1, MAX_ARTIFACT_BYTES if kind == 'version' else MAX_PACKET_BYTES)
+        with self._lock:
+            self._check_index()
+            if kind == 'version':
+                metadata = self._data['versions'].get(object_id)
+                if metadata is None:
+                    raise ArtifactUnavailable('Artifact archive object is unavailable.')
+                reference = metadata
+            else:
+                reference = next((row['audit']['scope'] for row in self._data['requests'].values()
+                    if row['audit']['scope']['packet_id'] == object_id), None)
+                if reference is None:
+                    raise ArtifactUnavailable('Artifact archive object is unavailable.')
+            if reference['sha256'] != sha256 or reference['byte_length'] != byte_length:
+                raise ArtifactUnavailable('Artifact archive object is unavailable.')
+            if kind == 'packet':
+                raw = _canonical(self._packet(object_id)[0])
+            else:
+                saved = self.get_version(object_id)
+                raw = saved['markdown'].encode('utf-8')
+            if len(raw) != byte_length or hashlib.sha256(raw).hexdigest() != sha256:
+                self._record_object_error(kind, object_id)
+                raise ArtifactUnavailable('Artifact archive object is unavailable.')
+            return raw
 
     def reserve_request(self, audit, request_id):
         audit = _audit(audit)
@@ -887,8 +968,11 @@ class ArtifactStore:
         dispatches = set()
         live = {}
         for identifier, row in value['requests'].items():
-            _fields(row, ('audit', 'channel', 'state', 'reason', 'updated_at', 'version_id', 'quarantine_ids'))
-            audit = _audit(row['audit'])
+            if isinstance(row, dict) and row.get('state') == 'imported':
+                audit = _validate_imported(row)
+            else:
+                _fields(row, ('audit', 'channel', 'state', 'reason', 'updated_at', 'version_id', 'quarantine_ids'))
+                audit = _audit(row['audit'])
             if _hex(identifier) != audit['request_id'] or audit['dispatch_id'] in dispatches:
                 raise ArtifactValidationError('Artifact request identity is duplicated or inconsistent.')
             dispatches.add(audit['dispatch_id'])
@@ -900,7 +984,7 @@ class ArtifactStore:
                 metadata = value['versions'].get(row['version_id'])
                 if metadata is None or metadata.get('request_id') != identifier:
                     raise ArtifactValidationError('Artifact request version reference differs.')
-            if row['state'] in ('fulfilled', 'imported') and row['version_id'] is None:
+            if row['state'] == 'fulfilled' and row['version_id'] is None:
                 raise ArtifactValidationError('Completed artifact has no version.')
             if row['state'] not in ('fulfilled', 'imported') and row['version_id'] is not None:
                 raise ArtifactValidationError('Unfulfilled artifact names a version.')

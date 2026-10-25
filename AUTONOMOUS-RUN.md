@@ -215,3 +215,7 @@ Lifecycle root red b2aa254 independently accepted; final wording fixes landed. I
 ## Ticket20 lifecycle slice1 checkpoint (2026-10-25)
 
 Configured authored owner binding, metadata-only joined artifact blockers and the eighth named rename step are implemented. Root8 PASS1.848s; affected106 initially7 errors7.377s from known seven-step fixture copies, then unchanged assertions with eight-step fixture/range updates106 PASS8.165s. Independent review is the next gate. Helper imported-store12 is static-only and frozen; initial2 infrastructure reds remain separate. Cancellation bridge, retained/catalog counts, store/archive import/export and later operator/reader/acceptance work are pending. No capability activation or publication.
+
+## Ticket20 lifecycle/backup slice2 checkpoint (2026-10-25)
+
+Slice1 independently accepted503b9b2 (reviewer546 pass plus one expected pending export-interface error). Slice2 provides detached export metadata/reference-bound exact object reads and imported-only index validation, with local audit and version validator ASTs unchanged. Root3 PASS0.178s and affected64 PASS116.858s (tracked1b3169a9). Root-owned API observation/pending-call fixture corrections are disclosed in the contract receipt; corrected old503b9b2 source still produced the two intended missing-interface/imported-shape errors in a separate interpreter. Slice2 independent review next. No staging/import-lineage/archive codec or operator/reader implementation in this slice; helper imported-store12 stays compile-only and capability stays empty.

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 09:59 UTC (#20 lifecycle slice1 green; independent review next)
+**Updated:** 2026-10-25 10:06 UTC (#20 lifecycle slice1 accepted; store export/validator slice2)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Sonnet reviews the lifecycle slice1 pin: authored owner binding, joined blockers and eighth rename step. Root8 PASS1.848s and affected106 PASS8.165s. Store/archive import/export and retained metadata remain later ordered slices; helper12 is frozen compile-only; capability stays empty |
+| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Codex freezes slice2 export reads/imported-only validator for review; prepare/classify/import and archive threading remain slice3. Helper12 stays compile-only; capability stays empty |
 
 ## Current handoff
+
+- Slice1 independently PASS503b9b2: reviewer547 tests163.686s,546 PASS plus the expected pending build_export artifact_store-keyword error. Its orphan artifact transport/request-missing held flag finding is carried for the later metadata slice. Slice2 adds detached export metadata/reference-bound exact object reads and separate imported-only index validation; local _audit and _validate_version ASTs are unchanged. New root3 final PASS0.178s; broader unchanged store/admission/recovery/manifest64 PASS116.858s (tracked1b3169a9), no import driver or whole-lineage commit yet.
 
 - Lifecycle slice1 implemented, tested, awaiting independent review: configured authored owner and late authority getter are bound; prepared/queued/active requests and terminal rows with remaining transport join into exact artifact blockers; missing live transport is held; old ordered seven-name intents run only the eighth artifacts step; unknown steps refuse. Root expanded8 before source:11 assertion failures +2 missing-attribute errors1.943s; after source8 PASS1.848s. First affected106 had7 errors7.377s from old copied seven-step fixture lists; only those lists and the boundary range were updated, then SAME106 PASS8.165s (tracked8e7b21b6). No assertion removed; intentional OLD_STEPS remains seven. Helper imported-store12 is compile-only/unexecuted, SHA a530b07e...452c, initial2 AST unchanged. Counts/retained UI, queued-cancel bridge and backup remain pending; no whole lifecycle/package or native/provider acceptance.
 
