@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 05:49 UTC (#20 admission and recovery component candidate; independent review and full regression next)
+**Updated:** 2026-10-25 05:52 UTC (#20 admission/recovery full regression passed; independent component review pending)
 
 ## At a glance
 
@@ -17,8 +17,8 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store and disabled capability gate independently accepted; internal admission/recovery candidate tested, not yet independently accepted |
-| Latest checks | Helper admission12 PASS3.024s; root admission/recovery plus unchanged baseline189 PASS21.080s; three later root cases pass individually |
-| Next | Codex freezes authority/recovery candidate and runs full discovery; Sonnet reviews source and focused checks. Public creation timing, routes, wrappers, lifecycle, reader and backup remain later work |
+| Latest checks | Full1458 tests229.594s OK, four skips, implementation-owner run at442b5ab; focused189 PASS21.080s |
+| Next | Sonnet reviews frozen442b5ab source and focused checks; Codex addresses any findings before the next package. Public creation timing, routes, wrappers, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -849,3 +849,6 @@ Lost-ACK clarification independently accepted: a fulfilled request with a matchi
 Combined frozen-source check: admission12, coordination5, recovery10, protocol3, delivery4, rawqueue2, service paths2 plus the SAME unchanged151 baseline =189 PASS21.080s, trackedb7d61f89, .audit-tmp/ticket20-authority-recovery-focused.log. Three additional root tests then cover unmatched/cancelled result quarantine without rewriting saved bytes, bounded startup/deferred resume_pending, and source fences surviving a controlled Stop fault while peer/later requests remain independent. First two passed; the source fixture initially supplied private derived ids as extra audit keys, corrected to the exact four public audit ids only, then PASS0.235s. The Stop test is service/engine sequencing with an explicit fault, not actual app-route integration.
 
 Next owner Codex: full discovery on the frozen component and Sonnet source/probe review; fix any findings with observed-red coverage. K6 consistent app-source snapshot/preview timing remains required before public creation, in the later routes package. No routes, MCP binding, wrapper purpose branch, lifecycle/backup/UI integration, production capability enablement or final Ticket20 acceptance yet. No new native/provider/installed-client/Omarchy evidence.
+
+
+Full regression receipt, 2026-10-25 05:52 UTC: frozen source442b5ab6ee961257631ad930dc8f997ff6fc33b8 passed1458 tests229.594s, four skips, tracked743fb66f-9945-42fa-98c3-41504534acf9. Log .audit-tmp/ticket20-authority-recovery-full-442b5ab.log explicitly records Ran1458 and OK(skipped=4). Source/tree stayed unchanged during the run. This is implementation-owner full-discovery evidence, not an independent full run. Component review remains pending with Sonnet; no authoring capability, route, wrapper, factory or UI is enabled. Next owner Sonnet returns the frozen-source review; Codex handles findings before proceeding.

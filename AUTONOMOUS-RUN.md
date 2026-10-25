@@ -45,3 +45,6 @@ Historical checkpoint details and original red/green evidence are retained in ST
 
 
 Postmerge main6bbe28d:1374 tests110.873s OK(skipped4), tracked3db1946e; Node12/4/12/12/2/2 zero failures, syntax/diff clean. Product and accepted tool blobs unchanged. Git checkout CRLF conversion was verified against identical90078e1/HEAD blobs; restored LF working bytes match all three original raw hashes. Publication and explicit repository issue closure are next.
+
+
+Full regression receipt, 2026-10-25 05:52 UTC: frozen source442b5ab6ee961257631ad930dc8f997ff6fc33b8 passed1458 tests229.594s, four skips, tracked743fb66f-9945-42fa-98c3-41504534acf9. Log .audit-tmp/ticket20-authority-recovery-full-442b5ab.log explicitly records Ran1458 and OK(skipped=4). Source/tree stayed unchanged during the run. This is implementation-owner full-discovery evidence, not an independent full run. Component review remains pending with Sonnet; no authoring capability, route, wrapper, factory or UI is enabled. Next owner Sonnet returns the frozen-source review; Codex handles findings before proceeding.
