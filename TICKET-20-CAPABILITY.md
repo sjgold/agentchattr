@@ -81,3 +81,6 @@ Freeze this contract with Sonnet before helper briefing or tests. The next packa
 ## Later import constraint
 
 Store load now requires each imported request to own a version. The whole-lineage import package must preserve that ownership or explicitly revisit the representation of retained failed/pending source requests before implementation. Do not relax the store now or invent shared version ownership during import.
+
+
+Approved checkpoint85179c0: pre-change legacy golden bce6783ec65b26921583bf847bc9a226f63cbe0289da81a75efe25da91e9155f captured before source changes, baseline151 PASS12.312s. Root2 static checks kept separate (golden PASS, missing-module closure ERROR0.006s). Helper initial2 genuine missing-interface ERROR0.042s follows one disclosed mixed source/fixture attempt0.013s corrected only by seeding the actual registry. Production implementation starts after this evidence; expanded12 remains held.

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 03:46 UTC (#20 capability contract amended for fingerprint, birth and import-closure review)
+**Updated:** 2026-10-25 03:51 UTC (#20 capability baseline/golden captured; genuine initial REDs observed)
 
 ## At a glance
 
@@ -17,7 +17,7 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
-| Next | Sonnet rechecks capability C1-C8 amendments; no tests until cleared |
+| Next | Codex implements approved capability gate after initial REDs; helper extends12 and holds execution |
 
 ## Current handoff
 
@@ -774,3 +774,11 @@ Ticket19 post-merge checkpoint: final docs6bbe28d fast-forward merged into main.
 
 
 Ticket20 store candidate: helper initial2 actual ModuleNotFoundError RED0.026s before source, independently reproduced/read by Sonnet, then root initial2 GREEN0.106s including added orphan retry/temp-cleanup assertions. NEW artifact_store.py implements the frozen standalone schemas; no app/adapter/route/UI integration. Helper expanded exactly12 compiled/static/frozen, NOT run yet. NEW root test_artifact_store_saturation.py explicitly seeds VALID actual temporary index summaries near2**31-1, fresh-loads and exercises public calls; not a public setup or native claim. Expanded default-cap/lock/corruption/byte tests are next; no behavior pass claimed for those yet. This checkpoint is local/unpublished; source is held during focused execution.
+
+
+## Ticket20 capability checkpoint
+
+- Contract85179c0 independently PASS by doc review; tests cleared. Pre-change fixed effective-payload ownership fingerprint captured from unchanged new_launch_identity and separately stdlib-derived: bce6783ec65b26921583bf847bc9a226f63cbe0289da81a75efe25da91e9155f, record .audit-tmp/ticket20-capability-before.json. Root literal/static module:2 tests, golden PASS, closure missing-module ERROR0.006s.
+- Unchanged14-module baseline:151 tests PASS12.312s, trackedb077a23c. Exact command/module list in its shell and log .audit-tmp/ticket20-capability-baseline.log; includes ownership/adoption/heartbeat, API seats/runtime, CLI worker, dispatch queue and the Task0 seven-module group unchanged.
+- Helper first attempt2ERROR0.013s was one missing runtime_protocol plus one fixture error (unseeded registry base). Corrected ONLY registry.seed, same assertions: genuine2ERROR0.042s, missing runtime_protocol and SeatManager.artifact_producer. Initial source copy .audit-tmp/ticket20-capability-initial-red.py. No product source changed before these observations. Helper owns12 behavior cases, root owns2 static checks; supported runtime/native observations are explicitly fixture-controlled, no new process/provider claim.
+- Next owner Codex implements gate only; helper extends <=12 compile-only and holds execution until readiness. Capability remains production-disabled until the later wrapper-purpose package.
