@@ -179,3 +179,6 @@ Store correction checkpoint: first expanded helper12 yielded11 PASS/1 category E
 
 
 Corrected unchanged helper12 PASS/100.557s at f0e984b; all previously blocked validation cases reached. Static finalization passed, file frozen SHA2561cc5725510fd2dbf9af4d3fb4d6992600ba40f5876b47ec1a2adfd44a442bc22. Full discovery tracked7944fb64 is running; independent review is pending. These remain standalone store tests, with no factory/native/provider claim.
+
+
+Review correction checkpoint: f0e984b full1391/four skips218.861s PASS (implementation owner, tracked7944fb64), but independent review found S1-S5 and N2. New root review/index cases observed8 tests/5 failures+9 errors1.013s before fixes; imported-unversioned row separately1FAIL0.305s. Corrections now root12 PASS3.328s. Helper12 remains unchanged/frozen. Version ownership is bidirectional, packet input errors are typed, pagination is offset-aware, invalid producer strings are hash-only diagnostics, object observations are referenced-only/bounded256, and full-group overflow keeps its own counter. Persistent locks and packet checks on reason-only changes are documented. A new frozen full run and independent recheck are required before expansion.

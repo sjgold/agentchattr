@@ -26,6 +26,7 @@ MAX_DIAGNOSTIC_RECORDS = 1024
 MAX_QUARANTINE_BODY_BYTES = 8 * 1024 * 1024
 MAX_QUARANTINE_OBJECTS = 1024
 MAX_DIAGNOSTIC_COUNTER = 2**31 - 1
+MAX_OBJECT_ERRORS = 256
 LIVE = {'prepared', 'queued', 'active'}
 TERMINAL = {'fulfilled', 'failed', 'cancelled', 'quarantined', 'imported'}
 STATE_REASONS = {None, 'resume_pending', 'queued', 'queued_behind_review', 'source_stopped',
@@ -417,6 +418,18 @@ class ArtifactStore:
                 except OSError:
                     raise ArtifactUnavailable('Artifact temporary cleanup did not complete.') from None
 
+    def _record_object_error(self, kind, identifier):
+        referenced = (identifier in self._data['versions'] if kind == 'version' else
+            any(row['audit']['scope']['packet_id'] == identifier for row in self._data['requests'].values()))
+        if not referenced:
+            return
+        key = (kind, identifier)
+        self._object_errors.pop(key, None)
+        self._object_errors[key] = {'id': identifier, 'kind': 'object_error',
+            'object_kind': kind, 'code': 'object_unavailable', 'updated_at': time.time()}
+        if len(self._object_errors) > MAX_OBJECT_ERRORS:
+            self._object_errors.pop(next(iter(self._object_errors)))
+
     def _read_object(self, kind, identifier, maximum):
         try:
             path = self._object_path(kind, identifier)
@@ -426,8 +439,7 @@ class ArtifactStore:
                 raise ValueError('Oversized object')
             return raw
         except (OSError, ValueError, ArtifactUnavailable):
-            self._object_errors[(kind, identifier)] = {'id': identifier, 'kind': 'object_error',
-                'object_kind': kind, 'code': 'object_unavailable', 'updated_at': time.time()}
+            self._record_object_error(kind, identifier)
             raise ArtifactUnavailable('Artifact object is unavailable.') from None
 
     def _packet(self, packet_id):
@@ -444,8 +456,7 @@ class ArtifactStore:
                         or packet['source_run'] != audit['source_run']):
                     raise ArtifactValidationError('Packet no longer matches its request.')
         except (ValueError, TypeError, KeyError, UnicodeError, ArtifactUnavailable):
-            self._object_errors[('packet', packet_id)] = {'id': packet_id, 'kind': 'object_error',
-                'object_kind': 'packet', 'code': 'object_unavailable', 'updated_at': time.time()}
+            self._record_object_error('packet', packet_id)
             raise ArtifactUnavailable('Artifact source packet is unavailable.') from None
         self._object_errors.pop(('packet', packet_id), None)
         return packet, scope
@@ -470,8 +481,15 @@ class ArtifactStore:
         value = self._data['versions'][head]
         return {'version_id': head, 'sequence': value['sequence'], 'sha256': value['sha256']}
 
-    @channel_write(lambda self, args: [args['packet']['channel']])
     def put_packet(self, request_id, packet):
+        if not isinstance(packet, dict):
+            raise ArtifactValidationError('Artifact packet must be an object.')
+        _channel(packet.get('channel'))
+        _hex(request_id)
+        return self._put_packet(request_id, packet)
+
+    @channel_write(lambda self, args: [args['packet']['channel']])
+    def _put_packet(self, request_id, packet):
         with self._lock:
             self._check_index()
             ids = request_ids(request_id)
@@ -590,6 +608,8 @@ class ArtifactStore:
             _observation(observation, row['audit']['producer']['adapter'])
             if row['state'] == 'fulfilled':
                 old = self.get_version(row['version_id'])
+                if old is None or old['metadata']['request_id'] != request_id:
+                    raise ArtifactUnavailable('Artifact version reference is unavailable.')
                 if old['markdown'] != markdown:
                     raise ArtifactConflict('Different content already occupies this artifact dispatch.')
                 return old['metadata']
@@ -648,8 +668,7 @@ class ArtifactStore:
                 if len(raw) != metadata['byte_length'] or hashlib.sha256(raw).hexdigest() != metadata['sha256']:
                     raise ValueError('Artifact bytes changed.')
             except (ValueError, UnicodeError):
-                self._object_errors[('version', version_id)] = {'id': version_id, 'kind': 'object_error',
-                    'object_kind': 'version', 'code': 'object_unavailable', 'updated_at': time.time()}
+                self._record_object_error('version', version_id)
                 raise ArtifactUnavailable('Artifact version object is unavailable.') from None
             self._object_errors.pop(('version', version_id), None)
             return {'metadata': deepcopy(metadata), 'markdown': text}
@@ -658,7 +677,7 @@ class ArtifactStore:
     def _page(rows, limit, offset=0):
         _integer(limit, 1, 100); _integer(offset)
         selected = rows[offset:offset + limit]
-        return {'rows': deepcopy(selected), 'count': len(rows), 'truncated': len(selected) < len(rows)}
+        return {'rows': deepcopy(selected), 'count': len(rows), 'truncated': offset + len(selected) < len(rows)}
 
     def _pending_row(self, row):
         audit = row['audit']
@@ -768,7 +787,14 @@ class ArtifactStore:
             _hex(actor_identity_id)
         if not isinstance(reason, str) or reason not in QUARANTINE_REASONS:
             raise ArtifactValidationError('Invalid artifact diagnostic reason.')
-        raw = b'' if content is None else _text(content, empty=True)
+        if content is not None and not isinstance(content, str):
+            raise ArtifactValidationError('Artifact diagnostic content must be text or null.')
+        raw = b'' if content is None else content.encode('utf-8', errors='surrogatepass')
+        retainable = content is not None and '\0' not in content
+        try:
+            raw.decode('utf-8')
+        except UnicodeError:
+            retainable = False
         key = {'request_id': request_id, 'attempt_id': attempt_id, 'dispatch_id': dispatch_id,
                'reason': reason, 'sha256': hashlib.sha256(raw).hexdigest(), 'byte_count': len(raw),
                'actor_identity_id': actor_identity_id}
@@ -781,8 +807,9 @@ class ArtifactStore:
             rows = list(self._data['diagnostics'].values())
             groups = {row['dispatch_id'] for row in rows}
             group_count = sum(row['dispatch_id'] == dispatch_id for row in rows)
-            global_overflow = (len(rows) >= MAX_DIAGNOSTIC_RECORDS
-                               or (dispatch_id not in groups and len(groups) >= MAX_DIAGNOSTIC_DISPATCH_GROUPS))
+            global_overflow = (group_count < MAX_DIAGNOSTICS_PER_DISPATCH and
+                (len(rows) >= MAX_DIAGNOSTIC_RECORDS
+                 or (dispatch_id not in groups and len(groups) >= MAX_DIAGNOSTIC_DISPATCH_GROUPS)))
             value = deepcopy(self._data)
             if global_overflow or group_count >= MAX_DIAGNOSTICS_PER_DISPATCH:
                 prior = (value['store_overflow'] if global_overflow else value['dispatch_overflow'].get(dispatch_id))
@@ -805,7 +832,7 @@ class ArtifactStore:
             stamp = _number(time.time() if now is None else now)
             try:
                 files, total = self._body_inventory()
-                retained = (content is not None and len(raw) <= MAX_ARTIFACT_BYTES
+                retained = (retainable and len(raw) <= MAX_ARTIFACT_BYTES
                     and len(files) < MAX_QUARANTINE_OBJECTS and total + len(raw) <= MAX_QUARANTINE_BODY_BYTES)
                 if retained:
                     self._put_bytes(self._object_path('quarantine', identifier), raw)
@@ -870,8 +897,11 @@ class ArtifactStore:
                 raise ArtifactValidationError('Invalid saved artifact state.')
             if row['version_id'] is not None:
                 _hex(row['version_id'])
-            if row['state'] == 'fulfilled' and row['version_id'] is None:
-                raise ArtifactValidationError('Fulfilled artifact has no version.')
+                metadata = value['versions'].get(row['version_id'])
+                if metadata is None or metadata.get('request_id') != identifier:
+                    raise ArtifactValidationError('Artifact request version reference differs.')
+            if row['state'] in ('fulfilled', 'imported') and row['version_id'] is None:
+                raise ArtifactValidationError('Completed artifact has no version.')
             if row['state'] not in ('fulfilled', 'imported') and row['version_id'] is not None:
                 raise ArtifactValidationError('Unfulfilled artifact names a version.')
             ids = row['quarantine_ids']

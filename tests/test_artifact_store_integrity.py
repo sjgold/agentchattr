@@ -82,7 +82,16 @@ class ArtifactIndexIntegrityTests(unittest.TestCase):
             value['versions'][second['id']].update(change)
         def audit_change(value, change):
             value['requests'][rp]['audit'].update(change)
+        def dangling_request(value, version_id):
+            request_change(value, rp, {'state': 'fulfilled', 'version_id': version_id})
+            value['lineages'][lineage]['pending_request_id'] = None
+        def imported_without_version(value):
+            dangling_request(value, None)
+            value['requests'][rp]['state'] = 'imported'
         cases = [
+            ('imported-unversioned-row', imported_without_version),
+            ('dangling-request-version', lambda v: dangling_request(v, 'f' * 32)),
+            ('another-request-version', lambda v: dangling_request(v, first['id'])),
             ('accepted-parent-hash', lambda v: parent_change(v, r2, {'sha256': '0' * 64})),
             ('accepted-parent-sequence', lambda v: parent_change(v, r2, {'sequence': 9})),
             ('pending-parent-hash', lambda v: parent_change(v, rp, {'sha256': '0' * 64})),
@@ -100,6 +109,7 @@ class ArtifactIndexIntegrityTests(unittest.TestCase):
             ('wrong-version-dispatch', lambda v: version_change(v, {'dispatch_id': 'e' * 32})),
             ('wrong-version-lineage', lambda v: version_change(v, {'lineage_id': 'e' * 32})),
             ('fulfilled-without-version', lambda v: request_change(v, r1, {'version_id': None})),
+            ('imported-without-version', lambda v: request_change(v, r1, {'state': 'imported', 'version_id': None})),
             ('version-request-not-fulfilled', lambda v: request_change(v, r1, {'state': 'failed'})),
             ('bad-original-channel', lambda v: audit_change(v, {'original_channel': 'NOT VALID'})),
             ('bad-derived-attempt', lambda v: audit_change(v, {'attempt_id': 'e' * 32})),
