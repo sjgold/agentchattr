@@ -275,10 +275,12 @@ def _validate_imported(row):
     if (not isinstance(origin['archive_id'], str)
             or not re.fullmatch(r'[A-Za-z0-9._-]{1,64}', origin['archive_id'])
             or not isinstance(origin['original_state'], str)
-            or origin['original_state'] not in LIVE | TERMINAL
+            or origin['original_state'] not in (LIVE | TERMINAL) - {'imported'}
             or (origin['original_reason'] is not None and not isinstance(origin['original_reason'], str))
             or origin['original_reason'] not in STATE_REASONS):
         raise ArtifactValidationError('Invalid imported artifact origin.')
+    if (row['version_id'] is not None) != (origin['original_state'] == 'fulfilled'):
+        raise ArtifactValidationError('Imported artifact version differs from its original state.')
     return _audit_imported(row['audit'])
 
 
@@ -505,7 +507,8 @@ class ArtifactStore:
 
     def _row(self, row):
         value = deepcopy(row)
-        summary = self._data['dispatch_overflow'].get(row['audit']['dispatch_id'])
+        summary = (self._data['dispatch_overflow'].get(row['audit']['dispatch_id'])
+                   if row['state'] != 'imported' else None)
         value['overflow_count'] = summary['counter'] if summary else 0
         return value
 
@@ -885,6 +888,9 @@ class ArtifactStore:
             prior = self._data['diagnostics'].get(identifier)
             if prior is not None:
                 return deepcopy(prior)
+            request = self._data['requests'].get(request_id)
+            attach = (request is not None and request['state'] != 'imported'
+                      and request['audit']['dispatch_id'] == dispatch_id)
             rows = list(self._data['diagnostics'].values())
             groups = {row['dispatch_id'] for row in rows}
             group_count = sum(row['dispatch_id'] == dispatch_id for row in rows)
@@ -922,9 +928,8 @@ class ArtifactStore:
             row = {'id': identifier, 'kind': 'quarantine', **key, 'received_at': stamp, 'updated_at': stamp,
                    'not_retained': not retained, 'body_object_id': identifier if retained else None}
             value['diagnostics'][identifier] = row
-            request = value['requests'].get(request_id)
-            if request is not None and request['audit']['dispatch_id'] == dispatch_id:
-                request['quarantine_ids'].append(identifier)
+            if attach:
+                value['requests'][request_id]['quarantine_ids'].append(identifier)
             self._persist(value)
             return deepcopy(row)
 
