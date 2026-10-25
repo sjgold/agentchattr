@@ -170,3 +170,6 @@ Store-schema conditional PASS M1-M5/S1-S6 has a docs-only amendment for recheck:
 
 
 Store schema d94f251 independently PASS (full doc read, no execution). F1-F4 applied: no terminal reason mutation, metadata list_versions and dispatch lookup, exact diagnostic attach regardless of claimed attempt, packet-unavailable quarantine code. Helper initial2 REDs now cleared; expanded execution held until production ready. No store code before RED evidence.
+
+
+Task1 candidate: actual helper first2 missing-module RED0.026s, reviewer reproduced/read; root after implementation initial2 PASS0.106s. Candidate artifact_store.py is standalone and unbound at runtime, with no authoring/admission/queue routes. Kernel locks guard metadata commits and immutable object put; ordinary policy precedes store lock, trusted settlement is index-only. Exact helper12 and root-owned2 near-limit storage-fixture saturation cases compile; expanded execution pending. Do not publish an intermediate component as the completed feature.
