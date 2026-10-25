@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 invocation-evidence design timings pass; exact interface freeze review next)
+**Updated:** 2026-10-25 (#20 finite capacity and final operator wires proposed; freeze review pending)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Operator-routes/K6 amended docs review: existing whole-create spike FAILS0.300s (0.412-0.685s, peer0.677s). Accepted evidence extension prototype now passes: isolated max hold/wait0.286883/0.287305s, consecutive-phase0.287293/0.287887s. Review exact interface freeze before helper/tests/product code; no implementation tests/code before clearance; reader/acceptance/activation/final review remain. Capability stays empty |
+| Next | Review amended operator freeze: G1 finite512KiB accounted index/128-request creation ceiling, checked ten-store design max hold0.210282s/peer0.200055s,30ms required margin. G2-G10 errors/hooks/enums/auth/helper ownership fixed; no tests/product code before clearance. Capability empty |
 
 ## Current handoff
+
+- Reviewer G1 rejects unbounded index growth despite earlier ten-sample pass. Choose finite creation admission (no incremental validator):512KiB accounted metadata including256B headroom and128 total requests. Exact-ceiling ten independent DESIGN stores with real admission sizing/fsync/full validation now pass max hold0.210282s/peer0.200055s,89.718ms observed margin; final builder K6 requires>=30ms at ceiling in each source mode. The1MiB checked ten-run has a retained0.439543s reservation/0.440551s peer FAIL, so it is not selected. Earlier1MiB unchecked/2MiB pilot and expired-heartbeat fixture ERROR remain distinct. G2-G10 amend one reason/status enum, publication partial outcomes, exact hooks/types/lazy packet API, closed public enums/raw-source contract, middleware order and disjoint helper12. CHANNELS discloses proposed finite capacity/no purge/export relief. All changes docs only; root sends amended pin, helper unbriefed, no activation.
 
 - Reviewer accepted private invocation packet evidence with full-read fallback and unchanged claim validation. Two sequential ignored design runs at unchangedac30259 meet0.300s for all holds/peer waits: isolated10 samples/50 peer calls max0.286883/0.287305s; consecutive-phase10 samples/338 immediately re-acquiring peer calls max0.287293/0.287887s. Real2MiB/1000/id0/UnicodeCRLF,512KiB parent,100 lineages, growing index, real fsync/full _persist validation. Narrow margin; final builder/run/HTTP/K6 proof remains required. ContextVar/plan prototype only, no product/test source edits; cleanup asserted temp root absent/peer joined. Prior failed one-hold/split receipts retained. Exact DTO/signature freeze now proposed in operator contract for reviewer clearance before any helper/red tests/code. Capability empty, no publication.
 

@@ -57,6 +57,12 @@ Read the import report even when some data was skipped. An invalid or conflictin
 
 After a connection failure or unconfirmed management request, reload the catalog and inspect the current state before trying again. A committed rename can report a settings-projection warning; catalog reads repair that projection without replaying the rename. A decision reply whose card was saved as resolved but whose publication was unconfirmed needs a manual resend if the reply is absent. The error explains that distinction.
 
+## Proposed artifact creation capacity
+
+Artifact creation for Ticket 20 is still disabled while the operator routes are under review. The proposed per-directory limits are **128 saved requests** and **512 KiB of accounted metadata**, whichever fills first. Revisions and failed, cancelled or imported attempts count. Source references and version provenance can fill the byte budget sooner. The preview will show current use and the space a request needs.
+
+Artifact capacity is finite. Existing versions and copied source stay readable when creation stops. Saved versions are immutable. Purge is unsupported, and exporting or deleting a channel leaves this quota unchanged. Historical imports can exceed the creation budget and remain readable; they do not grant more authoring space. These are proposed creation limits, separate from the larger backup ZIP limits above.
+
 ## Verification and limits
 
 Ticket 19 channel-lifecycle acceptance used a managed local fake CLI client with real MCP, plus separate Traycer-managed isolated Electron Chromium browser runs by Codex and Sonnet. No live AI/provider, installed-client, Omarchy, OS drag/picker or assistive-technology compatibility is claimed. Synthetic browser DragEvents exercised the actual job handlers, with network and persisted-order checks. Full discovery at the final product freeze ran 1,374 tests with four platform skips, run by the implementation owner and not re-run by the reviewer.
