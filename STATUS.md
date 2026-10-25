@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 08:39 UTC (#20 lifecycle/backup amended payload draft awaiting review)
+**Updated:** 2026-10-25 08:59 UTC (#20 lifecycle-backup payload revisions awaiting clearance)
 
 ## At a glance
 
@@ -21,6 +21,8 @@
 | Next | Sonnet reviews the DOCS-ONLY amended [lifecycle/backup payload freeze](TICKET-20-LIFECYCLE-BACKUP.md) before tests/code/helper briefing. Codex owns implementation after clearance. Production capability stays empty; operator creation/K6, reader, acceptance and activation remain later |
 
 ## Current handoff
+
+- Revised lifecycle/backup payload remains DOCS ONLY, not cleared for tests. Follow-up rulings preserve legacy export calls through a private identity sentinel while configured None/held owners refuse; section rejection is distinct from per-lineage skips; terminal missing-queue rows do not block (no new store bit), while live queued/active missing records are held. Exporter-built projections exclude authority; raw packet user metadata is retained exactly and disclosed as sensitive. Revised format limits, wire/error/report shapes and a <=0.300s timing acceptance gate are proposed for reviewer clearance.
 
 - Lifecycle/backup contract P1-P3 conditionally accepted; reviewer amendments are folded into the payload proposal. Empty artifact exports preserve schema1 bytes; artifact-bearing exports use schema2. Portable index is an explicit allowlist, imported-only history strips authority and keeps first origin on request rows, whole-lineage commit has no pending work. Existing local CLI-null-ref storage compatibility is preserved by explicit reviewer clarification; managed service still requires launch refs for both adapters. Payload review pending, no next-package tests/code/helper briefing.
 
