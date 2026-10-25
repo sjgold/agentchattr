@@ -241,4 +241,54 @@ test('script initialization order and scoped responsive styles retain native dia
   await focusRerenderChecks();
 });
 
+// Ticket20 authored-owner recognition, actual-source VM only.
+const authoredCounts=()=>({artifacts:1,artifact_versions:2,artifact_requests:3,artifact_source_bytes:12345});
+function authoredCatalog(held=false){return catalog(3,{channels:catalog().channels.map(row=>({...row,
+  counts:{...row.counts,...(held&&row.name==='review'?Object.fromEntries(Object.keys(authoredCounts()).map(key=>[key,null])):authoredCounts())},
+  errors:held&&row.name==='review'?{artifacts:'Saved authored artifacts are held; repair storage and reload.'}:{},
+  artifacts_held:held&&row.name==='review',artifact_source_retained:held&&row.name==='review'?null:true,
+  artifact_source_disclosure:'Copied source text is retained.'}))});}
+test('legacy catalog without an authored group remains usable',async()=>{
+  const env=moduleEnv();await refreshed(env,catalog());
+  assert.equal(env.api.canWrite('review'),true);assert.equal(env.api.ownerAvailable('artifacts','review'),false);
+});
+test('configured empty authored owner validates four zero counts and remains available',async()=>{
+  const value=authoredCatalog(false);for(const row of value.channels){for(const key of Object.keys(authoredCounts()))row.counts[key]=0;row.artifact_source_retained=false;row.artifact_source_disclosure=null;}
+  const env=moduleEnv();await refreshed(env,value);
+  assert.equal(env.api.canWrite('review'),true);assert.equal(env.api.ownerAvailable('artifacts','review'),true);
+});
+test('authored count aliases share one held owner while healthy chat and peers remain usable',async()=>{
+  const env=moduleEnv();await refreshed(env,authoredCatalog(true));
+  assert.equal(env.api.canWrite('review'),true);assert.equal(env.api.canWrite('peer'),true);
+  assert.equal(env.api.ownerAvailable('artifacts','review'),false);assert.equal(env.api.ownerAvailable('artifacts','peer'),true);
+  env.api.openManage({channel:'review',op:'delete'});await settleReads(env,authoredCatalog(true));
+  assert.match(env.body.textContent,/artifacts.*repair|repair.*artifacts/i);
+  assert.equal(control(env,'channel-manager-apply').disabled,true);
+});
+test('authored retained metadata and delete preview render source disclosure without reader routes',async()=>{
+  const env=moduleEnv();env.api.openManage({channel:'archive',op:'view'});
+  const packet=retained({artifacts:[{id:'b'.repeat(32),channel:'archive',updated_at:1,head_version_id:'c'.repeat(32),
+    head:{id:'c'.repeat(32),sequence:2,sha256:'d'.repeat(64),byte_length:123,created_at:1},version_count:2,
+    pending_request_id:null,pending_request:null}],counts:{...retained().counts,...authoredCounts()},
+    truncated:{...retained().truncated,artifacts:false},artifacts_held:false,artifact_source_retained:true,
+    artifact_source_disclosure:'Copied source text is retained.'});
+  await settleReads(env,authoredCatalog(),packet);
+  assert.match(env.body.textContent,/Authored artifacts/);assert.match(env.body.textContent,/2 versions/);
+  assert.ok(!env.requests.some(req=>/artifact.*(?:body|download)/.test(req.url)));
+  const other=moduleEnv();await manage(other,'delete');
+  await getPreview(other,preview('delete',{counts:{...counts(),...authoredCounts()},artifacts_held:false,
+    artifact_source_retained:true,artifact_source_disclosure:'Copied source text remains in retained audit and backups.'}));
+  assert.match(other.body.textContent,/Copied source text remains/);assert.match(other.body.textContent,/12345/);
+});
+test('queued artifact blockers permit only proven unheld queued cancellation',async()=>{
+  for(const [held,state,allowed] of [[false,'queued',true],[true,'queued',false],[false,'dispatched',false],[false,'uncertain',false]]){
+    const env=moduleEnv();await manage(env,'cancel_queued');
+    await getPreview(env,preview('cancel_queued',{queued_dispatch_ids:['d'.repeat(32)],
+      blockers:[{kind:'artifact',state,transport_state:state,request_state:'queued',held,request_id:'a'.repeat(32),
+                 dispatch_id:'d'.repeat(32),reason:held?'ownership_mismatch':'request_pending'}]}));
+    input(control(env,'channel-manager-confirm'),'review');
+    assert.equal(control(env,'channel-manager-apply').disabled,!allowed,JSON.stringify({held,state}));
+  }
+});
+
 (async()=>{let failures=0;for(const {name,run} of tests){try{await run();console.log('PASS '+name);}catch(error){failures++;console.error('FAIL '+name+'\n'+error.stack);}}console.log(JSON.stringify({cases:tests.length,failures,scope:'actual_source_vm_only'}));process.exitCode=failures?1:0;})();

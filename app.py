@@ -29,7 +29,7 @@ from registry import RuntimeRegistry
 from session_store import SessionStore, validate_session_template
 from session_engine import SessionEngine
 from channel_lifecycle import ChannelStore, ChannelUnavailable, ChannelInactive, ChannelConflict
-from channel_service import ChannelService
+from channel_service import ChannelService, ArtifactManagementUnavailable
 
 log = logging.getLogger(__name__)
 
@@ -1334,6 +1334,8 @@ async def _channel_http(request, action):
             if action in ('apply', 'retry'):
                 await _broadcast_channel_projection(service)
         return JSONResponse(result, headers={'Cache-Control': 'no-store'})
+    except ArtifactManagementUnavailable as error:
+        return JSONResponse(error.payload, status_code=503, headers={'Cache-Control': 'no-store'})
     except PermissionError:
         return JSONResponse({'error': 'Operator session required.'}, status_code=403)
     except (ChannelConflict, QueueConflict) as error:
@@ -1360,10 +1362,17 @@ def _channel_error(error, *, request_id=None, channel=None):
         code, message = 409, str(error)
     else:
         code, message = 400, 'Invalid channel management request.'
-    return {'type': 'channel_error', 'request_id': request_id
+    result = {'type': 'channel_error', 'request_id': request_id
         if type(request_id) is str and _re.fullmatch(r'[0-9a-f]{32}', request_id) else None,
         'channel': channel if type(channel) is str and _CHANNEL_NAME_RE.fullmatch(channel) else None,
         'error': message, 'code': code}
+    if isinstance(error, ArtifactManagementUnavailable):
+        result.update(error_code=error.code, error=error.payload['error'])
+        for key in ('artifacts_held', 'artifact_counts', 'artifact_source_retained',
+                    'artifact_source_disclosure', 'artifact_cancellation'):
+            if key in error.payload:
+                result[key] = error.payload[key]
+    return result
 
 
 async def _legacy_channel_action(websocket, event):

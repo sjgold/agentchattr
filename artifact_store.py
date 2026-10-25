@@ -1051,8 +1051,18 @@ class ArtifactStore:
         with self._lock:
             self._check_index()
             lineages = [row for row in self._data['lineages'].values() if row['channel'] == channel]
-            return {'lineages': [{'id': row['id'], 'updated_at': row['updated_at']} for row in lineages],
-                    'pending': self.pending(channel), 'version_count': sum(len(row['version_ids']) for row in lineages)}
+            requests = sorted((row for row in self._data['requests'].values() if row['channel'] == channel),
+                              key=lambda row: row['audit']['request_id'])
+            return deepcopy({'lineages': [{'id': row['id'], 'updated_at': row['updated_at'],
+                    'head_version_id': row['head_version_id'],
+                    'head_sha256': self._data['versions'][row['head_version_id']]['sha256']
+                        if row['head_version_id'] else None} for row in sorted(lineages, key=lambda row: row['id'])],
+                'requests': [{'request_id': row['audit']['request_id'], 'dispatch_id': row['audit']['dispatch_id'],
+                    'state': row['state'], 'reason': row['reason'], 'updated_at': row['updated_at'],
+                    'version_id': row['version_id']} for row in requests],
+                'pending': self.pending(channel), 'version_count': sum(len(row['version_ids']) for row in lineages),
+                'request_count': len(requests),
+                'source_bytes': sum(row['audit']['scope']['byte_length'] for row in requests)})
 
     def retained_metadata(self, channel, *, limit=100):
         return self.list_lineages(channel, limit=limit)

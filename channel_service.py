@@ -18,6 +18,41 @@ _LIVE_REVIEW = {'active', 'waiting', 'paused', 'awaiting_input', 'stalled', 'ret
 _OPS = {'create', 'archive', 'reopen', 'delete', 'rename', 'cancel_queued', 'recover_projections'}
 
 
+_ARTIFACT_COUNTS = ('artifacts', 'artifact_versions', 'artifact_requests', 'artifact_source_bytes')
+_ARTIFACT_HELD = 'Saved authored artifacts are held; repair storage and reload.'
+_ARTIFACT_UNKNOWN = 'Authored artifact contents cannot be confirmed; repair saved artifact metadata before deleting.'
+_ARTIFACT_DISCLOSURE = ('Deleting chat and todos keeps authored artifacts and copied source text in their retained audit and backups. '
+    'Copied source and attachment metadata can contain whatever was in chat; backups are as sensitive as channel history.')
+
+
+class ArtifactManagementUnavailable(ChannelUnavailable):
+    def __init__(self, payload):
+        self.payload = deepcopy(payload)
+        self.code = payload['code']
+        super().__init__(payload['error'])
+
+
+class ArtifactOwnerHeld(ArtifactManagementUnavailable):
+    def __init__(self):
+        super().__init__({'code': 'artifact_owner_held',
+            'error': 'Authored artifact metadata is held. Repair saved artifact metadata before changing channels.',
+            'artifacts_held': True, 'artifact_counts': dict.fromkeys(_ARTIFACT_COUNTS),
+            'artifact_source_retained': None, 'artifact_source_disclosure': _ARTIFACT_UNKNOWN})
+
+
+class ArtifactCancellationUnavailable(ArtifactManagementUnavailable):
+    def __init__(self):
+        super().__init__({'code': 'artifact_cancellation_unavailable',
+            'error': 'Artifact cancellation is unavailable. No queued work was changed.'})
+
+
+class ArtifactCancellationPartial(ArtifactManagementUnavailable):
+    def __init__(self, result):
+        super().__init__({**result, 'ok': False, 'code': 'artifact_cancellation_partial',
+            'error': 'Artifact request cancellation was saved; transport fencing is unconfirmed.',
+            'warning': 'transport_unconfirmed'})
+
+
 class ChannelService:
     def __init__(self, catalog, *, engine, messages, jobs, schedules, summaries,
                  queue, settings, save_settings, migrate_cursors, router,
@@ -134,7 +169,7 @@ class ChannelService:
         """Join detached metadata only; release every owner lock before the next."""
         if self.authored_artifacts is None:
             return [], None
-        scope = self.authored_artifacts.lifecycle_scope(channel)
+        scope = self._authored_scope(channel)
         records = {row['envelope']['dispatch_id']: row for row in transport
                    if row['envelope'].get('purpose') == 'artifact-v1'}
         candidates = {row['dispatch_id'] for row in scope['pending']}
@@ -160,9 +195,12 @@ class ChannelService:
                 raise ChannelUnavailable('Saved artifact transport references are unavailable.') from None
             identity = audit.get('producer', {}).get('identity_id')
             target = envelope.get('target_identity_id')
-            mismatch = bool(record and request and (
+            mismatch = bool(record and request is None) or bool(record and request and (
                 target != identity or envelope.get('artifact_request_id') != request_id
-                or request['channel'] != channel))
+                or request['channel'] != channel or audit.get('dispatch_id') != dispatch
+                or envelope.get('artifact_attempt_id') != audit.get('attempt_id')
+                or envelope.get('artifact_brief_id') != audit.get('brief_id')
+                or envelope.get('artifact_scope_sha256') != audit.get('scope', {}).get('sha256')))
             if identity is None and record:
                 try:
                     _request_id(target)
@@ -178,7 +216,36 @@ class ChannelService:
                           'request_pending' if live else 'transport_pending'})
         return blockers, scope
 
+    def _authored_scope(self, channel):
+        if self.authored_artifacts is None:
+            return {'lineages': [], 'requests': [], 'pending': [], 'version_count': 0,
+                    'request_count': 0, 'source_bytes': 0}
+        try:
+            return self.authored_artifacts.lifecycle_scope(channel)
+        except (ChannelUnavailable, OSError):
+            raise ArtifactOwnerHeld() from None
+
+    @staticmethod
+    def _authored_counts(scope):
+        return dict(artifacts=len(scope['lineages']), artifact_versions=scope['version_count'],
+                    artifact_requests=scope['request_count'], artifact_source_bytes=scope['source_bytes'])
+
+    @staticmethod
+    def _authored_disclosure(counts):
+        retained = counts['artifact_requests'] > 0
+        return {'artifacts_held': False, 'artifact_source_retained': retained,
+                'artifact_source_disclosure': _ARTIFACT_DISCLOSURE if retained else None}
+
+    def _authored_display(self, channel):
+        try:
+            counts = self._authored_counts(self._authored_scope(channel))
+            return counts, self._authored_disclosure(counts), None
+        except ArtifactOwnerHeld:
+            return dict.fromkeys(_ARTIFACT_COUNTS), {'artifacts_held': True,
+                'artifact_source_retained': None, 'artifact_source_disclosure': _ARTIFACT_UNKNOWN}, _ARTIFACT_HELD
+
     def _scope(self, channel):
+        self._authored_scope(channel)  # A held owner refuses before any other owner can create a lock file.
         self.artifacts.check()
         self.engine._store.retained_metadata(channel, limit=1)  # Validate retained authority before a mutation preview.
         messages = deepcopy(self.messages.get_recent(count=2**63, channel=channel))
@@ -196,6 +263,7 @@ class ChannelService:
                       schedules=len(schedules), sessions=len(runs), summaries=int(summary is not None),
                       uploads=sum(len(item.get('attachments') or []) for item in messages))
         blockers, artifact_scope = self._artifact_scope(channel, transport)
+        counts.update(self._authored_counts(artifact_scope or self._authored_scope(channel)))
         def block(kind, run=None, record=None, audit=None, reason=None):
             run, record, audit = run or {}, record or {}, audit or {}
             envelope = record.get('envelope', {})
@@ -289,6 +357,24 @@ class ChannelService:
             except (ChannelUnavailable, OSError):
                 packet['summary'] = None
                 packet['errors']['summary'] = 'Saved summary is held; repair storage and reload.'
+            if self.authored_artifacts is not None:
+                counts, disclosure, error = self._authored_display(channel)
+                packet.update(disclosure)
+                packet['counts'].update(counts)
+                if error:
+                    packet['artifacts'] = packet['truncated']['artifacts'] = None
+                    packet['errors']['artifacts'] = error
+                else:
+                    try:
+                        result = self.authored_artifacts.retained_metadata(channel, limit=100) if self.authored_artifacts else {
+                            'rows': [], 'count': 0, 'truncated': False}
+                        packet['artifacts'], packet['truncated']['artifacts'] = result['rows'], result['truncated']
+                    except (ChannelUnavailable, OSError):
+                        packet.update(artifacts_held=True, artifact_source_retained=None,
+                                      artifact_source_disclosure=_ARTIFACT_UNKNOWN)
+                        packet['counts'].update(dict.fromkeys(_ARTIFACT_COUNTS))
+                        packet['artifacts'] = packet['truncated']['artifacts'] = None
+                        packet['errors']['artifacts'] = _ARTIFACT_HELD
             return packet
 
     def _display_scope(self, channel, queue_counts):
@@ -342,7 +428,14 @@ class ChannelService:
             rows = []
             for name, state in value['channels'].items():
                 counts, errors, overdue = self._display_scope(name, queue_counts)
-                rows.append({'name': name, 'state': state, 'counts': counts, 'overdue_schedules': overdue, 'errors': errors})
+                disclosure = {}
+                if self.authored_artifacts is not None:
+                    authored, disclosure, error = self._authored_display(name)
+                    counts.update(authored)
+                    if error:
+                        errors['artifacts'] = error
+                rows.append({'name': name, 'state': state, 'counts': counts, 'overdue_schedules': overdue,
+                             'errors': errors, **disclosure})
             rows.extend({'name': name, 'state': 'unregistered', 'counts': None, 'overdue_schedules': 0, 'errors': {}}
                         for name in sorted(self._unregistered))
             return {'revision': value['revision'], 'channels': rows, 'intent': value['intent']}
@@ -397,7 +490,8 @@ class ChannelService:
                     separators=(',', ':'), allow_nan=False)).encode('utf-8')).hexdigest()
             return {'op': op, 'channel': channel, 'new_name': new_name, 'revision': value['revision'],
                     'state': value['channels'].get(channel), 'counts': counts, 'blockers': blockers,
-                    'queued_dispatch_ids': queued, 'overdue_schedules': overdue, 'preview_token': token}
+                    'queued_dispatch_ids': queued, 'overdue_schedules': overdue, 'preview_token': token,
+                    **self._authored_disclosure(counts)}
 
     def apply(self, op, channel, *, new_name=None, request_id, confirmation, preview_token):
         _request_id(request_id)
@@ -421,7 +515,9 @@ class ChannelService:
                 return {'ok': True, 'revision': preview['revision'], 'channel': channel,
                         'state': 'active', 'op': op, 'projection_repair': repair}
             if op == 'cancel_queued':
-                blockers = [item for item in blockers if not (item['kind'] == 'transport' and item['state'] == 'queued')]
+                blockers = [item for item in blockers if not (
+                    item['kind'] == 'transport' and item['state'] == 'queued' or
+                    item['kind'] == 'artifact' and item['transport_state'] == 'queued' and not item['held'])]
             if blockers and op not in ('reopen', 'create'):
                 raise ChannelConflict('Channel work is still pending; inspect its blocking scope first.')
             if op == 'create':
@@ -432,7 +528,7 @@ class ChannelService:
             elif op == 'cancel_queued':
                 if not preview['queued_dispatch_ids']:
                     raise ChannelConflict('There are no queued messages to cancel.')
-                self.queue.cancel_queued_channel(channel, preview['queued_dispatch_ids'], request_id)
+                cancellation = self._cancel_queued_artifacts(channel, preview, request_id)
                 value = self.catalog.snapshot()
             elif op == 'delete':
                 try:
@@ -447,12 +543,64 @@ class ChannelService:
             self._project(value)
             result = {'ok': True, 'revision': value['revision'], 'channel': channel,
                       'state': value['channels'].get(channel), 'op': op}
+            if op == 'cancel_queued' and cancellation is not None:
+                result['artifact_cancellation'] = cancellation
             if op == 'reopen':
                 try:
                     result['projection_repair'] = self._repair_projections(channel)
                 except ChannelUnavailable:
                     result['projection_repair_error'] = 'History repair did not finish. Inspect pending work and try repair again.'
             return result
+
+    def _cancel_queued_artifacts(self, channel, preview, request_id):
+        selected = [row for row in preview['blockers'] if row['kind'] == 'artifact'
+                    and row['transport_state'] == 'queued' and not row['held']]
+        if not selected:
+            self.queue.cancel_queued_channel(channel, preview['queued_dispatch_ids'], request_id)
+            return None
+        # Resolve and validate the late binding BEFORE changing a request or queue.
+        try:
+            authority = self.artifact_service_getter() if self.artifact_service_getter else None
+            if authority is None or authority.store is not self.authored_artifacts or authority.channels is not self:
+                raise ArtifactCancellationUnavailable()
+        except Exception:
+            raise ArtifactCancellationUnavailable() from None
+        summary = {'cancelled_request_ids': [], 'fenced_dispatch_ids': [], 'unconfirmed_dispatch_ids': []}
+        for item in selected:
+            identifier, dispatch = item['request_id'], item['dispatch_id']
+            try:
+                if item['request_state'] == 'cancelled':
+                    repair = authority.repair_cancel_fences([identifier])
+                    settled = identifier in repair['repaired']
+                    summary['cancelled_request_ids'].append(identifier)
+                elif item['request_state'] in ('prepared', 'queued', 'active'):
+                    result = authority.cancel_request(identifier)
+                    settled = result['transport_settled'] is True
+                    summary['cancelled_request_ids'].append(identifier)
+                else:
+                    # The request is already terminal; only its queued transport remains.
+                    record = self.queue.cancel_dispatch(dispatch, request_id)
+                    settled = record is not None and record['state'] == 'cancelled'
+            except (ChannelUnavailable, OSError, ValueError):
+                saved = self.authored_artifacts.get_request(identifier)
+                if saved is not None and saved['state'] == 'cancelled':
+                    summary['cancelled_request_ids'].append(identifier)
+                elif not summary['cancelled_request_ids'] and not summary['fenced_dispatch_ids']:
+                    raise ArtifactCancellationUnavailable() from None
+                settled = False
+            summary['fenced_dispatch_ids' if settled else 'unconfirmed_dispatch_ids'].append(dispatch)
+        if summary['unconfirmed_dispatch_ids']:
+            raise ArtifactCancellationPartial({'op': 'cancel_queued', 'channel': channel,
+                'state': preview['state'], 'revision': preview['revision'], 'artifact_cancellation': summary})
+        remaining = sorted(set(preview['queued_dispatch_ids']) - set(summary['fenced_dispatch_ids']))
+        if remaining:
+            try:
+                self.queue.cancel_queued_channel(channel, remaining, request_id)
+            except (ChannelUnavailable, OSError, ValueError):
+                summary['unconfirmed_dispatch_ids'].extend(remaining)
+                raise ArtifactCancellationPartial({'op': 'cancel_queued', 'channel': channel,
+                    'state': preview['state'], 'revision': preview['revision'], 'artifact_cancellation': summary}) from None
+        return summary
 
     def _repair_projections(self, channel):
         try:

@@ -8,7 +8,7 @@ Open **Manage channels** beside the channel tabs, or **Manage** in the sidebar. 
 | Rename | Moves chat and mutable channel references. The old name stays reserved. Frozen review inputs, typed journals and queue audit records keep their original authority. |
 | Archive | Keeps history and saved records, hides the channel from active navigation and blocks new chat, reviews and automatic routing. |
 | Reopen | Makes an archived channel writable again. The preview discloses enabled overdue schedules. |
-| Delete | Removes channel chat and todos. Jobs, reviews, schedules, summaries and upload references remain readable through **View retained records**. Upload files stay on disk. |
+| Delete | Removes channel chat and todos. Jobs, reviews, schedules, summaries, authored artifacts and upload references remain retained. Upload files stay on disk. |
 | Cancel queued only | Cancels only the exact queued dispatches in its preview. Active or uncertain work stays untouched. This action never chains into archive or delete. |
 
 Type the exact displayed channel name to confirm. Changing a rename destination invalidates its preview. The UI refetches the catalog after a change; it keeps your draft while a request is refused or unconfirmed.
@@ -17,11 +17,13 @@ Type the exact displayed channel name to confirm. Changing a rename destination 
 
 Finish or explicitly Stop live reviews before renaming, archiving or deleting their channel. The blocker list identifies outstanding sessions, dispatches and pending history projections. Channel management never stops a worker or cancels remote computation for you.
 
+Pending authored-artifact requests also block rename, archive and delete. **Cancel queued only** saves a queued artifact request as cancelled before fencing its dispatch. If fencing fails, the response reports the saved cancellation and unconfirmed dispatches. Refresh the preview and retry queued cancellation to repair the fence. Active work stays untouched.
+
 **Repair history** projects pending results for completed or stopped runs. A live pending projection is labeled as requiring a wait or restart. Reopening also attempts scoped terminal-history repair. Typed results and receipts remain admissible while chat is read-only; a late result can therefore stay unprojected while archived and appear after reopening. Legacy reviews remain readable and do not acquire an unrecoverable projection blocker.
 
 An interrupted rename or delete leaves a durable repair intent. Its named channels stay held while peers remain usable. Restart preserves that hold. Use the exact-name **Retry repair** control to resume; startup does not silently finish a destructive action. A rename holds both names until it finishes.
 
-If the catalog itself is unreadable, channel writes and queue claims are held. Existing queue release, Stop and typed-result admission stay available. A held Jobs or schedules file gets its own alert while healthy chat continues. Management previews need a complete storage view: an unreadable retained-artifacts file pauses create, reopen, archive, rename and delete, including reopening an archived channel. Repair storage before trying again.
+If the catalog itself is unreadable, channel writes and queue claims are held. Existing queue release, Stop and typed-result admission stay available. A held Jobs or schedules file gets its own alert while healthy chat continues. Management previews need a complete storage view: an unreadable retained-upload catalog or authored-artifact index pauses create, reopen, archive, rename and delete, including reopening an archived channel. The catalog marks authored counts as unavailable while healthy owners remain readable. A damaged individual artifact body leaves metadata available. Repair storage before trying again.
 
 ## Reading archived and deleted channels
 
@@ -30,6 +32,8 @@ The selected channel stays visible as a read-only view after archive or delete. 
 In Manage, **View retained records** reads the summary, job conversations and stopped review source/journal. Retained schedules and jobs are read-only, including deletion and reorder. Jobs from inactive channels cannot be dragged or used as reorder targets.
 
 Delete previews count **attachment references**. The retained view counts **messages with attachments** and lists their files. These are different units. Only safe owned upload links are clickable; other saved attachment fields remain inert metadata. Artifact purge is not supported.
+
+Authored-artifact counts include lineages with no completed version, all request attempts, version totals and copied-source bytes. **View retained records** shows bounded lineage, head-version and pending-request metadata. Delete previews disclose that authored artifacts and their copied source remain in retained audit and backups.
 
 Old aliases and deleted names refuse new writes. Delayed ordinary callbacks on an inactive channel are dropped and do not reroute on reopening. They never redirect to `general`.
 

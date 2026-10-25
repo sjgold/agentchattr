@@ -6,7 +6,8 @@ window.ChannelLifecycle = (() => {
     const policyDisabled = new WeakMap();
     const states = new Set(['active', 'archived', 'retired', 'unregistered']);
     const countKeys = ['messages', 'todos', 'jobs', 'schedules', 'sessions', 'summaries', 'uploads'];
-    const ownerKeys = [...countKeys, 'queue'];
+    const artifactCountKeys = ['artifacts', 'artifact_versions', 'artifact_requests', 'artifact_source_bytes'];
+    const ownerKeys = [...countKeys, 'queue', 'artifacts'];
     const knownErrors = new Set([
         'That channel name is already used or retired.',
         'That channel name is already used or retired by another channel.',
@@ -15,7 +16,10 @@ window.ChannelLifecycle = (() => {
         'Channel work is still pending; inspect its blocking scope first.',
         'Type the exact channel name to confirm.', 'General is protected.',
         'Reopen this channel first.', 'There are no queued messages to cancel.',
-        'No repairable history is pending; live work must wait or restart.'
+        'No repairable history is pending; live work must wait or restart.',
+        'Authored artifact metadata is held. Repair saved artifact metadata before changing channels.',
+        'Artifact cancellation is unavailable. No queued work was changed.',
+        'Artifact request cancellation was saved; transport fencing is unconfirmed.'
     ]);
     const copy = value => value == null ? value : JSON.parse(JSON.stringify(value));
     const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -54,13 +58,19 @@ window.ChannelLifecycle = (() => {
             throw new ChannelRequestError('The channel request could not be confirmed. Reload the catalog and check again.', 0);
         } finally { clearTimeout(timer); }
     }
+    function validArtifactCounts(value, held = false) {
+        if (!artifactCountKeys.some(key => key in value)) return !held; // Legacy catalog fixtures/servers.
+        return artifactCountKeys.every(key => held ? value[key] === null : integer(value[key]));
+    }
     function validCounts(value) {
-        return object(value) && countKeys.every(key => integer(value[key]));
+        return object(value) && countKeys.every(key => integer(value[key])) && validArtifactCounts(value);
     }
     function validDisplayRow(row) {
         if (!object(row.errors) || Object.keys(row.errors).some(key => !ownerKeys.includes(key) || typeof row.errors[key] !== 'string' || !row.errors[key])) return false;
         if (row.state === 'unregistered') return row.counts === null && row.overdue_schedules === 0 && !Object.keys(row.errors).length;
-        return object(row.counts) && ownerKeys.every(key => row.errors[key] ? row.counts[key] === null : integer(row.counts[key]))
+        return object(row.counts) && ownerKeys.filter(key => key !== 'artifacts').every(key => row.errors[key] ? row.counts[key] === null : integer(row.counts[key]))
+            && validArtifactCounts(row.counts, !!row.errors.artifacts)
+            && (row.artifacts_held === undefined || row.artifacts_held === !!row.errors.artifacts)
             && (row.errors.schedules ? row.overdue_schedules === null : integer(row.overdue_schedules));
     }
     function validateCatalog(value) {
@@ -92,7 +102,8 @@ window.ChannelLifecycle = (() => {
     function ownerAvailable(owner, name) {
         const row = ready && catalog?.channels.find(item => item.name === name);
         return !!row && row.state !== 'unregistered' && ownerKeys.includes(owner)
-            && !row.errors[owner] && integer(row.counts?.[owner]);
+            && !row.errors[owner] && integer(row.counts?.[owner])
+            && (owner !== 'artifacts' || validArtifactCounts(row.counts));
     }
     function partialContents(name) {
         return !!catalog?.channels.find(row => row.name === name && Object.keys(row.errors).length);
@@ -252,7 +263,8 @@ window.ChannelLifecycle = (() => {
     function updateApply(form) {
         const apply = form.dialog.querySelector('#channel-manager-apply');
         const blocked = form.preview && !['create', 'reopen', 'recover_projections'].includes(form.op)
-            && form.preview.blockers.some(item => !(form.op === 'cancel_queued' && item.kind === 'transport' && item.state === 'queued'));
+            && form.preview.blockers.some(item => !(form.op === 'cancel_queued' && (item.kind === 'transport' && item.state === 'queued'
+                || item.kind === 'artifact' && item.transport_state === 'queued' && item.held === false)));
         const noQueued = form.op === 'cancel_queued' && !form.preview?.queued_dispatch_ids.length;
         const noRepair = form.op === 'recover_projections' && !form.preview?.blockers.some(item => item.kind === 'projection_pending' && !item.reason);
         if (apply) apply.disabled = !ready || !!mutation || form.busy || !form.preview
@@ -293,6 +305,8 @@ window.ChannelLifecycle = (() => {
                 const line = node('div', undefined, 'channel-manager-row');
                 line.appendChild(node('strong', '# ' + row.name));
                 line.appendChild(node('p', row.counts ? `${row.counts.messages ?? 'Unavailable'} messages, ${row.counts.jobs ?? 'unavailable'} jobs, ${row.counts.sessions ?? 'unavailable'} reviews, ${row.counts.summaries ?? 'unavailable'} summaries` : 'Saved data is readable. Register a valid channel name through create or import before writing.'));
+                if (row.counts && 'artifacts' in row.counts) line.appendChild(node('p',
+                    `${row.counts.artifacts ?? 'Unavailable'} authored artifacts, ${row.counts.artifact_versions ?? 'unavailable'} versions, ${row.counts.artifact_source_bytes ?? 'unavailable'} copied-source bytes.`));
                 for (const owner of Object.keys(row.errors)) line.appendChild(node('p', `${owner}: Cannot confirm contents; repair storage first. Create, reopen, archive, rename and delete are paused. Healthy chat continues.`, 'channel-manager-status'));
                 const actions = node('div', undefined, 'channel-manager-actions');
                 const ops = row.name === 'general' ? ['view'] : key === 'active' ? ['view', 'rename', 'archive', 'delete', 'cancel_queued', 'recover_projections'] : key === 'archived' ? ['view', 'reopen', 'delete'] : ['view'];
@@ -334,6 +348,9 @@ window.ChannelLifecycle = (() => {
         if (form.preview) {
             const value = form.preview, counts = value.counts;
             consequences.appendChild(node('p', `${counts.messages} messages, ${counts.todos} todos, ${counts.jobs} jobs, ${counts.sessions} reviews, ${counts.schedules} schedules, ${counts.summaries} summaries, ${counts.uploads} attachment references.`));
+            if ('artifacts' in counts) consequences.appendChild(node('p',
+                `${counts.artifacts} authored artifacts, ${counts.artifact_versions} versions, ${counts.artifact_requests} requests, ${counts.artifact_source_bytes} copied-source bytes.`));
+            if (value.artifact_source_disclosure) consequences.appendChild(node('p', value.artifact_source_disclosure));
             const copy = form.op === 'delete' ? 'Chat messages and todos will be removed. Jobs, reviews, summaries and attachment references stay read-only. Upload files stay. Artifact purge is not supported. You will stay in a retained view.'
                 : form.op === 'archive' ? 'History and saved records stay. Writing, new reviews and automatic routing stop until Reopen.'
                 : form.op === 'reopen' ? `${value.overdue_schedules} overdue enabled schedules will run once at the next tick, then follow their normal cadence.`
@@ -396,6 +413,16 @@ window.ChannelLifecycle = (() => {
             if (current !== form || form.closed || form.channel !== channel || form.op !== 'view' || mine !== form.readEpoch) return;
             if (!object(value) || value.channel !== channel || !object(value.errors) || !object(value.counts) || !object(value.truncated)) throw new Error('Invalid retained records.');
             for (const owner of ['jobs', 'sessions', 'schedules', 'uploads']) if (!(value[owner] === null && value.errors[owner]) && (!Array.isArray(value[owner]) || value[owner].length > 100)) throw new Error('Invalid retained rows.');
+            if ('artifacts' in value || value.errors.artifacts) {
+                if (value.errors.artifacts) {
+                    if (value.artifacts !== null || value.counts.artifacts !== null || value.truncated.artifacts !== null
+                            || value.artifacts_held !== true || !validArtifactCounts(value.counts, true)) throw new Error('Invalid held artifacts.');
+                } else if (!Array.isArray(value.artifacts) || value.artifacts.length > 100
+                        || !validArtifactCounts(value.counts) || typeof value.truncated.artifacts !== 'boolean'
+                        || value.artifacts_held !== false || value.artifacts.some(entry => !object(entry)
+                            || !/^[a-f0-9]{32}$/.test(entry.id) || entry.channel !== channel
+                            || !integer(entry.version_count))) throw new Error('Invalid retained artifacts.');
+            }
             form.retained = value; renderManager(form);
         } catch (error) { if (!form.closed && form.channel === channel && form.op === 'view' && mine === form.readEpoch) report(form, errorText(error)); }
     }
@@ -403,17 +430,21 @@ window.ChannelLifecycle = (() => {
         detail.appendChild(node('h3', 'Retained records: # ' + form.channel));
         if (!form.retained) { detail.appendChild(node('p', 'Loading retained records.')); return; }
         const value = form.retained;
-        for (const owner of ['jobs', 'sessions', 'schedules', 'uploads', 'summary']) if (value.errors[owner]) detail.appendChild(node('p', `${owner}: Saved records are held. Repair storage and reload.`, 'channel-manager-status'));
+        for (const owner of ['jobs', 'sessions', 'schedules', 'uploads', 'artifacts', 'summary']) if (value.errors[owner]) detail.appendChild(node('p', `${owner}: Saved records are held. Repair storage and reload.`, 'channel-manager-status'));
         if (value.summary) { detail.append(node('h4', 'Summary'), node('pre', value.summary.text)); }
         else if (!value.errors.summary) detail.appendChild(node('p', 'No saved summary for this channel.'));
-        for (const owner of ['jobs', 'sessions', 'schedules', 'uploads']) {
-            const label = owner === 'sessions' ? 'Reviews' : owner === 'uploads' ? 'Messages with attachments' : owner[0].toUpperCase() + owner.slice(1);
+        for (const owner of ['jobs', 'sessions', 'schedules', 'uploads', ...('artifacts' in value ? ['artifacts'] : [])]) {
+            const label = owner === 'artifacts' ? 'Authored artifacts' : owner === 'sessions' ? 'Reviews' : owner === 'uploads' ? 'Messages with attachments' : owner[0].toUpperCase() + owner.slice(1);
             detail.appendChild(node('h4', label));
             if (value[owner] === null) continue;
             detail.appendChild(node('p', `${value.counts[owner]} ${label.toLowerCase()}${value.truncated[owner] ? '; showing the first 100' : ''}.`));
             for (const entry of value[owner]) {
                 const line = node('div', undefined, 'channel-retained-row');
-                if (owner === 'uploads') {
+                if (owner === 'artifacts') {
+                    line.appendChild(node('p', `Artifact ${entry.id}: ${entry.version_count} versions.`));
+                    if (entry.head) line.appendChild(node('p', `Latest version ${entry.head.sequence}, ${entry.head.byte_length} bytes. SHA-256 ${entry.head.sha256}`));
+                    if (entry.pending_request) line.appendChild(node('p', `Request ${entry.pending_request.request_id}: ${entry.pending_request.state}`));
+                } else if (owner === 'uploads') {
                     line.appendChild(node('p', `Message ${entry.message_id}, ${entry.message_uid}`));
                     for (const item of entry.attachments || []) line.appendChild(node('p', typeof item.name === 'string' ? item.name : 'Attachment reference'));
                     for (const [linkIndex, link] of (entry.safe_links || []).entries()) if (typeof link.url === 'string' && /^\/uploads\/[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/.test(link.url)) {
