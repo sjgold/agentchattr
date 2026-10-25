@@ -443,3 +443,54 @@ def complete_api_artifact(record, *, runtime_path, manifest, consumer_id, fetch_
     except (OSError, ValueError, RuntimeError, TypeError, KeyError):
         pass
     return _outcome('held', 'artifact_delivery_unconfirmed')
+
+
+def settle_api_artifact(client, dispatch_id, *, runtime_path, admitted, local_ended=None,
+                        error_category='local_delivery_failure', http_status=None):
+    """Settle only the inspected original claim, with explicit local-exit proof.
+
+    local_ended is an in-process observation from this sequential invocation,
+    never a request row or saved-result inference. Otherwise inspect its journal.
+    """
+    def inspect():
+        value = client.inspect(dispatch_id)
+        if (value['envelope']['dispatch_id'] != dispatch_id
+                or value['consumer_id'] != client.consumer_id):
+            raise ValueError('Artifact transport binding changed.')
+        return value
+
+    def finish(value):
+        state = value['state']
+        if state in ('released', 'failed', 'cancelled', 'settled_recovered'):
+            return 'settled'
+        ended = (local_ended is True if local_ended is not None else
+                 artifact_api_cancellation_status(runtime_path, dispatch_id) == 'local_ended')
+        if state == 'cancelling':
+            client.cancellation_receipt(dispatch_id, 'local_ended' if ended else 'unresolved')
+            return 'settled' if ended else 'held'
+        if state not in ('dispatched', 'acknowledged', 'uncertain'):
+            return 'held'
+        if not ended:
+            client.uncertain(dispatch_id)
+            return 'held'
+        return None
+
+    try:
+        result = finish(inspect())
+        if result is not None:
+            return result
+        try:
+            client.release(dispatch_id, failed=not admitted,
+                error_category='' if admitted else error_category,
+                **({'http_status': http_status} if http_status is not None else {}))
+            return 'settled'
+        except Exception as error:
+            # A lost release response or cancellation race requires an exact
+            # reread. Never claim here: that can hand out the next dispatch.
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            return finish(inspect()) or 'held'
+    except Exception as error:
+        if isinstance(error, urllib.error.HTTPError):
+            error.close()
+        return 'held'

@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 07:43 UTC (#20 old-manifest compatibility focused110 PASS; independent recheck next)
+**Updated:** 2026-10-25 07:54 UTC (#20 actual wrapper entries180 PASS; server bridge next)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured entry/transport/factory wiring remains incomplete. Artifact production remains disabled.**
+**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured API/CLI entry checks pass; transport/MCP/factory wiring remains incomplete. Artifact production remains disabled.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
-| Next | Sonnet rechecks the separate manifest metadata/capability compatibility pin; Codex then completes entry/transport/MCP/factory/races. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Codex completes agent transport/MCP/factory binding and tests, then requests independent wrapper-package review. Actual entries and Event races now pass component checks. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
+
+- Actual wrapper entry checkpoint: combined180 PASS22.998s (implementation owner), including unchanged151 baseline, frozen worker helper12, actual nested API handler/same-call model observation, managed CLI watcher, optional held status, Event cancellation races and legacy prompt goldens. Independent manifest compatibility clearance110 PASS14.706s at8d8894f. Server artifact routes/MCP/factory remain unbound; production capability empty.
 
 - Latest compatibility correction: old13/27-file v1 manifests remain valid ownership/provenance metadata after source-set growth; artifact eligibility still requires the exact current source set/hashes and explicit capability. Root4 tests/11 source errors0.353s before fix ->4 PASS0.490s; combined unchanged capability/runtime/cold-recovery plus upgrade tests110 PASS14.971s, tracked e9fae547. Pre-change literal golden vectors retained. Native observations are doubles; independent recheck pending. Production capability stays empty.
 

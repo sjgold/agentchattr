@@ -457,7 +457,8 @@ def _report_rule_sync(server_port: int, agent_name: str, epoch: int, token: str 
 
 def _queue_watcher(get_identity_fn, inject_fn, *, is_multi_instance: bool = False, trigger_flag=None,
                    server_port: int = 8300, agent_name: str = "", get_token_fn=None,
-                   refresh_interval: int = 10, stop_event=None):
+                   refresh_interval: int = 10, stop_event=None,
+                   artifact_runtime=None, artifact_manifest=None, artifact_status=None):
     """Claim one immutable dispatch; silence never releases terminal ownership."""
     from queue_client import QueueClient, CliConsumer
     client = QueueClient(server_port, get_token_fn or (lambda: ''))
@@ -498,12 +499,25 @@ def _queue_watcher(get_identity_fn, inject_fn, *, is_multi_instance: bool = Fals
             trigger_flag[0] = True
         return text.replace('\n', ' ')
 
-    consumer = CliConsumer(client, inject_fn, prompt)
+    artifact_preflight = None
+    if artifact_runtime is not None and artifact_manifest is not None:
+        from artifact_worker import ArtifactHTTP, preflight_cli_artifact
+        transport = ArtifactHTTP(server_port, get_token_fn or (lambda: ''))
+        def artifact_preflight(record, **observations):
+            decision = preflight_cli_artifact(record, runtime_path=artifact_runtime,
+                manifest=artifact_manifest, consumer_id=client.consumer_id,
+                fetch_brief=transport.fetch_brief, submit_saved=transport.submit_saved, **observations)
+            if artifact_status is not None:
+                artifact_status(record['envelope']['dispatch_id'], decision['action'], decision['reason'])
+            return decision
+    consumer = CliConsumer(client, inject_fn, prompt, artifact_preflight=artifact_preflight)
     last_error = None
     try:
         while stop_event is None or not stop_event.is_set():
             try:
                 consumer.poll()
+                if artifact_status is not None and consumer.held_artifact_dispatch_id:
+                    artifact_status(consumer.held_artifact_dispatch_id, 'hold', consumer.held_artifact_reason)
                 last_error = None
             except Exception as exc:
                 # No document/provider text or bearer values in diagnostics.

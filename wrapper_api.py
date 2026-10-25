@@ -297,9 +297,17 @@ def main():
             return json.loads(resp.read())
 
     # Call OpenAI-compatible chat completions API
-    def call_model(messages, dispatch_id):
+    def call_model(messages, dispatch_id, *, include_observation=False):
         from api_invocation import run_completion, InvocationFailure
         def cancelled():
+            if include_observation:
+                if shutdown.is_set():
+                    return True
+                try:
+                    current = queue.inspect(dispatch_id)
+                    return current['state'] == 'cancelling'
+                except (OSError, ValueError):
+                    return shutdown.is_set()
             return _cancellation_requested(queue, dispatch_id, shutdown)
         if managed:
             try:
@@ -320,7 +328,8 @@ def main():
                 raise _ManagedProviderFailure(exc.http_status, exc.category) from None
             receipt.update(confirmed_model=result['confirmed_model'], authentication='verified',
                            state='ready', error=None)
-            return result['content']
+            return ({'content': result['content'], 'confirmed_model': result['confirmed_model']}
+                    if include_observation else result['content'])
         seat = {'id': 'compatibility', 'name': get_name(), 'provider': 'compatibility',
                 'adapter': 'openai-compatible', 'model': model or None, 'reasoning': None,
                 'launch_profile': 'standard', 'secret_ref': api_key_env}
@@ -328,7 +337,8 @@ def main():
             result = run_completion(seat, {'base_url': base_url, 'temperature': temperature}, messages, cancelled)
         except InvocationFailure as exc:
             raise _ManagedProviderFailure(exc.http_status, exc.category) from None
-        return result['content']
+        return ({'content': result['content'], 'confirmed_model': result['confirmed_model']}
+                if include_observation else result['content'])
 
     # Format chat messages into OpenAI format
     def format_messages(chat_msgs):
@@ -513,6 +523,63 @@ def main():
         finally:
             set_working(False)
 
+    # The artifact path never reads mutable chat or enters the legacy formatter.
+    # Keep this sequential worker's last outcome so release loss cannot regenerate.
+    artifact_attempt = {'dispatch_id': None}
+
+    def handle_artifact_trigger(record):
+        from artifact_worker import ArtifactHTTP, complete_api_artifact, settle_api_artifact
+        from api_invocation import InvocationCancelled
+        dispatch_id = record['envelope']['dispatch_id']
+        runtime_path = Path(managed_args.seat_file).resolve().parent if managed else None
+        if artifact_attempt['dispatch_id'] != dispatch_id:
+            artifact_attempt.clear()
+            artifact_attempt.update(dispatch_id=dispatch_id, admitted=False, local_ended=None,
+                                    reason='artifact_delivery_unconfirmed', category='local_delivery_failure',
+                                    http_status=None)
+            set_working(True)
+            try:
+                transport = ArtifactHTTP(server_port, get_token)
+                def saved(result_id):
+                    if receipt:
+                        receipt.update(result_saved=True, result_id=result_id, recoverable_result=None)
+                if record['state'] != 'cancelling':
+                    outcome = complete_api_artifact(record, runtime_path=runtime_path,
+                        manifest=birth.get('wrapper_protocol') if managed else None,
+                        consumer_id=queue.consumer_id, fetch_delivery=transport.fetch_delivery,
+                        fetch_parent=transport.fetch_parent,
+                        generate=lambda messages, dispatch: call_model(messages, dispatch, include_observation=True),
+                        submit_saved=transport.submit_saved,
+                        reject_response=lambda report: transport.reject_response(
+                            record['envelope']['artifact_brief_id'], report),
+                        cancel_requested=lambda dispatch: shutdown.is_set() or queue.inspect(dispatch)['state'] == 'cancelling',
+                        on_saved=saved)
+                    artifact_attempt.update(admitted=outcome['status'] == 'admitted', reason=outcome['reason'])
+            except InvocationCancelled as error:
+                artifact_attempt['local_ended'] = error.local_ended
+                if not error.local_ended:
+                    unresolved_dispatches.add(dispatch_id)
+            except _ManagedProviderFailure as error:
+                artifact_attempt['category'] = error.category
+                artifact_attempt['http_status'] = error.http_status
+            except Exception as error:
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                # Fixed guidance only; neither provider content nor authority is logged.
+                artifact_attempt['reason'] = 'artifact_delivery_unconfirmed'
+            finally:
+                set_working(False)
+        status = settle_api_artifact(queue, dispatch_id, runtime_path=runtime_path,
+            admitted=artifact_attempt['admitted'], local_ended=artifact_attempt['local_ended'],
+            error_category=artifact_attempt['category'], http_status=artifact_attempt['http_status'])
+        if receipt:
+            receipt.update(state='ready' if status == 'settled' else 'action_required',
+                error=None if status == 'settled' else 'Artifact delivery is held. Check the request and queue before restarting.',
+                held_artifact=None if status == 'settled' else
+                    {'dispatch_id': dispatch_id, 'reason': artifact_attempt['reason'] or 'artifact_delivery_unconfirmed'},
+                recoverable_result=False if artifact_attempt['admitted'] else None)
+        return artifact_attempt['admitted']
+
     # Durable ownership is claimed before a provider call; release is retried
     # independently so an acknowledgement loss never regenerates the answer.
     from queue_client import QueueClient
@@ -536,6 +603,13 @@ def main():
                 if record:
                     entry = record['envelope']
                     dispatch_id = entry['dispatch_id']
+                    if 'purpose' in entry:
+                        if dispatch_id != processed_dispatch and record['state'] != 'cancelling':
+                            queue.acknowledge(dispatch_id)
+                        processed_ok = handle_artifact_trigger(record)
+                        processed_dispatch = dispatch_id
+                        time.sleep(1)
+                        continue
                     if dispatch_id in unresolved_dispatches and record['state'] != 'cancelling':
                         queue.uncertain(dispatch_id)
                         time.sleep(.2)

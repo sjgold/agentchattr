@@ -69,6 +69,23 @@ def run(snapshot_path):
                                    error='Local server heartbeat deadline reached. Retry this seat.')
                     stop.set()
 
+    def artifact_status(dispatch_id, action, reason):
+        from artifact_worker import REASONS
+        import re
+        if (not isinstance(dispatch_id, str) or not re.fullmatch('[0-9a-f]{32}', dispatch_id)
+                or action not in ('inject', 'wait', 'complete', 'hold', 'reject')
+                or reason is not None and reason not in REASONS):
+            return
+        if action == 'hold':
+            receipt.update(held_artifact={'dispatch_id': dispatch_id,
+                'reason': reason or 'artifact_generation_uncertain'},
+                error='Artifact work is held. Check its request and queue before restarting this seat.')
+        elif action == 'wait' and reason:
+            receipt.update(held_artifact=None,
+                error='Artifact context is temporarily unavailable. The worker will check again on its next poll.')
+        else:
+            receipt.update(held_artifact=None, error=None)
+
     def start_watcher(inject):
         # Platform runner calls this only after its owned child/session exists.
         connected.set()
@@ -78,7 +95,10 @@ def run(snapshot_path):
             return name, data / (name + '_queue.jsonl')
         threading.Thread(target=_queue_watcher, args=(get_identity, inject),
                          kwargs={'is_multi_instance': True, 'server_port': port, 'agent_name': base,
-                                 'get_token_fn': lambda: identity['token'], 'stop_event': stop},
+                                 'get_token_fn': lambda: identity['token'], 'stop_event': stop,
+                                 'artifact_runtime': snapshot_path.parent,
+                                 'artifact_manifest': birth.get('wrapper_protocol'),
+                                 'artifact_status': artifact_status},
                          daemon=True).start()
 
     try:

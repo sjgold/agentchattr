@@ -251,6 +251,8 @@ class SeatManager:
                 'provider_verified': attempt['authentication'] == 'verified',
                 'last_adapter_check': attempt['last_receipt_at'],
                 'startup_deadline_seconds': self.timeout}
+        if attempt.get('held_artifact') is not None:
+            result['held_artifact'] = deepcopy(attempt['held_artifact'])
         if attempt['seat']['adapter'] == 'cli':
             result.update(adapter='cli', executable=attempt.get('executable', attempt['effective']['provider']['command']),
                           startup_checked=attempt.get('startup_checked', False), version=attempt.get('version'),
@@ -295,6 +297,14 @@ class SeatManager:
         except (OSError, ValueError, AttributeError):
             pass
         if receipt:
+            from artifact_worker import REASONS
+            held = receipt.get('held_artifact')
+            if (isinstance(held, dict) and set(held) == {'dispatch_id', 'reason'}
+                    and isinstance(held['dispatch_id'], str) and re.fullmatch('[0-9a-f]{32}', held['dispatch_id'])
+                    and isinstance(held['reason'], str) and held['reason'] in REASONS):
+                attempt['held_artifact'] = deepcopy(held)
+            else:
+                attempt.pop('held_artifact', None)
             attempt['last_receipt_at'] = receipt['updated_at']
             for field in ('state', 'name', 'error', 'authentication', 'adapter_connected', 'confirmed_model'):
                 if field in receipt:
