@@ -194,3 +194,6 @@ Capability candidate9ae0842: approved contract, initial genuine2 missing-interfa
 
 
 Capability correction: P1 source-only0ade4b7 and separate fixture changes. Exact15 methods reproduce original7FAIL+9ERROR5.654s, then PASS6.035s with only three canonical effective-field-copy repairs. Root actual manager launch/provenance plus legacy consumer guards2 PASS1.173s; controlled process and bounded Windows fixture-child methods are labeled. Corrected full and independent recheck next.
+
+
+Corrected frozen full7a9226e PASS1415 tests215.255s (four skips), tracked83c09a8b, implementation owner only. Separate P1 source0ade4b7 and fixture/recovery7a9226e await Sonnet recheck; no capability enablement or authority/admission expansion yet.
