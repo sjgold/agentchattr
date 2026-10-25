@@ -167,3 +167,6 @@ TICKET-20-STORE-SCHEMA.md now freezes proposed exact store method/payload/state/
 
 
 Store-schema conditional PASS M1-M5/S1-S6 has a docs-only amendment for recheck: request-less unmatched diagnostics, deterministic keys/first timestamps, bounded8/group256groups1024details8MiB-body overflow with explicit last-key-only dedupe, same-state reason changes/fresh reason null, progressed request replay ignoring created_at only, and object-scoped corruption (index still globally held). Lock/order/error/canonical/CRLF/sort/UID semantics and the <=12-test plan are explicit. No helper briefing, new tests or store code until changed-section approval.
+
+
+Store schema d94f251 independently PASS (full doc read, no execution). F1-F4 applied: no terminal reason mutation, metadata list_versions and dispatch lookup, exact diagnostic attach regardless of claimed attempt, packet-unavailable quarantine code. Helper initial2 REDs now cleared; expanded execution held until production ready. No store code before RED evidence.
