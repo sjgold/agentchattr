@@ -26,7 +26,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #17 | Published and closed | Executable4723027, originmainfd825c8, independentPASSWITHNOTES; postmerge1004/four skips86.898s; issueclosed/completedverified. Schedulingcomposer deferred. |
 | #18 | Published and closed | Main5cac753, issueclosed/completed2026-10-24T10:45:05Z verified; independentPASSWITHNOTES; postmerge1040/four skips89.765s. Receipt preserves all limits/failed fixtures. |
 | #19 | Published and closed | origin/main21fac29 verified, issue19 closed/completed2026-10-25T02:02:50Z reread; final SonnetPASSWITHNOTES; postmerge1374/four skips110.873s |
-| #20 | Scope review and plan next | Codex reads DA-2/AT-12 and existing artifact/protocol paths; Sonnet plan review before implementation |
+| #20 | Contract draft under review | TICKET-20-CONTRACT.md records accepted direction and four open proposals; Sonnet review before plan/tests/code |
 
 ## Non-negotiable verification
 
@@ -39,7 +39,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 
 Published/closed: #1-18. Ticket18 main5cac753 is verified on origin/main and issue18 closed/completed at2026-10-24T10:45:05Z. Independent final Sonnet PASS WITH NONBLOCKING NOTES f893bd2; productc11bdec/verifier12c9a81 unchanged. Both builder/reviewer reproduced py/mjs and ordinary py browser serve; local postmerge1040/four skips89.765s and both UI VM12PASS. Receipt REVIEW-CLAUDE-TICKET-18.md and guide DOCUMENT-INPUTS.md preserve coverage/limits/failed fixtures.
 
-Current owner Codex: Ticket19 is published/closed at21fac29, independently reviewed and reproduced with documented bounds. Next Ticket20 scope reconnaissance and bounded plan freeze with Sonnet. No Ticket20 implementation yet; #21-26 remain pending. All acceptance resources stopped; live providers/Omarchy/Desktop/global changes excluded.
+Current owner Codex: Ticket19 is published/closed at21fac29, independently reviewed and reproduced with documented bounds. Next Ticket20 contract review and bounded plan freeze with Sonnet on codex/ticket-20-artifacts (base400d6de). No Ticket20 implementation yet; #21-26 remain pending. All acceptance resources stopped; live providers/Omarchy/Desktop/global changes excluded.
 
 Historical checkpoint details and original red/green evidence are retained in STATUS.md, per-ticket plans/review receipts and epic artifacts. Older component checks do not supersede the final status above. Helper resources are stopped; no live providers/native AI/Omarchy/Desktop/global-setting changes.
 
