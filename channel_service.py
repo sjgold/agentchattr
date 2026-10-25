@@ -20,7 +20,8 @@ _OPS = {'create', 'archive', 'reopen', 'delete', 'rename', 'cancel_queued', 'rec
 
 _ARTIFACT_COUNTS = ('artifacts', 'artifact_versions', 'artifact_requests', 'artifact_source_bytes')
 _ARTIFACT_HELD = 'Saved authored artifacts are held; repair storage and reload.'
-_ARTIFACT_UNKNOWN = 'Authored artifact contents cannot be confirmed; repair saved artifact metadata before deleting.'
+_ARTIFACT_UNKNOWN = 'Authored artifact contents cannot be confirmed; repair saved artifact metadata before changing channels.'
+_ARTIFACT_DELETE_UNKNOWN = 'Authored artifact contents cannot be confirmed; repair saved artifact metadata before deleting.'
 _ARTIFACT_DISCLOSURE = ('Deleting chat and todos keeps authored artifacts and copied source text in their retained audit and backups. '
     'Copied source and attachment metadata can contain whatever was in chat; backups are as sensitive as channel history.')
 
@@ -34,11 +35,11 @@ class ArtifactManagementUnavailable(ChannelUnavailable):
 
 
 class ArtifactOwnerHeld(ArtifactManagementUnavailable):
-    def __init__(self):
+    def __init__(self, *, deleting=False):
         super().__init__({'code': 'artifact_owner_held',
             'error': 'Authored artifact metadata is held. Repair saved artifact metadata before changing channels.',
             'artifacts_held': True, 'artifact_counts': dict.fromkeys(_ARTIFACT_COUNTS),
-            'artifact_source_retained': None, 'artifact_source_disclosure': _ARTIFACT_UNKNOWN})
+            'artifact_source_retained': None, 'artifact_source_disclosure': _ARTIFACT_DELETE_UNKNOWN if deleting else _ARTIFACT_UNKNOWN})
 
 
 class ArtifactCancellationUnavailable(ArtifactManagementUnavailable):
@@ -50,7 +51,7 @@ class ArtifactCancellationUnavailable(ArtifactManagementUnavailable):
 class ArtifactCancellationPartial(ArtifactManagementUnavailable):
     def __init__(self, result):
         super().__init__({**result, 'ok': False, 'code': 'artifact_cancellation_partial',
-            'error': 'Artifact request cancellation was saved; transport fencing is unconfirmed.',
+            'error': 'Artifact cancellation did not finish. Saved changes are listed; refresh the preview.',
             'warning': 'transport_unconfirmed'})
 
 
@@ -356,7 +357,7 @@ class ChannelService:
         if artifact_scope is not None:
             stable['artifacts'] = artifact_scope
         queued = sorted(item['envelope']['dispatch_id'] for item in transport if item['state'] == 'queued'
-                        and (item['envelope'].get('purpose') != 'artifact-v1'
+                        and (self.authored_artifacts is None or item['envelope'].get('purpose') != 'artifact-v1'
                              or self._artifact_id(item['envelope']['dispatch_id']) is not None))
         return counts, blockers, queued, overdue, stable
 
@@ -507,8 +508,13 @@ class ChannelService:
             self._action(value, op, channel, new_name)
             if op == 'delete':
                 self.artifacts.check()
-            counts, blockers, queued, overdue, stable = self._scope(channel,
-                authored_required=op not in ('cancel_queued', 'recover_projections'))
+            try:
+                counts, blockers, queued, overdue, stable = self._scope(channel,
+                    authored_required=op not in ('cancel_queued', 'recover_projections'))
+            except ArtifactOwnerHeld:
+                if op == 'delete':
+                    raise ArtifactOwnerHeld(deleting=True) from None
+                raise
             if (op == 'cancel_queued' and self.authored_artifacts is not None
                     and counts['artifacts'] is None and any(item['kind'] == 'artifact'
                         and item['transport_state'] == 'queued' for item in blockers)):
@@ -596,7 +602,10 @@ class ChannelService:
         selected = [row for row in preview['blockers'] if row['kind'] == 'artifact'
                     and row['transport_state'] == 'queued' and not row['held']]
         if not selected:
-            self.queue.cancel_queued_channel(channel, preview['queued_dispatch_ids'], request_id)
+            try:
+                self.queue.cancel_queued_channel(channel, preview['queued_dispatch_ids'], request_id)
+            except LaunchError:
+                raise ArtifactCancellationUnavailable() from None
             return None
         try:
             authority = self.artifact_service_getter() if self.artifact_service_getter else None
@@ -618,9 +627,16 @@ class ChannelService:
                 raise ArtifactCancellationUnavailable() from None
         if refused:
             raise ArtifactCancellationRefused(state(), refused)
-        for item in selected:
+        def saved_row(identifier, position):
+            try:
+                return self.authored_artifacts.get_request(identifier)
+            except Exception:
+                raise ArtifactCancellationPartial({**state(), 'unverified_request_ids':
+                    [row['request_id'] for row in selected[position:]]}) from None
+        for position, item in enumerate(selected):
             identifier, dispatch = item['request_id'], item['dispatch_id']
             try:
+                authority.validate_queued_cancellation(identifier)
                 if item['request_state'] == 'cancelled':
                     repair = authority.repair_cancel_fences([identifier])
                     settled = identifier in repair['repaired']
@@ -629,13 +645,13 @@ class ChannelService:
                     settled = result['transport_settled'] is True
                 summary['cancelled_request_ids'].append(identifier)
             except ChannelConflict:
-                saved = self.authored_artifacts.get_request(identifier)
+                saved = saved_row(identifier, position)
                 if saved is None or saved['state'] != 'cancelled':
                     raise ArtifactCancellationRefused(state(), [identifier]) from None
                 summary['cancelled_request_ids'].append(identifier)
                 settled = False
             except (ChannelUnavailable, OSError, ValueError, LaunchError):
-                saved = self.authored_artifacts.get_request(identifier)
+                saved = saved_row(identifier, position)
                 if saved is not None and saved['state'] == 'cancelled':
                     summary['cancelled_request_ids'].append(identifier)
                 elif not summary['cancelled_request_ids']:
@@ -679,7 +695,7 @@ class ChannelService:
                     raise ChannelConflict('Channel work is still pending; inspect its blocking scope first.')
                 self.catalog.begin('rename', channel, new_name, request_id=request_id,
                                    expected_revision=preview['revision'])
-        # Never retain an outer apply boundary across the seven step boundaries.
+        # Never retain an outer apply boundary across the eight step boundaries.
         return self.retry(request_id)
 
     def _retry_rename(self, request_id):

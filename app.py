@@ -29,7 +29,8 @@ from registry import RuntimeRegistry
 from session_store import SessionStore, validate_session_template
 from session_engine import SessionEngine
 from channel_lifecycle import ChannelStore, ChannelUnavailable, ChannelInactive, ChannelConflict
-from channel_service import ChannelService, ArtifactManagementUnavailable, ArtifactCancellationRefused
+from channel_service import ChannelService, ArtifactManagementUnavailable, ArtifactCancellationRefused, ArtifactCancellationUnavailable
+from launcher import LaunchError
 
 log = logging.getLogger(__name__)
 
@@ -1336,6 +1337,9 @@ async def _channel_http(request, action):
         return JSONResponse(result, headers={'Cache-Control': 'no-store'})
     except (ArtifactManagementUnavailable, ArtifactCancellationRefused) as error:
         return JSONResponse(error.payload, status_code=error.http_status, headers={'Cache-Control': 'no-store'})
+    except LaunchError:
+        error = ArtifactCancellationUnavailable()
+        return JSONResponse(error.payload, status_code=503, headers={'Cache-Control': 'no-store'})
     except PermissionError:
         return JSONResponse({'error': 'Operator session required.'}, status_code=403)
     except (ChannelConflict, QueueConflict) as error:
@@ -1356,6 +1360,8 @@ async def _broadcast_channel_projection(service):
 
 
 def _channel_error(error, *, request_id=None, channel=None):
+    if isinstance(error, LaunchError):
+        error = ArtifactCancellationUnavailable()
     if isinstance(error, (ChannelUnavailable, OSError)):
         code, message = 503, 'Channel management is unavailable; reload Manage channels.'
     elif isinstance(error, (ChannelConflict, QueueConflict)):
@@ -1369,7 +1375,7 @@ def _channel_error(error, *, request_id=None, channel=None):
     if isinstance(error, (ArtifactManagementUnavailable, ArtifactCancellationRefused)):
         result.update(error_code=error.code, error=error.payload['error'])
         for key in ('artifacts_held', 'artifact_counts', 'artifact_source_retained',
-                    'artifact_source_disclosure', 'artifact_cancellation', 'refused_request_ids'):
+                    'artifact_source_disclosure', 'artifact_cancellation', 'refused_request_ids', 'unverified_request_ids'):
             if key in error.payload:
                 result[key] = error.payload[key]
     return result
@@ -1389,7 +1395,7 @@ async def _legacy_channel_action(websocket, event):
             new_name=event.get('new_name') if op == 'rename' else None,
             request_id=event['request_id'], confirmation=event['confirmation'], preview_token=event['preview_token'])
         await _broadcast_channel_projection(_channels())
-    except (ChannelUnavailable, ChannelConflict, OSError, ValueError) as error:
+    except (ChannelUnavailable, ChannelConflict, OSError, ValueError, LaunchError) as error:
         await websocket.send_text(json.dumps(_channel_error(error, request_id=event.get('request_id'), channel=channel)))
 
 

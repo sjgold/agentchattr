@@ -88,4 +88,54 @@ class ArtifactLifecycleEdgeTests(unittest.TestCase):
         self.assertEqual(case.artifacts.get_request(selected[1]['request_id'])['state'],'queued')
 
 
+    def test_saved_fenced_and_saved_unconfirmed_rows_survive_a_later_refusal(self):
+        for fenced in (True,False):
+            with self.subTest(fenced=fenced):
+                case=self.context();case.prepare();case.prepare()
+                preview=case.service.preview('cancel_queued','review')
+                rows=[row for row in preview['blockers'] if row['kind']=='artifact']
+                first,second=rows;cancel=case.authority.cancel_request;fence=case.authority._fence
+                def refuse(identifier):
+                    if identifier==second['request_id']:raise ChannelConflict('PRIVATE_REFUSAL')
+                    return cancel(identifier)
+                def maybe_fence(row):
+                    if not fenced and row['audit']['request_id']==first['request_id']:raise OSError('PRIVATE_FENCE')
+                    return fence(row)
+                with patch.object(case.authority,'cancel_request',side_effect=refuse), \
+                        patch.object(case.authority,'_fence',side_effect=maybe_fence):
+                    with self.assertRaises(ChannelConflict) as caught:self.apply_cancel(case,preview)
+                payload=caught.exception.payload
+                self.assertEqual(caught.exception.code,'artifact_cancellation_refused')
+                self.assertEqual(payload['artifact_cancellation'],{
+                    'cancelled_request_ids':[first['request_id']],
+                    'fenced_dispatch_ids':[first['dispatch_id']] if fenced else [],
+                    'unconfirmed_dispatch_ids':[] if fenced else [first['dispatch_id']]})
+                self.assertEqual(payload['refused_request_ids'],[second['request_id']])
+                self.assertEqual(case.artifacts.get_request(second['request_id'])['state'],'queued')
+
+    def test_unknown_effect_wire_and_launch_backstop_are_safe_over_legacy_ws(self):
+        import asyncio
+        import app
+        from channel_service import ArtifactCancellationPartial
+        from unittest.mock import AsyncMock
+        case=self.context()
+        summary={'cancelled_request_ids':['a'*32],'fenced_dispatch_ids':['b'*32],'unconfirmed_dispatch_ids':[]}
+        error=ArtifactCancellationPartial({'op':'cancel_queued','channel':'review','state':'active','revision':0,
+            'artifact_cancellation':summary,'unverified_request_ids':['c'*32,'d'*32]})
+        body={'op':'cancel_queued','channel':'review','request_id':uuid.uuid4().hex,'confirmation':'review','preview_token':'unused'}
+        with patch.object(case.service,'apply',side_effect=error):
+            response,broadcasts=metadata.ArtifactLifecycleMetadataTests.http(case,'apply',body)
+        self.assertEqual(response.status_code,503);self.assertEqual(broadcasts,0)
+        self.assertEqual(json.loads(response.body)['unverified_request_ids'],['c'*32,'d'*32])
+        for failure,code in ((error,'artifact_cancellation_partial'),(LaunchError('PRIVATE_LOCK'),'artifact_cancellation_unavailable')):
+            ws=AsyncMock();event={'type':'channel_cancel_queued','name':'review',**{key:body[key] for key in ('request_id','confirmation','preview_token')}}
+            with patch.object(app,'_channels',return_value=case.service),patch.object(case.service,'apply',side_effect=failure), \
+                    patch.object(app,'_broadcast_channel_projection',AsyncMock()) as broadcast:
+                asyncio.run(app._legacy_channel_action(ws,event))
+            payload=json.loads(ws.send_text.call_args.args[0])
+            self.assertEqual((payload['code'],payload['error_code']),(503,code));broadcast.assert_not_called()
+            self.assertNotIn('PRIVATE',str(payload))
+            if code=='artifact_cancellation_partial':self.assertEqual(payload['unverified_request_ids'],['c'*32,'d'*32])
+
+
 if __name__=='__main__':unittest.main()

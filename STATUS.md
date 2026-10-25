@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 slice4 final edge reds captured; corrections next)
+**Updated:** 2026-10-25 (#20 lifecycle final edges focused green; full next)
 
 ## At a glance
 
@@ -17,10 +17,12 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
-| Latest checks | Slice4 sourcefc45f4c full1636 PASS309.943s/four skips (implementation owner); independent slice4 review pending. Driver source661eb4d independently cleared, earlier overlapping socket-error full remains a recorded non-pass |
+| Latest checks | Pre-edge sourcea34cf78 full1653 PASS318.782s/four skips. Final edge candidate focused95 PASS21.836s/channel345 PASS14.952s/Node UI24+policy4 PASS; full then independent recheck next. All full results are implementation-owner evidence |
 | Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store import independently cleared5024c06 (reviewer174 PASS141.161s plus independent benchmark PASS). Pure codec independently cleared23fba31 (reviewer210 PASS144.462s). Private receipt independently cleared7d4daad (reviewer216 PASS143.485s). Archive driver/call-site/report candidate implemented: focused144 PASS8.993s, legacy ZIP/report guards pass. Frozen7c476ff full1602 PASS294.327s/four skips (implementation owner), reviewer257 PASS149.909s WITH E1/E2 corrections required. Corrections focused161 PASS11.569s; reviewer274 PASS158.145s, conditional on full. Full1619/one socketpair WinError10055 ERROR323.295s/four skips; unchanged isolated12 PASS0.402s. No-overlap unchanged full1619 PASS301.087s/four skips, driver component cleared. Slice4 initial reds independently accepted51739c1. Candidate root17/factory/catalog23 PASS6.800s, focused artifact78 PASS25.521s, unchanged channel345 PASS14.693s and Node UI17/policy4 PASS; frozenfc45f4c full1636 PASS309.943s/four skips; independent slice4 review next; capability stays empty |
 
 ## Current handoff
+
+- Final edge candidate: ordinary LaunchError has fixed503 backstops; exception-handler lookup failure preserves earlier effects and marks current+remaining ids unverified; omitted-owner queue list stays legacy. Per-mutation predicate, neutral held/partial text and bounded UI lists implemented. Red-first4da4f6f/root4 2 FAIL+4 ERROR -> final focused95 PASS21.836s, unchanged channel345 PASS14.952s, Node24+4 PASS. Reviewer has no heavy suite active and will hold until full completion. Freeze/full then independent recheck next; capability empty, no publication.
 
 - Sourcea34cf78 full1653 PASS318.782s/four skips, but slice4 still NOT cleared. Static final edge findings D1-D3/D6 reproduced by root4 (2 FAIL+4 ERROR1.476s) against unchanged source. New optional unverified_request_ids and fixed partial/neutral-held texts are explicitly ruled and frozen before edits. Next: fix ordinary LaunchError/backstop, guarded handler lookup, omitted-owner queued list, per-mutation predicate; bound frontend lists and rerun focused/full then independent recheck. No new activation/publication.
 

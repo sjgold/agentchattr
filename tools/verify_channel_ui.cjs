@@ -338,4 +338,27 @@ test('refused cancellation shows saved effects and never automatically repeats',
   assert.ok(env.body.textContent.includes('b'.repeat(32)));assert.equal(env.requests.filter(req=>req.url.endsWith('/apply')).length,1);
 });
 
+test('blocker and queued-id displays cap at 20 while eligibility checks all rows',async()=>{
+  const env=moduleEnv();await manage(env,'cancel_queued');
+  const ids=Array.from({length:100},(_,index)=>(index+1).toString(16).padStart(32,'0'));
+  const blockers=ids.map((id,index)=>({kind:'artifact',request_id:id,dispatch_id:id,request_state:'queued',
+    transport_state:'queued',state:'queued',held:index===99,reason:index===99?'ownership_mismatch':'request_pending'}));
+  await getPreview(env,preview('cancel_queued',{blockers,queued_dispatch_ids:ids}));
+  input(control(env,'channel-manager-confirm'),'review');
+  assert.ok(env.body.textContent.includes(ids[0]));assert.ok(!env.body.textContent.includes(ids[99]));
+  assert.match(env.body.textContent,/100.*first 20/i);assert.equal(control(env,'channel-manager-apply').disabled,true);
+});
+test('unverified cancellation requests show totals and ask for refresh before re-checking',async()=>{
+  const env=moduleEnv();await manage(env,'cancel_queued');await getPreview(env,preview('cancel_queued',{queued_dispatch_ids:['d'.repeat(32)]}));
+  input(control(env,'channel-manager-confirm'),'review');control(env,'channel-manager-apply').click();await flush();
+  const ids=Array.from({length:30},(_,index)=>(index+1).toString(16).padStart(32,'0'));
+  answer(pending(env,'/apply')[0],{code:'artifact_cancellation_partial',error:'Artifact cancellation did not finish. Saved changes are listed; refresh the preview.',
+    artifact_cancellation:{cancelled_request_ids:['a'.repeat(32)],fenced_dispatch_ids:['b'.repeat(32)],unconfirmed_dispatch_ids:[]},
+    unverified_request_ids:ids},503);
+  await settleReads(env,catalog(2));
+  assert.match(env.body.textContent,/Unverified requests.*30.*first 20/i);assert.match(env.body.textContent,/re.check after.*refresh/i);
+  assert.ok(env.body.textContent.includes(ids[0]));assert.ok(!env.body.textContent.includes(ids[29]));
+  assert.equal(env.requests.filter(req=>req.url.endsWith('/apply')).length,1);
+});
+
 (async()=>{let failures=0;for(const {name,run} of tests){try{await run();console.log('PASS '+name);}catch(error){failures++;console.error('FAIL '+name+'\n'+error.stack);}}console.log(JSON.stringify({cases:tests.length,failures,scope:'actual_source_vm_only'}));process.exitCode=failures?1:0;})();

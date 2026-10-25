@@ -19,7 +19,7 @@ window.ChannelLifecycle = (() => {
         'No repairable history is pending; live work must wait or restart.',
         'Authored artifact metadata is held. Repair saved artifact metadata before changing channels.',
         'Artifact cancellation is unavailable. No queued work was changed.',
-        'Artifact request cancellation was saved; transport fencing is unconfirmed.',
+        'Artifact cancellation did not finish. Saved changes are listed; refresh the preview.',
         'A queued artifact request refused cancellation. Saved changes are listed; refresh the preview.'
     ]);
     const copy = value => value == null ? value : JSON.parse(JSON.stringify(value));
@@ -56,9 +56,9 @@ window.ChannelLifecycle = (() => {
                         && object(value.artifact_cancellation)) {
                     const summary = value.artifact_cancellation;
                     const lists = [summary.cancelled_request_ids, summary.fenced_dispatch_ids,
-                        summary.unconfirmed_dispatch_ids, value.refused_request_ids ?? []];
+                        summary.unconfirmed_dispatch_ids, value.refused_request_ids ?? [], value.unverified_request_ids ?? []];
                     if (lists.every(list => Array.isArray(list) && list.every(id => typeof id === 'string' && /^[a-f0-9]{32}$/.test(id)))) {
-                        const labels = ['Saved requests', 'Fenced dispatches', 'Unconfirmed dispatches', 'Refused requests'];
+                        const labels = ['Saved requests', 'Fenced dispatches', 'Unconfirmed dispatches', 'Refused requests', 'Unverified requests, re-check after a refresh'];
                         effects = lists.map((list, index) => `${labels[index]}: ${list.length}${list.length ? ' (' + list.slice(0, 20).join(', ') + (list.length > 20 ? '; first 20 shown' : '') + ')' : ''}.`).join(' ');
                     }
                 }
@@ -372,10 +372,11 @@ window.ChannelLifecycle = (() => {
                 : form.op === 'rename' ? 'Messages and mutable records move to the new name. Frozen briefs, typed journals and queue audit stay unchanged. The old name remains reserved.'
                 : form.op === 'recover_projections' ? 'Repair completed history only. Live pending work must wait or restart; no review or worker is started.' : 'This registers a new active channel.';
             consequences.appendChild(node('p', copy));
-            for (const block of value.blockers) consequences.appendChild(node('p', block.kind === 'artifact'
+            if (value.blockers.length) consequences.appendChild(node('p', `Blocking scopes: ${value.blockers.length}${value.blockers.length > 20 ? '; showing first 20' : ''}.`));
+            for (const block of value.blockers.slice(0, 20)) consequences.appendChild(node('p', block.kind === 'artifact'
                 ? `Artifact request ${block.request_id || 'unverified'}, request state ${block.request_state || 'unknown'}, transport ${block.transport_state || 'none'}, held ${block.held ? 'yes' : 'no'}. Dispatch ${block.dispatch_id || 'unverified'}; ${block.reason || 'pending'}.`
                 : `${block.kind}${block.reason ? ': ' + block.reason.replaceAll('_', ' ') : ''}. Session ${block.session_id ?? 'none'}, run ${block.run_id || 'none'}, dispatch ${block.dispatch_id || 'none'}, state ${block.state || 'unknown'}.`, 'channel-manager-blocker'));
-            if (form.op === 'cancel_queued') consequences.appendChild(node('p', `Queued dispatches: ${value.queued_dispatch_ids.join(', ') || 'none'}`));
+            if (form.op === 'cancel_queued') consequences.appendChild(node('p', `Queued dispatches: ${value.queued_dispatch_ids.length}${value.queued_dispatch_ids.length > 20 ? '; showing first 20' : ''}. IDs: ${value.queued_dispatch_ids.slice(0, 20).join(', ') || 'none'}`));
         }
         labelled(detail, `Type the exact name ${target(form) || '(choose a name)'}`, 'channel-manager-confirm', form.confirmation, value => { form.confirmation = value; updateApply(form); });
         const apply = button(form.busy ? 'Working' : 'Apply confirmed action', () => mutate(form), null, 'apply'); apply.id = 'channel-manager-apply'; detail.appendChild(apply);
