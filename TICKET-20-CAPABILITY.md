@@ -1,6 +1,6 @@
 # Ticket 20 producer capability gate, review draft
 
-Status: conditional review amendments C1-C8, docs only. No capability tests or code yet. Store correction ef7f896 is independently accepted and full discovery passed1398 tests215.215s (four skips), implementation-owner run590a3db7. This package does not enable artifact generation or create artifact requests.
+Status: contract C1-C8 approved at85179c0; candidate implemented at9ae0842, component verification green and independent review pending. Store correction ef7f896 is independently accepted and full discovery passed1398 tests215.215s (four skips), implementation-owner run590a3db7. This package does not enable artifact generation or create artifact requests.
 
 ## Authority and compatibility
 
@@ -87,3 +87,6 @@ Approved checkpoint85179c0: pre-change legacy golden bce6783ec65b26921583bf847bc
 
 
 Candidate checkpoint: initial helper2 and root static2 PASS4/0.299s after implementation. The fixed-set static check now also rejects unreachable listed files except deliberately listed runtime_protocol.py. Expanded behavior12 is frozen compile-only; unchanged151 affected-suite after-run and one focused12 are next. Production SUPPORTED_CAPABILITIES remains empty; no authoring branch enabled.
+
+
+Frozen9ae0842 verification: helper unchanged12 PASS1.377s, static-finalized SHA25680174baf4da1c41d9df542eb0f2a9938a1e9bcea810a1b65b9cdb192cb3b058f. Unchanged same151 after12.975s PASS (before12.312s), trackedf9c36e92. Full19886263 and independent review running. No capability is enabled in production and no artifact requests/branches exist yet.
