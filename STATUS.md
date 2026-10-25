@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 03:16 UTC (#20 store candidate implemented; expanded verification next)
+**Updated:** 2026-10-25 03:30 UTC (#20 store integrity fixes tested; focused recheck and independent review next)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20, requested artifacts, is next.**
+**Ticket 19 is published and closed. Ticket 20, requested artifacts, is in progress at the standalone storage layer.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -16,8 +16,8 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Task0 independently PASS; standalone store candidate implemented, initial2 tests green; expanded tests pending |
-| Next | One focused helper12 run plus root2 saturation cases, then fix/review the standalone store before app wiring |
+| Ticket20 | Task0 independently PASS; store implemented; root integrity/saturation5 PASS; corrected helper12 recheck pending |
+| Next | Helper runs corrected12 once; Sonnet reviews store and root integrity cases before any app wiring |
 
 ## Current handoff
 
@@ -25,7 +25,10 @@
 - Root browser scratch6e90vfld/tracked292c9128:144 ordered observations/four hashed screenshots. Reviewer zaucfc23 is a separate bounded reproduction. Prior failed browser runs uc4lkfdi/pu_r7m_m remain non-acceptance. Native scratches pxoi_8ql/87_fig46 remain separately attributed.
 - Known limits: inherited390px PAGE overflow476px (new dialog356px fits), coarse-pointer static/VM coverage, synthetic DOM drag only, one Windows fake CLI family, component-only additional crash/busy/scheduler/repair cases, broad held-storage management closure, retained-artifacts metadata excluded from archive export/import. No live AI/provider, Omarchy, installed-browser/OS-picker/assistive-technology claim. Review receipt lists all nine nonblocking notes and guard blind spots.
 - Postmerge Node actual-source groups12/4/12/12/2/2 all0failures, JavaScript syntax/diff clean. Git checkout CRLF conversion was verified against identical repository blobs; reviewed LF working bytes reproduce all three pinned acceptance-tool hashes. No source change.
-- Ticket20 on codex/ticket-20-artifacts/base published400d6de. Contract/plan accepted with S1-S12 corrections. Task0 ONLY: new sealed_result_io.py delegates mechanics from result_outbox/result_delivery/review_brief, existing review-v1 schemas/private imports preserved; before82/6.898s, after82/6.854s, full1374 tests108.397s OK(skipped4), tracked3734c8fb. Two golden Unicode/CRLF MACs, distinct brief revision and all170 test-file hashes unchanged. No authored-artifact store/protocol/wrapper branch or test yet. Task0 independent PASS: reviewer82/9.855s,3000 MAC comparisons0mismatches, read parity5cases/private imports checked; full is builder-only. Store schema independently PASS atd94f251, finalF1-F4 clarified; helper cleared <=12 NEW tests/test_artifact_store.py. Next owner helper captures initial2 genuine REDs, then holds expanded execution until readiness; Codex implements store only after that evidence. Diagnostics now allow unmatched results and bounded overflow (8/group,256groups,1024details,8MiB bodies); same-state reasons/replay and per-object corruption are explicit. Exact overflow dedupe is last-key only, with upper-bound counters. No store code/tests yet. K4 active saved-result redelivery distinction settled; no enqueue/redelivery double action in one pass. Packet-before-reserve crash order accepted K1-K6. No native/API/browser acceptance launched.
+- Ticket20 on codex/ticket-20-artifacts/base400d6de. Contract, plan and store schema approved. Task0 pure shared-mechanics extraction independently PASS at65bcb56; unchanged82 before/after and full1374/four skips108.397s (implementation owner), reviewer82/9.855s and3000 old/new MAC comparisons with no mismatch.
+- Standalone artifact_store.py is implemented, with no app binding, routes, dispatch/admission, adapter branch or reader UI yet. Helper first2 actual missing-module RED0.026s remains separate. Expanded12:11 PASS/1 exception-category ERROR100.946s. Reviewer ruled known-but-forbidden state transitions are conflicts, malformed values are validation errors; only that expectation was corrected, source behavior unchanged. Corrected helper12 has not run yet.
+- Root-owned integrity regression BEFORE fixes:3 tests/7 genuine failing subcases0.485s (five parent hash/sequence/head-reference cases and two lazy packet channel/source-run cases). Fixes validate parent metadata on index load and bind packet content to its frozen request on access or queued/active advancement. Bodies remain lazy; a bad packet does not hold unrelated requests. Root integrity3 plus saturation2 now PASS5/2.703s. Near-limit counters reach exactly2147483647 without wrap. No native/provider/factory claim.
+- Next owner helper: ONE corrected12 focused run at the frozen correction pin. Owner Sonnet: independently review store, helper/root tests and probes. Codex records results and resolves findings before capability/admission or runtime integration. No Ticket20 acceptance launched.
 - Standing authorization continues past15 through the approved backlog. Codex builds; existing Sonnet reviewer rechecks frozen plans/changes; existing helper writes bounded assigned regressions. No new agents. Live AI/provider/Omarchy/Desktop/global changes remain outside scope. Older issue human/model-pool gates are superseded by that later direction.
 - Use explicit `--repo sjgold/agentchattr` with gh-axi; implicit lookup selected upstream during a read-only check and was corrected before mutation.
 - Maintain this file with meaningful work, verification and ownership changes. Root status plus [specification](docs/agentchattr-fork-spec.md), current versionv1.7 RC-2/DA-2, is the resume entry point. Documentation maintenance alone is not implementation authorization; the standing autonomous backlog instruction supplies the current authorization.

@@ -173,3 +173,6 @@ Store schema d94f251 independently PASS (full doc read, no execution). F1-F4 app
 
 
 Task1 candidate: actual helper first2 missing-module RED0.026s, reviewer reproduced/read; root after implementation initial2 PASS0.106s. Candidate artifact_store.py is standalone and unbound at runtime, with no authoring/admission/queue routes. Kernel locks guard metadata commits and immutable object put; ordinary policy precedes store lock, trusted settlement is index-only. Exact helper12 and root-owned2 near-limit storage-fixture saturation cases compile; expanded execution pending. Do not publish an intermediate component as the completed feature.
+
+
+Store correction checkpoint: first expanded helper12 yielded11 PASS/1 category ERROR100.946s; reviewer approved the narrow expectation correction, preserving no-effects checks and strict malformed-value cases. Source behavior for that case is unchanged. Root-owned integrity3 observed7 genuine failing subcases0.485s before changes, then integrity3 plus saturation2 PASS5/2.703s after parent cross-reference and lazy packet binding fixes. Corrected helper12 and independent source review are next; no app wiring or artifact authoring acceptance is claimed.

@@ -292,7 +292,10 @@ class ArtifactStoreTests(unittest.TestCase):
                 (audit['attempt_id'], 'prepared', {'state': 'failed', 'reason': None})]:
             with self.assertRaises(module.ArtifactConflict):
                 store.set_attempt_state(audit['request_id'], attempt, expected, change, now=60)
-        for change in ({'state': 'fulfilled', 'reason': None}, {'state': 'failed', 'reason': 'PRIVATE_ERROR'},
+        with self.assertRaises(module.ArtifactConflict):
+            store.set_attempt_state(audit['request_id'], audit['attempt_id'], 'active',
+                                    {'state': 'fulfilled', 'reason': None}, now=60)
+        for change in ({'state': 'bogus', 'reason': None}, {'state': 'failed', 'reason': 'PRIVATE_ERROR'},
                        {'state': 'failed', 'reason': None, 'audit': {}}):
             with self.assertRaises(module.ArtifactValidationError):
                 store.set_attempt_state(audit['request_id'], audit['attempt_id'], 'active', change, now=60)

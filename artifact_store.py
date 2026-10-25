@@ -438,7 +438,10 @@ class ArtifactStore:
             if _canonical(packet) != raw:
                 raise ArtifactValidationError('Packet bytes changed.')
             for row in self._data['requests'].values():
-                if row['audit']['scope']['packet_id'] == packet_id and row['audit']['scope'] != scope:
+                audit = row['audit']
+                if audit['scope']['packet_id'] == packet_id and (
+                        audit['scope'] != scope or packet['channel'] != audit['original_channel']
+                        or packet['source_run'] != audit['source_run']):
                     raise ArtifactValidationError('Packet no longer matches its request.')
         except (ValueError, TypeError, KeyError, UnicodeError, ArtifactUnavailable):
             self._object_errors[('packet', packet_id)] = {'id': packet_id, 'kind': 'object_error',
@@ -900,17 +903,25 @@ class ArtifactStore:
             if lineage['pending_request_id'] != live.get(identifier):
                 raise ArtifactValidationError('Artifact pending reservation differs.')
             parent = None
+            expected_parent = None
             for sequence, version_id in enumerate(versions, 1):
                 metadata = value['versions'].get(_hex(version_id))
                 if metadata is None or version_id in used_versions:
                     raise ArtifactValidationError('Artifact version index is inconsistent.')
                 used_versions.add(version_id)
                 self._validate_version(metadata, value['requests'])
+                if value['requests'][metadata['request_id']]['audit']['expected_parent'] != expected_parent:
+                    raise ArtifactValidationError('Artifact request parent metadata differs.')
                 if (metadata['id'] != version_id or metadata['lineage_id'] != identifier
                         or metadata['channel'] != lineage['channel'] or metadata['sequence'] != sequence
                         or metadata['parent_version_id'] != parent):
                     raise ArtifactValidationError('Artifact version chain is inconsistent.')
                 parent = version_id
+                expected_parent = {'version_id': version_id, 'sequence': metadata['sequence'],
+                                   'sha256': metadata['sha256']}
+            pending_id = lineage['pending_request_id']
+            if pending_id is not None and value['requests'][pending_id]['audit']['expected_parent'] != expected_parent:
+                raise ArtifactValidationError('Artifact pending parent differs from the current head.')
         if used_versions != set(value['versions']):
             raise ArtifactValidationError('Unindexed artifact version metadata exists.')
         self._validate_diagnostics(value)

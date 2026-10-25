@@ -147,3 +147,6 @@ Reviewer M1-M5 and S1-S6 amendments are folded in. M2 bounded overflow ruling:8/
 
 
 Final F1-F4: terminal reason changes conflict; metadata-only list_versions/get_request_by_dispatch added; matching request+dispatch attaches a detailed diagnostic regardless of claimed attempt without state effects; source_packet_unavailable is a quarantine reason. Reviewer explicitly cleared the <=12 helper after this tiny docs-only commit, no additional re-review needed for these same semantics. Initial exact2 observed RED first, no production source before evidence.
+
+
+Integrity clarification: known enum values forbidden by the operation or current state raise ArtifactConflict; malformed values, unknown enums and extra fields raise ArtifactValidationError. Audit immutability protects against API mutation, not hand edits of index.json. Disk tampering is outside this contract; metadata cross-reference validation and the later sealed brief provide the stated checks. Index load validates expected-parent id, sequence and hash against the ordered version chain and live pending head without reading object bodies. Packet access and queued/active advancement verify channel, source_run, input revision and ordered message references against the frozen audit; a mismatch affects only that packet and leaves terminal settlement available.
