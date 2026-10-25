@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 09:21 UTC (#20 lifecycle-backup literal payload consistency recheck next)
+**Updated:** 2026-10-25 09:39 UTC (#20 lifecycle/backup first behavioral reds; production unchanged)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Sonnet reviews the DOCS-ONLY amended [lifecycle/backup payload freeze](TICKET-20-LIFECYCLE-BACKUP.md) before tests/code/helper briefing. Codex owns implementation after clearance. Production capability stays empty; operator creation/K6, reader, acceptance and activation remain later |
+| Next | Sonnet reviews the first lifecycle/backup red pin and test bodies before production code. Helper may write the bounded imported-store regression. Codex owns lifecycle/archive integration after that gate; production capability stays empty |
 
 ## Current handoff
+
+- Lifecycle/backup payload cleared at6010b10 with final wording fixes folded in. Actual old-export ZIP golden captured before source edits (1281 bytes, SHA e73ed2ff...). Corrected root6:7 behavioral assertion FAIL +1 missing-keyword ERROR1.266s,3 methods PASS. Initial run had four disclosed fixture-argument errors, corrected without source/assertion changes. Product code remains c5ae029/full1516 green; reviewer reads red test bodies before implementation.
 
 - Lifecycle/backup final consistency revision remains docs-only: duplicate/skipped counters, literal request/queue states and held flags, single top-level partial Boolean, structural validation before all history writes, exact imported audit/row keys and manifest/type definitions are frozen for reviewer recheck. All-channel artifact selection uses a healthy immutable ID snapshot; bounds precedence, fixed wire/WS errors, level6 compression, ZIP scope and exact4MiB/100-lineage/10-commit <=0.300s benchmark are explicit. No next-package test/code/capture/helper run; product stays c5ae029.
 

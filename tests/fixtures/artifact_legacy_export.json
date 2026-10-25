@@ -1,0 +1,72 @@
+{
+  "scope": "Actual unmodified archive.build_export; controlled store getters, UUID/clock/ZIP timestamps and create_system=3. No app/worker/provider.",
+  "capture_head": "6010b1095f364f9ea741f5459534512e4e7c9400",
+  "source_sha256": "22ce91d46fb939c04ae959839b236aefeb7bda4623445f34595c14370e420a24",
+  "zlib_runtime": "1.3.2",
+  "history": {
+    "messages": [
+      {
+        "id": 0,
+        "uid": "message-a",
+        "sender": "operator",
+        "text": "Exact café\r\nsource",
+        "channel": "review",
+        "timestamp": 100.0
+      },
+      {
+        "id": 1,
+        "uid": "message-b",
+        "sender": "author",
+        "text": "Reply 日本語",
+        "channel": "review",
+        "timestamp": 101.0,
+        "reply_to": 0
+      }
+    ],
+    "jobs": [
+      {
+        "id": 4,
+        "uid": "job-a",
+        "title": "Fixed job",
+        "body": "Literal task",
+        "channel": "review",
+        "created_by": "operator",
+        "created_at": 102.0,
+        "anchor_msg_id": 0,
+        "status": "archived",
+        "messages": [
+          {
+            "id": 0,
+            "uid": "job-message-a",
+            "sender": "author",
+            "text": "Exact job\r\nanswer",
+            "timestamp": 103.0
+          }
+        ]
+      }
+    ],
+    "rules": [
+      {
+        "id": 2,
+        "uid": "rule-a",
+        "text": "Keep source literal.",
+        "created_by": "operator",
+        "created_at": 104.0
+      }
+    ],
+    "summaries": {
+      "review": {
+        "uid": "summary-a",
+        "text": "Fixed summary.",
+        "author": "operator",
+        "updated_at": 105.0
+      }
+    }
+  },
+  "fixed_uuid": "11111111-1111-4111-8111-111111111111",
+  "fixed_time": "2020-01-02T03:04:06Z",
+  "zip_create_system": 3,
+  "app_version": "fixture",
+  "zip_base64": "UEsDBBQAAAAIAIMYIlAPNkECtAAAACoBAAANAAAAbWFuaWZlc3QuanNvbk2PwQqDMAxA736F9KxQnYzhd+y0i2Q1zg6r0qQyEP99rVUwh8B7TdJkTdJUkOrRQLOgJT2Nok6LLGiwqtcLNrr1ShRH5HuqQnqceIbY+5RFYGwb4NBXylLmsshl+ZS3Wla1vL9i3Wyn1qm9CD44suqB2cY3mOfLPqLTP3YWj/mTG5m8Xj15NkjkBwRTZlF9pzedd3i0bsArkzMGrI7Oqy3+yQyqN34TavSoBtdiuLyDgTDZ/lBLAwQUAAAACACDGCJQKcxkzqIAAAAgAQAADgAAAG1lc3NhZ2VzLmpzb25sq1bKTFGyUjDQUVAqBbOUclOLixPTU3UTlYBixal5KalFIOH8gtSixJL8IpBoSWpFCUjMtSIxuUQhOTHt8MqYopi84vzSouRUkILkjMS8vNQckJqi1LLM1HKwrkyg0SWJuQVAYUMDAz2DWq5qiO2GmLYnodqeWFqSgWp3UGpBTqXCs+lLn81Z82LVPCJtNdQD+bQIpDe+JB/qcRg3HiMEarkAUEsDBBQAAAAIAIMYIlCe+JiH2wAAAMIBAAAJAAAAam9icy5qc29uXZBNDsIgEIX3noKwVlN/Vu515Q2qaaZlYtEWDEy1xnh3gUKNXRDCfMyb9yafMfZ2hzEuBd+x7Xx4dOHFr7pcAI81ktSgrx5kj4I5lkipxcuDoyQ00DACe0usqkEpbDw2+JD4HIFBIBRFGVr13XWSNlMK5OgqWy+zCEBVtTZFay9F8JjqloA666XAVLV8oEhSLVoLF/QsD5UU+Rc7ikyjx85xBcMgVAJNGNRRPToeVoS998v3PVTkN3QyJwXKPvH/m3TKBO09ZNsss4g+4T5Pkg4miujr52nmG85fUEsDBBQAAAAIAIMYIlAFgeEdXgAAAIcAAAAKAAAAcnVsZXMuanNvbovmUlCoBmIFBaXMFCUrBSMdCKcUzFMqKs1J1U1UggqWpFaUgES9U1MLFIrzS4uSUxVyMktSixJz9GBqkotSE0tSU+KTKkEq8wuAkiX5ReiyiSBzDA1M9AyA4rVcsQBQSwMEFAAAAAgAgxgiUL2VyBhoAAAAjAAAAA4AAABzdW1tYXJpZXMuanNvbovmUlCoBmIFBaXSzBQlKwWl4tLc3MSiSt1EJR2IeElqRQlIwi2zIjVFASqtB5NNLC3JyC8CyecXpBYllgDZUJnSgpTEktSU+ESQbkMDUz0DqERyRmJeXmoOSE9RallmarkSULyWKxYAUEsBAhQDFAAAAAgAgxgiUA82QQK0AAAAKgEAAA0AAAAAAAAAAAAAAIABAAAAAG1hbmlmZXN0Lmpzb25QSwECFAMUAAAACACDGCJQKcxkzqIAAAAgAQAADgAAAAAAAAAAAAAAgAHfAAAAbWVzc2FnZXMuanNvbmxQSwECFAMUAAAACACDGCJQnviYh9sAAADCAQAACQAAAAAAAAAAAAAAgAGtAQAAam9icy5qc29uUEsBAhQDFAAAAAgAgxgiUAWB4R1eAAAAhwAAAAoAAAAAAAAAAAAAAIABrwIAAHJ1bGVzLmpzb25QSwECFAMUAAAACACDGCJQvZXIGGgAAACMAAAADgAAAAAAAAAAAAAAgAE1AwAAc3VtbWFyaWVzLmpzb25QSwUGAAAAAAUABQAiAQAAyQMAAAAA",
+  "zip_sha256": "e73ed2fffde995f0e6d62e07ece38fe8141ea764e427a657e6013e086f7f5b54"
+}
