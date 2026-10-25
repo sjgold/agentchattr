@@ -17,7 +17,7 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
-| Next | Sonnet rechecks authority R1/G1-G5 amendments; then exact helper payload freeze |
+| Next | Freeze exact authority/service/protocol helper payloads for Sonnet review; no tests yet |
 
 ## Current handoff
 
@@ -803,3 +803,6 @@ Authority/admission contract draft: [TICKET-20-AUTHORITY.md](TICKET-20-AUTHORITY
 
 
 Authority amendments R1/G1-G5 are docs-only: operator-only terminal-transport recovery, terminal-request ACTIVE/cancelling blockers, saved-record redelivery without failed release/regeneration, exact agents/wrapper envelope forwarding and empty-capability enqueue refusal, real review-occupancy claim reason, worker cancellation/exit-proof settlement. To satisfy the retained-claim condition, proposal adds consumer_id to the signed artifact payload and seat/consumer metadata to NEW artifact dispatched events; no legacy event backfill or review/chat state changes. Those metadata details require reviewer confirmation before payload freeze/tests.
+
+
+Authority Q1/Q2 simplification accepted: compare signed consumer/seat to the retained queue record via owned; claim events stay unchanged. No new queue metadata/retention or diagnostics scan. R1 requires ACTIVE request and no quarantined outbox disposition. Next Codex freezes exact helper interfaces/payloads; Sonnet reviews those before the <=12 helper brief.
