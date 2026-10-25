@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 04:07 UTC (#20 corrected capability full1415 passed; independent clearance next)
+**Updated:** 2026-10-25 04:15 UTC (#20 capability independently cleared; authority/admission contract drafted)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20 storage is accepted; its disabled capability gate is under review.**
+**Ticket 19 is published and closed. Ticket 20 storage and disabled capability gate are accepted; authority/admission planning is next.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -17,7 +17,7 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
-| Next | Sonnet rechecks P1/source and fixture/recovery commits; full1415 passed |
+| Next | Sonnet reviews authority/admission contract; no tests/code before contract clearance |
 
 ## Current handoff
 
@@ -31,7 +31,7 @@
 - Prior source f0e984b full discovery PASS1391/four skips218.861s, tracked7944fb64, implementation-owner run. Reviewer independently ran helper12 incidentally in its18-test probe group, all OK108.6s; it read all999 source lines and found S1-S5 plus overflow precedence N2. That passing full run does not cover the following corrections.
 - Root-owned review RED before fixes:8 tests/5 failures+9 errors1.013s, reproducing dangling/mis-linked request versions, malformed packet-channel exception leaks, offset truncation, invalid-content diagnostic refusal, unknown-packet false corruption growth and full-group overflow precedence. A separate imported-unversioned fixture then failed1/0.305s; an initial variant was already refused by the opposite cross-reference and did not prove that gap. Fixes validate both directions of version ownership, validate channel before the policy extractor, correct pagination, record invalid strings hash-only with surrogatepass encoding, bound referenced-only corruption observations to256 and prioritize a full dispatch group over global overflow. Root review7+integrity3+saturation2 PASS12/3.328s, no helper assertion edits.
 - Store correction ef7f896 independently PASS: reviewer probe6/0.435s and root review/integrity/saturation12/3.489s; source diff read, S1-S5/N2 closed. Its helper12 run was at f0e984b (earlier pin), and full discovery is implementation-owner evidence only. Corrected full tracked590a3db7 PASS1398 tests215.215s (four skips), log .audit-tmp/ticket20-store-full-ef7f896.log. Implementation-owner run, not independently rerun full discovery. No source changes during the run.
-- Capability contract [TICKET-20-CAPABILITY.md](TICKET-20-CAPABILITY.md) independently approved at85179c0. Candidate9ae0842 implements fixed source manifests in immutable fingerprints, matching-only birth copy and a current-boot verified producer gate. Helper12 PASS1.377s; root initial2+static2 PASS4/0.299s; unchanged151 affected tests before12.312s and after12.975s both PASS. Source stayed frozen. Original full19886263 failed on stale cold fixture copies; corrected full83c09a8b at7a9226e PASS1415/4skips215.255s. Sonnet rechecks the correction. Production supported list remains EMPTY, no artifact purpose branch or request routes. No new native/provider acceptance.
+- Capability contract [TICKET-20-CAPABILITY.md](TICKET-20-CAPABILITY.md) independently approved at85179c0. Candidate9ae0842 implements fixed source manifests in immutable fingerprints, matching-only birth copy and a current-boot verified producer gate. Helper12 PASS1.377s; root initial2+static2 PASS4/0.299s; unchanged151 affected tests before12.312s and after12.975s both PASS. Source stayed frozen. Original full19886263 failed on stale cold fixture copies; corrected full83c09a8b at7a9226e PASS1415/4skips215.255s. Sonnet independently cleared the correction at265d95f:106 tests13.578s and6 probes PASS, source/fixture diff read. Full1415 remains implementation-owner only. Production supported list remains EMPTY, no artifact purpose branch or request routes. No new native/provider acceptance.
 - Standing authorization continues past15 through the approved backlog. Codex builds; existing Sonnet reviewer rechecks frozen plans/changes; existing helper writes bounded assigned regressions. No new agents. Live AI/provider/Omarchy/Desktop/global changes remain outside scope. Older issue human/model-pool gates are superseded by that later direction.
 - Use explicit `--repo sjgold/agentchattr` with gh-axi; implicit lookup selected upstream during a read-only check and was corrected before mutation.
 - Maintain this file with meaningful work, verification and ownership changes. Root status plus [specification](docs/agentchattr-fork-spec.md), current versionv1.7 RC-2/DA-2, is the resume entry point. Documentation maintenance alone is not implementation authorization; the standing autonomous backlog instruction supplies the current authorization.
@@ -797,3 +797,6 @@ Cold-fixture classification confirmed: exact15 failed test methods (16 failing e
 
 
 Corrected capability full at7a9226e:1415 tests215.255s OK(skipped4), tracked83c09a8b, implementation-owner run. Source stayed frozen; no helper changes. P1 source-only0ade4b7 and fixture/recovery7a9226e are separate pins for Sonnet recheck. Next owner Sonnet clears the component; Codex drafts authority/admission only after that clearance. Capability remains empty and no artifact authoring branch/routes are enabled.
+
+
+Authority/admission contract draft: [TICKET-20-AUTHORITY.md](TICKET-20-AUTHORITY.md), no tests/code yet. Covers purpose-separated signed schema/private brief and outbox, queue.owned plus explicit claim-state checks, current producer launch recheck at result time, diagnostic versus terminal-state decisions, deterministic crash recovery and cancellation by dispatch. Open review choice: narrowly permit retained-claim recovery of a sealed result after released/failed/settled_recovered transport only while the exact producer launch and request remain live. No transport revival, generation or stale-owner admission. Source Stop fence ordering and terminal transport-cancellation repair are explicit proposals for review. Owner Sonnet reviews; Codex revises/freezes helper payloads after approval. Do not start authority tests before that.

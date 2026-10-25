@@ -197,3 +197,6 @@ Capability correction: P1 source-only0ade4b7 and separate fixture changes. Exact
 
 
 Corrected frozen full7a9226e PASS1415 tests215.255s (four skips), tracked83c09a8b, implementation owner only. Separate P1 source0ade4b7 and fixture/recovery7a9226e await Sonnet recheck; no capability enablement or authority/admission expansion yet.
+
+
+Capability package CLEARED independently at265d95f (product0ade4b7 + fixtures7a9226e): reviewer106/13.578s and6 probes PASS, source/fixture diffs read; full1415/four skips215.255s implementation-owner only. Next exact authority/admission contract is TICKET-20-AUTHORITY.md, review draft only. Retained-claim saved-result recovery is an explicitly open decision; no authority tests/code until review and helper payload freeze.
