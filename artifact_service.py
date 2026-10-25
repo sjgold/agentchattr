@@ -19,6 +19,10 @@ class ArtifactAccessError(PermissionError):
     pass
 
 
+class _ArtifactProducerUnavailable(ArtifactConflict):
+    """Internal classification, with the same public conflict/error family."""
+
+
 class ArtifactInputError(ArtifactValidationError):
     def __init__(self, diagnostic_id, *, received_truncated=False):
         super().__init__('Invalid Markdown. Correct the argument and submit again within the byte limit.')
@@ -49,20 +53,23 @@ class ArtifactService:
             raise ArtifactAccessError('Artifact producer identity is unavailable.')
         return values[0]
 
-    def _producer(self, audit, instance):
+    def _producer(self, audit, instance, *, _binding=None):
         self._enabled()
         producer = audit['producer']
         if not isinstance(instance, dict) or instance.get('identity_id') != producer['identity_id']:
             raise ArtifactAccessError('Artifact request belongs to another seat.')
-        live = self._instance(producer['identity_id'])
-        current = self.seats.artifact_producer(live)
+        if _binding is None:
+            live = self._instance(producer['identity_id'])
+            current = self.seats.artifact_producer(live)
+            provenance = self.seats.launch_provenance(live)
+        else:
+            live, current, provenance = _binding
         if (current['available'] is not True or current['identity_id'] != producer['identity_id']
                 or current['capabilities'] != ['artifact-v1'] or current['adapter'] != producer['adapter']
                 or any(current[key] != producer[key] for key in ('launch_attempt', 'launch_nonce', 'fingerprint'))):
-            raise ArtifactConflict('Artifact producer binding is unavailable or changed.')
-        provenance = self.seats.launch_provenance(live)
+            raise _ArtifactProducerUnavailable('Artifact producer binding is unavailable or changed.')
         if provenance is None:
-            raise ArtifactConflict('Artifact producer launch is unverified.')
+            raise _ArtifactProducerUnavailable('Artifact producer launch is unverified.')
         model = provenance['effective']['seat'].get('model') or None
         reason = None if model else ('cli_model_unverified' if producer['adapter'] == 'cli' else 'provider_default')
         if producer['requested_model'] != model or producer['requested_model_reason'] != reason:
@@ -146,6 +153,7 @@ class ArtifactService:
 
     def eligible_dispatch_ids(self, instance):
         result = set()
+        bindings = {}  # Per-call observations only; no eligibility survives this call.
         if not isinstance(instance, dict):
             return result
         try:
@@ -157,11 +165,16 @@ class ArtifactService:
                         continue
                     try:
                         self.channels.require_active(row['channel'])
-                        self._producer(row['audit'], instance)
+                        producer = row['audit']['producer']
+                        key = tuple(producer[field] for field in ('identity_id', 'launch_attempt', 'launch_nonce', 'fingerprint'))
+                        if key not in bindings:
+                            live = self._instance(producer['identity_id'])
+                            bindings[key] = (live, self.seats.artifact_producer(live), self.seats.launch_provenance(live))
+                        self._producer(row['audit'], instance, _binding=bindings[key])
                         result.add(row['audit']['dispatch_id'])
-                    except (OSError, ValueError, RuntimeError, PermissionError):
+                    except Exception:
                         continue  # Claim reads metadata; the brief gate checks its packet.
-        except (OSError, ValueError, RuntimeError, PermissionError):
+        except Exception:
             return set()
         return result
 
@@ -461,7 +474,7 @@ class ArtifactService:
             for row in rows[:limit]:
                 try:
                     record = self._fence(row)
-                    if record is not None and record['state'] in ('cancelled', 'released', 'failed', 'settled_recovered'):
+                    if record is None or record['state'] in ('cancelled', 'released', 'failed', 'settled_recovered'):
                         repaired.append(row['audit']['request_id'])
                     else:
                         unconfirmed.append(row['audit']['dispatch_id'])
@@ -703,7 +716,8 @@ class ArtifactService:
                         held(request, dispatch, 'operator_recovery_required')
                         continue
                     if row is None or row['state'] not in LIVE:
-                        reason = 'cancelled' if row is not None and row['state'] == 'cancelled' else 'unmatched_saved_result'
+                        reason = ('unmatched_saved_result' if row is None else
+                                  'cancelled' if row['state'] == 'cancelled' else 'superseded')
                         diagnostic = self.store.quarantine_submission(payload['request_id'] if row else None,
                             payload['attempt_id'], dispatch, reason=reason, content=payload['markdown'],
                             actor_identity_id=payload['seat_identity_id'])
@@ -724,8 +738,10 @@ class ArtifactService:
                             result['quarantined'].append(admission['diagnostic_id'])
                     else:
                         held(request, dispatch, 'operator_recovery_required')
-                except (ArtifactAccessError, ArtifactConflict):
+                except (ArtifactAccessError, _ArtifactProducerUnavailable):
                     held(request, dispatch, 'producer_unavailable')
+                except ArtifactConflict:
+                    held(request, dispatch, 'operator_recovery_required')
                 except (OSError, ValueError, RuntimeError):
                     held(request, dispatch, 'storage_unavailable')
             for dispatch in list(tasks)[limit:]:

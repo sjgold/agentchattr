@@ -156,7 +156,7 @@ class CoordinatedQueue:
                             not isinstance(value, str) or not re.fullmatch('[0-9a-f]{32}', value)
                             for value in artifact_eligible)):
                         artifact_eligible = set()
-                except (OSError, ValueError, RuntimeError, TypeError, AttributeError):
+                except Exception:
                     artifact_eligible = set()  # Owner failure closes new artifact claims only.
             # Existing owners must still inspect/release/cancel retained transport.
             for record in self._queue.for_identity(instance):

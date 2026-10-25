@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 05:52 UTC (#20 admission/recovery full regression passed; independent component review pending)
+**Updated:** 2026-10-25 05:55 UTC (#20 authority review correction passed197 focused tests; independent recheck next)
 
 ## At a glance
 
@@ -17,8 +17,8 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store and disabled capability gate independently accepted; internal admission/recovery candidate tested, not yet independently accepted |
-| Latest checks | Full1458 tests229.594s OK, four skips, implementation-owner run at442b5ab; focused189 PASS21.080s |
-| Next | Sonnet reviews frozen442b5ab source and focused checks; Codex addresses any findings before the next package. Public creation timing, routes, wrappers, lifecycle, reader and backup remain later work |
+| Latest checks | Correction197 PASS24.346s; preceding442b5ab full1458 tests229.594s OK, four skips, implementation-owner run |
+| Next | Codex freezes the C-1/P-1/N1-N4 correction after focused checks; Sonnet rechecks and clears the authority package. Public creation timing, routes, wrappers, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -852,3 +852,14 @@ Next owner Codex: full discovery on the frozen component and Sonnet source/probe
 
 
 Full regression receipt, 2026-10-25 05:52 UTC: frozen source442b5ab6ee961257631ad930dc8f997ff6fc33b8 passed1458 tests229.594s, four skips, tracked743fb66f-9945-42fa-98c3-41504534acf9. Log .audit-tmp/ticket20-authority-recovery-full-442b5ab.log explicitly records Ran1458 and OK(skipped=4). Source/tree stayed unchanged during the run. This is implementation-owner full-discovery evidence, not an independent full run. Component review remains pending with Sonnet; no authoring capability, route, wrapper, factory or UI is enabled. Next owner Sonnet returns the frozen-source review; Codex handles findings before proceeding.
+
+
+## Independent authority review correction, 2026-10-25 05:56 UTC
+
+Sonnet reviewed frozen442b5ab at component scope: combined225 PASS26.0s plus eight own probes, source read of artifact_service/delivery/protocol and agents/queue/coordinator diffs. It did not read artifact_brief or all test bodies, and did not rerun full discovery. Verdict PASS WITH ONE FIX C-1, performance P-1 and nits N1-N4. No native/provider/HTTP/MCP claim. Full1458 remains the implementation-owner run on the preceding source.
+
+Root reviewer regressions before correction:5 tests,5FAIL+3ERROR0.977s, confirming unexpected KeyError/IndexError eligibility propagation, three producer checks for three same-binding pending rows, terminal results mislabeled unmatched, generic conflicts mislabeled producer_unavailable and a cancelled pre-enqueue request reported as an unconfirmed fence. No fixture corrections. After changes:5 PASS0.968s. The hook and service eligibility now catch Exception (not BaseException) only for the closed eligibility path; enqueue validation still propagates errors. Producer/provenance observations are reused within one call per exact frozen binding, then discarded; a later failed gate closes all affected requests immediately. Known terminal results use superseded (cancelled stays cancelled; absent request stays unmatched_saved_result); conflict reports operator_recovery_required, producer/access failures keep producer_unavailable. A cancelled request with no retained queue record has no queue fence left to write; this is not fabricated worker-exit evidence. Service requested-model labels and per-launch damaged inventory behavior are documented above.
+
+Component timing at three pending rows, nine repetitions under the actual boundary: old442b5ab median19.371ms, max23.000ms, three producer verifications per call; correction median7.666ms, max8.731ms, one verification per call. Raw receipt .audit-tmp/ticket20-eligibility-before-after.json. Initial timing script had a fixture error because the global Popen double intercepted git show; reading the old source before setting up the fixture corrected that harness issue, with no product or behavior assertion change. No general latency guarantee or source-cap timing claim.
+
+Frozen correction focused group197 PASS24.346s, tracked1479deb7-54f0-4c38-b192-72e0ae264f7c, .audit-tmp/ticket20-authority-review-correction-focused.log. Includes the same unchanged151 baseline and all46 current authority component tests. Helper files remain unchanged/frozen. Next: Sonnet recheck of this small correction and fresh full discovery on its frozen pin; no public integration or capability enablement until component clearance.
