@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 06:15 UTC (#20 A-1 amendment independently cleared; wrapper contract conditions folded in)
+**Updated:** 2026-10-25 06:23 UTC (#20 authority full1467 passed; exact wrapper helper payload draft awaiting review)
 
 ## At a glance
 
@@ -17,8 +17,8 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
-| Latest checks | Corrected52d52f1 full1463 tests256.029s OK, four skips (implementation owner); independent230 focused26.298s plus probes PASS |
-| Next | Sonnet skims D1-D3/W1-W6 wrapper contract amendments; Codex freezes exact helper signatures/payloads next, before any wrapper tests/code. Fresh A-1 full regression is running. Public creation timing, lifecycle, reader and backup remain later work |
+| Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
+| Next | Sonnet reviews exact wrapper helper function/callback/payload freeze; Codex revises/briefs helper only after clearance. No wrapper tests/code yet. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -884,3 +884,10 @@ Implementation validates retained envelope/claim and owned outbox absence before
 Wrapper contract conditions, 2026-10-25 06:15 UTC: Sonnet independently closed A-1 at7ba8ade, probe46 now failed/delivery_unconfirmed with free pending slot and idempotent terminal resume, combined234 focused29.952s and seven earlier probes PASS. It read the source diff, not every new test body; no full-discovery/native/app claim. New full tracked552dcdbc is still running on frozen7ba8ade. Source unchanged during that run.
 
 TICKET-20-WRAPPERS.md D1-D3/W1-W6 are amended docs-only: reject-report accepts exactly string/false or null/true; CLI403/no effects and bearer-holder trust boundary explicit. Parent read is strictly read-only, checks actual bytes/stored hash+length and frozen expected-parent id/sequence/hash, with untrusted-data treatment and bounded combined context15,974,400 serialized bytes. Client limits cannot be guessed or silently truncated. Generated isolated server-only capability seam records fixture-controlled activation without editing product/child constants; managed snapshots/birth/hashes and server gates remain real. Operator-cookie/token versus seat-bearer route refusals, delivery no-store and log/error redaction are required; source manifests grow to actual AST closure. CLI same-watcher duplicate and new-consumer QueueBusy tests gate no-journal continuation; tool-list addition gets a named explicit test preserving legacy tools; API seats stay sequential, observation isolation spans sequential calls/two independent seats. Premature CLI release refuses later submission immediately; terminal request settlement occurs only at resume/startup. No wrapper tests, helper briefing or implementation before contract skim and exact payload freeze.
+
+
+## Wrapper payload review candidate, 2026-10-25 06:23 UTC
+
+A-1 source7ba8ade full discovery PASS1467 tests242.152s, four skips, tracked552dcdbc-2265-48fc-ba69-d40dfff323d9, .audit-tmp/ticket20-authority-delivery-settlement-full-7ba8ade.log. Implementation-owner run only; source stayed unchanged during the run. Sonnet independently cleared A-1 with234 focused29.952s plus own probes, not full discovery. Current authority component remains accepted, capability empty/unbound.
+
+Wrapper contract amendments760417e are independently ACCEPTED by docs diff read, no execution. Exact helper function/callback/payload proposal is now appended to TICKET-20-WRAPPERS.md: managed-dispatch validation, prompt/messages, explicit CLI preflight decisions and optional consumer callback, API one-generation/redelivery entry, invocation/cancellation inspection, service parent/rejection signatures, router and MCP JSON/error literals, and exact legacy comparisons. Proposed helper ownership stays only NEW tests/test_artifact_workers.py/exactly up to12 methods, no briefing or tests/code before review. Root owns actual wrapper nested-entry behavioral REDs, HTTP/MCP/factory/closure, service amendments and legacy goldens. This payload section is a proposal, not independently cleared yet. Next owner Sonnet reviews it; Codex resolves feedback then freezes the brief. No native/provider/app resources started by this docs checkpoint.
