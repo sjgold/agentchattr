@@ -235,3 +235,6 @@ Choose C1 option (b): if the body exceeds that service cap, pass content=None to
 
 
 Implementation entry checkpoint: helper initial2 infrastructureERROR0.023s (artifact_service absent), root protocol2 infrastructureERROR0.003s (artifact_protocol absent), baseline151 PASS13.321s. These are not behavioral guard failures. Root records an independent scaffold behavioral RED later. Adopt first successful claimed get_brief/get_delivery -> ACTIVE, then test cancellation before submit. A pre-execution CLI executable fixture correction is source-grounded and separate from those missing-interface errors. No authority source existed for these runs.
+
+
+Controlled admission scaffold behavior evidence: initial2 selected after valid fixture setup produce1PASS/1FAIL0.329s. Claimed exact-byte/ACK behavior passes; unclaimed admission bypasses the missing scaffold guard and fails the expected-refusal assertion. This is an explicit local TDD scaffold, never routed or enabled in production. It follows a disclosed2fixtureERROR0.027s corrected only by adding the declared fake CLI model argument mapping. Protocol/private-brief/outbox6PASS0.225s and rawqueue/dispatch/ingress25PASS1.097s are separate component evidence. Expanded helper12 not run yet.

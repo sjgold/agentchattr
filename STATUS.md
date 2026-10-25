@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 04:49 UTC (#20 authority initial infrastructure REDs captured; implementation next)
+**Updated:** 2026-10-25 05:06 UTC (#20 protocol/outbox green; explicit scaffold authorization behavior RED captured)
 
 ## At a glance
 
@@ -815,3 +815,8 @@ Authority L1 placement verified in actual source and accepted by Sonnet: coordin
 
 
 Authority helper brief cleared at60df57d. Initial EXACT2 infrastructure RED:2 ModuleNotFoundError artifact_service,0.023s; not behavioral authorization evidence. Root protocol2 infrastructure RED:2 missing artifact_protocol,0.003s. Artifact seal independent stdlib pre-implementation MAC e72a03b128c0734a6ad96a79396821e74602850048812410f406bd1df5152c9d, record .audit-tmp/ticket20-artifact-seal-before.json. Unchanged151 baselinePASS13.321s trackedf75c8351. A source-grounded helper setup correction (CLI fixture executable to sys.executable, Popen still mocked) is authorized before any execution reaches that setup; the missing-service errors happened earlier. Root will record a separate explicit unguarded-scaffold behavioral RED before final admission guards, as reviewer required. First successful claimed brief read syncs queued->ACTIVE. Helper owns <=12 admission cases; root protocol/outbox/recovery/Barrier/goldens are separate. No authority routes/wrapper branch/capability enablement yet.
+
+
+Authority implementation checkpoint, NOT publishable: protocol/private brief/outbox6 PASS0.225s after their initial missing-module REDs (brief/outbox2ERROR0.002s). A candidate HTTP409 stream-reading error was observed1ERROR0.048s then corrected before those6 green. Raw queue2 genuine behavioralFAIL0.020s (unguarded enqueue/claim) -> raw guards plus unchanged dispatch/ingress25 PASS1.097s. Claim events remain unchanged.
+
+Required first admission behavioral RED is now observed against an EXPLICIT, unrouted, production-disabled unguarded TDD scaffold: first2 selected methods1PASS/1FAIL0.329s. Exact claimed admission/byte preservation/ACK replay passes; own UNCLAIMED submission incorrectly commits and fails the refusal assertion. This is a controlled scaffold, not a claim about published product behavior. Earlier selected2 did not reach the scaffold (2fixtureERROR0.027s, missing CLI model-argument declaration); helper corrected only that mapping, assertions unchanged. Initial infrastructure2ERROR0.023s remains separate. Root now replaces the scaffold submit path with complete claim/current-owner/brief/seal checks and adds the remaining service/recovery functions. Expanded helper12 remains unexecuted/held. No routes, MCP bindings, wrapper purpose branch or capability enablement.

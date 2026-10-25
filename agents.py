@@ -10,6 +10,12 @@ class AgentTrigger:
     def __init__(self, registry, data_dir: str = "./data"):
         self._registry = registry
         self.queue = QueueStore(data_dir)
+        self._artifact_policy = None
+
+    def bind_artifact_policy(self, getter):
+        if not callable(getter):
+            raise ValueError('Artifact policy requires an explicit getter.')
+        self._artifact_policy = getter
 
     def is_available(self, name: str) -> bool:
         return self._registry.is_registered(name)
@@ -45,13 +51,19 @@ class AgentTrigger:
         return self._enqueue_instance(instance, message, channel, job_id, **kwargs)
 
     def trigger_identity_sync(self, identity_id, *, dispatch_id, message='',
-                              channel='general', job_id=None, prompt=''):
+                              channel='general', job_id=None, prompt='', purpose=None,
+                              artifact_request_id=None, artifact_attempt_id=None,
+                              artifact_brief_id=None, artifact_scope_sha256=None):
         matches = [value for value in self._registry.get_all().values()
                    if value['identity_id'] == identity_id and value['state'] == 'active']
         if len(matches) != 1:
             raise ValueError('The resolved seat identity is no longer available.')
+        artifact = {key: value for key, value in (
+            ('purpose', purpose), ('artifact_request_id', artifact_request_id),
+            ('artifact_attempt_id', artifact_attempt_id), ('artifact_brief_id', artifact_brief_id),
+            ('artifact_scope_sha256', artifact_scope_sha256)) if value is not None}
         return self._enqueue_instance(matches[0], message, channel, job_id,
-                                      dispatch_id=dispatch_id, prompt=prompt)
+                                      dispatch_id=dispatch_id, prompt=prompt, **artifact)
 
     def _enqueue_instance(self, instance, message, channel, job_id, **kwargs):
         entry = {'sender': message.split(':')[0].strip() if ':' in message else '?',
@@ -61,9 +73,14 @@ class AgentTrigger:
             entry['prompt'] = prompt
         if job_id is not None:
             entry['job_id'] = job_id
-        for key in ('dispatch_id', 'review_brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision'):
+        for key in ('dispatch_id', 'review_brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision',
+                    'purpose', 'artifact_request_id', 'artifact_attempt_id', 'artifact_brief_id', 'artifact_scope_sha256'):
             if key in kwargs:
                 entry[key] = kwargs[key]
+        if 'purpose' in entry:
+            from queue_coordinator import CoordinatedQueue
+            if entry['purpose'] != 'artifact-v1' or self._artifact_policy is None or not isinstance(self.queue, CoordinatedQueue):
+                raise ValueError('Artifact dispatch requires its configured authority coordinator.')
         record = self.queue.enqueue(instance, entry)
         log.info('Persisted dispatch %s for %s (channel=%s)',
                  record['envelope']['dispatch_id'], instance['name'], channel)

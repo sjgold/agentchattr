@@ -54,6 +54,13 @@ class CoordinatedQueue:
     def __init__(self, queue, sessions, lock):
         self._queue, self._sessions, self._lock = queue, sessions, lock
         self._channel_policy = None
+        self._artifact_policy = None
+
+    def bind_artifact_policy(self, getter):
+        if not callable(getter):
+            raise ValueError('Artifact policy requires an explicit getter.')
+        with self._lock:
+            self._artifact_policy = getter
 
     def bind_channel_policy(self, policy_getter):
         """Bind before runtime publication; a failed getter keeps work held."""
@@ -98,6 +105,12 @@ class CoordinatedQueue:
                    any(item['attempt_id'] == envelope.get('attempt_id') for item in run.get('superseded_attempts', []))
                    for run in runs):
                 raise QueueConflict('Superseded attempts cannot enqueue further work.')
+            if 'purpose' in envelope:
+                if envelope['purpose'] != 'artifact-v1' or self._artifact_policy is None:
+                    raise QueueConflict('Artifact dispatch authority is unavailable.')
+                # Engine/catalog held; no ledger transaction has begun.
+                self._artifact_policy().validate_enqueue(instance, envelope)
+                return self._queue._enqueue_artifact_validated(instance, envelope)
             return self._queue.enqueue(instance, envelope)
 
     def settle_old_transport(self, session_id, request_id, evidence):
@@ -134,9 +147,23 @@ class CoordinatedQueue:
                        if run.get('dispatch_eligible') is False and not run.get('stop_id')}
             identity = instance.get('identity_id') if isinstance(instance, dict) else None
             allowed = allowed_review_dispatch_ids(runs, identity)
+            artifact_eligible = set()
+            if self._artifact_policy is not None:
+                try:
+                    artifact_eligible = self._artifact_policy().eligible_dispatch_ids(instance)
+                    if not isinstance(artifact_eligible, set):
+                        artifact_eligible = set()
+                except (OSError, ValueError, RuntimeError):
+                    artifact_eligible = set()  # Owner failure closes new artifact claims only.
+            # Existing owners must still inspect/release/cancel retained transport.
+            for record in self._queue.for_identity(instance):
+                if (record['state'] in ACTIVE and record['consumer_id'] == consumer_id
+                        and record['envelope'].get('purpose') == 'artifact-v1'):
+                    artifact_eligible.add(record['envelope']['dispatch_id'])
             return self._queue.claim(instance, consumer_id, blocked_run_ids=blocked,
                                      blocked_identity_ids=unpublished_holds, allowed_dispatch_ids=allowed,
-                                     blocked_channel_names=blocked_channels, active_channel_names=active_channels)
+                                     blocked_channel_names=blocked_channels, active_channel_names=active_channels,
+                                     artifact_eligible=artifact_eligible)
 
     def __getattr__(self, name):
         attribute = getattr(self._queue, name)

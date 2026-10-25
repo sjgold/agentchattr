@@ -49,7 +49,8 @@ def _routing(envelope):
         raise ValueError('Dispatch channel is invalid.')
     if 'job_id' in envelope and (type(envelope['job_id']) is not int or envelope['job_id'] < 0):
         raise ValueError('Dispatch job_id must be a nonnegative integer (zero means no job).')
-    for key in ('prompt', 'text', 'sender', 'review_brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision'):
+    for key in ('prompt', 'text', 'sender', 'review_brief_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision',
+                'purpose', 'artifact_request_id', 'artifact_attempt_id', 'artifact_brief_id', 'artifact_scope_sha256'):
         if key in envelope and not isinstance(envelope[key], str):
             raise ValueError(f'Dispatch {key} must be text.')
 
@@ -101,6 +102,23 @@ class QueueStore:
         record['events'].append({'state': state, 'at': time.time(), 'error': error})
 
     def enqueue(self, instance, envelope):
+        if isinstance(envelope, dict) and 'purpose' in envelope:
+            raise QueueConflict('Purpose dispatches require the configured coordinator.')
+        return self._enqueue(instance, envelope)
+
+    def _enqueue_artifact_validated(self, instance, envelope):
+        """Storage-only entry; coordinator validates owners before this transaction."""
+        if not isinstance(envelope, dict) or envelope.get('purpose') != 'artifact-v1':
+            raise QueueConflict('Unknown dispatch purpose.')
+        for field, width in (('dispatch_id', 32), ('artifact_request_id', 32), ('artifact_attempt_id', 32),
+                             ('artifact_brief_id', 32), ('artifact_scope_sha256', 64)):
+            if not isinstance(envelope.get(field), str) or not re.fullmatch('[0-9a-f]{%d}' % width, envelope[field]):
+                raise QueueConflict('Artifact dispatch scope is incomplete.')
+        if any(field in envelope for field in ('review_brief_id', 'run_id', 'session_id', 'turn_id', 'attempt_id', 'input_revision')):
+            raise QueueConflict('Artifact dispatch cannot carry review routing authority.')
+        return self._enqueue(instance, envelope)
+
+    def _enqueue(self, instance, envelope):
         identity = _seat(instance)
         if not isinstance(envelope, dict):
             raise ValueError('A dispatch envelope object is required.')
@@ -131,9 +149,15 @@ class QueueStore:
             return deepcopy(record)
 
     def claim(self, instance, consumer_id, *, blocked_run_ids=None, blocked_identity_ids=None,
-              allowed_dispatch_ids=None, blocked_channel_names=None, active_channel_names=None):
+              allowed_dispatch_ids=None, blocked_channel_names=None, active_channel_names=None,
+              artifact_eligible=None):
         identity = _seat(instance)
         _identifier(consumer_id, 'Consumer ID')
+        if artifact_eligible is not None and not isinstance(artifact_eligible, set):
+            raise ValueError('Artifact eligibility must be an explicit set or None.')
+        artifact_eligible = set(artifact_eligible or ())
+        if any(not isinstance(value, str) or not re.fullmatch('[0-9a-f]{32}', value) for value in artifact_eligible):
+            raise ValueError('Artifact eligibility requires exact dispatch identifiers.')
         if blocked_channel_names is not None:
             if type(blocked_channel_names) is not set or any(
                     type(name) is not str or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,19}', name)
@@ -157,6 +181,10 @@ class QueueStore:
             records = [r for r in ledger['records'] if r['envelope']['target_identity_id'] == identity]
             for record in records:
                 if record['state'] in ACTIVE:
+                    purpose = record['envelope'].get('purpose')
+                    if purpose is not None and (purpose != 'artifact-v1'
+                            or record['envelope']['dispatch_id'] not in artifact_eligible):
+                        raise QueueBusy('Artifact or unknown-purpose ownership is held for coordinated inspection.')
                     if record['envelope'].get('run_id') in blocked and record['state'] != 'cancelling':
                         raise QueueBusy('Restart ownership is unverified; held work is retained.')
                     if record['consumer_id'] != consumer_id:
@@ -169,6 +197,10 @@ class QueueStore:
                 raise QueueBusy('Saved-result transport exit is unproven; pending work is retained.')
             for record in records:
                 if record['state'] == 'queued':
+                    purpose = record['envelope'].get('purpose')
+                    if purpose is not None and (purpose != 'artifact-v1'
+                            or record['envelope']['dispatch_id'] not in artifact_eligible):
+                        continue
                     if record['envelope'].get('channel', 'general') in (blocked_channel_names or set()):
                         continue
                     if (active_channel_names is not None
