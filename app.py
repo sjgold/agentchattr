@@ -2338,14 +2338,14 @@ async def export_history():
     import archive as _archive
     import time as _time
     try:
-        zip_bytes = _archive.build_export(
+        zip_bytes = await asyncio.to_thread(_archive.build_export,
             store, jobs, rules, summaries,
             app_version=config.get("server", {}).get("version", ""),
             artifact_store=artifacts,
         )
     except _archive.ArtifactArchiveLimit as error:
         return JSONResponse(error.projection(), status_code=413)
-    except _archive.artifact_codec.ArtifactSectionError as error:
+    except (_archive.ArtifactExportError, _archive.artifact_codec.ArtifactSectionError) as error:
         return JSONResponse({'code': error.code, 'error': error.error}, status_code=error.http_status)
     except Exception as exc:
         return JSONResponse({"error": f"export failed: {exc}"}, status_code=500)
@@ -2382,6 +2382,8 @@ async def import_history(file: UploadFile = File(...)):
     except ValueError:
         return JSONResponse({'error': 'Invalid import request.'}, status_code=400)
     if not report.get("ok"):
+        if isinstance(report.get('history_error'), dict):
+            return JSONResponse(report, status_code=report['history_error']['http_status'])
         section_error = report.get('sections', {}).get('artifacts', {}).get('section_error')
         if isinstance(section_error, dict) and section_error.get('code') in _archive.artifact_codec.ERRORS:
             return JSONResponse(report, status_code=_archive.artifact_codec.ERRORS[section_error['code']][0])

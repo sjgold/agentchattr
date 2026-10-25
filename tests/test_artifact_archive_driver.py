@@ -348,7 +348,7 @@ class ArtifactArchiveDriverTests(unittest.TestCase):
                 self.assertEqual((error.bound,error.actual),(bound,expected_actual))
                 self.assertEqual(error.total_bytes,error.history_bytes+error.artifact_bytes)
                 self.assertEqual(error.container_overhead_bytes,0)
-                self.assertEqual(error.dominant_section,'artifacts')
+                self.assertEqual(error.dominant_section,'history' if bound=='lineages' else 'artifacts')
 
 
 if __name__=='__main__':unittest.main()

@@ -15,7 +15,7 @@ from itertools import islice
 
 from channel_lifecycle import ChannelConflict, ChannelInactive, ChannelUnavailable
 import artifact_archive as artifact_codec
-from artifact_store import ArtifactUnavailable, ArtifactValidationError, ArtifactImportCollision
+from artifact_store import ArtifactUnavailable, ArtifactValidationError, ArtifactImportCollision, ArtifactConflict
 from sealed_result_io import canonical_utf8
 
 SCHEMA_VERSION = 1
@@ -46,6 +46,15 @@ class ArtifactArchiveLimit(ValueError):
     def projection(self):
         return {key: getattr(self, key) for key in ('code', 'error', 'bound', 'unit', 'limit', 'actual',
             'total_bytes', 'history_bytes', 'artifact_bytes', 'container_overhead_bytes', 'dominant_section')}
+
+
+class ArtifactExportError(ValueError):
+    code = 'artifact_archive_export_version_invalid'
+    http_status = 400
+    error = 'Artifact export requires an application version of at most 128 UTF-8 bytes.'
+
+    def __init__(self):
+        super().__init__(self.error)
 
 
 def _fingerprint(record: dict) -> str:
@@ -80,7 +89,13 @@ def build_export(store, jobs_store, rules_store, summary_store,
             raise artifact_codec.ArtifactSectionError('artifact_archive_owner_unavailable')
         try:
             identifiers = artifact_store.export_lineage_ids()
+            if len(identifiers) > artifact_codec.MAX_LINEAGES:
+                raise ArtifactArchiveLimit('lineages', len(identifiers), history_bytes=0, artifact_bytes=0)
             if identifiers:
+                try:
+                    artifact_codec._text(app_version, 128, empty=True)
+                except ValueError:
+                    raise ArtifactExportError() from None
                 return _build_artifact_export(store, jobs_store, rules_store, summary_store,
                     app_version, artifact_store, identifiers)
         except (ChannelUnavailable, OSError):
@@ -229,8 +244,6 @@ def _build_artifact_export(store, jobs_store, rules_store, summary_store, app_ve
             raise ArtifactArchiveLimit('zip', len(data), history_bytes=compressed_history,
                 artifact_bytes=compressed_artifacts,
                 container_overhead_bytes=len(data) - compressed_history - compressed_artifacts)
-        if len(lineages) > artifact_codec.MAX_LINEAGES:
-            limit('lineages', len(lineages))
         artifact_codec.preflight(zf, zip_size=len(data))
     return data
 
@@ -325,11 +338,6 @@ def _strict_import(zf, zip_size, store, jobs_store, rules_store, summary_store,
             if info.filename in artifact_codec.HISTORY_MEMBERS:
                 history[info.filename] = artifact_codec._bounded_read(zf, info, artifact_codec.MAX_ARCHIVE_BYTES)
         frozen = _HistorySnapshot(history)
-        if policy is not None:
-            return _configured_import(frozen, store, jobs_store, rules_store, summary_store,
-                channel_list, max_channels, policy, report, artifact_store=owner,
-                artifact_section=(zf, index) if index is not None else None)
-        return _legacy_import(frozen, store, jobs_store, rules_store, summary_store, channel_list, max_channels, report)
     except artifact_codec.ArtifactSectionError as error:
         return _artifact_failure(report, error, storage=error.code == 'artifact_archive_storage_unavailable')
     except (ChannelUnavailable, OSError):
@@ -338,11 +346,56 @@ def _strict_import(zf, zip_size, store, jobs_store, rules_store, summary_store,
     except (ValueError, TypeError, KeyError, RuntimeError, EOFError, zlib.error, zipfile.BadZipFile):
         return _artifact_failure(report, artifact_codec.ArtifactSectionError())
 
+    # History failures keep their own report and never become artifact faults.
+    try:
+        if policy is not None:
+            _configured_import(frozen, store, jobs_store, rules_store, summary_store,
+                channel_list, max_channels, policy, report)
+        else:
+            _legacy_import(frozen, store, jobs_store, rules_store, summary_store,
+                channel_list, max_channels, report)
+    except artifact_codec.ArtifactSectionError as error:
+        return _artifact_failure(report, error)
+    except Exception as error:
+        return _history_failure(report, error)
+    if index is not None:
+        try:
+            _import_artifact_lineages(zf, index, owner, policy, channel_list, max_channels, report)
+        except artifact_codec.ArtifactSectionError as error:
+            return _artifact_failure(report, error, storage=error.code == 'artifact_archive_storage_unavailable')
+        except (ChannelUnavailable, OSError):
+            return _artifact_failure(report,
+                artifact_codec.ArtifactSectionError('artifact_archive_storage_unavailable'), storage=True)
+    return report
+
+
+def _history_failure(report, error):
+    if isinstance(error, ChannelConflict):
+        code, status, message = ('history_import_conflict', 409,
+            'Import channel state changed. Check history before importing again.')
+    elif isinstance(error, (ChannelUnavailable, OSError)):
+        code, status, message = ('history_import_storage_unavailable', 503,
+            'Import storage is unavailable. Check history before importing again.')
+    elif isinstance(error, (ValueError, TypeError, KeyError, AttributeError)):
+        code, status, message = 'history_import_invalid', 400, 'Invalid import request.'
+    else:
+        code, status, message = ('history_import_failed', 500,
+            'History import failed. Check history before importing again.')
+    report.update(ok=False, error=message, history_error={'code': code, 'error': message, 'http_status': status})
+    report['partial'] = bool(report['channels']['created'] or any(
+        row.get(key, 0) for row in report['sections'].values()
+        for key in ('created', 'updated', 'messages_created')))
+    return report
+
 
 def _artifact_skip(section, ordinal, reason, *, collision_kinds=(), channel_reason=None):
-    counter = {'duplicate': 'duplicate_lineages', 'uid_collision': 'conflict_lineages',
+    counters = {'duplicate': 'duplicate_lineages', 'uid_collision': 'conflict_lineages',
         'invalid_lineage': 'invalid_lineages', 'object_conflict': 'object_conflict_lineages',
-        'channel_unavailable': 'channel_unavailable_lineages'}[reason]
+        'channel_unavailable': 'channel_unavailable_lineages',
+        'classification_changed': 'conflict_lineages'}
+    if reason not in counters:
+        reason = 'invalid_lineage'
+    counter = counters[reason]
     section[counter] += 1
     section['skipped_lineages'] += 1
     section['details'].append({'ordinal': ordinal, 'reason': reason,
@@ -377,6 +430,8 @@ def _import_artifact_lineages(zf, index, owner, policy, channel_list, max_channe
                 prepared = owner.prepare_import_lineage(lineage, objects)
                 receipts.extend(prepared.created_objects)
                 with _import_boundary(policy):
+                    if policy.catalog.snapshot()['intent']:
+                        raise artifact_codec.ArtifactSectionError('artifact_archive_repair_pending')
                     result = owner.classify_import_lineage(prepared)
                     if result is None:
                         catalog = policy.catalog.snapshot()
@@ -399,6 +454,16 @@ def _import_artifact_lineages(zf, index, owner, policy, channel_list, max_channe
                 _artifact_skip(section, ordinal, error.reason, collision_kinds=error.collision_kinds)
             except (artifact_codec.ArtifactLineageError, ArtifactValidationError):
                 _artifact_skip(section, ordinal, 'invalid_lineage')
+            except ArtifactConflict:
+                with _import_boundary(policy):
+                    if policy.catalog.snapshot()['intent']:
+                        raise artifact_codec.ArtifactSectionError('artifact_archive_repair_pending')
+                _artifact_skip(section, ordinal, 'classification_changed')
+            except ChannelConflict:
+                with _import_boundary(policy):
+                    if policy.catalog.snapshot()['intent']:
+                        raise artifact_codec.ArtifactSectionError('artifact_archive_repair_pending')
+                _artifact_skip(section, ordinal, 'channel_unavailable', channel_reason='channel_retired')
             except ArtifactUnavailable as error:
                 if hasattr(error, '_created_objects') and error._created_objects is None:
                     uncertain = True
@@ -483,7 +548,7 @@ def _do_import(zip_bytes, store, jobs_store, rules_store,
 
     if channel_policy is not None:
         return _configured_import(zf, store, jobs_store, rules_store, summary_store,
-                                  channel_list, max_channels, channel_policy, report, artifact_store=artifact_store)
+                                  channel_list, max_channels, channel_policy, report)
 
     return _legacy_import(zf, store, jobs_store, rules_store, summary_store, channel_list, max_channels, report)
 
@@ -775,10 +840,12 @@ def _array_rows(zf, name, warnings):
         return []
 
 
-def _patch_import_messages(store, patches, policy, *, field):
+def _patch_import_messages(store, patches, policy, *, field, reject_repair=False):
     skipped = 0
     for batch in _chunks(patches):
         with _import_boundary(policy):
+            if reject_repair and policy.catalog.snapshot()['intent']:
+                raise artifact_codec.ArtifactSectionError('artifact_archive_repair_pending')
             active = {}
             for message_id, value in batch:
                 saved = store.get_snapshot(message_id)
@@ -809,8 +876,15 @@ def _patch_import_messages(store, patches, policy, *, field):
 
 
 def _configured_import(zf, store, jobs_store, rules_store, summary_store,
-                       channel_list, max_channels, policy, report, *, artifact_store=None, artifact_section=None):
+                       channel_list, max_channels, policy, report):
     """Catalog-aware import; each bounded mutation releases the engine lock."""
+    @contextmanager
+    def boundary():
+        with _import_boundary(policy):
+            if 'artifacts' in report['sections'] and policy.catalog.snapshot()['intent']:
+                raise artifact_codec.ArtifactSectionError('artifact_archive_repair_pending')
+            yield
+
     warnings, remap_counts = report['warnings'], {}
     report['channels']['remap_counts'] = []
 
@@ -852,7 +926,7 @@ def _configured_import(zf, store, jobs_store, rules_store, summary_store,
                 msg_report['skipped'] += 1
 
     for batch in _chunks(message_rows()):  # Decode/parse before taking policy.
-        with _import_boundary(policy):
+        with boundary():
             staged, reply_uids, seen = [], {}, set()
             for message in batch:
                 uid = message.get('uid') or 'fp-' + _fingerprint(message)
@@ -880,14 +954,15 @@ def _configured_import(zf, store, jobs_store, rules_store, summary_store,
 
     uid_to_id = {m.get('uid'): m['id'] for m in store.get_recent(999_999_999) if m.get('uid')}
     msg_report['reply_links_skipped'] = _patch_import_messages(store,
-        ((mid, uid_to_id[uid]) for mid, uid in replies if uid in uid_to_id), policy, field='reply_to')
+        ((mid, uid_to_id[uid]) for mid, uid in replies if uid in uid_to_id), policy, field='reply_to',
+        reject_repair='artifacts' in report['sections'])
 
     job_report = dict(created=0, updated=0, messages_created=0, duplicates=0, conflicts=0,
                       messages_skipped=0, partial=[], breadcrumbs_skipped=0)
     report['sections']['jobs'] = job_report
     job_ids = {}
     for job in _array_rows(zf, 'jobs.json', warnings) if jobs_store else []:
-        with _import_boundary(policy):
+        with boundary():
             uid = job.get('uid') or 'fp-' + _fingerprint(job)
             if uid in job_uids:
                 job_report['duplicates'] += 1
@@ -905,7 +980,7 @@ def _configured_import(zf, store, jobs_store, rules_store, summary_store,
         conversation = job.get('messages', [])
         landed, skipped = 0, 0
         for index, message in enumerate(conversation):
-            with _import_boundary(policy):
+            with boundary():
                 try:
                     policy.require_active(channel)
                 except ChannelInactive:
@@ -919,7 +994,7 @@ def _configured_import(zf, store, jobs_store, rules_store, summary_store,
                 landed += 1
                 job_report['messages_created'] += 1
             time.sleep(0)
-        with _import_boundary(policy):
+        with boundary():
             try:
                 policy.require_active(channel)
             except ChannelInactive:
@@ -943,12 +1018,13 @@ def _configured_import(zf, store, jobs_store, rules_store, summary_store,
     breadcrumbs = [(m['id'], job_ids[m['metadata']['job_id']]) for m in store.get_recent(999_999_999)
         if m['id'] in imported_set and m.get('type') == 'job_created'
         and isinstance(m.get('metadata'), dict) and m['metadata'].get('job_id') in job_ids]
-    job_report['breadcrumbs_skipped'] = _patch_import_messages(store, breadcrumbs, policy, field='job_id')
+    job_report['breadcrumbs_skipped'] = _patch_import_messages(store, breadcrumbs, policy, field='job_id',
+        reject_repair='artifacts' in report['sections'])
 
     rule_report = dict(created=0, duplicates=0, conflicts=0)
     report['sections']['rules'] = rule_report
     for rule in _array_rows(zf, 'rules.json', warnings) if rules_store else []:
-        with _import_boundary(policy):
+        with boundary():
             uid = rule.get('uid') or 'fp-' + _fingerprint(rule)
             if uid in rule_uids:
                 rule_report['duplicates'] += 1
@@ -972,7 +1048,7 @@ def _configured_import(zf, store, jobs_store, rules_store, summary_store,
     summary_report = dict(created=0, updated=0, skipped=0)
     report['sections']['summaries'] = summary_report
     for summary in _array_rows(zf, 'summaries.json', warnings) if summary_store else []:
-        with _import_boundary(policy):
+        with boundary():
             raw = summary.get('channel', '')
             if not raw:
                 summary_report['skipped'] += 1
@@ -991,7 +1067,4 @@ def _configured_import(zf, store, jobs_store, rules_store, summary_store,
             summary_report['updated' if existing else 'created'] += 1
         time.sleep(0)
     report['channels']['remap_counts'] = list(remap_counts.values())
-    if artifact_section is not None:
-        _import_artifact_lineages(artifact_section[0], artifact_section[1], artifact_store, policy,
-            channel_list, max_channels, report)
     return report
