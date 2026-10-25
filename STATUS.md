@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 04:15 UTC (#20 capability independently cleared; authority/admission contract drafted)
+**Updated:** 2026-10-25 04:24 UTC (#20 authority contract narrowed to operator-only recovered transport admission)
 
 ## At a glance
 
@@ -17,7 +17,7 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
-| Next | Sonnet reviews authority/admission contract; no tests/code before contract clearance |
+| Next | Sonnet rechecks authority R1/G1-G5 amendments; then exact helper payload freeze |
 
 ## Current handoff
 
@@ -799,4 +799,7 @@ Cold-fixture classification confirmed: exact15 failed test methods (16 failing e
 Corrected capability full at7a9226e:1415 tests215.255s OK(skipped4), tracked83c09a8b, implementation-owner run. Source stayed frozen; no helper changes. P1 source-only0ade4b7 and fixture/recovery7a9226e are separate pins for Sonnet recheck. Next owner Sonnet clears the component; Codex drafts authority/admission only after that clearance. Capability remains empty and no artifact authoring branch/routes are enabled.
 
 
-Authority/admission contract draft: [TICKET-20-AUTHORITY.md](TICKET-20-AUTHORITY.md), no tests/code yet. Covers purpose-separated signed schema/private brief and outbox, queue.owned plus explicit claim-state checks, current producer launch recheck at result time, diagnostic versus terminal-state decisions, deterministic crash recovery and cancellation by dispatch. Open review choice: narrowly permit retained-claim recovery of a sealed result after released/failed/settled_recovered transport only while the exact producer launch and request remain live. No transport revival, generation or stale-owner admission. Source Stop fence ordering and terminal transport-cancellation repair are explicit proposals for review. Owner Sonnet reviews; Codex revises/freezes helper payloads after approval. Do not start authority tests before that.
+Authority/admission contract draft: [TICKET-20-AUTHORITY.md](TICKET-20-AUTHORITY.md), no tests/code yet. Covers purpose-separated signed schema/private brief and outbox, queue.owned plus explicit claim-state checks, current producer launch recheck at result time, diagnostic versus terminal-state decisions, deterministic crash recovery and cancellation by dispatch. R1 is accepted only for explicit operator resume, never startup, with ACTIVE request/no terminal disposition, exact sealed retained consumer+seat claim evidence and current live launch OR existing exact local-exit proof. No transport revival, generation or stale-owner admission. Source Stop fence ordering and terminal transport-cancellation repair are explicit proposals for review. Owner Sonnet reviews; Codex revises/freezes helper payloads after approval. Do not start authority tests before that.
+
+
+Authority amendments R1/G1-G5 are docs-only: operator-only terminal-transport recovery, terminal-request ACTIVE/cancelling blockers, saved-record redelivery without failed release/regeneration, exact agents/wrapper envelope forwarding and empty-capability enqueue refusal, real review-occupancy claim reason, worker cancellation/exit-proof settlement. To satisfy the retained-claim condition, proposal adds consumer_id to the signed artifact payload and seat/consumer metadata to NEW artifact dispatched events; no legacy event backfill or review/chat state changes. Those metadata details require reviewer confirmation before payload freeze/tests.
