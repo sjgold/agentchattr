@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 10:49 UTC (#20 store import independently cleared; pure codec review next)
+**Updated:** 2026-10-25 11:12 UTC (#20 pure codec review correction verified)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store import independently cleared5024c06 (reviewer174 PASS141.161s plus independent benchmark PASS). Pure codec43 PASS3.697s awaits review; archive.py/app threading and reports remain pending; capability stays empty |
+| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store import independently cleared5024c06 (reviewer174 PASS141.161s plus independent benchmark PASS). Corrected pure codec69 PASS5.303s awaits recheck (real deflate/EOF, fatal I/O503, ASCII dates,64KiB manifest cap and header-first ordering); archive.py/app threading and reports remain pending; capability stays empty |
 
 ## Current handoff
+
+- Pure codec review correction: root D1-D3 actual-runtime red3/2 FAIL+5 ERROR0.109s, expanded D4/D5 red4/5 FAIL+5 ERROR0.115s. Fixed zlib/EOF safe mapping, fatal backing-I/O503 at both boundaries, ASCII dates,65536-byte manifest cap and hazards/header-bounds before decompression/index-derived limits. Updated superseded root precedence/large-history-name fixtures without dropping assertions. Real ZIP/ZIP64/size-limit/negative matrices and second literal revision/API/first-origin golden added; final69 PASS5.303s including unchanged archive/channel-import suites. archive.py unchanged; measured export budget/errors remain DRIVER work. Corrected-codec independent recheck next, no activation.
 
 - Store import independently PASS5024c06: reviewer174 PASS141.161s and separate benchmark1 PASS33.864s/max about0.1648s. Pure artifact_archive.py now implements explicit portable/index/manifest allowlists, strict metadata shape/cross-lineage validation, bounded header/index preflight and per-lineage object reads with fixed section/lineage errors. New codec12 + affected import/store/manifest groups43 PASS3.697s. Initial2 missing-module ERROR0.025s and separate scaffold2 assertion FAIL0.061s are distinct; strict manifest negatives observed4 FAIL before type/date fixes, then passed. Hand-authored literal DTO golden and app-authority canaries cover every built nested projection; raw source USER_DATA_CANARY is retained byte-exact. archive.py SHA22ce91d4...0a24 unchanged, so sentinel/schema2 writer/app owner threading/section report/ZIP byte accounting still pending. Capability stays empty.
 

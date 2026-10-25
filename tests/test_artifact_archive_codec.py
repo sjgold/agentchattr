@@ -123,11 +123,16 @@ class ArtifactArchiveCodecTests(unittest.TestCase):
         for bound in ('members','index','lineages','ratio','uncompressed','zip'):
             with self.subTest(bound=bound):
                 rows=self.headers();options={'lineage_count':0,'zip_size':0}
-                if bound=='members':rows=rows*2049
+                if bound=='members':
+                    for number in range(4095):
+                        row=zipfile.ZipInfo('artifacts/objects/'+format(number,'032x')+'.md')
+                        row.header_offset=1000+number*100;row.file_size=row.compress_size=0;rows.append(row)
                 elif bound=='index':rows[1].file_size=4194305
                 elif bound=='lineages':options['lineage_count']=1025
                 elif bound=='ratio':rows[0].file_size=1001;rows[0].compress_size=1
-                elif bound=='uncompressed':rows[0].file_size=rows[0].compress_size=50*1024*1024
+                elif bound=='uncompressed':
+                    rows[0].filename=rows[0].orig_filename='messages.jsonl'
+                    rows[0].file_size=rows[0].compress_size=50*1024*1024
                 else:options['zip_size']=50*1024*1024+1
                 with self.assertRaises(codec.ArtifactSectionError) as caught:codec.validate_headers(rows,**options)
                 self.assertEqual((caught.exception.code,caught.exception.bound),('artifact_archive_limit',bound))
@@ -247,9 +252,10 @@ class ArtifactArchiveCodecTests(unittest.TestCase):
             codec.preflight(zf,zip_size=len(data))
         self.assertEqual((caught.exception.code,caught.exception.bound),('artifact_archive_limit','ratio'))
         rows=self.headers();rows[0].file_size=50*1024*1024+1;rows[0].compress_size=1
+        rows[0].filename=rows[0].orig_filename='messages.jsonl'
         with self.assertRaises(codec.ArtifactSectionError) as caught:
             codec.validate_headers(rows,lineage_count=1025,zip_size=50*1024*1024+1)
-        self.assertEqual(caught.exception.bound,'lineages')
+        self.assertEqual(caught.exception.bound,'ratio')
         rows[1].file_size=4194305
         with self.assertRaises(codec.ArtifactSectionError) as caught:
             codec.validate_headers(rows,lineage_count=1025,zip_size=50*1024*1024+1)

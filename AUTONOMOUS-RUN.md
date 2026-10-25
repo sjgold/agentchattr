@@ -235,3 +235,7 @@ Root F1/F2 red4/6FAIL before fixes -> metadata classification BEFORE any staging
 ## Ticket20 pure codec checkpoint (2026-10-25)
 
 Store independently cleared5024c06, reviewer174/141.161s plus separate benchmark1/33.864s. New pure artifact_archive projection/validation code: codec12 + affected groups43 PASS3.697s, literal contract metadata golden and raw packet equality separately verified. Manifest4-failure strictness red fixed before final checks. archive.py remains SHA22ce91d4...0a24, so configured writer/importer, private sentinel, owner call sites and section reports still pending. Pure-codec independent review next; capability empty.
+
+## Ticket20 pure codec correction (2026-10-25)
+
+D1-D3 reproduced on actual zlib/EOF/backing-stream I/O/Unicode-year paths before fixes; D4/D5 reordered headers before inflation and added64KiB manifest cap. New real ZIP/ZIP64 and full negative matrices, second literal API/revision/first-origin golden; final69 PASS5.303s. Corrected-codec recheck next. archive.py remains unchanged, so schema2 driver/private sentinel/owner routes/report and measured export errors are still pending. Capability empty.

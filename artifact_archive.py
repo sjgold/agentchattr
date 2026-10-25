@@ -7,6 +7,7 @@ import re
 import stat
 import unicodedata
 import zipfile
+import zlib
 
 from artifact_store import (MAX_ARTIFACT_BYTES, MAX_PACKET_BYTES, MAX_PACKET_MESSAGES,
     LIVE, TERMINAL, STATE_REASONS, ArtifactValidationError, request_ids,
@@ -15,6 +16,7 @@ from sealed_result_io import canonical_utf8
 
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
 MAX_INDEX_BYTES = 4 * 1024 * 1024
+MAX_MANIFEST_BYTES = 64 * 1024
 MAX_MEMBERS = 4096
 MAX_LINEAGES = 1024
 MAX_RATIO = 1000
@@ -273,8 +275,6 @@ def has_artifact_members(infos):
 
 
 def validate_headers(infos, *, lineage_count=0, zip_size=0):
-    if len(infos) > MAX_MEMBERS:
-        raise ArtifactSectionError('artifact_archive_limit', bound='members')
     names, normalized, offsets = {}, set(), set()
     try:
         for info in infos:
@@ -299,17 +299,21 @@ def validate_headers(infos, *, lineage_count=0, zip_size=0):
                     or info.external_attr & 0x10 or info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)):
                 raise ArtifactValidationError('Unsupported archive member type.')
             names[info.filename] = info
+        if len(infos) > MAX_MEMBERS:
+            raise ArtifactSectionError('artifact_archive_limit', bound='members')
+        if 'manifest.json' in names and names['manifest.json'].file_size > MAX_MANIFEST_BYTES:
+            raise ArtifactSectionError('artifact_archive_limit', bound='manifest')
         if INDEX_MEMBER in names and names[INDEX_MEMBER].file_size > MAX_INDEX_BYTES:
             raise ArtifactSectionError('artifact_archive_limit', bound='index')
         _integer(lineage_count); _integer(zip_size)
-        if lineage_count > MAX_LINEAGES:
-            raise ArtifactSectionError('artifact_archive_limit', bound='lineages')
         if any(info.file_size > MAX_RATIO * max(1, info.compress_size) for info in infos):
             raise ArtifactSectionError('artifact_archive_limit', bound='ratio')
         if sum(info.file_size for info in infos) > MAX_ARCHIVE_BYTES:
             raise ArtifactSectionError('artifact_archive_limit', bound='uncompressed')
         if zip_size > MAX_ARCHIVE_BYTES:
             raise ArtifactSectionError('artifact_archive_limit', bound='zip')
+        if lineage_count > MAX_LINEAGES:
+            raise ArtifactSectionError('artifact_archive_limit', bound='lineages')
         return names
     except ArtifactSectionError:
         raise
@@ -332,7 +336,7 @@ def validate_manifest(manifest, index, *, artifact_present):
         _fields(manifest, expected)
         _token(manifest['archive_id']); _text(manifest['app_version'], 128, empty=True)
         if (not isinstance(manifest['created_at'], str) or not re.fullmatch(
-                r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', manifest['created_at'])
+                r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z', manifest['created_at'])
                 or manifest['product'] != 'agentchattr' or manifest['attachments_included'] is not False):
             raise ArtifactValidationError('Invalid archive manifest metadata.')
         datetime.strptime(manifest['created_at'], '%Y-%m-%dT%H:%M:%SZ')
@@ -371,31 +375,28 @@ def _bounded_read(zf, info, maximum):
 def preflight(zf, *, zip_size):
     """Pure structural validation before a driver may mutate ANY owner."""
     infos = zf.infolist()
-    # Read the capped index before ratio/total checks so fixed precedence holds.
-    # The preliminary header pass uses only index/member limits and structure.
-    if len(infos) > MAX_MEMBERS:
-        raise ArtifactSectionError('artifact_archive_limit', bound='members')
-    index_info = next((row for row in infos if row.filename == INDEX_MEMBER), None)
-    if index_info is not None and index_info.file_size > MAX_INDEX_BYTES:
-        raise ArtifactSectionError('artifact_archive_limit', bound='index')
     try:
-        index = validate_index(_bounded_read(zf, index_info, MAX_INDEX_BYTES)) if index_info else None
-        names = validate_headers(infos, lineage_count=len(index['lineages']) if index else 0, zip_size=zip_size)
-        if index is not None:
-            validate_index(canonical_utf8(index), member_names=set(names))
+        # All header hazards and header-derived limits precede decompression.
+        names = validate_headers(infos, zip_size=zip_size)
         # Opening checks local-name agreement and stdlib overlap bounds without
         # inflating untrusted bodies. CRC/body failures are checked on reads.
         for info in infos:
             with zf.open(info, 'r'):
                 pass
+        index_info = names.get(INDEX_MEMBER)
+        index = validate_index(_bounded_read(zf, index_info, MAX_INDEX_BYTES),
+                               member_names=set(names)) if index_info else None
         if 'manifest.json' not in names:
             raise ArtifactSectionError()
-        manifest = _unique_json(_bounded_read(zf, names['manifest.json'], MAX_ARCHIVE_BYTES))
+        manifest = _unique_json(_bounded_read(zf, names['manifest.json'], MAX_MANIFEST_BYTES))
         validate_manifest(manifest, index, artifact_present=index is not None or has_artifact_members(infos))
         return {'manifest': manifest, 'index': index}
     except ArtifactSectionError:
         raise
-    except (ValueError, TypeError, KeyError, OSError, RuntimeError, zipfile.BadZipFile, UnicodeError, RecursionError):
+    except OSError:
+        raise ArtifactSectionError('artifact_archive_storage_unavailable') from None
+    except (ValueError, TypeError, KeyError, RuntimeError, zipfile.BadZipFile, UnicodeError,
+            RecursionError, EOFError, zlib.error):
         raise ArtifactSectionError() from None
 
 
@@ -423,5 +424,8 @@ def read_lineage_objects(zf, lineage):
                 raise ValueError('Artifact source differs.')
             objects[('packet', scope['packet_id'])] = raw
         return objects
-    except (ValueError, TypeError, KeyError, OSError, RuntimeError, UnicodeError, RecursionError, zipfile.BadZipFile):
+    except OSError:
+        raise ArtifactSectionError('artifact_archive_storage_unavailable') from None
+    except (ValueError, TypeError, KeyError, RuntimeError, UnicodeError, RecursionError,
+            zipfile.BadZipFile, EOFError, zlib.error):
         raise ArtifactLineageError() from None
