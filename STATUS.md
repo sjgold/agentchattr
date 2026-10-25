@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 05:14 UTC (#20 claimed CLI guard green; oversize diagnostic collision isolated)
+**Updated:** 2026-10-25 05:15 UTC (#20 oversize diagnostic enum isolated; authority remains in progress)
 
 ## At a glance
 
@@ -825,3 +825,6 @@ Required first admission behavioral RED is now observed against an EXPLICIT, unr
 Guarded CLI replaces the explicit scaffold: initial2 plus protocol3 PASS5/0.382s, including no-effects unclaimed refusal and exact claimed admission/ACK replay. A shape-valid stale attempt must reach service diagnostics rather than be rejected by structural seal grammar: root protocol1ERROR0.002s -> structural/context split fix -> included in those5 green. Remaining API/recovery/cancel functions and root concurrency/goldens are not complete; expanded helper12 remains held.
 
 Confirmed C1 diagnostic-key collision: content empty-string followed by None with same fields/reason reuses the immutable retained-empty row (same id, not_retained remains false). Sonnet accepted a separate safe response_too_large quarantine enum member ONLY, no key/schema/cap migration; CLI error code stays invalid_content and API terminal state reason stays invalid_response. Next root observed-red + separate store-only enum/test/doc commit, rerun unchanged store modules, then continue authority. No publication or capability enablement.
+
+
+Separate store enum amendment: root oversize regression1ERROR0.010s (new fixed reason absent), then2PASS0.308s after adding ONLY response_too_large to QUARANTINE_REASONS. Retained-empty id/bytes remain unchanged; oversize no-body id differs and has byte_count0/not_retainedtrue. Root valid at-bound metadata fixtures exercise unchanged8/group,256groups,1024records and latest_reason on fresh reload. No state-reason/key/schema/cap/migration change. Unchanged store modules plus these2 are next; authority service wiring of the new diagnostic reason remains a separate change.

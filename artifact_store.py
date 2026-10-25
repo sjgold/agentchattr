@@ -34,7 +34,7 @@ STATE_REASONS = {None, 'resume_pending', 'queued', 'queued_behind_review', 'sour
     'invalid_response', 'quarantined', 'imported', 'source_packet_unavailable'}
 QUARANTINE_REASONS = {'wrong_identity', 'wrong_attempt', 'wrong_dispatch', 'wrong_brief',
     'wrong_scope', 'wrong_parent', 'cancelled', 'superseded', 'conflicting_duplicate',
-    'invalid_content', 'invalid_response', 'unmatched_saved_result', 'source_packet_unavailable'}
+    'invalid_content', 'invalid_response', 'unmatched_saved_result', 'source_packet_unavailable', 'response_too_large'}
 
 
 class ArtifactValidationError(ValueError):
