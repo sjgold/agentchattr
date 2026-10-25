@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 07:04 UTC (#20 guarded worker helpers ready for first expanded12 component run)
+**Updated:** 2026-10-25 07:14 UTC (#20 worker12 passed; HTTP-error cleanup fixed; unchanged rerun next)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
-| Next | Helper executes frozen worker12 once; Codex holds source during that run, then addresses findings and completes entry/transport/MCP/factory/cancellation wiring. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Helper reruns unchanged worker12 once after source HTTP-error cleanup, then static-finalizes. Codex holds source during that run and completes entry/transport/MCP/factory/races afterward. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -929,3 +929,12 @@ Root targeted API helper2 initially missing complete_api_artifact ERROR0.497s, t
 Root service-parent/rejection3 first produced6 missing-method/keyword ERROR events0.784s. New strictly read-only get_parent and exact string/false versus null/true rejection report then parent3+unchanged CLI/API invalid-response admission case PASS4/1.554s. Assigned parent exact bytes/hash/length and no write/state sync; invalid report combinations and CLI adapter refuse without diagnostics. Source service interfaces are still unbound to public HTTP/MCP/factory.
 
 All helper public functions now exist for the FIRST unchanged expanded12 run; helper source stays frozen. Next owner helper executes once and reports source/fixture attribution without editing; Codex holds every referenced source file unchanged during that run. API wrapper entry, call_model observation plumbing, configured CLI watcher/receipt status, HTTP/MCP/factory, Event races, full unchanged baseline/review and real-process acceptance remain unfinished. No wrapper-package or Ticket20 completion claim.
+
+
+## Worker helper first12 and HTTP-error cleanup, 2026-10-25 07:14 UTC
+
+Helper ONE unchanged expanded run at ea9ac2a:12 PASS7.115s, all cases reached, no assertion/fixture failure. Scope is pure workers/actual consumer/real queue/store/service/temporary owned files with controlled process, provider and transport observations. Configured wrappers, real HTTP/MCP/factory, Event races and native acceptance remain unfinished. Two ResourceWarnings arose from HTTPError callback doubles in the safe-error case; these were not suppressed or mislabeled fixture-only.
+
+Root inspected local stdlib HTTPError/response ownership and added test_artifact_worker_http3 with explicit buffered bodies and cleanup. Before fix:6 genuine failing close assertions1.592s (CLI403/409/503 and API delivery/parent/rejection errors remained open); the third saved-result retry test ALREADY passed because shared sealed_result_io.deliver_saved closes every HTTP error before retry. The fix changes only the worker's three handled-error paths to close the error response, without reading/echoing the body, preserving wait/reject/held decisions. Root3 PASS1.589s afterward. No shared review/delivery mechanics or helper double/assertion changed. This is component resource-lifetime evidence, not an observed live socket leak.
+
+Next owner helper: ONE unchanged corrective12 run on the frozen cleanup pin, report any warnings/source or fixture attribution, then hold for static finalization. Codex holds all source unchanged during it. Actual API entry test remains RED until entry/observation/transport/factory/race implementation. Production capability remains empty; no final wrapper/component-package or Ticket20 acceptance yet.

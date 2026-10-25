@@ -184,7 +184,9 @@ def preflight_cli_artifact(record, *, runtime_path, manifest, consumer_id,
         _check_brief(response, box, entry)
         return _decision('inject', prompt=artifact_prompt(entry))
     except urllib.error.HTTPError as exc:
-        return _decision('wait' if exc.code >= 500 else 'reject', 'artifact_context_unavailable')
+        code = exc.code
+        exc.close()
+        return _decision('wait' if code >= 500 else 'reject', 'artifact_context_unavailable')
     except OSError:
         return _decision('wait', 'artifact_context_unavailable')
     except (ValueError, KeyError, TypeError, RuntimeError):
@@ -323,6 +325,9 @@ def complete_api_artifact(record, *, runtime_path, manifest, consumer_id, fetch_
         if delivery['consumer_id'] != consumer_id:
             raise ArtifactWorkerError('artifact_context_unavailable')
         messages = artifact_messages(delivery, fetch_parent(entry['artifact_brief_id']))
+    except urllib.error.HTTPError as exc:
+        exc.close()
+        return _outcome('held', 'artifact_context_unavailable')
     except (OSError, ValueError, RuntimeError, TypeError, KeyError):
         return _outcome('held', 'artifact_context_unavailable')
     if cancel_requested(dispatch):
@@ -337,6 +342,9 @@ def complete_api_artifact(record, *, runtime_path, manifest, consumer_id, fetch_
             rejection = reject_response(report)
             _terminal_rejection(rejection)
             return _outcome('quarantined', 'artifact_invalid_response')
+        except urllib.error.HTTPError as exc:
+            exc.close()
+            return _outcome('held', 'artifact_delivery_unconfirmed')
         except (OSError, ValueError, RuntimeError, TypeError, KeyError):
             return _outcome('held', 'artifact_delivery_unconfirmed')
     observation = {'confirmed_model': generated['confirmed_model'],
