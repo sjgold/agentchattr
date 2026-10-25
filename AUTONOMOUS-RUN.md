@@ -223,3 +223,7 @@ Slice1 independently accepted503b9b2 (reviewer546 pass plus one expected pending
 ## Ticket20 slice2 review correction (2026-10-25)
 
 Reviewer45 PASS12.293s atc336166 identified imported diagnostic attachment and missing first-origin/version cross-checks. Root6 red3 FAIL+1 ERROR0.398s reproduced both; fixes make diagnostics standalone/budgeted and original fulfilled iff version present, original imported refused. Stronger public snapshot check red1 FAIL0.113s found derived overflow projection changing; imported rows now keep that projection unchanged. Broad57 PASS116.520s before the projection-only edit, final exact-source45 PASS12.593s. Imported-store helper12 remains frozen/unexecuted. Independent recheck is next; no staging/import-lineage/codec or capability activation yet.
+
+## Ticket20 slice3 store import checkpoint (2026-10-25)
+
+Slice2 independently cleared fec0571 (reviewer151/143.080s). Store staging/classification/whole-lineage commit now implemented; first assertion scaffoldRED1/0.069s, actual initial2 PASS0.157s, malformed JSON projection rootRED then focused32 PASS6.210s. Helper12 run next at frozen checkpoint. Codec/ZIP/app threading, leak golden, section reports, required4MiB import benchmark and retained/cancel UI remain pending; capability stays empty.

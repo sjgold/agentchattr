@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 10:14 UTC (#20 slice2 review corrections verified; recheck next)
+**Updated:** 2026-10-25 10:24 UTC (#20 slice2 cleared; slice3 store import checkpoint)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Codex sends corrected slice2 for recheck (standalone imported diagnostics and first-origin/version binding); prepare/classify/import and archive threading remain slice3. Helper12 stays compile-only; capability stays empty |
+| Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store staging/classify/atomic whole-lineage commit checkpoint is ready for the helper12 run; codec/archive threading and benchmark remain pending; capability stays empty |
 
 ## Current handoff
+
+- Slice2 correction independently PASSfec0571: reviewer151 PASS143.080s, excluding the two pending imported-store/archive reds. Slice3 store methods now stage validated immutable objects outside the boundary, return a frozen root-bound plan with observed file fingerprints, classify duplicates/UID collisions before channel resolution and commit one whole imported graph atomically. Root scaffold-only first behavioral assertion RED1 FAIL0.069s, then actual first2 PASS0.157s; malformed packet error projection RED1 ERROR plus concurrency PASS0.084s, fixed to ArtifactValidationError, focused32 PASS6.210s. Helper12 has not yet run against these methods; freeze then authorize one unchanged run. Codec/ZIP threading, allowlist leak golden, app owner call sites, section wire errors, import benchmark and retained/catalog/cancel bridge remain pending. No capability activation.
 
 - Slice2 reviewer45 PASS12.293s atc336166 found two real gaps by reading. Root expanded6 reproduced3 origin-state FAIL +1 imported diagnostic ERROR0.398s. Corrections keep imported diagnostics standalone/budgeted, bind version presence to first original_state=fulfilled and refuse original_state=imported. Original_reason uses existing reason membership. Additional public snapshot check observed overflow_count changing (1 FAIL0.113s); final imported projection keeps it0 while diagnostics() still reports standalone overflow. Broader57 PASS116.520s before that projection-only fix; final exact source45 PASS12.593s including expanded root6 and fast store/admission/recovery suites. One owned missing-policy-binding fixture was corrected after the main source fix, no helper assertion changed. Helper imported-store12 remains unexecuted; prepare/classify/import and codec are pending.
 

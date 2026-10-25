@@ -1,5 +1,6 @@
 """Owned artifact metadata and immutable bytes; no dispatch or admission policy."""
 from copy import deepcopy
+from dataclasses import dataclass
 import hashlib
 import json
 import math
@@ -47,6 +48,20 @@ class ArtifactConflict(ChannelConflict):
 
 class ArtifactUnavailable(ChannelUnavailable):
     pass
+
+
+class ArtifactImportCollision(ArtifactConflict):
+    def __init__(self, reason, collision_kinds):
+        super().__init__('Artifact lineage conflicts with retained immutable storage.')
+        self.reason = reason
+        self.collision_kinds = tuple(sorted(collision_kinds))
+
+
+@dataclass(frozen=True)
+class _PreparedLineage:
+    root: str
+    metadata: bytes
+    objects: tuple
 
 
 def _hex(value, width=32):
@@ -586,6 +601,178 @@ class ArtifactStore:
                 self._record_object_error(kind, object_id)
                 raise ArtifactUnavailable('Artifact archive object is unavailable.')
             return raw
+
+    def _import_metadata(self, portable):
+        """Pure portable-to-imported projection, with no disk or policy access."""
+        _fields(portable, ('lineage_id', 'channel', 'updated_at', 'head_version_id', 'requests', 'versions'))
+        lineage_id = _hex(portable['lineage_id'])
+        channel = _channel(portable['channel'])
+        _number(portable['updated_at'])
+        if not isinstance(portable['requests'], list) or not portable['requests']:
+            raise ArtifactValidationError('Artifact import lineage must contain requests.')
+        if not isinstance(portable['versions'], list):
+            raise ArtifactValidationError('Artifact import versions must be an array.')
+        _canonical(portable)
+        value = _empty()
+        for row in portable['requests']:
+            _fields(row, ('request_id', 'original_channel', 'requester', 'producer', 'source_run',
+                'scope', 'instruction', 'format', 'expected_parent', 'created_at', 'updated_at', 'import_source'))
+            producer = row['producer']
+            _fields(producer, ('name', 'identity_id', 'adapter', 'requested_model', 'requested_model_reason'))
+            request_id = _hex(row['request_id'])
+            if request_id in value['requests']:
+                raise ArtifactValidationError('Artifact imported request is duplicated.')
+            ids = request_ids(request_id)
+            audit = {'version': 1, 'purpose': 'artifact-v1', 'request_id': request_id,
+                'lineage_id': lineage_id, 'attempt_id': ids['attempt_id'], 'dispatch_id': ids['dispatch_id'],
+                'brief_id': ids['brief_id'], **{key: deepcopy(row[key]) for key in
+                    ('original_channel', 'requester', 'source_run', 'scope', 'instruction', 'format',
+                     'expected_parent', 'created_at')},
+                'producer': {**deepcopy(producer), 'launch_attempt': None, 'launch_nonce': None,
+                    'fingerprint': None, 'capabilities': []}}
+            value['requests'][request_id] = {'audit': audit, 'channel': channel, 'state': 'imported',
+                'reason': 'imported', 'updated_at': row['updated_at'], 'version_id': None,
+                'quarantine_ids': [], 'import_source': deepcopy(row['import_source'])}
+        version_ids = []
+        for row in portable['versions']:
+            _fields(row, ('version_id', 'request_id', 'sequence', 'parent_version_id', 'sha256',
+                          'byte_length', 'created_at', 'observation'))
+            version_id = _hex(row['version_id'])
+            request = value['requests'].get(row['request_id'])
+            if request is None or request['version_id'] is not None or version_id in value['versions']:
+                raise ArtifactValidationError('Artifact imported version request is invalid or duplicated.')
+            request['version_id'] = version_id
+            audit = request['audit']
+            provenance = {key: deepcopy(audit[key]) for key in
+                ('requester', 'producer', 'source_run', 'scope', 'instruction', 'format')}
+            provenance.update(input_revision=audit['scope']['input_revision'], observation=deepcopy(row['observation']))
+            value['versions'][version_id] = {'id': version_id, 'lineage_id': lineage_id, 'channel': channel,
+                'attempt_id': audit['attempt_id'], 'dispatch_id': audit['dispatch_id'], 'provenance': provenance,
+                **{key: deepcopy(row[key]) for key in ('request_id', 'sequence', 'parent_version_id',
+                    'sha256', 'byte_length', 'created_at')}}
+            version_ids.append(version_id)
+        value['lineages'][lineage_id] = {'id': lineage_id, 'channel': channel,
+            'head_version_id': portable['head_version_id'], 'pending_request_id': None,
+            'version_ids': version_ids, 'updated_at': portable['updated_at']}
+        self._validate_index(value)
+        return value
+
+    @staticmethod
+    def _import_references(value):
+        references = {('version', key): row for key, row in value['versions'].items()}
+        references.update({('packet', row['audit']['scope']['packet_id']): row['audit']['scope']
+                           for row in value['requests'].values()})
+        return references
+
+    def prepare_import_lineage(self, portable_lineage, objects, *, archive_id):
+        if not isinstance(archive_id, str) or not re.fullmatch(r'[A-Za-z0-9._-]{1,64}', archive_id):
+            raise ArtifactValidationError('Invalid artifact import archive identifier.')
+        try:
+            value = self._import_metadata(portable_lineage)
+            references = self._import_references(value)
+            if not isinstance(objects, dict) or set(objects) != set(references):
+                raise ArtifactValidationError('Artifact import object set differs from its lineage.')
+            # Validate every object before staging any of them. All full-body
+            # parsing/hashing and immutable writes happen outside the boundary.
+            for (kind, identifier), reference in references.items():
+                raw = objects[(kind, identifier)]
+                if (type(raw) is not bytes or len(raw) != reference['byte_length']
+                        or hashlib.sha256(raw).hexdigest() != reference['sha256']):
+                    raise ArtifactValidationError('Artifact import object bytes differ from metadata.')
+                if kind == 'version':
+                    _text(raw.decode('utf-8'), MAX_ARTIFACT_BYTES)
+                else:
+                    packet = json.loads(raw)
+                    scope = _packet_scope(identifier, packet)
+                    if scope != reference or _canonical(packet) != raw:
+                        raise ArtifactValidationError('Artifact import source packet differs.')
+                    audit = next(row['audit'] for row in value['requests'].values()
+                                 if row['audit']['scope']['packet_id'] == identifier)
+                    if packet['channel'] != audit['original_channel'] or packet['source_run'] != audit['source_run']:
+                        raise ArtifactValidationError('Artifact import packet authority differs.')
+        except ArtifactValidationError:
+            raise
+        except (KeyError, TypeError, UnicodeError, RecursionError, ValueError):
+            raise ArtifactValidationError('Artifact import lineage is malformed.') from None
+        with self._lock:
+            self._check_index()
+        stamps = []
+        for (kind, identifier), reference in sorted(references.items()):
+            path = self._object_path(kind, identifier)
+            try:
+                self._put_bytes(path, objects[(kind, identifier)])
+                stat = path.stat()
+            except ArtifactConflict:
+                # The object file lock has already been released. Never nest
+                # a metadata owner lock inside the immutable-file lock.
+                with self._lock:
+                    self._check_index()
+                    indexed = (identifier in self._data['versions'] if kind == 'version' else
+                        any(row['audit']['scope']['packet_id'] == identifier
+                            for row in self._data['requests'].values()))
+                raise ArtifactImportCollision('uid_collision' if indexed else 'object_conflict', [kind]) from None
+            except OSError:
+                raise ArtifactUnavailable('Artifact import staging is unavailable.') from None
+            stamps.append((kind, identifier, stat.st_mtime_ns, stat.st_size))
+        return _PreparedLineage(_path_key(self.root), _canonical(value), tuple(stamps))
+
+    def _prepared_import(self, prepared):
+        if not isinstance(prepared, _PreparedLineage) or prepared.root != _path_key(self.root):
+            raise ArtifactValidationError('Artifact import plan belongs to another store.')
+        try:
+            for kind, identifier, modified, size in prepared.objects:
+                stat = self._object_path(kind, identifier).stat()
+                if (stat.st_mtime_ns, stat.st_size) != (modified, size):
+                    raise ArtifactUnavailable('Artifact import staged object changed.')
+            return json.loads(prepared.metadata)
+        except OSError:
+            raise ArtifactUnavailable('Artifact import staged object is unavailable.') from None
+
+    @staticmethod
+    def _import_result(reason=None, *, versions=0, requests=0, collision_kinds=()):
+        return {'status': 'created' if reason is None else 'skipped', 'reason': reason,
+            'collision_kinds': sorted(collision_kinds), 'created_versions': versions, 'created_requests': requests}
+
+    def _classify_import(self, value):
+        incoming = {'lineage': set(value['lineages']), 'request': set(value['requests']),
+            'version': set(value['versions']),
+            'packet': {row['audit']['scope']['packet_id'] for row in value['requests'].values()},
+            'dispatch': {row['audit']['dispatch_id'] for row in value['requests'].values()}}
+        local = {'lineage': set(self._data['lineages']), 'request': set(self._data['requests']),
+            'version': set(self._data['versions']),
+            'packet': {row['audit']['scope']['packet_id'] for row in self._data['requests'].values()},
+            'dispatch': {row['audit']['dispatch_id'] for row in self._data['requests'].values()}}
+        collisions = [kind for kind in incoming if incoming[kind] & local[kind]]
+        if not collisions:
+            return None
+        if all(incoming[kind] <= local[kind] for kind in incoming):
+            local_refs = self._import_references(self._data)
+            if all((row['sha256'], row['byte_length']) ==
+                   (local_refs[key]['sha256'], local_refs[key]['byte_length'])
+                   for key, row in self._import_references(value).items()):
+                return self._import_result('duplicate')
+        return self._import_result('uid_collision', collision_kinds=collisions)
+
+    def classify_import_lineage(self, prepared):
+        with self._lock:
+            self._check_index()
+            return self._classify_import(self._prepared_import(prepared))
+
+    @channel_write(lambda self, args: [_channel(args['channel'])])
+    def import_lineage(self, prepared, *, channel):
+        with self._lock:
+            self._check_index()
+            imported = self._prepared_import(prepared)
+            result = self._classify_import(imported)
+            if result is not None:
+                return result
+            value = deepcopy(self._data)
+            for group in ('lineages', 'requests', 'versions'):
+                for identifier, row in imported[group].items():
+                    row['channel'] = channel
+                    value[group][identifier] = row
+            self._persist(value)
+            return self._import_result(versions=len(imported['versions']), requests=len(imported['requests']))
 
     def reserve_request(self, audit, request_id):
         audit = _audit(audit)
