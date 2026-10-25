@@ -1,6 +1,6 @@
 # Ticket 20 requested artifacts, contract draft
 
-Status: proposal for independent review, not an implementation freeze. No product code or tests changed. Base published main `400d6de808dafbaebe1d378b40099c2fead5edd6`; branch `codex/ticket-20-artifacts`. Owner Codex GPT-6.1; reviewer Claude Sonnet 5.5. Standing autonomous backlog authorization applies; no new agents, live provider, Omarchy, Desktop or global changes.
+Status: approach/P1-P4 accepted with reviewer conditions; implementation plan is drafted for review, not frozen. No product code or tests changed. Base published main `400d6de808dafbaebe1d378b40099c2fead5edd6`; branch `codex/ticket-20-artifacts`. Owner Codex GPT-6.1; reviewer Claude Sonnet 5.5. Standing autonomous backlog authorization applies; no new agents, live provider, Omarchy, Desktop or global changes.
 
 ## Scope and source-grounded baseline
 
@@ -66,3 +66,14 @@ Propose include authored artifact requests/versions in backup export/import with
 | Final acceptance | Configured full, different-family review, separately attributed native/API/browser evidence, clean cleanup and exact publication gates |
 
 No helper tests are assigned until the relevant interface is frozen. No generated native/API/browser resource may launch until its source and cleanup are reviewed. The implementation plan will name exact modules/interfaces and observed-red commands after P1-P4 settle.
+
+
+## Reviewer resolution, accepted with conditions
+
+Sonnet read the whole contract, but has not yet independently checked root code-level claims. Accepted P1 purpose separation, pure shared-mechanics extraction first with unchanged review tests GREEN and no artifact code; domain label inside signed payload; unknown purpose closed. Restart must redeliver an exact saved result only for a matching live pending request/dispatch, with unmatched work quarantined, never regeneration. Accepted512KiB authored cap; plan must specify exact source bytes/count and frozen placement. Immutable briefs retain copied source text even after chat deletion, which delete previews/guides/backups must disclose.
+
+P3 resolved: Stop cancels source-associated queued artifact work and fences ACTIVE artifact admission through existing cancelling transport; late results quarantined, request cancelled. A new request created after that Stop is normal and records the stopped source state. Distinct namespaces prevent session adoption/cancellation collisions. Terminal requests never restart; retry/reassign is a new attempt/dispatch.
+
+P4 accepted appended eighth rename step, including old seven-mark intent upgrade/crash tests and unchanged delete steps/audit. Backup lineage imports are all-or-nothing, UID collision skips whole lineage, imported requests terminal/read-only with all dispatch/seal authority stripped, per-lineage catalog resolution and exact reporting.
+
+Additional A1-A6: pending artifact work is unrelated work for seat restart preparation; all library/request/download routes operator-only, agents assigned brief/submit only; identical submit idempotent/different content quarantined; hostile Markdown and download hash/header checks; same-lineage concurrent CAS exactly one winner/different lineages permitted; full held-startup/catalog/retained/count/error integration. Detailed exact-module execution proposal is TICKET-20-PLAN.md. No tests or code before its independent review.
