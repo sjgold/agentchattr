@@ -2,10 +2,13 @@
 from copy import deepcopy
 import hashlib
 import time
+import uuid
 
 from artifact_store import (ArtifactConflict, ArtifactUnavailable, ArtifactValidationError,
-    LIVE, _audit, _path_key)
-from artifact_protocol import validate_brief
+    LIVE, _audit, _path_key, _text)
+from artifact_protocol import validate_brief, MAX_RESULT_RECORD_BYTES, MAX_ARTIFACT_BYTES, verify_result
+from artifact_delivery import ArtifactOutbox
+from dispatch_queue import QueueAccessError
 from queue_coordinator import CoordinatedQueue, allowed_review_dispatch_ids
 import runtime_protocol
 
@@ -51,7 +54,8 @@ class ArtifactService:
             raise ArtifactAccessError('Artifact request belongs to another seat.')
         live = self._instance(producer['identity_id'])
         current = self.seats.artifact_producer(live)
-        if (current['available'] is not True or current['adapter'] != producer['adapter']
+        if (current['available'] is not True or current['identity_id'] != producer['identity_id']
+                or current['capabilities'] != ['artifact-v1'] or current['adapter'] != producer['adapter']
                 or any(current[key] != producer[key] for key in ('launch_attempt', 'launch_nonce', 'fingerprint'))):
             raise ArtifactConflict('Artifact producer binding is unavailable or changed.')
         provenance = self.seats.launch_provenance(live)
@@ -153,24 +157,94 @@ class ArtifactService:
             return set()
         return result
 
+    def _context(self, brief_id, instance, *, replay=False):
+        if not isinstance(instance, dict) or not instance.get('identity_id'):
+            raise ArtifactAccessError('An authenticated artifact producer is required.')
+        private = self.briefs.get_private(brief_id)
+        row = self.store.get_request(private['request_id'])
+        if row is None:
+            raise ArtifactConflict('Artifact request is unknown.')
+        live = self._producer(row['audit'], instance)
+        if ({key: value for key, value in private.items() if key != '_artifact_seal'} != self._brief(row['audit'])
+                or private['_artifact_seal']['owner'] != self._owner(row['audit'])):
+            raise ArtifactUnavailable('Artifact brief no longer matches its immutable request.')
+        try:
+            record = self.agents.queue.owned(live, row['audit']['dispatch_id'])
+        except QueueAccessError:
+            raise ArtifactAccessError('Artifact dispatch belongs to another seat.') from None
+        self._envelope(row, live, record['envelope'])
+        if replay and row['state'] == 'fulfilled':
+            if not record['consumer_id']:
+                raise ArtifactConflict('Artifact ACK has no original dispatch claim.')
+            return private, row, live, record
+        if row['state'] not in LIVE:
+            raise ArtifactConflict('Artifact request is terminal.')
+        self.channels.require_active(row['channel'])
+        if not record['consumer_id'] or record['state'] not in ('dispatched', 'acknowledged', 'uncertain'):
+            raise ArtifactConflict('Artifact dispatch has not been claimed or is cancelling.')
+        return private, row, live, record
+
+    @staticmethod
+    def _bounded(content):
+        if not isinstance(content, str):
+            raise ArtifactValidationError('Artifact diagnostic content must be text.')
+        if len(content) > MAX_RESULT_RECORD_BYTES:
+            return None, True
+        total = 0
+        for start in range(0, len(content), 16384):
+            total += len(content[start:start + 16384].encode('utf-8', errors='surrogatepass'))
+            if total > MAX_RESULT_RECORD_BYTES:
+                return None, True
+        return content, False
+
+    def _diagnostic(self, row, instance, reason, content, *, terminal=False, payload=None):
+        bounded, truncated = (None, False) if content is None else self._bounded(content)
+        audit = row['audit']
+        claim = payload or audit
+        diagnostic = self.store.quarantine_submission(claim.get('request_id'), claim.get('attempt_id'),
+            claim.get('dispatch_id'), reason=reason, content=bounded, actor_identity_id=instance['identity_id'])
+        return {'status': 'quarantined', 'diagnostic_id': diagnostic.get('id') or diagnostic['latest_diagnostic_id'],
+                'reason': reason, 'request_terminal': terminal, 'received_truncated': truncated,
+                'notice': 'response_body_not_retained' if truncated else None}
+
+    def _fence(self, row):
+        request = row['audit']['request_id']
+        cancellation = uuid.uuid5(uuid.NAMESPACE_URL, 'agentchattr:artifact-v1:cancel:' + request).hex
+        return self.agents.queue.cancel_dispatch(row['audit']['dispatch_id'], cancellation)
+
+    def _packet(self, row, instance):
+        try:
+            return self.store.get_packet(row['audit']['scope']['packet_id'])
+        except ArtifactUnavailable:
+            self._diagnostic(row, instance, 'source_packet_unavailable', None, terminal=True)
+            self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
+                {'state': 'failed', 'reason': 'source_packet_unavailable'})
+            self._fence(row)
+            raise
+
+    def _activate(self, row):
+        return self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
+                                             {'state': 'active', 'reason': None})
+
     def get_brief(self, brief_id, instance):
         with self.channels._boundary():
-            private = self.briefs.get_private(brief_id)
-            row = self.store.get_request(private['request_id'])
-            if row is None or row['state'] not in LIVE:
-                raise ArtifactConflict('Artifact request is not live.')
-            self.channels.require_active(row['channel'])
-            live = self._producer(row['audit'], instance)
-            record = self.agents.queue.owned(live, row['audit']['dispatch_id'])
-            self._envelope(row, live, record['envelope'])
-            if not record['consumer_id'] or record['state'] not in ('dispatched', 'acknowledged', 'uncertain'):
-                raise ArtifactConflict('Artifact dispatch has not been claimed or is cancelling.')
-            packet = self.store.get_packet(row['audit']['scope']['packet_id'])
-            self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
-                                         {'state': 'active', 'reason': None})
+            private, row, live, _ = self._context(brief_id, instance)
+            packet = self._packet(row, live)
+            self._activate(row)
             public = {key: deepcopy(value) for key, value in private.items() if key != '_artifact_seal'}
             public['producer'].pop('launch_nonce')
             return {'brief': public, 'packet': packet}
+
+    def get_delivery(self, brief_id, instance):
+        with self.channels._boundary():
+            private, row, live, record = self._context(brief_id, instance)
+            if row['audit']['producer']['adapter'] != 'openai-compatible':
+                raise ArtifactAccessError('Private artifact delivery is limited to its managed API worker.')
+            packet = self._packet(row, live)
+            self._activate(row)
+            return {'brief': {key: deepcopy(value) for key, value in private.items() if key != '_artifact_seal'},
+                'packet': packet, 'seal_secret': private['_artifact_seal']['seal_secret'],
+                'result_owner': deepcopy(private['_artifact_seal']['owner']), 'consumer_id': record['consumer_id']}
 
     @staticmethod
     def _ack(metadata):
@@ -178,8 +252,45 @@ class ArtifactService:
                 'version_id': metadata['id'], 'sha256': metadata['sha256']}
 
     def submit_cli(self, brief_id, markdown, instance):
-        """TEMPORARY unguarded TDD scaffold, private/unpublished and not routed."""
-        private = self.briefs.get_private(brief_id)
-        audit = self.store.get_request(private['request_id'])['audit']
-        return self._ack(self.store.commit_version(audit['request_id'], audit['attempt_id'], audit['dispatch_id'],
-            markdown, {'confirmed_model': None, 'confirmation_reason': 'cli_model_unverified'}))
+        with self.channels._boundary():
+            private, row, live, record = self._context(brief_id, instance, replay=True)
+            audit = row['audit']
+            if audit['producer']['adapter'] != 'cli':
+                raise ArtifactAccessError('CLI submission cannot provide an API model observation.')
+            box = ArtifactOutbox(self.store.root / 'api_seat_runtime' / audit['producer']['launch_attempt'])
+            if row['state'] == 'fulfilled':
+                saved = self.store.get_version(row['version_id'])
+                if saved is None:
+                    raise ArtifactUnavailable('Artifact version is unavailable.')
+                if markdown != saved['markdown']:
+                    return self._diagnostic(row, live, 'conflicting_duplicate', markdown)
+                prior = box.find(audit['dispatch_id'])
+                if prior is None:
+                    raise ArtifactUnavailable('Artifact result authority is missing.')
+                verify_result(prior, private['_artifact_seal']['seal_secret'])
+                box.acknowledge(audit['dispatch_id'], audit['dispatch_id'])
+                return self._ack(saved['metadata'])
+            self._packet(row, live)
+            row = self._activate(row)
+            try:
+                _text(markdown, MAX_ARTIFACT_BYTES)
+            except ArtifactValidationError:
+                error = self._diagnostic(row, live, 'invalid_content', markdown)
+                raise ArtifactInputError(error['diagnostic_id'], received_truncated=error['received_truncated']) from None
+            prior = box.find(audit['dispatch_id'])
+            if prior is not None and prior['payload']['markdown'] != markdown:
+                return self._diagnostic(row, live, 'conflicting_duplicate', markdown)
+            if prior is None:
+                payload = {**{key: deepcopy(audit[key]) for key in
+                    ('version', 'purpose', 'request_id', 'attempt_id', 'brief_id', 'lineage_id', 'dispatch_id', 'expected_parent')},
+                    'result_id': audit['dispatch_id'], 'scope_sha256': audit['scope']['sha256'],
+                    **{key: value for key, value in self._owner(audit).items() if key not in ('adapter', 'dispatch_id')},
+                    'consumer_id': record['consumer_id'], 'kind': 'artifact', 'markdown': markdown,
+                    'observation': {'confirmed_model': None, 'confirmation_reason': 'cli_model_unverified'},
+                    'created_at': time.time()}
+                prior = box.save(payload, private['_artifact_seal']['seal_secret'])
+            verified = verify_result(prior, private['_artifact_seal']['seal_secret'])
+            metadata = self.store.commit_version(audit['request_id'], audit['attempt_id'], audit['dispatch_id'],
+                verified['markdown'], verified['observation'])
+            box.acknowledge(audit['dispatch_id'], audit['dispatch_id'])
+            return self._ack(metadata)

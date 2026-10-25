@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 05:06 UTC (#20 protocol/outbox green; explicit scaffold authorization behavior RED captured)
+**Updated:** 2026-10-25 05:14 UTC (#20 claimed CLI guard green; oversize diagnostic collision isolated)
 
 ## At a glance
 
@@ -820,3 +820,8 @@ Authority helper brief cleared at60df57d. Initial EXACT2 infrastructure RED:2 Mo
 Authority implementation checkpoint, NOT publishable: protocol/private brief/outbox6 PASS0.225s after their initial missing-module REDs (brief/outbox2ERROR0.002s). A candidate HTTP409 stream-reading error was observed1ERROR0.048s then corrected before those6 green. Raw queue2 genuine behavioralFAIL0.020s (unguarded enqueue/claim) -> raw guards plus unchanged dispatch/ingress25 PASS1.097s. Claim events remain unchanged.
 
 Required first admission behavioral RED is now observed against an EXPLICIT, unrouted, production-disabled unguarded TDD scaffold: first2 selected methods1PASS/1FAIL0.329s. Exact claimed admission/byte preservation/ACK replay passes; own UNCLAIMED submission incorrectly commits and fails the refusal assertion. This is a controlled scaffold, not a claim about published product behavior. Earlier selected2 did not reach the scaffold (2fixtureERROR0.027s, missing CLI model-argument declaration); helper corrected only that mapping, assertions unchanged. Initial infrastructure2ERROR0.023s remains separate. Root now replaces the scaffold submit path with complete claim/current-owner/brief/seal checks and adds the remaining service/recovery functions. Expanded helper12 remains unexecuted/held. No routes, MCP bindings, wrapper purpose branch or capability enablement.
+
+
+Guarded CLI replaces the explicit scaffold: initial2 plus protocol3 PASS5/0.382s, including no-effects unclaimed refusal and exact claimed admission/ACK replay. A shape-valid stale attempt must reach service diagnostics rather than be rejected by structural seal grammar: root protocol1ERROR0.002s -> structural/context split fix -> included in those5 green. Remaining API/recovery/cancel functions and root concurrency/goldens are not complete; expanded helper12 remains held.
+
+Confirmed C1 diagnostic-key collision: content empty-string followed by None with same fields/reason reuses the immutable retained-empty row (same id, not_retained remains false). Sonnet accepted a separate safe response_too_large quarantine enum member ONLY, no key/schema/cap migration; CLI error code stays invalid_content and API terminal state reason stays invalid_response. Next root observed-red + separate store-only enum/test/doc commit, rerun unchanged store modules, then continue authority. No publication or capability enablement.

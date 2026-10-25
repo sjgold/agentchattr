@@ -94,7 +94,11 @@ def validate_brief(body):
 def validate_payload(payload):
     _fields(payload, PAYLOAD_FIELDS)
     _purpose(payload)
-    _ids(payload)
+    # Shape validation permits a well-formed stale claim; admission compares it
+    # to the frozen brief and records the precise scope refusal without poison.
+    for field in ('request_id', 'lineage_id', 'attempt_id', 'dispatch_id', 'brief_id'):
+        _hex(payload[field])
+    _hex(payload['scope_sha256'], 64)
     if payload['result_id'] != payload['dispatch_id'] or payload['kind'] != 'artifact':
         raise ArtifactValidationError('Artifact result identity or kind differs.')
     _parent(payload['expected_parent'])

@@ -65,5 +65,7 @@ class ArtifactBriefStore:
             _hex(private['seal_secret'], 64)
             self._owner_matches(public, validate_owner(private['owner']))
             return deepcopy(value)
+        except FileNotFoundError:
+            raise ArtifactConflict('Artifact brief is unknown.') from None
         except (OSError, ValueError, TypeError, KeyError, RecursionError):
             raise ArtifactUnavailable('Artifact brief is unavailable; no source fallback is permitted.') from None

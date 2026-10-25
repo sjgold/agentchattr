@@ -44,6 +44,12 @@ class ArtifactProtocolTests(unittest.TestCase):
         with self.assertRaises(case.module.OutboxError):
             case.module.verify_result(artifact, case.secret)
 
+    def test_shape_valid_wrong_attempt_can_be_sealed_for_service_scope_diagnostic(self):
+        protocol = importlib.import_module('artifact_protocol')
+        payload = {**self.payload(), 'attempt_id': 'f' * 32}
+        self.assertEqual(protocol.verify_result(protocol.seal_result(payload, bytes(range(32)).hex()),
+                                               bytes(range(32)).hex()), payload)
+
 
 if __name__ == '__main__':
     unittest.main()
