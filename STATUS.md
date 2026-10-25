@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 lifecycle slice4 full green; independent review next)
+**Updated:** 2026-10-25 (#20 slice4 static findings reproduced; corrections next)
 
 ## At a glance
 
@@ -21,6 +21,8 @@
 | Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store import independently cleared5024c06 (reviewer174 PASS141.161s plus independent benchmark PASS). Pure codec independently cleared23fba31 (reviewer210 PASS144.462s). Private receipt independently cleared7d4daad (reviewer216 PASS143.485s). Archive driver/call-site/report candidate implemented: focused144 PASS8.993s, legacy ZIP/report guards pass. Frozen7c476ff full1602 PASS294.327s/four skips (implementation owner), reviewer257 PASS149.909s WITH E1/E2 corrections required. Corrections focused161 PASS11.569s; reviewer274 PASS158.145s, conditional on full. Full1619/one socketpair WinError10055 ERROR323.295s/four skips; unchanged isolated12 PASS0.402s. No-overlap unchanged full1619 PASS301.087s/four skips, driver component cleared. Slice4 initial reds independently accepted51739c1. Candidate root17/factory/catalog23 PASS6.800s, focused artifact78 PASS25.521s, unchanged channel345 PASS14.693s and Node UI17/policy4 PASS; frozenfc45f4c full1636 PASS309.943s/four skips; independent slice4 review next; capability stays empty |
 
 ## Current handoff
+
+- Slice4 NOT cleared: static review of fc45f4c raised cancellation/orphan/held-scope gaps. New root8 BEFORE fixes reproduces6 FAIL+5 ERROR1.540s. Additive409 refused_request_ids/all-row pure prevalidation, nullable sanitized orphan ids and held-owner import remap reason are explicitly ruled and frozen in the lifecycle payload mirror. Next root owner implements corrections, expands terminal/privacy/frontend cases, reruns focused/full and sends Sonnet a new pin. Pre-correction full1636 remains a pass for that source, not acceptance of these gaps.
 
 - Slice4 candidate implements complete metadata scope/counts, held per-owner display and fixed refusal wires, retained source disclosure, request-first queued cancellation/fence-only retry, orphan ownership holds and frontend recognition. Initial root8 independently accepted, expanded first14 exposed7 missing wire projections plus1 disclosed prepared-commit fixture error; then held-preview5 no-effect assertion failures caught a queue lock-file side effect, fixed by checking authored owner first. Root mixed-partial/persist-failure2 RED1 FAIL+1 ERROR fixed without losing partial evidence. Current root17 + factory/catalog =23 PASS6.800s, broader artifacts78 PASS25.521s; all345 existing channel tests PASS14.693s after reviewer-approved omitted-owner compatibility (old exact-schema assertion untouched). Node actual-source VM UI17/policy4 PASS; no new browser/native claim. Frozenfc45f4c full1636 PASS309.943s/four skips, trackedfde1b4d5, implementation-owner evidence only. Source unchanged during run; independent source review next, no publication or activation.
 
