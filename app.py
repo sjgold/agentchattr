@@ -29,7 +29,7 @@ from registry import RuntimeRegistry
 from session_store import SessionStore, validate_session_template
 from session_engine import SessionEngine
 from channel_lifecycle import ChannelStore, ChannelUnavailable, ChannelInactive, ChannelConflict
-from channel_service import ChannelService, ArtifactManagementUnavailable
+from channel_service import ChannelService, ArtifactManagementUnavailable, ArtifactCancellationRefused
 
 log = logging.getLogger(__name__)
 
@@ -1334,8 +1334,8 @@ async def _channel_http(request, action):
             if action in ('apply', 'retry'):
                 await _broadcast_channel_projection(service)
         return JSONResponse(result, headers={'Cache-Control': 'no-store'})
-    except ArtifactManagementUnavailable as error:
-        return JSONResponse(error.payload, status_code=503, headers={'Cache-Control': 'no-store'})
+    except (ArtifactManagementUnavailable, ArtifactCancellationRefused) as error:
+        return JSONResponse(error.payload, status_code=error.http_status, headers={'Cache-Control': 'no-store'})
     except PermissionError:
         return JSONResponse({'error': 'Operator session required.'}, status_code=403)
     except (ChannelConflict, QueueConflict) as error:
@@ -1366,10 +1366,10 @@ def _channel_error(error, *, request_id=None, channel=None):
         if type(request_id) is str and _re.fullmatch(r'[0-9a-f]{32}', request_id) else None,
         'channel': channel if type(channel) is str and _CHANNEL_NAME_RE.fullmatch(channel) else None,
         'error': message, 'code': code}
-    if isinstance(error, ArtifactManagementUnavailable):
+    if isinstance(error, (ArtifactManagementUnavailable, ArtifactCancellationRefused)):
         result.update(error_code=error.code, error=error.payload['error'])
         for key in ('artifacts_held', 'artifact_counts', 'artifact_source_retained',
-                    'artifact_source_disclosure', 'artifact_cancellation'):
+                    'artifact_source_disclosure', 'artifact_cancellation', 'refused_request_ids'):
             if key in error.payload:
                 result[key] = error.payload[key]
     return result

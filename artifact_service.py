@@ -11,6 +11,7 @@ from artifact_protocol import (validate_brief, validate_payload, MAX_RESULT_RECO
                                MAX_ARTIFACT_BYTES, verify_result)
 from artifact_delivery import ArtifactOutbox
 from dispatch_queue import QueueAccessError
+from launcher import LaunchError
 from queue_coordinator import CoordinatedQueue, allowed_review_dispatch_ids
 import runtime_protocol
 
@@ -442,6 +443,22 @@ class ArtifactService:
         except QueueAccessError:
             return None
 
+    def validate_queued_cancellation(self, request_id):
+        """Pure queued-only operator predicate; never activates, fences or writes."""
+        with self.channels._boundary():
+            row = self.store.get_request(request_id)
+            if row is None or row['state'] not in ('prepared', 'queued', 'cancelled'):
+                raise ArtifactConflict('Artifact request is not eligible for queued cancellation.')
+            record = self._queue_record(row)
+            if record is None:
+                if row['state'] != 'prepared':
+                    raise ArtifactConflict('Artifact queued transport is unavailable.')
+            else:
+                if record['state'] != 'queued':
+                    raise ArtifactConflict('Artifact transport is already claimed or settled.')
+                self._envelope(row, {'identity_id': row['audit']['producer']['identity_id']}, record['envelope'])
+            return self._projection(row)
+
     def cancel_request(self, request_id):
         with self.channels._boundary():
             row = self.store.get_request(request_id)
@@ -462,7 +479,7 @@ class ArtifactService:
                     (record is not None and record['state'] in ('cancelled', 'released', 'failed', 'settled_recovered')))
                 return self._mutation(row, record, transport_settled=settled,
                     warning=None if settled else 'transport_unconfirmed')
-            except (OSError, ValueError):
+            except (OSError, ValueError, LaunchError):
                 return self._mutation(row, transport_settled=False, warning='transport_unconfirmed')
 
     def fence_source_requests(self, run_id):
@@ -502,7 +519,7 @@ class ArtifactService:
                         repaired.append(row['audit']['request_id'])
                     else:
                         unconfirmed.append(row['audit']['dispatch_id'])
-                except (OSError, ValueError):
+                except (OSError, ValueError, LaunchError):
                     unconfirmed.append(row['audit']['dispatch_id'])
             return {'repaired': repaired, 'unconfirmed': unconfirmed, 'remaining': max(0, len(rows) - limit)}
 

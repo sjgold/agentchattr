@@ -291,4 +291,51 @@ test('queued artifact blockers permit only proven unheld queued cancellation',as
   }
 });
 
+test('artifact blocker text identifies request transport state and held status literally',async()=>{
+  const env=moduleEnv();await manage(env,'delete');const literal='<img src=x onerror=BLOCKER_CANARY>';
+  await getPreview(env,preview('delete',{blockers:[{kind:'artifact',request_id:literal,request_state:'active',
+    dispatch_id:'d'.repeat(32),state:'uncertain',transport_state:'uncertain',held:true,reason:'ownership_mismatch'}]}));
+  assert.ok(env.body.textContent.includes(literal));assert.match(env.body.textContent,/Request.*active.*transport.*uncertain.*held/i);
+  assert.ok(!env.body.textContent.includes('Session none, run none'));
+  for(const element of descendants(env.body))assert.ok(!String(element.innerHTML).includes(literal));
+});
+test('retained authored source bytes and disclosure use literal text',async()=>{
+  const env=moduleEnv();env.api.openManage({channel:'archive',op:'view'});const literal='<svg onload=RETAINED_CANARY>';
+  await settleReads(env,authoredCatalog(),retained({artifacts:[],counts:{...retained().counts,...authoredCounts()},
+    truncated:{...retained().truncated,artifacts:false},artifacts_held:false,artifact_source_retained:true,
+    artifact_source_disclosure:literal}));
+  assert.match(env.body.textContent,/12345.*copied.source bytes/i);assert.ok(env.body.textContent.includes(literal));
+  for(const element of descendants(env.body))assert.ok(!String(element.innerHTML).includes(literal));
+});
+test('held authored metadata permits ordinary queued cancellation and history repair only',async()=>{
+  for(const op of ['cancel_queued','recover_projections']){
+    const env=moduleEnv();env.api.openManage({channel:'review',op});await settleReads(env,authoredCatalog(true));
+    const extra={counts:{...counts(),...Object.fromEntries(Object.keys(authoredCounts()).map(key=>[key,null]))},
+      artifacts_held:true,artifact_source_retained:null,artifact_source_disclosure:'Authored metadata is held.',
+      blockers:op==='cancel_queued'?[{kind:'transport',state:'queued'}]:[{kind:'projection_pending',state:'stopped'}],
+      queued_dispatch_ids:op==='cancel_queued'?['d'.repeat(32)]:[]};
+    await getPreview(env,preview(op,extra));input(control(env,'channel-manager-confirm'),'review');
+    assert.equal(control(env,'channel-manager-apply').disabled,false,op);
+  }
+});
+test('active request cannot use queued-only action even when transport remains queued',async()=>{
+  const env=moduleEnv();await manage(env,'cancel_queued');
+  await getPreview(env,preview('cancel_queued',{queued_dispatch_ids:['d'.repeat(32)],blockers:[{kind:'artifact',
+    state:'queued',transport_state:'queued',request_state:'active',held:false,request_id:'a'.repeat(32)}]}));
+  input(control(env,'channel-manager-confirm'),'review');assert.equal(control(env,'channel-manager-apply').disabled,true);
+});
+
+test('refused cancellation shows saved effects and never automatically repeats',async()=>{
+  const env=moduleEnv();await manage(env,'cancel_queued');
+  await getPreview(env,preview('cancel_queued',{queued_dispatch_ids:['d'.repeat(32)]}));
+  input(control(env,'channel-manager-confirm'),'review');control(env,'channel-manager-apply').click();await flush();
+  const request=pending(env,'/apply')[0];
+  answer(request,{code:'artifact_cancellation_refused',error:'A queued artifact request refused cancellation. Saved changes are listed; refresh the preview.',
+    artifact_cancellation:{cancelled_request_ids:['a'.repeat(32)],fenced_dispatch_ids:['d'.repeat(32)],unconfirmed_dispatch_ids:[]},
+    refused_request_ids:['b'.repeat(32)]},409);
+  await settleReads(env,catalog(2));
+  assert.match(env.body.textContent,/refused cancellation/i);assert.ok(env.body.textContent.includes('a'.repeat(32)));
+  assert.ok(env.body.textContent.includes('b'.repeat(32)));assert.equal(env.requests.filter(req=>req.url.endsWith('/apply')).length,1);
+});
+
 (async()=>{let failures=0;for(const {name,run} of tests){try{await run();console.log('PASS '+name);}catch(error){failures++;console.error('FAIL '+name+'\n'+error.stack);}}console.log(JSON.stringify({cases:tests.length,failures,scope:'actual_source_vm_only'}));process.exitCode=failures?1:0;})();

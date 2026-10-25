@@ -17,13 +17,13 @@ Type the exact displayed channel name to confirm. Changing a rename destination 
 
 Finish or explicitly Stop live reviews before renaming, archiving or deleting their channel. The blocker list identifies outstanding sessions, dispatches and pending history projections. Channel management never stops a worker or cancels remote computation for you.
 
-Pending authored-artifact requests also block rename, archive and delete. **Cancel queued only** saves a queued artifact request as cancelled before fencing its dispatch. If fencing fails, the response reports the saved cancellation and unconfirmed dispatches. Refresh the preview and retry queued cancellation to repair the fence. Active work stays untouched.
+Pending authored-artifact requests also block rename, archive and delete. **Cancel queued only** saves a queued artifact request as cancelled before fencing its dispatch. If fencing fails, the response reports the saved cancellation and unconfirmed dispatches. Refresh the preview and retry queued cancellation to repair the fence. Active work stays untouched. A refused queued request returns 409 with the refused request IDs and any earlier saved changes. Refresh the preview before trying again.
 
 **Repair history** projects pending results for completed or stopped runs. A live pending projection is labeled as requiring a wait or restart. Reopening also attempts scoped terminal-history repair. Typed results and receipts remain admissible while chat is read-only; a late result can therefore stay unprojected while archived and appear after reopening. Legacy reviews remain readable and do not acquire an unrecoverable projection blocker.
 
 An interrupted rename or delete leaves a durable repair intent. Its named channels stay held while peers remain usable. Restart preserves that hold. Use the exact-name **Retry repair** control to resume; startup does not silently finish a destructive action. A rename holds both names until it finishes.
 
-If the catalog itself is unreadable, channel writes and queue claims are held. Existing queue release, Stop and typed-result admission stay available. A held Jobs or schedules file gets its own alert while healthy chat continues. Management previews need a complete storage view: an unreadable retained-upload catalog or authored-artifact index pauses create, reopen, archive, rename and delete, including reopening an archived channel. The catalog marks authored counts as unavailable while healthy owners remain readable. A damaged individual artifact body leaves metadata available. Repair storage before trying again.
+If the catalog itself is unreadable, channel writes and queue claims are held. Existing queue release, Stop and typed-result admission stay available. A held Jobs or schedules file gets its own alert while healthy chat continues. Management previews need a complete storage view: an unreadable retained-upload catalog or authored-artifact index pauses create, reopen, archive, rename and delete, including reopening an archived channel. The catalog marks authored counts as unavailable while healthy owners remain readable. A damaged individual artifact body leaves metadata available. Repair storage before trying again. Ordinary queued-chat cancellation and review-history repair remain available while the authored index is held. Queued artifact cancellation still needs readable authored metadata.
 
 ## Reading archived and deleted channels
 
@@ -46,6 +46,8 @@ Configured import reports rows redirected from inactive or reserved names to `ge
 The current archive export and import **exclude retained-artifacts metadata**. Keeping upload bytes on disk does not make the archive a backup of those source references. Preserve the owned data directory separately when those references matter.
 
 Authored Markdown artifacts, when present, travel with the history backup in schema 2. The ZIP includes every version, failed or pending attempt, historical producer/model labels and its frozen source packet. Import restores them as read-only history and starts no agent work. Re-import skips an identical lineage; a conflicting identifier skips the whole lineage and leaves local versions intact. History-only backups keep schema 1.
+
+While authored metadata is held, history imports can use existing active channels. New channel names redirect to `general` with the reported reason `artifact_owner_held`. An artifact lineage that needs a new channel is skipped and reported as `channel_unavailable`. The import report includes fixed repair guidance.
 
 Copied source text survives deletion of the original chat and is included in artifact backups. Those packets also keep the message and attachment metadata that was saved with the chat. Treat the ZIP as sensitive as the channel history. Upload files and the separate retained-upload reference catalog still need an owned-data-directory backup.
 

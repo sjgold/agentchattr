@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 slice4 static findings reproduced; corrections next)
+**Updated:** 2026-10-25 (#20 slice4 corrections focused green; corrected full next)
 
 ## At a glance
 
@@ -21,6 +21,8 @@
 | Next | Slice1 independently PASS503b9b2 (reviewer546 pass/one expected pending archive-interface error). Slice2 independently cleared fec0571 (reviewer151 PASS143.080s). Store import independently cleared5024c06 (reviewer174 PASS141.161s plus independent benchmark PASS). Pure codec independently cleared23fba31 (reviewer210 PASS144.462s). Private receipt independently cleared7d4daad (reviewer216 PASS143.485s). Archive driver/call-site/report candidate implemented: focused144 PASS8.993s, legacy ZIP/report guards pass. Frozen7c476ff full1602 PASS294.327s/four skips (implementation owner), reviewer257 PASS149.909s WITH E1/E2 corrections required. Corrections focused161 PASS11.569s; reviewer274 PASS158.145s, conditional on full. Full1619/one socketpair WinError10055 ERROR323.295s/four skips; unchanged isolated12 PASS0.402s. No-overlap unchanged full1619 PASS301.087s/four skips, driver component cleared. Slice4 initial reds independently accepted51739c1. Candidate root17/factory/catalog23 PASS6.800s, focused artifact78 PASS25.521s, unchanged channel345 PASS14.693s and Node UI17/policy4 PASS; frozenfc45f4c full1636 PASS309.943s/four skips; independent slice4 review next; capability stays empty |
 
 ## Current handoff
+
+- Slice4 correction candidate: LaunchError fence failures stay partial; all-row queued-only predicate precedes mutation; active/claimed requests refuse; unexpected refusals return fixed409/refused ids with actual earlier effects. Orphan ids sanitize to nullable metadata, omitted-owner preview stays legacy, held metadata leaves ordinary queued-chat cancellation/review repair available and prevents import channel creation through fixed remap/skip policy. Source/privacy/terminal-join and frontend detail checks expanded. Final focused89 PASS20.242s, unchanged channel345 PASS14.786s, Node UI22/policy4 PASS; corrected full then Sonnet recheck next. All prior reds/full1636 remain separately attributed; no helper edits or activation.
 
 - Slice4 NOT cleared: static review of fc45f4c raised cancellation/orphan/held-scope gaps. New root8 BEFORE fixes reproduces6 FAIL+5 ERROR1.540s. Additive409 refused_request_ids/all-row pure prevalidation, nullable sanitized orphan ids and held-owner import remap reason are explicitly ruled and frozen in the lifecycle payload mirror. Next root owner implements corrections, expands terminal/privacy/frontend cases, reruns focused/full and sends Sonnet a new pin. Pre-correction full1636 remains a pass for that source, not acceptance of these gaps.
 

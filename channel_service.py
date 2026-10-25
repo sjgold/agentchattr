@@ -26,6 +26,7 @@ _ARTIFACT_DISCLOSURE = ('Deleting chat and todos keeps authored artifacts and co
 
 
 class ArtifactManagementUnavailable(ChannelUnavailable):
+    http_status = 503
     def __init__(self, payload):
         self.payload = deepcopy(payload)
         self.code = payload['code']
@@ -51,6 +52,17 @@ class ArtifactCancellationPartial(ArtifactManagementUnavailable):
         super().__init__({**result, 'ok': False, 'code': 'artifact_cancellation_partial',
             'error': 'Artifact request cancellation was saved; transport fencing is unconfirmed.',
             'warning': 'transport_unconfirmed'})
+
+
+class ArtifactCancellationRefused(ChannelConflict):
+    code = 'artifact_cancellation_refused'
+    http_status = 409
+
+    def __init__(self, result, refused):
+        message = 'A queued artifact request refused cancellation. Saved changes are listed; refresh the preview.'
+        self.payload = {**deepcopy(result), 'ok': False, 'code': self.code, 'error': message,
+                        'refused_request_ids': list(refused)}
+        super().__init__(message)
 
 
 class ChannelService:
@@ -161,15 +173,19 @@ class ChannelService:
                 return {'channel': 'general', 'created': False, 'reason': 'channel_repair_pending'}
             if sum(state == 'active' for state in value['channels'].values()) >= max_channels:
                 return {'channel': 'general', 'created': False, 'reason': 'invalid_or_full'}
+            try:
+                self._authored_scope(name)
+            except ArtifactOwnerHeld:
+                return {'channel': 'general', 'created': False, 'reason': 'artifact_owner_held'}
             value = self.catalog.create(name, expected_revision=value['revision'])
             self._project(value)
             return {'channel': name, 'created': True, 'reason': None}
 
-    def _artifact_scope(self, channel, transport):
+    def _artifact_scope(self, channel, transport, *, scope=None, unavailable=False):
         """Join detached metadata only; release every owner lock before the next."""
         if self.authored_artifacts is None:
             return [], None
-        scope = self._authored_scope(channel)
+        scope = scope if scope is not None else self._authored_scope(channel)
         records = {row['envelope']['dispatch_id']: row for row in transport
                    if row['envelope'].get('purpose') == 'artifact-v1'}
         candidates = {row['dispatch_id'] for row in scope['pending']}
@@ -179,7 +195,8 @@ class ChannelService:
         for dispatch in sorted(candidates):
             record = records.get(dispatch)
             envelope = record['envelope'] if record else {}
-            request = self.authored_artifacts.get_request_by_dispatch(dispatch)
+            valid_dispatch = self._artifact_id(dispatch)
+            request = self.authored_artifacts.get_request_by_dispatch(valid_dispatch) if valid_dispatch and not unavailable else None
             request_state = request['state'] if request else None
             transport_state = record['state'] if record else None
             live = request_state in ('prepared', 'queued', 'active')
@@ -187,15 +204,10 @@ class ChannelService:
             if not live and not work:
                 continue
             audit = request['audit'] if request else {}
-            request_id = audit.get('request_id') or envelope.get('artifact_request_id')
-            try:
-                _request_id(dispatch)
-                _request_id(request_id)
-            except ValueError:
-                raise ChannelUnavailable('Saved artifact transport references are unavailable.') from None
+            request_id = self._artifact_id(audit.get('request_id') or envelope.get('artifact_request_id'))
             identity = audit.get('producer', {}).get('identity_id')
             target = envelope.get('target_identity_id')
-            mismatch = bool(record and request is None) or bool(record and request and (
+            mismatch = unavailable or valid_dispatch is None or request_id is None or bool(record and request is None) or bool(record and request and (
                 target != identity or envelope.get('artifact_request_id') != request_id
                 or request['channel'] != channel or audit.get('dispatch_id') != dispatch
                 or envelope.get('artifact_attempt_id') != audit.get('attempt_id')
@@ -208,13 +220,21 @@ class ChannelService:
                 except ValueError:
                     mismatch = True
             missing = request_state in ('queued', 'active') and record is None
-            blockers.append({'kind': 'artifact', 'request_id': request_id, 'dispatch_id': dispatch,
+            blockers.append({'kind': 'artifact', 'request_id': request_id, 'dispatch_id': valid_dispatch,
                 'identity_id': identity, 'state': transport_state if work else request_state,
                 'request_state': request_state, 'transport_state': transport_state,
                 'held': mismatch or missing,
                 'reason': 'ownership_mismatch' if mismatch else 'transport_missing' if missing else
                           'request_pending' if live else 'transport_pending'})
         return blockers, scope
+
+    @staticmethod
+    def _artifact_id(value):
+        try:
+            _request_id(value)
+            return value
+        except ValueError:
+            return None
 
     def _authored_scope(self, channel):
         if self.authored_artifacts is None:
@@ -231,10 +251,12 @@ class ChannelService:
                     artifact_requests=scope['request_count'], artifact_source_bytes=scope['source_bytes'])
 
     @staticmethod
-    def _authored_disclosure(counts):
+    def _authored_disclosure(counts, *, deleting=False):
         retained = counts['artifact_requests'] > 0
         return {'artifacts_held': False, 'artifact_source_retained': retained,
-                'artifact_source_disclosure': _ARTIFACT_DISCLOSURE if retained else None}
+                'artifact_source_disclosure': (_ARTIFACT_DISCLOSURE if deleting else
+                    'Authored artifacts and copied source text remain in retained audit and backups. '
+                    'Copied source and attachment metadata can contain whatever was in chat; backups are as sensitive as channel history.') if retained else None}
 
     def _authored_display(self, channel):
         try:
@@ -244,8 +266,16 @@ class ChannelService:
             return dict.fromkeys(_ARTIFACT_COUNTS), {'artifacts_held': True,
                 'artifact_source_retained': None, 'artifact_source_disclosure': _ARTIFACT_UNKNOWN}, _ARTIFACT_HELD
 
-    def _scope(self, channel):
-        self._authored_scope(channel)  # A held owner refuses before any other owner can create a lock file.
+    def _scope(self, channel, *, authored_required=True):
+        unavailable = False
+        try:
+            authored = self._authored_scope(channel)
+        except ArtifactOwnerHeld:
+            if authored_required:
+                raise
+            unavailable = True
+            authored = {'lineages': [], 'pending': [], 'held': True}
+
         self.artifacts.check()
         self.engine._store.retained_metadata(channel, limit=1)  # Validate retained authority before a mutation preview.
         messages = deepcopy(self.messages.get_recent(count=2**63, channel=channel))
@@ -262,8 +292,9 @@ class ChannelService:
         counts = dict(messages=len(messages), todos=len(todos), jobs=len(jobs),
                       schedules=len(schedules), sessions=len(runs), summaries=int(summary is not None),
                       uploads=sum(len(item.get('attachments') or []) for item in messages))
-        blockers, artifact_scope = self._artifact_scope(channel, transport)
-        counts.update(self._authored_counts(artifact_scope or self._authored_scope(channel)))
+        blockers, artifact_scope = self._artifact_scope(channel, transport, scope=authored, unavailable=unavailable)
+        if self.authored_artifacts is not None:
+            counts.update(dict.fromkeys(_ARTIFACT_COUNTS) if unavailable else self._authored_counts(authored))
         def block(kind, run=None, record=None, audit=None, reason=None):
             run, record, audit = run or {}, record or {}, audit or {}
             envelope = record.get('envelope', {})
@@ -324,7 +355,9 @@ class ChannelService:
                   'blockers': blockers}
         if artifact_scope is not None:
             stable['artifacts'] = artifact_scope
-        queued = sorted(item['envelope']['dispatch_id'] for item in transport if item['state'] == 'queued')
+        queued = sorted(item['envelope']['dispatch_id'] for item in transport if item['state'] == 'queued'
+                        and (item['envelope'].get('purpose') != 'artifact-v1'
+                             or self._artifact_id(item['envelope']['dispatch_id']) is not None))
         return counts, blockers, queued, overdue, stable
 
     def retained_view(self, channel):
@@ -474,7 +507,12 @@ class ChannelService:
             self._action(value, op, channel, new_name)
             if op == 'delete':
                 self.artifacts.check()
-            counts, blockers, queued, overdue, stable = self._scope(channel)
+            counts, blockers, queued, overdue, stable = self._scope(channel,
+                authored_required=op not in ('cancel_queued', 'recover_projections'))
+            if (op == 'cancel_queued' and self.authored_artifacts is not None
+                    and counts['artifacts'] is None and any(item['kind'] == 'artifact'
+                        and item['transport_state'] == 'queued' for item in blockers)):
+                raise ArtifactCancellationUnavailable()
             destination = None
             if op == 'rename':
                 destination_counts, destination_blockers, _, _, destination = self._scope(new_name)
@@ -491,7 +529,9 @@ class ChannelService:
             return {'op': op, 'channel': channel, 'new_name': new_name, 'revision': value['revision'],
                     'state': value['channels'].get(channel), 'counts': counts, 'blockers': blockers,
                     'queued_dispatch_ids': queued, 'overdue_schedules': overdue, 'preview_token': token,
-                    **self._authored_disclosure(counts)}
+                    **({} if self.authored_artifacts is None else
+                       {'artifacts_held': True, 'artifact_source_retained': None, 'artifact_source_disclosure': _ARTIFACT_UNKNOWN}
+                       if counts['artifacts'] is None else self._authored_disclosure(counts, deleting=op == 'delete'))}
 
     def apply(self, op, channel, *, new_name=None, request_id, confirmation, preview_token):
         _request_id(request_id)
@@ -558,7 +598,6 @@ class ChannelService:
         if not selected:
             self.queue.cancel_queued_channel(channel, preview['queued_dispatch_ids'], request_id)
             return None
-        # Resolve and validate the late binding BEFORE changing a request or queue.
         try:
             authority = self.artifact_service_getter() if self.artifact_service_getter else None
             if authority is None or authority.store is not self.authored_artifacts or authority.channels is not self:
@@ -566,40 +605,56 @@ class ChannelService:
         except Exception:
             raise ArtifactCancellationUnavailable() from None
         summary = {'cancelled_request_ids': [], 'fenced_dispatch_ids': [], 'unconfirmed_dispatch_ids': []}
+        def state():
+            return {'op': 'cancel_queued', 'channel': channel, 'state': preview['state'],
+                    'revision': preview['revision'], 'artifact_cancellation': summary}
+        refused = []
+        for item in selected:
+            try:
+                authority.validate_queued_cancellation(item['request_id'])
+            except ChannelConflict:
+                refused.append(item['request_id'])
+            except (ChannelUnavailable, OSError, ValueError, LaunchError):
+                raise ArtifactCancellationUnavailable() from None
+        if refused:
+            raise ArtifactCancellationRefused(state(), refused)
         for item in selected:
             identifier, dispatch = item['request_id'], item['dispatch_id']
             try:
                 if item['request_state'] == 'cancelled':
                     repair = authority.repair_cancel_fences([identifier])
                     settled = identifier in repair['repaired']
-                    summary['cancelled_request_ids'].append(identifier)
-                elif item['request_state'] in ('prepared', 'queued', 'active'):
+                else:
                     result = authority.cancel_request(identifier)
                     settled = result['transport_settled'] is True
-                    summary['cancelled_request_ids'].append(identifier)
-                else:
-                    # The request is already terminal; only its queued transport remains.
-                    record = self.queue.cancel_dispatch(dispatch, request_id)
-                    settled = record is not None and record['state'] == 'cancelled'
-            except (ChannelUnavailable, OSError, ValueError):
+                summary['cancelled_request_ids'].append(identifier)
+            except ChannelConflict:
+                saved = self.authored_artifacts.get_request(identifier)
+                if saved is None or saved['state'] != 'cancelled':
+                    raise ArtifactCancellationRefused(state(), [identifier]) from None
+                summary['cancelled_request_ids'].append(identifier)
+                settled = False
+            except (ChannelUnavailable, OSError, ValueError, LaunchError):
                 saved = self.authored_artifacts.get_request(identifier)
                 if saved is not None and saved['state'] == 'cancelled':
                     summary['cancelled_request_ids'].append(identifier)
-                elif not summary['cancelled_request_ids'] and not summary['fenced_dispatch_ids']:
+                elif not summary['cancelled_request_ids']:
                     raise ArtifactCancellationUnavailable() from None
+                else:
+                    # Earlier rows changed, but this request never persisted a
+                    # cancellation. Preserve those effects without inventing a fence failure.
+                    raise ArtifactCancellationPartial(state()) from None
                 settled = False
             summary['fenced_dispatch_ids' if settled else 'unconfirmed_dispatch_ids'].append(dispatch)
         if summary['unconfirmed_dispatch_ids']:
-            raise ArtifactCancellationPartial({'op': 'cancel_queued', 'channel': channel,
-                'state': preview['state'], 'revision': preview['revision'], 'artifact_cancellation': summary})
+            raise ArtifactCancellationPartial(state())
         remaining = sorted(set(preview['queued_dispatch_ids']) - set(summary['fenced_dispatch_ids']))
         if remaining:
             try:
                 self.queue.cancel_queued_channel(channel, remaining, request_id)
-            except (ChannelUnavailable, OSError, ValueError):
+            except (ChannelUnavailable, OSError, ValueError, LaunchError):
                 summary['unconfirmed_dispatch_ids'].extend(remaining)
-                raise ArtifactCancellationPartial({'op': 'cancel_queued', 'channel': channel,
-                    'state': preview['state'], 'revision': preview['revision'], 'artifact_cancellation': summary}) from None
+                raise ArtifactCancellationPartial(state()) from None
         return summary
 
     def _repair_projections(self, channel):

@@ -19,7 +19,8 @@ window.ChannelLifecycle = (() => {
         'No repairable history is pending; live work must wait or restart.',
         'Authored artifact metadata is held. Repair saved artifact metadata before changing channels.',
         'Artifact cancellation is unavailable. No queued work was changed.',
-        'Artifact request cancellation was saved; transport fencing is unconfirmed.'
+        'Artifact request cancellation was saved; transport fencing is unconfirmed.',
+        'A queued artifact request refused cancellation. Saved changes are listed; refresh the preview.'
     ]);
     const copy = value => value == null ? value : JSON.parse(JSON.stringify(value));
     const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -35,7 +36,7 @@ window.ChannelLifecycle = (() => {
         element.type = 'button'; element.dataset.focusKey = focusKey; element.onclick = action; return element;
     };
     class ChannelRequestError extends Error {
-        constructor(message, status) { super(message); this.status = status; }
+        constructor(message, status, effects = '') { super(message); this.status = status; this.effects = effects; }
     }
     async function jsonRequest(url, options = {}, externalController = null) {
         const abort = externalController || new AbortController();
@@ -50,7 +51,18 @@ window.ChannelLifecycle = (() => {
                     : response.status === 503 ? 'Channel storage is held. Create, reopen, archive, rename and delete are paused until repair. Healthy chat continues; drafts are kept.'
                     : response.status === 403 ? 'The operator session is unavailable. Reconnect before changing channels; drafts are kept.'
                     : 'The channel request could not be completed. Check the name and reload its preview.';
-                throw new ChannelRequestError(message, response.status);
+                let effects = '';
+                if (object(value) && ['artifact_cancellation_refused', 'artifact_cancellation_partial'].includes(value.code)
+                        && object(value.artifact_cancellation)) {
+                    const summary = value.artifact_cancellation;
+                    const lists = [summary.cancelled_request_ids, summary.fenced_dispatch_ids,
+                        summary.unconfirmed_dispatch_ids, value.refused_request_ids ?? []];
+                    if (lists.every(list => Array.isArray(list) && list.every(id => typeof id === 'string' && /^[a-f0-9]{32}$/.test(id)))) {
+                        const labels = ['Saved requests', 'Fenced dispatches', 'Unconfirmed dispatches', 'Refused requests'];
+                        effects = lists.map((list, index) => `${labels[index]}: ${list.length}${list.length ? ' (' + list.slice(0, 20).join(', ') + (list.length > 20 ? '; first 20 shown' : '') + ')' : ''}.`).join(' ');
+                    }
+                }
+                throw new ChannelRequestError(message, response.status, effects);
             }
             return value;
         } catch (error) {
@@ -62,8 +74,8 @@ window.ChannelLifecycle = (() => {
         if (!artifactCountKeys.some(key => key in value)) return !held; // Legacy catalog fixtures/servers.
         return artifactCountKeys.every(key => held ? value[key] === null : integer(value[key]));
     }
-    function validCounts(value) {
-        return object(value) && countKeys.every(key => integer(value[key])) && validArtifactCounts(value);
+    function validCounts(value, held = false) {
+        return object(value) && countKeys.every(key => integer(value[key])) && validArtifactCounts(value, held);
     }
     function validDisplayRow(row) {
         if (!object(row.errors) || Object.keys(row.errors).some(key => !ownerKeys.includes(key) || typeof row.errors[key] !== 'string' || !row.errors[key])) return false;
@@ -105,8 +117,9 @@ window.ChannelLifecycle = (() => {
             && !row.errors[owner] && integer(row.counts?.[owner])
             && (owner !== 'artifacts' || validArtifactCounts(row.counts));
     }
-    function partialContents(name) {
-        return !!catalog?.channels.find(row => row.name === name && Object.keys(row.errors).length);
+    function partialContents(name, op = null) {
+        return !!catalog?.channels.find(row => row.name === name && Object.keys(row.errors).some(owner =>
+            owner !== 'artifacts' || !['cancel_queued', 'recover_projections'].includes(op)));
     }
     function reason(name) {
         const value = state(name);
@@ -264,11 +277,12 @@ window.ChannelLifecycle = (() => {
         const apply = form.dialog.querySelector('#channel-manager-apply');
         const blocked = form.preview && !['create', 'reopen', 'recover_projections'].includes(form.op)
             && form.preview.blockers.some(item => !(form.op === 'cancel_queued' && (item.kind === 'transport' && item.state === 'queued'
-                || item.kind === 'artifact' && item.transport_state === 'queued' && item.held === false)));
+                || item.kind === 'artifact' && item.transport_state === 'queued' && item.held === false
+                    && ['prepared', 'queued', 'cancelled'].includes(item.request_state))));
         const noQueued = form.op === 'cancel_queued' && !form.preview?.queued_dispatch_ids.length;
         const noRepair = form.op === 'recover_projections' && !form.preview?.blockers.some(item => item.kind === 'projection_pending' && !item.reason);
         if (apply) apply.disabled = !ready || !!mutation || form.busy || !form.preview
-            || form.confirmation !== target(form) || !target(form) || blocked || noQueued || noRepair || partialContents(target(form));
+            || form.confirmation !== target(form) || !target(form) || blocked || noQueued || noRepair || partialContents(target(form), form.op);
     }
     function renderManager(form) {
         if (form !== current || form.closed) return;
@@ -281,7 +295,7 @@ window.ChannelLifecycle = (() => {
         const header = node('header', undefined, 'channel-manager-header');
         const title = node('h2', 'Manage channels'); title.id = 'channel-manager-title';
         header.append(title, button('Close', () => closeManager(form), null, 'close')); form.dialog.appendChild(header);
-        const status = node('p', form.error || form.warning || (!ready ? 'Checking channel status. Drafts are kept.' : ''), 'channel-manager-status');
+        const status = node('p', [form.error, form.warning].filter(Boolean).join(' ') || (!ready ? 'Checking channel status. Drafts are kept.' : ''), 'channel-manager-status');
         status.id = 'channel-manager-status'; status.setAttribute('role', 'alert'); form.dialog.appendChild(status);
         form.dialog.appendChild(button('Reload catalog', () => refresh().catch(error => report(form, errorText(error))), null, 'reload'));
         if (catalog?.intent) {
@@ -358,7 +372,9 @@ window.ChannelLifecycle = (() => {
                 : form.op === 'rename' ? 'Messages and mutable records move to the new name. Frozen briefs, typed journals and queue audit stay unchanged. The old name remains reserved.'
                 : form.op === 'recover_projections' ? 'Repair completed history only. Live pending work must wait or restart; no review or worker is started.' : 'This registers a new active channel.';
             consequences.appendChild(node('p', copy));
-            for (const block of value.blockers) consequences.appendChild(node('p', `${block.kind}${block.reason ? ': ' + block.reason.replaceAll('_', ' ') : ''}. Session ${block.session_id ?? 'none'}, run ${block.run_id || 'none'}, dispatch ${block.dispatch_id || 'none'}, state ${block.state || 'unknown'}.`, 'channel-manager-blocker'));
+            for (const block of value.blockers) consequences.appendChild(node('p', block.kind === 'artifact'
+                ? `Artifact request ${block.request_id || 'unverified'}, request state ${block.request_state || 'unknown'}, transport ${block.transport_state || 'none'}, held ${block.held ? 'yes' : 'no'}. Dispatch ${block.dispatch_id || 'unverified'}; ${block.reason || 'pending'}.`
+                : `${block.kind}${block.reason ? ': ' + block.reason.replaceAll('_', ' ') : ''}. Session ${block.session_id ?? 'none'}, run ${block.run_id || 'none'}, dispatch ${block.dispatch_id || 'none'}, state ${block.state || 'unknown'}.`, 'channel-manager-blocker'));
             if (form.op === 'cancel_queued') consequences.appendChild(node('p', `Queued dispatches: ${value.queued_dispatch_ids.join(', ') || 'none'}`));
         }
         labelled(detail, `Type the exact name ${target(form) || '(choose a name)'}`, 'channel-manager-confirm', form.confirmation, value => { form.confirmation = value; updateApply(form); });
@@ -371,7 +387,7 @@ window.ChannelLifecycle = (() => {
         if (form.op === 'rename') body.new_name = form.name;
         try {
             const value = await jsonRequest('/api/channels/preview', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
-            if (!object(value) || value.op !== body.op || value.channel !== body.channel || !validCounts(value.counts)
+            if (!object(value) || value.op !== body.op || value.channel !== body.channel || !validCounts(value.counts, value.artifacts_held === true && ['cancel_queued', 'recover_projections'].includes(body.op))
                     || !/^[a-f0-9]{64}$/.test(value.preview_token) || !Array.isArray(value.blockers) || !Array.isArray(value.queued_dispatch_ids)) throw new Error('Invalid preview.');
             if (current !== form || form.closed || body.channel !== target(form) || (body.new_name && body.new_name !== form.name)) return;
             form.preview = value;
@@ -381,7 +397,7 @@ window.ChannelLifecycle = (() => {
     async function mutate(form, repair = false) {
         if (mutation || form.busy || !ready) return;
         const intent = catalog?.intent;
-        if (repair ? !intent || !form.repairConfirmed : !form.preview || form.confirmation !== target(form) || partialContents(target(form))) return;
+        if (repair ? !intent || !form.repairConfirmed : !form.preview || form.confirmation !== target(form) || partialContents(target(form), form.op)) return;
         const requestId = repair ? intent.request_id : (form.requestId ||= crypto.randomUUID().replaceAll('-', ''));
         const body = repair ? {request_id: requestId} : {op: form.op, channel: target(form),
             request_id: requestId, confirmation: form.confirmation, preview_token: form.preview.preview_token};
@@ -402,6 +418,7 @@ window.ChannelLifecycle = (() => {
         } catch (error) {
             if (error.status >= 400 && error.status < 500) form.requestId = null;
             form.preview = null; report(form, errorText(error));
+            if (typeof error.effects === 'string' && error.effects) form.warning = error.effects;
             try { await refresh(); } catch (_) { /* Closed writes and visible catalog error. */ }
         } finally { mutation = null; form.busy = false; if (current === form && !form.closed) renderManager(form); }
     }
@@ -433,6 +450,10 @@ window.ChannelLifecycle = (() => {
         for (const owner of ['jobs', 'sessions', 'schedules', 'uploads', 'artifacts', 'summary']) if (value.errors[owner]) detail.appendChild(node('p', `${owner}: Saved records are held. Repair storage and reload.`, 'channel-manager-status'));
         if (value.summary) { detail.append(node('h4', 'Summary'), node('pre', value.summary.text)); }
         else if (!value.errors.summary) detail.appendChild(node('p', 'No saved summary for this channel.'));
+        if ('artifacts' in value) {
+            detail.appendChild(node('p', `${value.counts.artifact_source_bytes ?? 'Unavailable'} copied-source bytes.`));
+            if (typeof value.artifact_source_disclosure === 'string') detail.appendChild(node('p', value.artifact_source_disclosure));
+        }
         for (const owner of ['jobs', 'sessions', 'schedules', 'uploads', ...('artifacts' in value ? ['artifacts'] : [])]) {
             const label = owner === 'artifacts' ? 'Authored artifacts' : owner === 'sessions' ? 'Reviews' : owner === 'uploads' ? 'Messages with attachments' : owner[0].toUpperCase() + owner.slice(1);
             detail.appendChild(node('h4', label));

@@ -24,6 +24,7 @@ MAX_IMPORT_SIZE = 50 * 1024 * 1024  # 50MB uncompressed
 
 _import_lock = threading.Lock()
 _LEGACY_HISTORY_ONLY = object()
+_ARTIFACT_IMPORT_HELD = 'Authored artifact metadata is held. Repair saved artifact metadata before changing channels.'
 
 
 class ArtifactArchiveLimit(ValueError):
@@ -441,6 +442,11 @@ def _import_artifact_lineages(zf, index, owner, policy, channel_list, max_channe
                             _artifact_skip(section, ordinal, 'channel_unavailable', channel_reason='invalid_or_full')
                             continue
                         resolved = policy.resolve_import_channel(raw, max_channels=max_channels)
+                        if resolved['reason'] == 'artifact_owner_held':
+                            if _ARTIFACT_IMPORT_HELD not in report['warnings']:
+                                report['warnings'].append(_ARTIFACT_IMPORT_HELD)
+                            _artifact_skip(section, ordinal, 'channel_unavailable', channel_reason='artifact_owner_held')
+                            continue
                         _artifact_channel(report, resolved, raw, channel_list)
                         result = owner.import_lineage(prepared, channel=resolved['channel'])
                 if result['status'] == 'created':
@@ -890,6 +896,8 @@ def _configured_import(zf, store, jobs_store, rules_store, summary_store,
 
     def resolve(raw, *, redirected=True):
         result = policy.resolve_import_channel(raw, max_channels=max_channels)
+        if result['reason'] == 'artifact_owner_held' and _ARTIFACT_IMPORT_HELD not in warnings:
+            warnings.append(_ARTIFACT_IMPORT_HELD)
         if result['created']:
             report['channels']['created'].append(result['channel'])
             if result['channel'] not in channel_list:
