@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 operator contract amendments; create timing mechanism under review)
+**Updated:** 2026-10-25 (#20 reviewed phase prototype fails publication timing; mechanism review next)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Operator-routes/K6 amended docs review: existing whole-create spike FAILS0.300s (0.412-0.685s, peer0.677s). Review staged publication mechanism then timing prototype/exact helper freeze; no implementation tests/code before clearance; reader/acceptance/activation/final review remain. Capability stays empty |
+| Next | Operator-routes/K6 amended docs review: existing whole-create spike FAILS0.300s (0.412-0.685s, peer0.677s). Reviewed phase prototype also FAILS publish0.327580s/peer0.327973s; review private enqueue-evidence reuse before another prototype/exact helper freeze; no implementation tests/code before clearance; reader/acceptance/activation/final review remain. Capability stays empty |
 
 ## Current handoff
+
+- Reviewer accepted phase split with M1-M4: packet-only stage outside, recapture/stat-plan reserve, brief only AFTER durable PREPARED outside, strict publication boundary. Ignored prototype against unchanged6da23f7 completed10 samples with exact2MiB/1000 messages,512KiB parents,100 lineages, real fsync/full _persist validation. Capture max0.082033s/reserve0.272222s, but publication max0.327580s and peer0.327973s FAIL0.300s (late samples9/10). Total wall0.436507-0.714254s; all phase/wait numbers committed in contract. Reserve-only stat-plan shortcut is script-local, real coordinator publication unchanged; cleanup asserts temp root absent/peer joined. Proposed extension of private same-invocation packet evidence into validate_enqueue is OPEN, unprototyped and requires reviewer ruling. No product/test changes, DTO/helper freeze blocked, capability empty. Root sends measurements/docs pin for asynchronous mechanism review. Earlier evidence remains below.
 
 - Operator contract3f40912 main mechanisms accepted but NOT cleared. Reviewer16 clarifications addressed in amended TICKET-20-OPERATOR-ROUTES.md: closed typed reasons, terminal recovery/idempotence, server audit basis, full public DTO allowlists, strict new Host/Origin/header middleware, cap-aware count/encoding and single leak gate. Requested existing-code design spike (real2097152-byte/1000-message source,512KiB parent,100 prior lineages,10 revisions, real fsync) completed: snapshot0.039318-0.041512s, whole create0.411677-0.684864s, peer wait0.677207s. This FAILS the proposed0.300s gate; exit0 is measurement completion only. Proposed capture/stage/reserve/publish boundaries are OPEN for reviewer decision and timing prototype, no silent weakening/activation. No product tests/source changed, ignored spike cleaned its temp root/thread. Root sends amended docs-only pin then waits for asynchronous review; helper unbriefed. Earlier bullets below preserve superseded evidence.
 
