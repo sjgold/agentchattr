@@ -361,4 +361,14 @@ test('unverified cancellation requests show totals and ask for refresh before re
   assert.equal(env.requests.filter(req=>req.url.endsWith('/apply')).length,1);
 });
 
+test('held retained artifacts render the exact neutral disclosure',async()=>{
+  const env=moduleEnv();env.api.openManage({channel:'archive',op:'view'});
+  const neutral='Authored artifact contents cannot be confirmed; repair saved artifact metadata before changing channels.';
+  await settleReads(env,catalog(),retained({artifacts:null,counts:{...retained().counts,
+    ...Object.fromEntries(Object.keys(authoredCounts()).map(key=>[key,null]))},
+    truncated:{...retained().truncated,artifacts:null},errors:{artifacts:'Saved authored artifacts are held; repair storage and reload.'},
+    artifacts_held:true,artifact_source_retained:null,artifact_source_disclosure:neutral}));
+  assert.ok(env.body.textContent.includes(neutral));assert.ok(!env.body.textContent.includes('before deleting'));
+});
+
 (async()=>{let failures=0;for(const {name,run} of tests){try{await run();console.log('PASS '+name);}catch(error){failures++;console.error('FAIL '+name+'\n'+error.stack);}}console.log(JSON.stringify({cases:tests.length,failures,scope:'actual_source_vm_only'}));process.exitCode=failures?1:0;})();
