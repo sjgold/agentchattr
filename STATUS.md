@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 09:39 UTC (#20 lifecycle/backup first behavioral reds; production unchanged)
+**Updated:** 2026-10-25 09:48 UTC (#20 lifecycle red accepted; implementation slice1 starts)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
 | Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
-| Next | Sonnet reviews the first lifecycle/backup red pin and test bodies before production code. Helper may write the bounded imported-store regression. Codex owns lifecycle/archive integration after that gate; production capability stays empty |
+| Next | Sonnet accepted the b2aa254 root red and cleared production. Codex implements slice1: lifecycle binding/blockers/eighth rename step, then sends its green pin. Helper expands the new imported-store tests compile-only; production capability stays empty |
 
 ## Current handoff
+
+- Root lifecycle/archive red independently reproduced and accepted atb2aa254. Final payload wording folded without meaning changes; no further doc re-review required. Helper initial2 imported-store tests are infrastructure RED2 AttributeError(export_metadata)/0.080s; frozen initial file read by root, source/target real stores and no native/managed producer claim. Slice1 production now authorized; archive/store interfaces wait for later ordered slices.
 
 - Lifecycle/backup payload cleared at6010b10 with final wording fixes folded in. Actual old-export ZIP golden captured before source edits (1281 bytes, SHA e73ed2ff...). Corrected root6:7 behavioral assertion FAIL +1 missing-keyword ERROR1.266s,3 methods PASS. Initial run had four disclosed fixture-argument errors, corrected without source/assertion changes. Product code remains c5ae029/full1516 green; reviewer reads red test bodies before implementation.
 
