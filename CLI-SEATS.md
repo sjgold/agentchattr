@@ -41,3 +41,8 @@ Generic entries: `windows/start_cli_agent.bat NAME` and `sh macos-linux/start_cl
 Managed Windows CLI seats start with their console window hidden. The console remains attached for native input injection; status, replies, restart and Stop remain available in the app. API workers and per-request model processes also launch without a visible console. Explicit compatibility/manual terminal launches keep their usual visible behavior. This startup preference was requested by Seth; it does not change native login or history files.
 
 Routine verification uses fake clients and isolated loopback servers. Native Linux/Omarchy and compatibility with real provider/client versions require separate authorized acceptance. The working Desktop installation is outside this change.
+
+
+## Wrapper source changes and reuse
+
+Managed launches freeze the wrapper source manifest along with their effective settings. After an app upgrade or an edit to a listed source file, **Launch** may require an explicit **Restart** for an already-running seat. Source changes also close artifact eligibility until a supported managed launch is restarted. Artifact authoring remains disabled while its wrapper implementation is being completed.

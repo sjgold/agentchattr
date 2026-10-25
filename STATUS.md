@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 03:54 UTC (#20 capability12 and unchanged151 pass; full regression and review running)
+**Updated:** 2026-10-25 03:57 UTC (#20 capability review requires pending-launch reason fix; RED captured)
 
 ## At a glance
 
@@ -17,7 +17,7 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
-| Next | Run unchanged151 affected tests and helper12 once against frozen capability candidate |
+| Next | Finish original full19886263, then fix P1 pending-launch reason and recheck |
 
 ## Current handoff
 
@@ -785,3 +785,6 @@ Ticket20 store candidate: helper initial2 actual ModuleNotFoundError RED0.026s b
 
 
 Capability candidate implemented after genuine REDs: runtime_protocol.py fixed manifest/empty supported constant; optional ownership/provenance fingerprint inclusion; deterministic matching-only birth copy; candidate validation; read-only current-boot artifact_producer gate. Initial helper2 plus root static2 PASS4/0.299s. Root closure also rejects unreachable stale listed modules (runtime_protocol explicitly allowed). No artifact branch, authoring route or production capability enablement. Expanded helper12 PASS1.377s; unchanged151 after-run PASS12.975s trackedf9c36e92. Full discovery tracked19886263 and independent review are running. Owner Codex records results and fixes findings; owner Sonnet reviews. No authority/admission expansion before PASS.
+
+
+Capability independent review at9ae0842: reviewer173 PASS14.71s (own focused/baseline selection) plus6 probe cases pass; no full discovery by reviewer. P1 remains: live new launch with no birth must be runtime_unverified, currently reports capability_binding_changed. Root pending-launch regression observed1FAIL0.069s before fix; later birth/heartbeat progression assertions not yet reached. No source change while original full19886263 runs. Next Codex applies the small missing-birth check after that run finishes, reruns focused/affected checks and sends Sonnet the correction pin. Operator docs now explain source-manifest drift requiring explicit restart. Helper12 stays frozen; no authority/admission expansion yet.

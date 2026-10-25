@@ -38,3 +38,8 @@ This runtime currently requires IPv4 loopback (`127.0.0.1`/`localhost`); an IPv6
 ## Reproduce without live providers
 
 Run the full unittest suite in the platform environment, using a writable temporary directory and loopback permission on restricted hosts. `tools/verify_api_seat.py` starts an isolated app, two actual API wrappers and a loopback fake provider; it tests chosen payload settings, response provenance, secret-reference resolution, zero provider calls on launch, reuse/mismatch, targeted restart/retry/stop and authentication failure. It keeps scratch evidence under ignored `.audit-tmp`; it stops its owned wrappers/server afterwards. `--serve` holds the fake-provider page until Enter for browser checks. No configured external providers are contacted.
+
+
+## Wrapper source changes and reuse
+
+Managed launches freeze the wrapper source manifest along with their effective settings. After an app upgrade or an edit to a listed source file, **Launch** may require an explicit **Restart** for an already-running seat. Source changes also close artifact eligibility until a supported managed launch is restarted. Artifact authoring remains disabled while its wrapper implementation is being completed.
