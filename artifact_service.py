@@ -269,6 +269,25 @@ class ArtifactService:
                 'packet': packet, 'seal_secret': private['_artifact_seal']['seal_secret'],
                 'result_owner': deepcopy(private['_artifact_seal']['owner']), 'consumer_id': record['consumer_id']}
 
+    def get_parent(self, brief_id, instance):
+        """Read only this claimed request's immutable parent; never activate work."""
+        with self.channels._boundary():
+            _, row, _, _ = self._context(brief_id, instance)
+            self.store.get_packet(row['audit']['scope']['packet_id'])
+            expected = row['audit']['expected_parent']
+            if expected is None:
+                return {'parent': None}
+            saved = self.store.get_version(expected['version_id'])
+            if saved is None:
+                raise ArtifactUnavailable('Assigned artifact parent is unavailable.')
+            metadata, text = saved['metadata'], saved['markdown']
+            raw = text.encode('utf-8')
+            if (metadata['id'] != expected['version_id'] or metadata['sequence'] != expected['sequence']
+                    or metadata['sha256'] != expected['sha256'] or len(raw) != metadata['byte_length']
+                    or len(raw) > MAX_ARTIFACT_BYTES or hashlib.sha256(raw).hexdigest() != metadata['sha256']):
+                raise ArtifactUnavailable('Assigned artifact parent is unavailable.')
+            return {'parent': {**deepcopy(expected), 'byte_length': len(raw), 'markdown': text}}
+
     @staticmethod
     def _ack(metadata):
         return {'status': 'admitted', 'event_id': metadata['dispatch_id'], 'request_id': metadata['request_id'],
@@ -395,16 +414,21 @@ class ArtifactService:
             box.acknowledge(audit['dispatch_id'], audit['dispatch_id'])
             return self._ack(metadata)
 
-    def reject_response(self, brief_id, content, instance):
-        if not isinstance(content, str):
-            raise ArtifactValidationError('Artifact response must be text.')
+    def reject_response(self, brief_id, content, instance, *, received_truncated=False):
+        if (type(received_truncated) is not bool or
+                not ((isinstance(content, str) and not received_truncated) or
+                     (content is None and received_truncated))):
+            raise ArtifactValidationError('Artifact rejection requires text or an explicit omitted body.')
         with self.channels._boundary():
             _, row, live, _ = self._context(brief_id, instance)
             if row['audit']['producer']['adapter'] != 'openai-compatible':
                 raise ArtifactAccessError('API response rejection requires its managed API producer.')
             self._packet(row, live)
             row = self._activate(row)
-            result = self._diagnostic(row, live, 'invalid_response', content, terminal=True)
+            result = self._diagnostic(row, live, 'response_too_large' if received_truncated else 'invalid_response',
+                                      content, terminal=True)
+            if received_truncated:
+                result.update(received_truncated=True, notice='response_body_not_retained')
             self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], 'active',
                 {'state': 'quarantined', 'reason': 'invalid_response'})
             self._fence(row)

@@ -8,10 +8,13 @@ import re
 # Enabled only by the separately reviewed wrapper-purpose implementation.
 SUPPORTED_CAPABILITIES = ()
 SOURCE_FILES = {
-    'cli': ('api_seats.py', 'cli_seats.py', 'cli_worker.py', 'config_loader.py',
-        'launcher.py', 'mcp_proxy.py', 'process_identity.py', 'queue_client.py',
-        'runtime_ownership.py', 'runtime_protocol.py', 'wrapper.py', 'wrapper_unix.py', 'wrapper_windows.py'),
-    'openai-compatible': ('api_invocation.py', 'api_seats.py', 'channel_lifecycle.py',
+    'cli': ('api_invocation.py', 'api_seats.py', 'artifact_delivery.py', 'artifact_protocol.py', 'artifact_store.py', 'artifact_worker.py',
+        'channel_guards.py', 'channel_lifecycle.py', 'cli_seats.py', 'cli_worker.py', 'config_loader.py',
+        'invocation_evidence.py', 'launcher.py', 'mcp_proxy.py', 'process_identity.py', 'queue_client.py',
+        'runtime_ownership.py', 'runtime_protocol.py', 'sealed_result_io.py', 'turn_events.py', 'turn_recovery.py',
+        'wrapper.py', 'wrapper_unix.py', 'wrapper_windows.py'),
+    'openai-compatible': ('api_invocation.py', 'api_seats.py', 'artifact_delivery.py', 'artifact_protocol.py',
+        'artifact_store.py', 'artifact_worker.py', 'channel_guards.py', 'channel_lifecycle.py',
         'cli_result_recovery.py', 'cli_seats.py', 'config_loader.py', 'document_inputs.py',
         'invocation_evidence.py', 'launcher.py', 'mcp_proxy.py', 'participant_replacement_store.py',
         'process_identity.py', 'queue_client.py', 'result_delivery.py', 'result_outbox.py',

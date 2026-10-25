@@ -293,9 +293,11 @@ class ArtifactWorkerTests(unittest.TestCase):
         late_box = delivery.ArtifactOutbox(late_owned['runtime_path'])
         late_box.save(signed['payload'], self.briefs.get_private(late['brief_id'])['_artifact_seal']['seal_secret'])
         self.authority.cancel_request(late['request_id'])
+        # Accepted server recovery creates the real cancelled-result disposition.
+        self.authority.recover_startup()
         late_record = self.trigger.queue.owned(other, late['dispatch_id'])
         outcome = worker.complete_api_artifact(late_record, **late_owned, **callbacks,
-            submit_saved=lambda value: self.authority.admit_saved(value, other))
+            submit_saved=self.forbidden)
         self.assertEqual(outcome['status'], 'quarantined')
         self.assertIsNotNone(late_box.get_disposition(late['dispatch_id']))
         outcome = worker.complete_api_artifact(late_record, **late_owned, **callbacks, submit_saved=self.forbidden)

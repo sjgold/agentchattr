@@ -293,18 +293,20 @@ def _install_security_middleware(token: str, cfg: dict):
                 return await call_next(request)
 
             # --- Origin check (blocks cross-origin / DNS-rebinding attacks) ---
+            transport_headers = {"Cache-Control": "no-store"} if path == '/api/queue/inspect' else {}
             origin = request.headers.get("origin")
             if origin and origin not in allowed_origins:
                 return JSONResponse(
                     {"error": "forbidden: origin not allowed"},
                     status_code=403,
+                    headers=transport_headers,
                 )
 
             # --- Token check ---
             # Allow registered agents to authenticate via Bearer token
             # for /api/messages and /api/send (no browser session needed).
             auth_header = request.headers.get("authorization", "")
-            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send", "/api/queue/claim", "/api/queue/ack", "/api/queue/release", "/api/queue/uncertain", "/api/queue/cancel") or path.startswith(("/api/rules/", "/api/review-briefs/")) or _re.fullmatch(r'/api/sessions/[0-9]+/event', path)):
+            if auth_header.lower().startswith("bearer ") and (path in ("/api/messages", "/api/send", "/api/queue/claim", "/api/queue/ack", "/api/queue/release", "/api/queue/uncertain", "/api/queue/cancel", "/api/queue/inspect") or path.startswith(("/api/rules/", "/api/review-briefs/")) or _re.fullmatch(r'/api/sessions/[0-9]+/event', path)):
                 bearer = auth_header[7:].strip()
                 if _self.registry and _self.registry.resolve_token(bearer):
                     return await call_next(request)
@@ -317,6 +319,7 @@ def _install_security_middleware(token: str, cfg: dict):
                 return JSONResponse(
                     {"error": "forbidden: invalid or missing session token"},
                     status_code=403,
+                    headers=transport_headers,
                 )
 
             request.state.auth_origin = 'operator'
@@ -2435,11 +2438,12 @@ async def get_status():
 
 @app.post('/api/queue/{operation}')
 async def dispatch_operation(operation: str, request: Request):
-    from dispatch_queue import QueueAccessError, QueueConflict
+    from dispatch_queue import QueueAccessError, QueueConflict, _identifier
     from turn_recovery import FAILURE_CATEGORIES
+    transport_headers = {"Cache-Control": "no-store"} if operation == 'inspect' else {}
     instance = _resolve_authenticated_agent(request)
     if not instance:
-        return JSONResponse({'error': 'Registered seat bearer required.'}, status_code=403)
+        return JSONResponse({'error': 'Registered seat bearer required.'}, status_code=403, headers=transport_headers)
     try:
         raw = await request.body()
         if len(raw) > 4096:
@@ -2448,7 +2452,7 @@ async def dispatch_operation(operation: str, request: Request):
         fields = {'consumer_id'} if operation == 'claim' else {'consumer_id', 'dispatch_id'}
         allowed = fields | ({'failed', 'error_category', 'http_status'} if operation == 'release' else
                             {'status'} if operation == 'cancel' else set())
-        if (operation not in {'claim', 'ack', 'release', 'uncertain', 'cancel'}
+        if (operation not in {'claim', 'ack', 'release', 'uncertain', 'cancel', 'inspect'}
                 or not isinstance(body, dict) or not fields <= body.keys()
                 or body.keys() - allowed or not isinstance(body.get('failed', False), bool)):
             raise ValueError('Invalid transport receipt fields; session results are not accepted here.')
@@ -2463,6 +2467,11 @@ async def dispatch_operation(operation: str, request: Request):
         queue = agents.queue
         if operation == 'claim':
             result = queue.claim(instance, body['consumer_id'])
+        elif operation == 'inspect':
+            _identifier(body['consumer_id'], 'Consumer ID')
+            result = queue.owned(instance, body['dispatch_id'])
+            if result['consumer_id'] != body['consumer_id']:
+                raise QueueAccessError('Consumer does not own this retained dispatch.')
         elif operation == 'cancel':
             result = queue.cancellation_receipt(instance, body['dispatch_id'], body['consumer_id'], body.get('status'))
         else:
@@ -2471,15 +2480,15 @@ async def dispatch_operation(operation: str, request: Request):
             result = method(instance, body['dispatch_id'], body['consumer_id'], **extra)
         if operation == 'release' and body.get('failed') and session_engine:
             session_engine.monitor_turns()
-        return JSONResponse({'dispatch': result})
+        return JSONResponse({'dispatch': result}, headers=transport_headers)
     except QueueAccessError:
-        return JSONResponse({'error': 'Dispatch owner does not match this seat and consumer.'}, status_code=403)
+        return JSONResponse({'error': 'Dispatch owner does not match this seat and consumer.'}, status_code=403, headers=transport_headers)
     except QueueConflict as exc:
-        return JSONResponse({'error': str(exc)}, status_code=409)
+        return JSONResponse({'error': str(exc)}, status_code=409, headers=transport_headers)
     except (ValueError, TypeError):
-        return JSONResponse({'error': 'Invalid or unavailable dispatch receipt. Queue retained.'}, status_code=400)
+        return JSONResponse({'error': 'Invalid or unavailable dispatch receipt. Queue retained.'}, status_code=400, headers=transport_headers)
     except (ChannelUnavailable, OSError):
-        return JSONResponse({'error': 'Dispatch storage unavailable. Queue retained.'}, status_code=503)
+        return JSONResponse({'error': 'Dispatch storage unavailable. Queue retained.'}, status_code=503, headers=transport_headers)
 
 
 @app.get('/api/queue/status')
