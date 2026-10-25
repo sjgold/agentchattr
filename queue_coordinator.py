@@ -1,5 +1,6 @@
 """Serialize durable run eligibility with queue mutations, without store nesting."""
 import math
+import re
 from contextlib import contextmanager, nullcontext
 
 from dispatch_queue import ACTIVE, QueueBusy, QueueConflict, _identifier
@@ -151,9 +152,11 @@ class CoordinatedQueue:
             if self._artifact_policy is not None:
                 try:
                     artifact_eligible = self._artifact_policy().eligible_dispatch_ids(instance)
-                    if not isinstance(artifact_eligible, set):
+                    if (not isinstance(artifact_eligible, set) or any(
+                            not isinstance(value, str) or not re.fullmatch('[0-9a-f]{32}', value)
+                            for value in artifact_eligible)):
                         artifact_eligible = set()
-                except (OSError, ValueError, RuntimeError):
+                except (OSError, ValueError, RuntimeError, TypeError, AttributeError):
                     artifact_eligible = set()  # Owner failure closes new artifact claims only.
             # Existing owners must still inspect/release/cancel retained transport.
             for record in self._queue.for_identity(instance):
