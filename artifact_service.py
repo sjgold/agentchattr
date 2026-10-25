@@ -593,6 +593,22 @@ class ArtifactService:
         box.acknowledge(audit['dispatch_id'], audit['dispatch_id'])
         return self._ack(metadata)
 
+    def _settle_empty_transport(self, row, transport):
+        """A finished delivery without saved content cannot retain a pending slot."""
+        if transport is None or transport['state'] not in ('released', 'failed', 'settled_recovered'):
+            return None
+        audit = row['audit']
+        self._envelope(row, {'identity_id': audit['producer']['identity_id']}, transport['envelope'])
+        if not transport['consumer_id'] or transport.get('cancellation_id') or transport.get('stop_id'):
+            raise ArtifactConflict('Terminal artifact delivery has an unresolved claim or cancellation fence.')
+        box = ArtifactOutbox(self.store.root / 'api_seat_runtime' / audit['producer']['launch_attempt'])
+        if box.find(audit['dispatch_id']) is not None:
+            return None  # Saved content retains the separate operator-recovery path.
+        if box.get_disposition(audit['dispatch_id']) is not None:
+            raise ArtifactConflict('Artifact delivery has a retained quarantine disposition.')
+        return self.store.set_attempt_state(audit['request_id'], audit['attempt_id'], row['state'],
+                                            {'state': 'failed', 'reason': 'delivery_unconfirmed'})
+
     def resume_request(self, request_id, *, recover_saved=False):
         with self.channels._boundary():
             row = self.store.get_request(request_id)
@@ -607,6 +623,9 @@ class ArtifactService:
                         warning=None if ack['status'] == 'admitted' else 'operator_recovery_required',
                         transport_settled=record is not None and record['state'] == 'settled_recovered')
                 return self._mutation(row, record)
+            settled = self._settle_empty_transport(row, record)
+            if settled is not None:
+                return self._mutation(settled, record, warning='operator_recovery_required')
             if recover_saved and record is not None and record['state'] in ('released', 'failed', 'settled_recovered'):
                 return self._resume_recovered(row, record)
             self.channels.require_active(row['channel'])
@@ -632,8 +651,7 @@ class ArtifactService:
                 row = self.store.set_attempt_state(request_id, audit['attempt_id'], row['state'],
                     {'state': 'cancelled', 'reason': 'operator_cancelled'})
                 return self._mutation(row, record, transport_settled=record['state'] == 'cancelled')
-            # Explicit recovered-seal/exit-proof path is completed in the root
-            # recovery package; no terminal transport is automatically admitted.
+            # Terminal transport with saved content needs explicit operator recovery.
             return self._mutation(row, record, warning='operator_recovery_required')
 
     def recover_startup(self, *, limit=100):
@@ -692,8 +710,11 @@ class ArtifactService:
                 try:
                     if row is not None and row['state'] in ('prepared', 'queued'):
                         # This dispatch is assigned ONLY queue-state repair this pass.
-                        self.resume_request(request)
-                        result['enqueue_repaired'].append(request)
+                        repaired = self.resume_request(request)
+                        if repaired['request']['state'] == 'failed':
+                            held(request, dispatch, 'delivery_unconfirmed')
+                        else:
+                            result['enqueue_repaired'].append(request)
                         continue
                     if row is not None and row['state'] == 'cancelled':
                         repair = self.repair_cancel_fences([request])
@@ -701,6 +722,12 @@ class ArtifactService:
                         if repair['unconfirmed']:
                             held(request, dispatch, 'operator_recovery_required')
                     if dispatch not in saved:
+                        if row is not None and row['state'] == 'active':
+                            transport = self._queue_record(row)
+                            if transport is None:
+                                held(request, dispatch, 'operator_recovery_required')
+                            elif self._settle_empty_transport(row, transport) is not None:
+                                held(request, dispatch, 'delivery_unconfirmed')
                         continue
                     box, record = saved[dispatch]
                     payload = record['payload']

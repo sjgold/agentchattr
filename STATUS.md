@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 06:03 UTC (#20 authority component independently cleared; wrapper contract draft awaiting review)
+**Updated:** 2026-10-25 06:10 UTC (#20 A-1 delivery-settlement amendment passed201 focused tests; review pending)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Corrected52d52f1 full1463 tests256.029s OK, four skips (implementation owner); independent230 focused26.298s plus probes PASS |
-| Next | Sonnet reviews TICKET-20-WRAPPERS.md contract; Codex resolves its two interface amendments and activation proposal, then freezes helper payloads before tests/code. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Sonnet rechecks the A-1 authority amendment; Codex amends the conditionally accepted wrapper contract docs-only, then freezes helper payloads. No wrapper tests/code before that clearance. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -872,3 +872,10 @@ Sonnet independently CLEARED52d52f103973daf940cf04b8e06ccc6e94d78f78:230 focused
 Corrected full discovery on frozen52d52f1 PASS1463 tests256.029s, four skips, tracked70161e23-3593-4c3c-9842-6cffcef166c4, .audit-tmp/ticket20-authority-corrected-full-52d52f1.log. Implementation-owner evidence only. Source/tree stayed unchanged throughout. Production capability remains empty.
 
 Next owner Codex/Sonnet: new TICKET-20-WRAPPERS.md is a docs-only contract proposal, not implementation clearance. It traces the actual wrapper/MCP/API/factory code, proposes explicit purpose branches before review/chat, per-result model metadata, saved-byte redelivery and cancellation proof, source-closure maintenance and conservative later activation. Two explicit authority amendments need review: oversized invalid-response no-body reports and an assigned immutable parent read for revision context. No helper briefing/tests/code/resources before contract and payload clearance. Public creation/K6 snapshot timing, lifecycle blockers/rename/backup, reader/UI and end-to-end acceptance remain later gates.
+
+
+## A-1 authority amendment, 2026-10-25 06:10 UTC
+
+Wrapper-contract review approved D1-D3 with documentation conditions but independently found an authority table gap: terminal transport without saved bytes left a live request/pending lineage, and startup silently omitted an ACTIVE request missing transport. This amendment is separate from all wrapper implementation. Root test_artifact_delivery_settlement4 observed22 genuine failing subcases3.202s before the fix (no fixture error), then4 PASS3.541s. The matrix exercises prepared/queued/active requests versus released/failed/settled_recovered transport in both startup and normal resume, plus late-result quarantine, unreadable result storage/cancel-fence refusal and absent-active-transport reporting. The settled_recovered transport is a validated ledger-state fixture, not native exit evidence.
+
+Implementation validates retained envelope/claim and owned outbox absence before the exact failed/delivery_unconfirmed transition; saved results keep operator recovery, and unreadable storage does not become a false empty. Startup reports the terminal transition via its existing held list with the fixed delivery_unconfirmed reason; it does not leave a pending slot or imply worker-exit proof. Source packet/current producer gates are intentionally not prerequisites for low-level terminal settlement. All50 authority component cases plus the same unchanged151 baseline PASS201/26.005s, tracked103ee390-6882-459d-8b95-4b6e55cc1f62, .audit-tmp/ticket20-authority-terminal-delivery-focused.log. Helper files unchanged. Prior independent clearance/full1463 applies to52d52f1, not this new amendment until rechecked. Next owner Sonnet reviews this separate source pin; Codex amends wrapper contract docs-only afterward, with no wrapper tests/code yet.
