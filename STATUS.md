@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 reviewed phase prototype fails publication timing; mechanism review next)
+**Updated:** 2026-10-25 (#20 invocation-evidence design timings pass; exact interface freeze review next)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Operator-routes/K6 amended docs review: existing whole-create spike FAILS0.300s (0.412-0.685s, peer0.677s). Reviewed phase prototype also FAILS publish0.327580s/peer0.327973s; review private enqueue-evidence reuse before another prototype/exact helper freeze; no implementation tests/code before clearance; reader/acceptance/activation/final review remain. Capability stays empty |
+| Next | Operator-routes/K6 amended docs review: existing whole-create spike FAILS0.300s (0.412-0.685s, peer0.677s). Accepted evidence extension prototype now passes: isolated max hold/wait0.286883/0.287305s, consecutive-phase0.287293/0.287887s. Review exact interface freeze before helper/tests/product code; no implementation tests/code before clearance; reader/acceptance/activation/final review remain. Capability stays empty |
 
 ## Current handoff
+
+- Reviewer accepted private invocation packet evidence with full-read fallback and unchanged claim validation. Two sequential ignored design runs at unchangedac30259 meet0.300s for all holds/peer waits: isolated10 samples/50 peer calls max0.286883/0.287305s; consecutive-phase10 samples/338 immediately re-acquiring peer calls max0.287293/0.287887s. Real2MiB/1000/id0/UnicodeCRLF,512KiB parent,100 lineages, growing index, real fsync/full _persist validation. Narrow margin; final builder/run/HTTP/K6 proof remains required. ContextVar/plan prototype only, no product/test source edits; cleanup asserted temp root absent/peer joined. Prior failed one-hold/split receipts retained. Exact DTO/signature freeze now proposed in operator contract for reviewer clearance before any helper/red tests/code. Capability empty, no publication.
 
 - Reviewer accepted phase split with M1-M4: packet-only stage outside, recapture/stat-plan reserve, brief only AFTER durable PREPARED outside, strict publication boundary. Ignored prototype against unchanged6da23f7 completed10 samples with exact2MiB/1000 messages,512KiB parents,100 lineages, real fsync/full _persist validation. Capture max0.082033s/reserve0.272222s, but publication max0.327580s and peer0.327973s FAIL0.300s (late samples9/10). Total wall0.436507-0.714254s; all phase/wait numbers committed in contract. Reserve-only stat-plan shortcut is script-local, real coordinator publication unchanged; cleanup asserts temp root absent/peer joined. Proposed extension of private same-invocation packet evidence into validate_enqueue is OPEN, unprototyped and requires reviewer ruling. No product/test changes, DTO/helper freeze blocked, capability empty. Root sends measurements/docs pin for asynchronous mechanism review. Earlier evidence remains below.
 

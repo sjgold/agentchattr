@@ -26,7 +26,7 @@ Authorized by Seth on2026-10-22, renewed2026-10-23 evening: continue the approve
 | #17 | Published and closed | Executable4723027, originmainfd825c8, independentPASSWITHNOTES; postmerge1004/four skips86.898s; issueclosed/completedverified. Schedulingcomposer deferred. |
 | #18 | Published and closed | Main5cac753, issueclosed/completed2026-10-24T10:45:05Z verified; independentPASSWITHNOTES; postmerge1040/four skips89.765s. Receipt preserves all limits/failed fixtures. |
 | #19 | Published and closed | origin/main21fac29 verified, issue19 closed/completed2026-10-25T02:02:50Z reread; final SonnetPASSWITHNOTES; postmerge1374/four skips110.873s |
-| #20 | Foundation/wrappers/lifecycle+backup through slice4 independently cleared | Local unpublished, capability empty. Reviewer632 PASS171.071s/Node25; root product9b full1659 PASS320.363s/four skips. Operator-routes/K6 amended docs review; existing create spike FAILS0.300s, accepted staged prototype also FAILS publication0.328s; private enqueue-evidence reuse review before next prototype/payload freeze or implementation; reader/acceptance/activation later |
+| #20 | Foundation/wrappers/lifecycle+backup through slice4 independently cleared | Local unpublished, capability empty. Reviewer632 PASS171.071s/Node25; root product9b full1659 PASS320.363s/four skips. Operator-routes/K6 amended docs review; existing create spike FAILS0.300s, accepted invocation-evidence prototype passes per-hold/peer budget including consecutive phases; exact DTO/signature review before helper/red tests/product code; reader/acceptance/activation later |
 
 ## Non-negotiable verification
 
