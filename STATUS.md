@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 03:42 UTC (#20 store independently accepted; full regression running; capability contract drafted)
+**Updated:** 2026-10-25 03:43 UTC (#20 standalone store accepted and full regression passed; capability contract review next)
 
 ## At a glance
 
@@ -16,8 +16,8 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Store ef7f896 independently PASS; root12 PASS; full regression pending |
-| Next | Finish full590a3db7; Sonnet reviews capability contract before any tests |
+| Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
+| Next | Sonnet reviews capability contract; Codex starts tests only after approval |
 
 ## Current handoff
 
@@ -30,7 +30,7 @@
 - Root-owned integrity regression BEFORE fixes:3 tests/7 genuine failing subcases0.485s (five parent hash/sequence/head-reference cases and two lazy packet channel/source-run cases). Fixes validate parent metadata on index load and bind packet content to its frozen request on access or queued/active advancement. Bodies remain lazy; a bad packet does not hold unrelated requests. Root integrity3 plus saturation2 now PASS5/2.703s. Near-limit counters reach exactly2147483647 without wrap. No native/provider/factory claim.
 - Prior source f0e984b full discovery PASS1391/four skips218.861s, tracked7944fb64, implementation-owner run. Reviewer independently ran helper12 incidentally in its18-test probe group, all OK108.6s; it read all999 source lines and found S1-S5 plus overflow precedence N2. That passing full run does not cover the following corrections.
 - Root-owned review RED before fixes:8 tests/5 failures+9 errors1.013s, reproducing dangling/mis-linked request versions, malformed packet-channel exception leaks, offset truncation, invalid-content diagnostic refusal, unknown-packet false corruption growth and full-group overflow precedence. A separate imported-unversioned fixture then failed1/0.305s; an initial variant was already refused by the opposite cross-reference and did not prove that gap. Fixes validate both directions of version ownership, validate channel before the policy extractor, correct pagination, record invalid strings hash-only with surrogatepass encoding, bound referenced-only corruption observations to256 and prioritize a full dispatch group over global overflow. Root review7+integrity3+saturation2 PASS12/3.328s, no helper assertion edits.
-- Store correction ef7f896 independently PASS: reviewer probe6/0.435s and root review/integrity/saturation12/3.489s; source diff read, S1-S5/N2 closed. Its helper12 run was at f0e984b (earlier pin), and full discovery is implementation-owner evidence only. Corrected full tracked590a3db7 is running, log .audit-tmp/ticket20-store-full-ef7f896.log. No source changes during the run.
+- Store correction ef7f896 independently PASS: reviewer probe6/0.435s and root review/integrity/saturation12/3.489s; source diff read, S1-S5/N2 closed. Its helper12 run was at f0e984b (earlier pin), and full discovery is implementation-owner evidence only. Corrected full tracked590a3db7 PASS1398 tests215.215s (four skips), log .audit-tmp/ticket20-store-full-ef7f896.log. Implementation-owner run, not independently rerun full discovery. No source changes during the run.
 - Next contract [TICKET-20-CAPABILITY.md](TICKET-20-CAPABILITY.md) is drafted, not approved or implemented. It proposes app-owned immutable launch/source declarations plus verified runtime binding, default closed until the separately reviewed wrapper branches exist. No capability tests before Sonnet reviews it. Owner Codex completes the full-run handoff; owner Sonnet reviews the contract. No Ticket20 native/provider/factory acceptance launched.
 - Standing authorization continues past15 through the approved backlog. Codex builds; existing Sonnet reviewer rechecks frozen plans/changes; existing helper writes bounded assigned regressions. No new agents. Live AI/provider/Omarchy/Desktop/global changes remain outside scope. Older issue human/model-pool gates are superseded by that later direction.
 - Use explicit `--repo sjgold/agentchattr` with gh-axi; implicit lookup selected upstream during a read-only check and was corrected before mutation.
