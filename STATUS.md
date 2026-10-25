@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 04:24 UTC (#20 authority contract narrowed to operator-only recovered transport admission)
+**Updated:** 2026-10-25 04:49 UTC (#20 authority initial infrastructure REDs captured; implementation next)
 
 ## At a glance
 
@@ -812,3 +812,6 @@ Exact authority helper payload review candidate is appended to TICKET-20-AUTHORI
 
 
 Authority L1 placement verified in actual source and accepted by Sonnet: coordinator lock is the engine RLock, hooks run inside engine/catalog boundary BEFORE the raw ledger call. Docs now specify total order/no manager+store nesting/no ledger callbacks, raw/unconfigured enqueue closed, separate artifact_eligible claim input and no queued artifact on lookup error. Existing active-owner control inspection is explicit so cancellation/release remains possible without admitting new work. V1 chooses retryable CLI validation (ACTIVE, bounded diagnostic, valid result id unoccupied), terminal API invalid response. C1 option(b) oversize content=None to diagnostics with service-only received_truncated/notice, no fake prefix hash/count. Root deadlock/fail-closed/golden and both-order redelivery tests are explicit. No authority tests/code or helper briefing before final skim.
+
+
+Authority helper brief cleared at60df57d. Initial EXACT2 infrastructure RED:2 ModuleNotFoundError artifact_service,0.023s; not behavioral authorization evidence. Root protocol2 infrastructure RED:2 missing artifact_protocol,0.003s. Artifact seal independent stdlib pre-implementation MAC e72a03b128c0734a6ad96a79396821e74602850048812410f406bd1df5152c9d, record .audit-tmp/ticket20-artifact-seal-before.json. Unchanged151 baselinePASS13.321s trackedf75c8351. A source-grounded helper setup correction (CLI fixture executable to sys.executable, Popen still mocked) is authorized before any execution reaches that setup; the missing-service errors happened earlier. Root will record a separate explicit unguarded-scaffold behavioral RED before final admission guards, as reviewer required. First successful claimed brief read syncs queued->ACTIVE. Helper owns <=12 admission cases; root protocol/outbox/recovery/Barrier/goldens are separate. No authority routes/wrapper branch/capability enablement yet.
