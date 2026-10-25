@@ -16,7 +16,7 @@ import uuid
 from api_seats import atomic_json
 from process_identity import capture_birth
 
-_EFFECTIVE_FIELDS = ('seat', 'provider', 'server', 'mcp', 'config_resource')
+_EFFECTIVE_FIELDS = ('seat', 'provider', 'server', 'mcp', 'config_resource', 'wrapper_protocol')
 
 
 def _identifier(value, name):
@@ -62,6 +62,9 @@ def new_launch_identity(root, effective, key, attempt, boot_id):
     _key(key)
     _identifier(attempt, 'Attempt')
     _identifier(boot_id, 'Boot ID')
+    if 'wrapper_protocol' in effective:
+        from runtime_protocol import validate_manifest
+        validate_manifest(effective['wrapper_protocol'], effective.get('seat', {}).get('adapter'))
     root, data, server = _server_identity(root, effective)
     return {'version': 1, 'root_path': root, 'data_path': data, 'server_identity': server,
             'launch_key': key, 'attempt': attempt, 'launch_nonce': uuid.uuid4().hex,
@@ -94,6 +97,9 @@ def _validate(snapshot_path, snapshot):
     adapter = effective.get('seat', {}).get('adapter')
     if adapter not in ('cli', 'openai-compatible'):
         raise ValueError('Unknown launch adapter.')
+    if 'wrapper_protocol' in effective:
+        from runtime_protocol import validate_manifest
+        validate_manifest(effective['wrapper_protocol'], adapter)
     base = ('cli-' if adapter == 'cli' else 'api-') + hashlib.sha256(identity['launch_key'].encode()).hexdigest()[:8] + '-' + identity['attempt'][:12]
     if snapshot.get('base') != base:
         raise ValueError('Launch base does not match its exact attempt.')
@@ -147,6 +153,10 @@ def record_worker_birth(snapshot_path, snapshot):
         raise ValueError('A failed spawn cannot claim a worker birth.')
     result = {**capture_birth(), 'attempt': snapshot['attempt'], 'base': snapshot['base'],
               'ownership': identity, 'worker_root': str(Path(__file__).resolve().parent)}
+    if 'wrapper_protocol' in snapshot:
+        from runtime_protocol import sources_match
+        if sources_match(Path(__file__).resolve().parent, snapshot['wrapper_protocol']):
+            result['wrapper_protocol'] = deepcopy(snapshot['wrapper_protocol'])
     if 'invocation_protocol' in snapshot:
         if (type(snapshot['invocation_protocol']) is not int or snapshot['invocation_protocol'] != 1
                 or snapshot['seat']['adapter'] != 'openai-compatible'):

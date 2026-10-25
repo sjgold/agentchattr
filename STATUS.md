@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 03:51 UTC (#20 capability baseline/golden captured; genuine initial REDs observed)
+**Updated:** 2026-10-25 03:53 UTC (#20 capability gate candidate implemented; initial4 green; expanded verification next)
 
 ## At a glance
 
@@ -17,7 +17,7 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
-| Next | Codex implements approved capability gate after initial REDs; helper extends12 and holds execution |
+| Next | Run unchanged151 affected tests and helper12 once against frozen capability candidate |
 
 ## Current handoff
 
@@ -782,3 +782,6 @@ Ticket20 store candidate: helper initial2 actual ModuleNotFoundError RED0.026s b
 - Unchanged14-module baseline:151 tests PASS12.312s, trackedb077a23c. Exact command/module list in its shell and log .audit-tmp/ticket20-capability-baseline.log; includes ownership/adoption/heartbeat, API seats/runtime, CLI worker, dispatch queue and the Task0 seven-module group unchanged.
 - Helper first attempt2ERROR0.013s was one missing runtime_protocol plus one fixture error (unseeded registry base). Corrected ONLY registry.seed, same assertions: genuine2ERROR0.042s, missing runtime_protocol and SeatManager.artifact_producer. Initial source copy .audit-tmp/ticket20-capability-initial-red.py. No product source changed before these observations. Helper owns12 behavior cases, root owns2 static checks; supported runtime/native observations are explicitly fixture-controlled, no new process/provider claim.
 - Next owner Codex implements gate only; helper extends <=12 compile-only and holds execution until readiness. Capability remains production-disabled until the later wrapper-purpose package.
+
+
+Capability candidate implemented after genuine REDs: runtime_protocol.py fixed manifest/empty supported constant; optional ownership/provenance fingerprint inclusion; deterministic matching-only birth copy; candidate validation; read-only current-boot artifact_producer gate. Initial helper2 plus root static2 PASS4/0.299s. Root closure also rejects unreachable stale listed modules (runtime_protocol explicitly allowed). No artifact branch, authoring route or production capability enablement. Expanded helper12 is compile-only and awaits one authorized run; baseline151 after-run is next.

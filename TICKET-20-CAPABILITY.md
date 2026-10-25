@@ -84,3 +84,6 @@ Store load now requires each imported request to own a version. The whole-lineag
 
 
 Approved checkpoint85179c0: pre-change legacy golden bce6783ec65b26921583bf847bc9a226f63cbe0289da81a75efe25da91e9155f captured before source changes, baseline151 PASS12.312s. Root2 static checks kept separate (golden PASS, missing-module closure ERROR0.006s). Helper initial2 genuine missing-interface ERROR0.042s follows one disclosed mixed source/fixture attempt0.013s corrected only by seeding the actual registry. Production implementation starts after this evidence; expanded12 remains held.
+
+
+Candidate checkpoint: initial helper2 and root static2 PASS4/0.299s after implementation. The fixed-set static check now also rejects unreachable listed files except deliberately listed runtime_protocol.py. Expanded behavior12 is frozen compile-only; unchanged151 affected-suite after-run and one focused12 are next. Production SUPPORTED_CAPABILITIES remains empty; no authoring branch enabled.

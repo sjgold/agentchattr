@@ -88,6 +88,11 @@ def _candidate(manager, path):
             or birth.get('base') != snapshot['base']
             or os.path.normcase(str(birth.get('worker_root'))) != os.path.normcase(identity['root_path'])):
         raise ValueError('worker_birth_mismatch')
+    if 'wrapper_protocol' in birth:
+        from runtime_protocol import validate_manifest
+        validate_manifest(birth['wrapper_protocol'], item['effective']['seat']['adapter'])
+        if birth['wrapper_protocol'] != snapshot.get('wrapper_protocol'):
+            raise ValueError('worker_protocol_mismatch')
     return dict(item, birth=birth)
 
 

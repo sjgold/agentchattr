@@ -49,6 +49,8 @@ class RuntimeProtocolManifestTests(unittest.TestCase):
                 missing = sorted(seen - listed)
                 self.assertFalse(missing, 'Missing repo modules: ' + ', '.join(missing)
                     + '; extend the fixed set before enabling artifact-v1')
+                self.assertFalse(listed - seen - {'runtime_protocol.py'},
+                    'Fixed set contains unreachable stale modules: ' + ', '.join(sorted(listed - seen)))
 
 
 if __name__ == '__main__':

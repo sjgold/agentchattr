@@ -74,6 +74,13 @@ class SeatManager:
         from runtime_adoption import participant_exit_proof
         return participant_exit_proof(self, provenance, dispatch_id)
 
+    def _with_wrapper_protocol(self, effective):
+        from runtime_protocol import build_manifest
+        manifest = build_manifest(self.root, effective['seat']['adapter'])
+        if manifest is not None:
+            effective['wrapper_protocol'] = manifest
+        return effective
+
     def _effective(self, seat):
         original = self.store.providers[seat['provider']]
         if seat['adapter'] == 'cli':
@@ -92,17 +99,17 @@ class SeatManager:
             server['data_dir'] = str(self.store.path.parent.resolve())
             if server.get('host', '127.0.0.1') not in ('127.0.0.1', 'localhost'):
                 raise SeatError('Managed CLI seats require an IPv4 loopback server.')
-            return {'seat': seat, 'provider': client, 'server': server,
+            return self._with_wrapper_protocol({'seat': seat, 'provider': client, 'server': server,
                     'mcp': deepcopy(self.config.get('mcp', {})),
-                    'config_resource': config_resource(client, client['cwd'])}
+                    'config_resource': config_resource(client, client['cwd'])})
         provider = {k: deepcopy(original[k]) for k in ('base_url', 'reasoning_efforts', 'temperature',
                     'api_key_env', 'system_prompt', 'context_messages') if k in original}
         server = deepcopy(self.config.get('server', {}))
         server['data_dir'] = str(self.store.path.parent.resolve())
         if server.get('host', '127.0.0.1') not in ('127.0.0.1', 'localhost'):
             raise SeatError('API wrapper currently requires a server listening on IPv4 loopback.')
-        return {'seat': seat, 'provider': provider, 'server': server,
-                'mcp': deepcopy(self.config.get('mcp', {}))}
+        return self._with_wrapper_protocol({'seat': seat, 'provider': provider, 'server': server,
+                'mcp': deepcopy(self.config.get('mcp', {}))})
 
     def save(self, package):
         package = validate_package(package, self.store.providers)
@@ -404,7 +411,61 @@ class SeatManager:
             result['mcp'] = {key: deepcopy(value) for key, value in effective['mcp'].items() if key in ('http_port', 'sse_port')}
         if 'config_resource' in effective:
             result['config_resource'] = effective['config_resource']
+        if 'wrapper_protocol' in effective:
+            from runtime_protocol import validate_manifest
+            result['wrapper_protocol'] = validate_manifest(effective['wrapper_protocol'], effective['seat']['adapter'])
         return result
+
+    def artifact_producer(self, instance):
+        """Internal point-in-time gate, never an adoption or dispatch operation."""
+        denied = {'available': False, 'reason': 'producer_unavailable', 'identity_id': None,
+            'adapter': None, 'launch_attempt': None, 'launch_nonce': None, 'fingerprint': None,
+            'capabilities': []}
+        with self.lock:
+            if self.closed.is_set() or not isinstance(instance, dict):
+                return denied
+            live = next((row for row in self.registry.get_all().values()
+                         if row.get('identity_id') == instance.get('identity_id')), None)
+            if live is None:
+                return denied
+            matching = [row for row in self.attempts.values() if row.get('base') == live.get('base')]
+            if not matching:
+                return dict(denied, reason='unmanaged_producer')
+            if len(matching) != 1:
+                return dict(denied, reason='capability_binding_changed')
+            attempt = matching[0]
+            process = attempt.get('process')
+            if (attempt.get('released') or attempt['id'] in self.retired_attempts
+                    or process is None or process.poll() is not None):
+                return denied
+            from runtime_adoption import _candidate
+            from runtime_protocol import sources_match
+            try:
+                candidate = _candidate(self, attempt['snapshot'])
+                if (candidate['identity'] != attempt.get('ownership')
+                        or candidate['manifest']['spawn_outcome'] != 'spawned'
+                        or candidate['effective'] != attempt['effective']
+                        or (attempt.get('worker_birth') is not None
+                            and candidate['birth'] != attempt['worker_birth'])
+                        or (attempt.get('identity_id') is not None
+                            and attempt['identity_id'] != live['identity_id'])):
+                    return dict(denied, reason='capability_binding_changed')
+                manifest = candidate['snapshot'].get('wrapper_protocol')
+                birth_manifest = (candidate['birth'] or {}).get('wrapper_protocol')
+                if manifest is None or birth_manifest is None or 'artifact-v1' not in manifest['capabilities']:
+                    return dict(denied, reason='artifact_capability_missing')
+                if birth_manifest != manifest or not sources_match(self.root, manifest):
+                    return dict(denied, reason='capability_binding_changed')
+                ready = self.restart_readiness(live['identity_id'], self.boot_id)
+                if ready.get('state') != 'ready' or ready.get('process_verified') is not True:
+                    return dict(denied, reason='runtime_unverified')
+            except (OSError, ValueError, KeyError, TypeError):
+                return dict(denied, reason='capability_binding_changed')
+            ownership = candidate['identity']
+            return {'available': True, 'reason': None, 'identity_id': live['identity_id'],
+                'adapter': candidate['effective']['seat']['adapter'], 'launch_attempt': ownership['attempt'],
+                'launch_nonce': ownership['launch_nonce'], 'fingerprint': ownership['fingerprint'],
+                'capabilities': ['artifact-v1']}
 
     def launch_provenance(self, instance):
         with self.lock:
