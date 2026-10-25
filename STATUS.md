@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 finite capacity and final operator wires proposed; freeze review pending)
+**Updated:** 2026-10-25 (#20 store-architecture decision OPEN for Seth; hard quota withdrawn)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Review amended operator freeze: G1 finite512KiB accounted index/128-request creation ceiling, checked ten-store design max hold0.210282s/peer0.200055s,30ms required margin. G2-G10 errors/hooks/enums/auth/helper ownership fixed; no tests/product code before clearance. Capability empty |
+| Next | Seth chooses extra R1-R3 storage/compatibility work, an incremental-validation design first, or deferred authoring. The512KiB/128-request proposal is withdrawn; diagnostics alone need749688B reserve. Root may finish W1-W6 docs/reader/harness plans only, no helper/create/capacity tests or source until decision |
 
 ## Current handoff
+
+- OPEN PRODUCT/SCOPE DECISION FOR SETH: reviewer withdrew the one-index hard-quota design. Existing-schema diagnostic graph validates at749818B total/749688B growth (body-free/no-overflow example545920B); ordinary max-source fulfilled request293110B, escaped accepted case3647264B; API model label600000B validates. A512KiB total ceiling cannot fit these accepted maxima. Reviewer recommends R1 field/numeric/control bounds, R2 separate diagnostic owner, R3 compact refs/digests in authoring index, conditional R4 incremental validation. Three proposed implementation tickets reopen accepted unpublished store schema; only Seth can choose this scope. Options memo TICKET-20-STORE-DECISION.md is OPEN, no quota selected, capability empty. Compatibility correction must wait for choice; API invalid observation keeps QUARANTINED/invalid_response+bounded diagnostic, not FAILED. W1-W6 wires independently amended; historical cap experiments moved verbatim to their own superseded log. Root sends docs pin for independent wire review and asks Seth with the concrete memo. Visual memo uses existing agentchattr tokens at http://127.0.0.1:4387/session/c99a426ed6cd4630; tracked feedback listener89ffd713 is an intentional review resource. All sizing-probe threads/temp roots are cleaned; no app/provider worker running. No new helper/tests/source/activation. Earlier sizing/timing passes below are retained historical evidence, not capacity clearance.
 
 - Reviewer G1 rejects unbounded index growth despite earlier ten-sample pass. Choose finite creation admission (no incremental validator):512KiB accounted metadata including256B headroom and128 total requests. Exact-ceiling ten independent DESIGN stores with real admission sizing/fsync/full validation now pass max hold0.210282s/peer0.200055s,89.718ms observed margin; final builder K6 requires>=30ms at ceiling in each source mode. The1MiB checked ten-run has a retained0.439543s reservation/0.440551s peer FAIL, so it is not selected. Earlier1MiB unchecked/2MiB pilot and expired-heartbeat fixture ERROR remain distinct. G2-G10 amend one reason/status enum, publication partial outcomes, exact hooks/types/lazy packet API, closed public enums/raw-source contract, middleware order and disjoint helper12. CHANNELS discloses proposed finite capacity/no purge/export relief. All changes docs only; root sends amended pin, helper unbriefed, no activation.
 

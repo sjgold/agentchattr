@@ -57,11 +57,11 @@ Read the import report even when some data was skipped. An invalid or conflictin
 
 After a connection failure or unconfirmed management request, reload the catalog and inspect the current state before trying again. A committed rename can report a settings-projection warning; catalog reads repair that projection without replaying the rename. A decision reply whose card was saved as resolved but whose publication was unconfirmed needs a manual resend if the reply is absent. The error explains that distinction.
 
-## Proposed artifact creation capacity
+## Artifact authoring remains disabled
 
-Artifact creation for Ticket 20 is still disabled while the operator routes are under review. The proposed per-directory limits are **128 saved requests** and **512 KiB of accounted metadata**, whichever fills first. Revisions and failed, cancelled or imported attempts count. Source references and version provenance can fill the byte budget sooner. The preview will show current use and the space a request needs.
+Ticket 20 authoring is waiting on a store-layout decision. The proposed store-wide limit of 128 saved requests and 512 KiB of metadata was withdrawn after sizing showed that existing diagnostic records alone exceed it. No such quota is enabled. The options and proposed extra work are in [the storage decision memo](TICKET-20-STORE-DECISION.md).
 
-Artifact capacity is finite. Existing versions and copied source stay readable when creation stops. Saved versions are immutable. Purge is unsupported, and exporting or deleting a channel leaves this quota unchanged. Historical imports can exceed the creation budget and remain readable; they do not grant more authoring space. These are proposed creation limits, separate from the larger backup ZIP limits above.
+Any future finite quota would count failed, cancelled and imported attempts across all channels, and a successful import could consume it. Exporting or deleting a channel would leave that quota unchanged because artifact purge is unsupported. No replacement quota has been selected.
 
 ## Verification and limits
 
