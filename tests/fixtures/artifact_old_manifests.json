@@ -1,0 +1,263 @@
+{
+  "scope": "pre-validator-change real functions; original13/27 sets restored as controlled schema observation; hash values are deterministic vectors, NOT observed file/source matches",
+  "source_names": {
+    "cli": [
+      "api_seats.py",
+      "cli_seats.py",
+      "cli_worker.py",
+      "config_loader.py",
+      "launcher.py",
+      "mcp_proxy.py",
+      "process_identity.py",
+      "queue_client.py",
+      "runtime_ownership.py",
+      "runtime_protocol.py",
+      "wrapper.py",
+      "wrapper_unix.py",
+      "wrapper_windows.py"
+    ],
+    "openai-compatible": [
+      "api_invocation.py",
+      "api_seats.py",
+      "channel_lifecycle.py",
+      "cli_result_recovery.py",
+      "cli_seats.py",
+      "config_loader.py",
+      "document_inputs.py",
+      "invocation_evidence.py",
+      "launcher.py",
+      "mcp_proxy.py",
+      "participant_replacement_store.py",
+      "process_identity.py",
+      "queue_client.py",
+      "result_delivery.py",
+      "result_outbox.py",
+      "review_brief.py",
+      "runtime_ownership.py",
+      "runtime_protocol.py",
+      "sealed_result_io.py",
+      "session_capacity.py",
+      "session_store.py",
+      "turn_events.py",
+      "turn_recovery.py",
+      "wrapper.py",
+      "wrapper_api.py",
+      "wrapper_unix.py",
+      "wrapper_windows.py"
+    ]
+  },
+  "rows": [
+    {
+      "adapter": "cli",
+      "effective": {
+        "seat": {
+          "adapter": "cli",
+          "name": "Golden café author"
+        },
+        "provider": {
+          "command": "python",
+          "cwd": "."
+        },
+        "server": {
+          "host": "127.0.0.1",
+          "port": 12345,
+          "data_dir": "./data"
+        },
+        "mcp": {
+          "http_port": 12346,
+          "sse_port": 12347
+        },
+        "config_resource": null,
+        "wrapper_protocol": {
+          "version": 1,
+          "adapter": "cli",
+          "capabilities": [],
+          "sources": {
+            "api_seats.py": "bf697107ece7047af284ce9906ccc2636b281a86406e3d9d71780697630cf42e",
+            "cli_seats.py": "24be9e8cacca64ff41a511c8107a20e8b67d3ada0f65facae71a081b1fa41e7b",
+            "cli_worker.py": "a8061f4729eac6d8461c807a81ad41e612ab36eff418610a2f099f74ffd263a3",
+            "config_loader.py": "5c3145c399c707fbf6b2a8375cced41e0744b375f02d7bb89ffbb44145f21a9e",
+            "launcher.py": "cdfd51628ad1e3f3fb3b22eb878d44fb5b7b454a04207d6cf408ca5abc4bf840",
+            "mcp_proxy.py": "53f71574f86d1d1d9a976abf1fd1e632d9554903ac3e14e11e8a8dd03e551a07",
+            "process_identity.py": "7e066f21fc0d125bdc83f4a95f426c0335e4376df26806c98f329fa4436afea5",
+            "queue_client.py": "2a21efe430c9cfdd3d838a0b970f93691e251cff8a6c804e18c56547fc44edbb",
+            "runtime_ownership.py": "e227b61efb2b946601e6d89acb1b138d918072cc771588d5ea3b7efe74fc35cc",
+            "runtime_protocol.py": "12fb6ff5ff9ce9bb09bda7dea73370df8a11ae206c4ac9359cb5eac3bf1a506a",
+            "wrapper.py": "a5747535ba55799eb72532c76a605b0c72ad966d47c19637643ba13aa1fca9d8",
+            "wrapper_unix.py": "049d245fba3e007a279aceb83b08e71d14796f4bcf9210c355ee43f5e7afa24f",
+            "wrapper_windows.py": "665f7ccc468ca1a7c375b86a6ba24195a23b71296c58300efb671ad2a6b54f0f"
+          }
+        }
+      },
+      "ownership_fingerprint": "b16dabb370209f51a2768088bed1b1f4f3e19d655502ed83258afbd0f926140f",
+      "provenance_fingerprint": "b16dabb370209f51a2768088bed1b1f4f3e19d655502ed83258afbd0f926140f"
+    },
+    {
+      "adapter": "cli",
+      "effective": {
+        "seat": {
+          "adapter": "cli",
+          "name": "Golden café author"
+        },
+        "provider": {
+          "command": "python",
+          "cwd": "."
+        },
+        "server": {
+          "host": "127.0.0.1",
+          "port": 12345,
+          "data_dir": "./data"
+        },
+        "mcp": {
+          "http_port": 12346,
+          "sse_port": 12347
+        },
+        "config_resource": null,
+        "wrapper_protocol": {
+          "version": 1,
+          "adapter": "cli",
+          "capabilities": [
+            "artifact-v1"
+          ],
+          "sources": {
+            "api_seats.py": "bf697107ece7047af284ce9906ccc2636b281a86406e3d9d71780697630cf42e",
+            "cli_seats.py": "24be9e8cacca64ff41a511c8107a20e8b67d3ada0f65facae71a081b1fa41e7b",
+            "cli_worker.py": "a8061f4729eac6d8461c807a81ad41e612ab36eff418610a2f099f74ffd263a3",
+            "config_loader.py": "5c3145c399c707fbf6b2a8375cced41e0744b375f02d7bb89ffbb44145f21a9e",
+            "launcher.py": "cdfd51628ad1e3f3fb3b22eb878d44fb5b7b454a04207d6cf408ca5abc4bf840",
+            "mcp_proxy.py": "53f71574f86d1d1d9a976abf1fd1e632d9554903ac3e14e11e8a8dd03e551a07",
+            "process_identity.py": "7e066f21fc0d125bdc83f4a95f426c0335e4376df26806c98f329fa4436afea5",
+            "queue_client.py": "2a21efe430c9cfdd3d838a0b970f93691e251cff8a6c804e18c56547fc44edbb",
+            "runtime_ownership.py": "e227b61efb2b946601e6d89acb1b138d918072cc771588d5ea3b7efe74fc35cc",
+            "runtime_protocol.py": "12fb6ff5ff9ce9bb09bda7dea73370df8a11ae206c4ac9359cb5eac3bf1a506a",
+            "wrapper.py": "a5747535ba55799eb72532c76a605b0c72ad966d47c19637643ba13aa1fca9d8",
+            "wrapper_unix.py": "049d245fba3e007a279aceb83b08e71d14796f4bcf9210c355ee43f5e7afa24f",
+            "wrapper_windows.py": "665f7ccc468ca1a7c375b86a6ba24195a23b71296c58300efb671ad2a6b54f0f"
+          }
+        }
+      },
+      "ownership_fingerprint": "3d6c1033c81b0197b2b01fedbe3d78ca27f3bc5afdc17b935e6645969e500d83",
+      "provenance_fingerprint": "3d6c1033c81b0197b2b01fedbe3d78ca27f3bc5afdc17b935e6645969e500d83"
+    },
+    {
+      "adapter": "openai-compatible",
+      "effective": {
+        "seat": {
+          "adapter": "openai-compatible",
+          "name": "Golden café author"
+        },
+        "provider": {
+          "command": "python",
+          "cwd": "."
+        },
+        "server": {
+          "host": "127.0.0.1",
+          "port": 12345,
+          "data_dir": "./data"
+        },
+        "mcp": {
+          "http_port": 12346,
+          "sse_port": 12347
+        },
+        "config_resource": null,
+        "wrapper_protocol": {
+          "version": 1,
+          "adapter": "openai-compatible",
+          "capabilities": [],
+          "sources": {
+            "api_invocation.py": "98a5ac5af41fefad8a8eac2331d5249d22def1e7202d7543305cc891e1c7df05",
+            "api_seats.py": "bf697107ece7047af284ce9906ccc2636b281a86406e3d9d71780697630cf42e",
+            "channel_lifecycle.py": "e56c4845049db4e475e47bcc3a8c802855fe39e2353d3f8b6fe0a601b6aa3a33",
+            "cli_result_recovery.py": "77338bb75f3e29402c8acfb899fc102767b29f02ab6ad1d367f4bc4fdc53b13b",
+            "cli_seats.py": "24be9e8cacca64ff41a511c8107a20e8b67d3ada0f65facae71a081b1fa41e7b",
+            "config_loader.py": "5c3145c399c707fbf6b2a8375cced41e0744b375f02d7bb89ffbb44145f21a9e",
+            "document_inputs.py": "06253cf603ace608276e34419c68de23b67b07dc8a447d34fc668621b7817033",
+            "invocation_evidence.py": "0b6c90fd1f780fa1e8d97909237c567a8e106aaf70ed5ee8baa05727ef6e8d5f",
+            "launcher.py": "cdfd51628ad1e3f3fb3b22eb878d44fb5b7b454a04207d6cf408ca5abc4bf840",
+            "mcp_proxy.py": "53f71574f86d1d1d9a976abf1fd1e632d9554903ac3e14e11e8a8dd03e551a07",
+            "participant_replacement_store.py": "aec98178280d84ecf2456aab4b9d0f9ba03cc291532757dc1064522c37050c78",
+            "process_identity.py": "7e066f21fc0d125bdc83f4a95f426c0335e4376df26806c98f329fa4436afea5",
+            "queue_client.py": "2a21efe430c9cfdd3d838a0b970f93691e251cff8a6c804e18c56547fc44edbb",
+            "result_delivery.py": "184c090586af55b057ac6bb1b9fd00721154095618415b9aeb0446d1331230ce",
+            "result_outbox.py": "1ac96cec6d2cdb30fa9ea6997368c7ab79e8ddf6ff179212634b65549a64b7aa",
+            "review_brief.py": "0ede1af909a26a2c53118201645c9d8788482d9855f1f5f7b3411dff00244ba0",
+            "runtime_ownership.py": "e227b61efb2b946601e6d89acb1b138d918072cc771588d5ea3b7efe74fc35cc",
+            "runtime_protocol.py": "12fb6ff5ff9ce9bb09bda7dea73370df8a11ae206c4ac9359cb5eac3bf1a506a",
+            "sealed_result_io.py": "08d36277030694469208a78a3662b1ec485611fb81aac4decf3e8c6a32697430",
+            "session_capacity.py": "e7ba7ffbabcbdabf422058d3292aeca59f708b2d9fbf35f73821de0ffb4339ad",
+            "session_store.py": "9c503a907fd1c56edab9225e6b5a711af37e859cfd458572d32d45086c29dc8f",
+            "turn_events.py": "8c7e3320582817b4023901447a350760b35179dcd19a2cef98542c6f6c437a92",
+            "turn_recovery.py": "00b307c52011e45e9250a7374ed922bc299c92b4ddec2d2a8476621e434adf08",
+            "wrapper.py": "a5747535ba55799eb72532c76a605b0c72ad966d47c19637643ba13aa1fca9d8",
+            "wrapper_api.py": "6714bcba8097f1c6a1819166197ea6414926c079fb396c931d4343c7b805b2e7",
+            "wrapper_unix.py": "049d245fba3e007a279aceb83b08e71d14796f4bcf9210c355ee43f5e7afa24f",
+            "wrapper_windows.py": "665f7ccc468ca1a7c375b86a6ba24195a23b71296c58300efb671ad2a6b54f0f"
+          }
+        }
+      },
+      "ownership_fingerprint": "f67652d6e0a02e908e4ac666fbd6de1ce4b192943399fd8190e99380f0140ad7",
+      "provenance_fingerprint": "f67652d6e0a02e908e4ac666fbd6de1ce4b192943399fd8190e99380f0140ad7"
+    },
+    {
+      "adapter": "openai-compatible",
+      "effective": {
+        "seat": {
+          "adapter": "openai-compatible",
+          "name": "Golden café author"
+        },
+        "provider": {
+          "command": "python",
+          "cwd": "."
+        },
+        "server": {
+          "host": "127.0.0.1",
+          "port": 12345,
+          "data_dir": "./data"
+        },
+        "mcp": {
+          "http_port": 12346,
+          "sse_port": 12347
+        },
+        "config_resource": null,
+        "wrapper_protocol": {
+          "version": 1,
+          "adapter": "openai-compatible",
+          "capabilities": [
+            "artifact-v1"
+          ],
+          "sources": {
+            "api_invocation.py": "98a5ac5af41fefad8a8eac2331d5249d22def1e7202d7543305cc891e1c7df05",
+            "api_seats.py": "bf697107ece7047af284ce9906ccc2636b281a86406e3d9d71780697630cf42e",
+            "channel_lifecycle.py": "e56c4845049db4e475e47bcc3a8c802855fe39e2353d3f8b6fe0a601b6aa3a33",
+            "cli_result_recovery.py": "77338bb75f3e29402c8acfb899fc102767b29f02ab6ad1d367f4bc4fdc53b13b",
+            "cli_seats.py": "24be9e8cacca64ff41a511c8107a20e8b67d3ada0f65facae71a081b1fa41e7b",
+            "config_loader.py": "5c3145c399c707fbf6b2a8375cced41e0744b375f02d7bb89ffbb44145f21a9e",
+            "document_inputs.py": "06253cf603ace608276e34419c68de23b67b07dc8a447d34fc668621b7817033",
+            "invocation_evidence.py": "0b6c90fd1f780fa1e8d97909237c567a8e106aaf70ed5ee8baa05727ef6e8d5f",
+            "launcher.py": "cdfd51628ad1e3f3fb3b22eb878d44fb5b7b454a04207d6cf408ca5abc4bf840",
+            "mcp_proxy.py": "53f71574f86d1d1d9a976abf1fd1e632d9554903ac3e14e11e8a8dd03e551a07",
+            "participant_replacement_store.py": "aec98178280d84ecf2456aab4b9d0f9ba03cc291532757dc1064522c37050c78",
+            "process_identity.py": "7e066f21fc0d125bdc83f4a95f426c0335e4376df26806c98f329fa4436afea5",
+            "queue_client.py": "2a21efe430c9cfdd3d838a0b970f93691e251cff8a6c804e18c56547fc44edbb",
+            "result_delivery.py": "184c090586af55b057ac6bb1b9fd00721154095618415b9aeb0446d1331230ce",
+            "result_outbox.py": "1ac96cec6d2cdb30fa9ea6997368c7ab79e8ddf6ff179212634b65549a64b7aa",
+            "review_brief.py": "0ede1af909a26a2c53118201645c9d8788482d9855f1f5f7b3411dff00244ba0",
+            "runtime_ownership.py": "e227b61efb2b946601e6d89acb1b138d918072cc771588d5ea3b7efe74fc35cc",
+            "runtime_protocol.py": "12fb6ff5ff9ce9bb09bda7dea73370df8a11ae206c4ac9359cb5eac3bf1a506a",
+            "sealed_result_io.py": "08d36277030694469208a78a3662b1ec485611fb81aac4decf3e8c6a32697430",
+            "session_capacity.py": "e7ba7ffbabcbdabf422058d3292aeca59f708b2d9fbf35f73821de0ffb4339ad",
+            "session_store.py": "9c503a907fd1c56edab9225e6b5a711af37e859cfd458572d32d45086c29dc8f",
+            "turn_events.py": "8c7e3320582817b4023901447a350760b35179dcd19a2cef98542c6f6c437a92",
+            "turn_recovery.py": "00b307c52011e45e9250a7374ed922bc299c92b4ddec2d2a8476621e434adf08",
+            "wrapper.py": "a5747535ba55799eb72532c76a605b0c72ad966d47c19637643ba13aa1fca9d8",
+            "wrapper_api.py": "6714bcba8097f1c6a1819166197ea6414926c079fb396c931d4343c7b805b2e7",
+            "wrapper_unix.py": "049d245fba3e007a279aceb83b08e71d14796f4bcf9210c355ee43f5e7afa24f",
+            "wrapper_windows.py": "665f7ccc468ca1a7c375b86a6ba24195a23b71296c58300efb671ad2a6b54f0f"
+          }
+        }
+      },
+      "ownership_fingerprint": "d4fb6caaf60c5cc17ec47830c2cb573a558af22ceef715ccd646469843b1d356",
+      "provenance_fingerprint": "d4fb6caaf60c5cc17ec47830c2cb573a558af22ceef715ccd646469843b1d356"
+    }
+  ]
+}

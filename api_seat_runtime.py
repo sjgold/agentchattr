@@ -439,7 +439,7 @@ class SeatManager:
                     or process is None or process.poll() is not None):
                 return denied
             from runtime_adoption import _candidate
-            from runtime_protocol import sources_match
+            from runtime_protocol import SOURCE_FILES, sources_match
             try:
                 if (attempt.get('worker_birth') is None
                         and not attempt['snapshot'].with_name('birth.json').exists()):
@@ -456,6 +456,8 @@ class SeatManager:
                 manifest = candidate['snapshot'].get('wrapper_protocol')
                 birth_manifest = (candidate['birth'] or {}).get('wrapper_protocol')
                 if manifest is None or birth_manifest is None or 'artifact-v1' not in manifest['capabilities']:
+                    return dict(denied, reason='artifact_capability_missing')
+                if set(manifest['sources']) != set(SOURCE_FILES[attempt['seat']['adapter']]):
                     return dict(denied, reason='artifact_capability_missing')
                 if birth_manifest != manifest or not sources_match(self.root, manifest):
                     return dict(denied, reason='capability_binding_changed')

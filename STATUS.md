@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 07:26 UTC (#20 worker12 warning-free/frozen; manifest upgrade compatibility fix next)
+**Updated:** 2026-10-25 07:43 UTC (#20 old-manifest compatibility focused110 PASS; independent recheck next)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is drafted for review; artifact production remains disabled.**
+**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured entry/transport/factory wiring remains incomplete. Artifact production remains disabled.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
-| Next | Codex implements separately reviewed manifest metadata/capability split with red-first old-worker compatibility tests, then completes entry/transport/MCP/factory/races. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Sonnet rechecks the separate manifest metadata/capability compatibility pin; Codex then completes entry/transport/MCP/factory/races. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
+
+- Latest compatibility correction: old13/27-file v1 manifests remain valid ownership/provenance metadata after source-set growth; artifact eligibility still requires the exact current source set/hashes and explicit capability. Root4 tests/11 source errors0.353s before fix ->4 PASS0.490s; combined unchanged capability/runtime/cold-recovery plus upgrade tests110 PASS14.971s, tracked e9fae547. Pre-change literal golden vectors retained. Native observations are doubles; independent recheck pending. Production capability stays empty.
 
 - Ticket19 product freeze `90078e1`; final guide/review docs6bbe28d, postmerge/publication21fac29. [Operator guide](CHANNELS.md), [independent review](REVIEW-CLAUDE-TICKET-19.md), [plan](TICKET-19-PLAN.md), [acceptance methods and receipts](TICKET-19-ACCEPTANCE.md).
 - Root browser scratch6e90vfld/tracked292c9128:144 ordered observations/four hashed screenshots. Reviewer zaucfc23 is a separate bounded reproduction. Prior failed browser runs uc4lkfdi/pu_r7m_m remain non-acceptance. Native scratches pxoi_8ql/87_fig46 remain separately attributed.

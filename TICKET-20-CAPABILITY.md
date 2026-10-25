@@ -1,6 +1,6 @@
 # Ticket 20 producer capability gate, review draft
 
-Status: contract C1-C8 approved at85179c0; candidate implemented at9ae0842, component verification green and independent review pending. Store correction ef7f896 is independently accepted and full discovery passed1398 tests215.215s (four skips), implementation-owner run590a3db7. This package does not enable artifact generation or create artifact requests.
+Status: disabled capability component independently cleared at265d95f. The wrapper package now extends the fixed source sets; a separate old-manifest compatibility correction is implemented and focused checks pass, with independent recheck pending. This package does not enable artifact generation or public artifact requests.
 
 ## Authority and compatibility
 
@@ -34,7 +34,9 @@ C1 exact fingerprint edits:
 - _launch_effective intentionally fingerprints the complete effective dict, including the optional manifest, for same-settings/restart comparison. A changed protocol or source hash requires an explicit new/restarted attempt; an already-running seat is never silently upgraded.
 - ArtifactService freezes audit.producer.fingerprint from new_launch_identity's ownership fingerprint, with that same attempt and launch_nonce, NOT the projected launch_provenance fingerprint. Both adapters require all three refs non-null in this ticket; the store's looser CLI shape remains for legacy/import data only.
 
-Reject malformed new manifests, unknown versions, wrong adapter or invalid source sets during snapshot validation; do not drop a malformed declaration before hashing. The server writes the snapshot/launch intent before spawning as today.
+Snapshot validation checks retained metadata structure only: integer version1, the known matching adapter, capabilities exactly [] or ['artifact-v1'], and a nonempty sources map of at most128 entries. Keys are single repo basenames matching ^[a-z0-9_]+\.py$ (maximum128 characters); values are64 lowercase hex characters; extra top-level fields are refused. Unknown versions, malformed hashes and unsafe names are rejected before hashing. A structurally valid prior, incomplete or extra-file map remains valid ownership metadata. The server writes the snapshot/launch intent before spawning as today.
+
+Capability matching remains separate and exact. sources_match requires the CURRENT fixed key set and every raw-byte hash, and reads only names from app-owned constants, never filenames supplied by retained metadata. It is a raw source predicate, independent of the capabilities list. Birth copying remains unchanged: an exact current match copies even an empty-capability manifest; a stale key set or hash mismatch omits it. Neither copying nor structural validity grants artifact-v1. artifact_producer also requires the explicit declaration and matching verified birth. A valid old/incomplete/extra-file set returns artifact_capability_missing; present birth/snapshot disagreement or current-set hash drift returns capability_binding_changed. Existing ownership and provenance fingerprint bytes are preserved.
 
 C2 deterministic birth rule: record_worker_birth validates the snapshot manifest and compares every fixed source hash to the worker's own checkout. On MATCH it writes the exact wrapper_protocol field into birth.json. On MISMATCH or source read failure it OMITS that field entirely, closing capability while retaining the existing chat birth fields. It does not write a partial or replacement manifest. Existing immutable-birth comparison stays exact: re-running the SAME attempt with an outcome that would change birth.json (match to mismatch or mismatch to match) refuses and never overwrites the record; a new attempt is required. Test both matching repeats plus both conflicting outcome directions. Runtime candidate validation permits an omitted birth manifest as a capability-closed legacy-compatible runtime, but a present declaration must equal the snapshot exactly. Adoption never fills an omitted field from newer source.
 
@@ -44,7 +46,7 @@ Current authenticated heartbeat/native-birth verification remains required; a co
 
 | Module | Proposed bounded change |
 | --- | --- |
-| NEW runtime_protocol.py | Build and validate the fixed source manifest, expose an initially empty supported-purpose constant, compare worker source bytes. No registry, network, launch or provider effects. |
+| NEW runtime_protocol.py | Build current fixed manifests; validate bounded retained metadata structurally; match current fixed source bytes exactly. Expose an initially empty supported-purpose constant. No registry, network, launch or provider effects. |
 | api_seat_runtime.py | Add optional manifest to server-owned effective snapshots; expose `artifact_producer(instance)` as a detached, metadata-only gate. |
 | runtime_ownership.py | Include optional wrapper_protocol in effective fingerprint validation; copy verified declaration into new worker births, preserving absent-field legacy behavior. |
 | runtime_adoption.py | Validate declared birth/snapshot agreement and reuse current runtime ownership/identity/freshness checks; never manufacture a declaration on adoption. |
@@ -99,3 +101,10 @@ Corrected frozen full7a9226e PASS1415 tests215.255s (four skips), tracked83c09a8
 
 
 Independent clearance at265d95f: reviewer106 tests13.578s and6 probes PASS; P1 source and canonical-field fixture diffs read. Full1415 remains implementation-owner evidence. Production capability stays empty until reviewed purpose branches.
+
+
+## Old-manifest ownership compatibility checkpoint, 2026-10-25
+
+Root captured four literal ownership/provenance golden vectors from unmodified code with the original13/27 source sets before changing validation (tests/fixtures/artifact_old_manifests.json). These are deterministic fixture vectors, not claims about installed worker source. Root test_runtime_protocol_upgrade first ran4 tests with11 source ValueErrors0.353s against the strict current-set validator; after the metadata/matcher split it passed4/0.490s. Controlled old CLI/API launches with both empty and artifact-v1 declarations retain ownership, provenance, candidate/adoption/heartbeat and exit/release bookkeeping. New launches get current sets; old sets cannot grant artifact capability. Native process/exit observations are explicit doubles.
+
+The unchanged capability/runtime/ownership/adoption/heartbeat/API-seat/CLI-worker/cold-recovery group plus the new upgrade tests passed110 tests14.971s, tracked e9fae547, log .audit-tmp/ticket20-manifest-upgrade-focused.log. Raw source matching, empty production capability, birth-copy semantics and frozen helper expectations remain unchanged. Safe-name/128-entry bounds and no metadata-driven filesystem reads are checked. Separate compatibility pin awaits independent recheck; no full wrapper, HTTP/MCP/factory or native acceptance is claimed. Next: review this pin, then finish wrapper entry/transport/MCP/factory and cancellation races.

@@ -7,6 +7,7 @@ import re
 
 # Enabled only by the separately reviewed wrapper-purpose implementation.
 SUPPORTED_CAPABILITIES = ()
+MAX_MANIFEST_SOURCES = 128
 SOURCE_FILES = {
     'cli': ('api_invocation.py', 'api_seats.py', 'artifact_delivery.py', 'artifact_protocol.py', 'artifact_store.py', 'artifact_worker.py',
         'channel_guards.py', 'channel_lifecycle.py', 'cli_seats.py', 'cli_worker.py', 'config_loader.py',
@@ -25,13 +26,16 @@ SOURCE_FILES = {
 
 
 def validate_manifest(value, adapter):
+    """Validate retained metadata without requiring today's dependency list."""
     if (not isinstance(adapter, str) or adapter not in SOURCE_FILES or not isinstance(value, dict)
             or set(value) != {'version', 'adapter', 'capabilities', 'sources'}
             or type(value['version']) is not int or value['version'] != 1
-            or value['adapter'] != adapter or value['capabilities'] not in ([], ['artifact-v1'])
-            or not isinstance(value['sources'], dict) or set(value['sources']) != set(SOURCE_FILES[adapter])
-            or any(not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
-                   for digest in value['sources'].values())):
+            or value['adapter'] != adapter or type(value['capabilities']) is not list
+            or value['capabilities'] not in ([], ['artifact-v1'])
+            or not isinstance(value['sources'], dict) or not 1 <= len(value['sources']) <= MAX_MANIFEST_SOURCES
+            or any(not isinstance(name, str) or len(name) > 128 or not re.fullmatch(r'[a-z0-9_]+\.py', name)
+                   or not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
+                   for name, digest in value['sources'].items())):
         raise ValueError('Wrapper protocol declaration is malformed or unsupported.')
     return deepcopy(value)
 
@@ -61,6 +65,8 @@ def build_manifest(root, adapter):
 def sources_match(root, manifest):
     try:
         value = validate_manifest(manifest, manifest.get('adapter') if isinstance(manifest, dict) else None)
+        if set(value['sources']) != set(SOURCE_FILES[value['adapter']]):
+            return False
         return _source_hashes(root, value['adapter']) == value['sources']
     except (OSError, ValueError):
         return False
