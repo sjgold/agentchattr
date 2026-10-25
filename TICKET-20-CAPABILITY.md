@@ -90,3 +90,6 @@ Candidate checkpoint: initial helper2 and root static2 PASS4/0.299s after implem
 
 
 Frozen9ae0842 verification: helper unchanged12 PASS1.377s, static-finalized SHA25680174baf4da1c41d9df542eb0f2a9938a1e9bcea810a1b65b9cdb192cb3b058f. Unchanged same151 after12.975s PASS (before12.312s), trackedf9c36e92. Full19886263 and independent review running. No capability is enabled in production and no artifact requests/branches exist yet.
+
+
+P1 correction0ade4b7: live pending launch without recorded birth returns runtime_unverified; after birth but before authenticated heartbeat it remains unverified; the controlled verified binding then becomes available. Root progression RED1FAIL0.069s -> focused15PASS1.577s. Original full1412/222.080s failed7FAIL+9ERROR/4skips. Exact affected15 methods reproduce same7+9 in5.654s, then PASS6.035s after only canonical-field-copy corrections in existing fixtures, assertions unchanged. Real-launch/legacy consumer guards2 PASS1.173s. A new full and independent review remain required; source capability stays empty.

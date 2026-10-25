@@ -18,7 +18,7 @@ from api_seats import SeatError, SeatStore, atomic_json
 from api_seat_runtime import SeatManager
 from process_identity import open_verified_process
 from registry import RuntimeRegistry
-from runtime_ownership import new_launch_identity, record_spawn_outcome
+from runtime_ownership import _EFFECTIVE_FIELDS, new_launch_identity, record_spawn_outcome
 
 
 @unittest.skipUnless(sys.platform == 'win32', 'owned birth plus explicit cold algorithm probes')
@@ -112,7 +112,7 @@ class ColdRetryContextTests(unittest.TestCase):
     def provenance(self, entry=None):
         entry = self.old if entry is None else entry
         snapshot = entry['snapshot']
-        effective = {key: deepcopy(snapshot[key]) for key in ('seat', 'provider', 'server', 'mcp', 'config_resource') if key in snapshot}
+        effective = {key: deepcopy(snapshot[key]) for key in _EFFECTIVE_FIELDS if key in snapshot}
         return {'key': entry['key'], 'launch_attempt': entry['attempt'],
                 'identity_id': entry['principal']['identity_id'], 'effective': effective,
                 'fingerprint': snapshot['ownership']['fingerprint']}

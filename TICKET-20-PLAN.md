@@ -191,3 +191,6 @@ Standalone store package complete as a component at ef7f896: full discovery1398 
 
 
 Capability candidate9ae0842: approved contract, initial genuine2 missing-interface RED0.042s after one disclosed fixtureseed correction. Prechange literal ownership golden preserved; root closure includes stale-entry rejection. Helper12 PASS1.377s, same unchanged151 before12.312s/after12.975s PASS. Full19886263 and independent review pending. Capability constant empty, no artifact purpose branches or authority/admission implementation yet.
+
+
+Capability correction: P1 source-only0ade4b7 and separate fixture changes. Exact15 methods reproduce original7FAIL+9ERROR5.654s, then PASS6.035s with only three canonical effective-field-copy repairs. Root actual manager launch/provenance plus legacy consumer guards2 PASS1.173s; controlled process and bounded Windows fixture-child methods are labeled. Corrected full and independent recheck next.

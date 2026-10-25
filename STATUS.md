@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 03:59 UTC (#20 pending-birth reason fixed; cold fixture failures under before/after verification)
+**Updated:** 2026-10-25 04:03 UTC (#20 P1 fixed and fixture classification confirmed; recovery guards green)
 
 ## At a glance
 
@@ -17,7 +17,7 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
-| Next | Verify cold fixture failure classification, then correct fixture copies and recheck full |
+| Next | Run corrected full and Sonnet recheck of P1/fixture/recovery guards |
 
 ## Current handoff
 
@@ -791,3 +791,6 @@ Capability independent review at9ae0842: reviewer173 PASS14.71s (own focused/bas
 
 
 P1 correction: root pending-launch1 genuineFAIL0.069s -> source missing-birth check -> focused helper12/rootstatic2/pending1 PASS15/1.577s. Original full19886263 FAILED1412 tests222.080s (7FAIL,9ERROR,4skips), kept separate. Suspected common cause is three old five-field copy sites in cold-recovery fixtures dropping wrapper_protocol while retaining its full ownership fingerprint. Reviewer approved narrow fixture fixes only after reproducing the same affected failures, plus real-launch and legacy consumer guards. Next Codex captures that before/after group and keeps P1 source change separate from fixture changes. No authority/admission expansion.
+
+
+Cold-fixture classification confirmed: exact15 failed test methods (16 failing events because one method has two adapter subtests) reproduced7FAIL+9ERROR5.654s, trackede2e0740d. After ONLY three field-copy sites in two fixture files use runtime_ownership._EFFECTIVE_FIELDS, same15 PASS6.035s, tracked6dbf7aff. Existing assertions unchanged; product fingerprint validation remains strict. Root real-flow/legacy guards2 PASS1.173s: real manager.launch -> real snapshot/_effective -> real launch_provenance reaches retained and cold CLI exit/retry proof with manifest present (process observations controlled); explicit pre-upgrade manifest-absent fixtures exercise cold_spawn_proof, selected_cli_exit_proof and same_boot_worker_handle unchanged assertions (bounded Windows fixture children, no model/client/provider). P1 source fix is separate commit0ade4b7; fixture correction is separate. Next corrected full plus independent Sonnet recheck; no authority/admission expansion.
