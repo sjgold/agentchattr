@@ -10,6 +10,7 @@ import uuid
 
 from api_seats import atomic_json
 from launcher import startup_lock
+from sealed_result_io import public_envelope, validate_api_result_owner
 
 MAX_INPUT_BYTES = 512 * 1024
 MAX_BRIEF_BYTES = 32 * 1024
@@ -188,23 +189,11 @@ class BriefStore:
 
     @staticmethod
     def _result_owner(owner, envelope):
-        fields = {'adapter', 'dispatch_id', 'seat_identity_id', 'launch_attempt', 'launch_nonce', 'fingerprint'}
-        if (not isinstance(owner, dict) or set(owner) != fields
-                or owner['adapter'] != 'openai-compatible'
-                or type(envelope.get('completion_protocol')) is not int or envelope['completion_protocol'] != 1
-                or owner['seat_identity_id'] != envelope.get('expected_identity_id')):
-            raise BriefError('Result authority requires the exact managed API participant.')
-        for field in fields - {'adapter'}:
-            size = 64 if field == 'fingerprint' else 32
-            if not isinstance(owner[field], str) or not re.fullmatch('[0-9a-f]{' + str(size) + '}', owner[field]):
-                raise BriefError('Result authority requires exact immutable launch references.')
-        return deepcopy(owner)
+        return validate_api_result_owner(owner, envelope, BriefError)
 
     @staticmethod
     def _public(value):
-        result = deepcopy(value)
-        result.pop('_result_seal', None)
-        return result
+        return public_envelope(value)
 
     def put(self, envelope, *, result_owner=None):
         if not isinstance(envelope, dict) or set(envelope) & {'_result_seal', 'seal_secret', 'result_owner'}:

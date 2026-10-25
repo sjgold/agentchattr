@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 02:20 UTC (#1-19 published/closed; #20 implementation plan under review)
+**Updated:** 2026-10-25 02:33 UTC (#1-19 published/closed; #20 pure-refactor freeze ready for review)
 
 ## At a glance
 
@@ -16,8 +16,8 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Contract accepted with conditions; implementation plan under Sonnet review, no tests/code |
-| Next | Sonnet checks exact-module plan; first implementation slice is pure shared-mechanics refactor with existing tests unchanged |
+| Ticket20 | Plan accepted; Task0 pure shared-mechanics refactor tested, independent slice review next |
+| Next | Sonnet reviews frozen Task0 diff, then store payload schemas before helper tests or store code |
 
 ## Current handoff
 
@@ -25,7 +25,7 @@
 - Root browser scratch6e90vfld/tracked292c9128:144 ordered observations/four hashed screenshots. Reviewer zaucfc23 is a separate bounded reproduction. Prior failed browser runs uc4lkfdi/pu_r7m_m remain non-acceptance. Native scratches pxoi_8ql/87_fig46 remain separately attributed.
 - Known limits: inherited390px PAGE overflow476px (new dialog356px fits), coarse-pointer static/VM coverage, synthetic DOM drag only, one Windows fake CLI family, component-only additional crash/busy/scheduler/repair cases, broad held-storage management closure, retained-artifacts metadata excluded from archive export/import. No live AI/provider, Omarchy, installed-browser/OS-picker/assistive-technology claim. Review receipt lists all nine nonblocking notes and guard blind spots.
 - Postmerge Node actual-source groups12/4/12/12/2/2 all0failures, JavaScript syntax/diff clean. Git checkout CRLF conversion was verified against identical repository blobs; reviewed LF working bytes reproduce all three pinned acceptance-tool hashes. No source change.
-- Ticket20 dependency-eligible (#6 closed), local branch codex/ticket-20-artifacts/base published400d6de. Contract A/P1-P4 accepted with conditions; TICKET-20-CONTRACT.md records Stop fencing, purpose-bound sealed delivery, immutable revisions, lineage imports and lifecycle integration. TICKET-20-PLAN.md proposes exact modules/interfaces, source2MiB/1000-message cap,512KiB authored cap and observed-red tasks after a green-only shared-mechanics refactor. Sonnet is reviewing the plan before any tests or product code. Owner Codex; completion criterion for next step is accepted plan, then first pure-refactor freeze. No resources launched.
+- Ticket20 on codex/ticket-20-artifacts/base published400d6de. Contract/plan accepted with S1-S12 corrections. Task0 ONLY: new sealed_result_io.py delegates mechanics from result_outbox/result_delivery/review_brief, existing review-v1 schemas/private imports preserved; before82/6.898s, after82/6.854s, full1374 tests108.397s OK(skipped4), tracked3734c8fb. Two golden Unicode/CRLF MACs, distinct brief revision and all170 test-file hashes unchanged. No authored-artifact store/protocol/wrapper branch or test yet. Next owner Sonnet independent frozen-diff review; then Codex freezes store payload schemas with Sonnet before helper tests/code. Packet-before-reserve crash order accepted K1-K6. No native/API/browser acceptance launched.
 - Standing authorization continues past15 through the approved backlog. Codex builds; existing Sonnet reviewer rechecks frozen plans/changes; existing helper writes bounded assigned regressions. No new agents. Live AI/provider/Omarchy/Desktop/global changes remain outside scope. Older issue human/model-pool gates are superseded by that later direction.
 - Use explicit `--repo sjgold/agentchattr` with gh-axi; implicit lookup selected upstream during a read-only check and was corrected before mutation.
 - Maintain this file with meaningful work, verification and ownership changes. Root status plus [specification](docs/agentchattr-fork-spec.md), current versionv1.7 RC-2/DA-2, is the resume entry point. Documentation maintenance alone is not implementation authorization; the standing autonomous backlog instruction supplies the current authorization.

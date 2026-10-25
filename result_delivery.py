@@ -12,6 +12,7 @@ import urllib.error
 from result_outbox import ResultOutbox, OutboxError, _hex, _scope, verify_result
 from review_brief import BriefStore, BriefError
 from turn_events import parse_session_response
+from sealed_result_io import deliver_saved
 
 
 def complete_review_turn(runtime_path, envelope, dispatch_id, generate, submit, *, on_saved=None):
@@ -48,31 +49,5 @@ def complete_review_turn(runtime_path, envelope, dispatch_id, generate, submit, 
         on_saved(dispatch_id)
     event = {field: record['payload'][field] for field in (
         'brief_id', 'kind', 'content', 'event_id', 'run_id', 'turn_id', 'attempt_id', 'input_revision')}
-    for attempt in range(3):
-        try:
-            accepted = submit(deepcopy(event))
-        except urllib.error.HTTPError as exc:
-            duplicate = False
-            try:
-                if exc.code == 409:
-                    duplicate = json.load(exc).get('accepted_event_id') == dispatch_id
-            except (ValueError, AttributeError):
-                pass
-            finally:
-                exc.close()
-            if duplicate:
-                break
-            if exc.code < 500 or attempt == 2:
-                raise
-        except OSError:
-            if attempt == 2:
-                raise
-        else:
-            if (not isinstance(accepted, dict) or accepted.get('status') != 'admitted'
-                    or accepted.get('event_id') != dispatch_id):
-                raise OutboxError('Server acknowledgement does not identify this saved result.')
-            break
-        time.sleep(.2)
-    # A failed local ACK write must not repeat generation or claim success.
-    box.acknowledge(dispatch_id, dispatch_id)
-    return {'status': 'admitted', 'result_id': dispatch_id}
+    return deliver_saved(event, submit, expected_id=dispatch_id, acknowledge=box.acknowledge,
+                         error_factory=OutboxError, sleep=time.sleep)

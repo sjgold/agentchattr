@@ -17,6 +17,7 @@ from api_seats import atomic_json
 from launcher import startup_lock
 from runtime_ownership import _validate
 from turn_events import MAX_EVENT_BYTES, validate_content
+from sealed_result_io import payload_mac, put_immutable_json, read_bounded_json
 
 
 class OutboxError(ValueError):
@@ -82,9 +83,7 @@ def _record(value):
 
 def _mac(payload, secret):
     key = bytes.fromhex(_hex(secret, 64))
-    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True,
-                           separators=(',', ':'), allow_nan=False).encode('utf-8')
-    return hmac.new(key, canonical, hashlib.sha256).hexdigest()
+    return payload_mac(payload, key)
 
 
 def seal_result(payload, seal_secret):
@@ -100,19 +99,8 @@ def verify_result(record, seal_secret):
 
 
 def _read(path):
-    def unique(pairs):
-        result = {}
-        for key, value in pairs:
-            if key in result:
-                raise OutboxError('Saved JSON has duplicate fields.')
-            result[key] = value
-        return result
     try:
-        with path.open('rb') as source:
-            raw = source.read(MAX_RECORD_BYTES + 1)
-        if len(raw) > MAX_RECORD_BYTES:
-            raise OutboxError('Saved result file exceeds its storage limit.')
-        return json.loads(raw, object_pairs_hook=unique)
+        return read_bounded_json(path, MAX_RECORD_BYTES)
     except (OSError, ValueError):
         raise OutboxError('Saved result storage is unavailable or malformed; files were preserved.') from None
 
@@ -171,14 +159,9 @@ class ResultOutbox:
         result_id = record['payload']['result_id']
         self._bound(record, result_id)
         path = self._path(result_id)
-        with startup_lock(self._path(result_id, lock=True), time.monotonic() + 10):
-            if path.exists():
-                prior = self.get(result_id)
-                if prior != record:
-                    raise OutboxConflict('A different result already occupies this immutable result ID.')
-                return prior
-            atomic_json(path, record)
-        return deepcopy(record)
+        return put_immutable_json(path, record,
+            lock=startup_lock(self._path(result_id, lock=True), time.monotonic() + 10),
+            load_existing=lambda: self.get(result_id), write=atomic_json, conflict_error=OutboxConflict)
 
     def get(self, result_id):
         return self._bound(_read(self._path(result_id)), result_id)
