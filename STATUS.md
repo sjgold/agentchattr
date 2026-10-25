@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 03:57 UTC (#20 capability review requires pending-launch reason fix; RED captured)
+**Updated:** 2026-10-25 03:59 UTC (#20 pending-birth reason fixed; cold fixture failures under before/after verification)
 
 ## At a glance
 
@@ -17,7 +17,7 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store ef7f896 independently PASS; full1398/four skips215.215s PASS |
-| Next | Finish original full19886263, then fix P1 pending-launch reason and recheck |
+| Next | Verify cold fixture failure classification, then correct fixture copies and recheck full |
 
 ## Current handoff
 
@@ -788,3 +788,6 @@ Capability candidate implemented after genuine REDs: runtime_protocol.py fixed m
 
 
 Capability independent review at9ae0842: reviewer173 PASS14.71s (own focused/baseline selection) plus6 probe cases pass; no full discovery by reviewer. P1 remains: live new launch with no birth must be runtime_unverified, currently reports capability_binding_changed. Root pending-launch regression observed1FAIL0.069s before fix; later birth/heartbeat progression assertions not yet reached. No source change while original full19886263 runs. Next Codex applies the small missing-birth check after that run finishes, reruns focused/affected checks and sends Sonnet the correction pin. Operator docs now explain source-manifest drift requiring explicit restart. Helper12 stays frozen; no authority/admission expansion yet.
+
+
+P1 correction: root pending-launch1 genuineFAIL0.069s -> source missing-birth check -> focused helper12/rootstatic2/pending1 PASS15/1.577s. Original full19886263 FAILED1412 tests222.080s (7FAIL,9ERROR,4skips), kept separate. Suspected common cause is three old five-field copy sites in cold-recovery fixtures dropping wrapper_protocol while retaining its full ownership fingerprint. Reviewer approved narrow fixture fixes only after reproducing the same affected failures, plus real-launch and legacy consumer guards. Next Codex captures that before/after group and keeps P1 source change separate from fixture changes. No authority/admission expansion.

@@ -441,6 +441,9 @@ class SeatManager:
             from runtime_adoption import _candidate
             from runtime_protocol import sources_match
             try:
+                if (attempt.get('worker_birth') is None
+                        and not attempt['snapshot'].with_name('birth.json').exists()):
+                    return dict(denied, reason='runtime_unverified')
                 candidate = _candidate(self, attempt['snapshot'])
                 if (candidate['identity'] != attempt.get('ownership')
                         or candidate['manifest']['spawn_outcome'] != 'spawned'
