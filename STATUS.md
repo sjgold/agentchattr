@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 06:34 UTC (#20 wrapper outcome/release and cancellation-race payload amendments drafted)
+**Updated:** 2026-10-25 06:39 UTC (#20 wrapper initial2 infrastructure RED frozen; pre-change goldens captured)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
-| Next | Sonnet reviews P1-P5 exact wrapper payload amendments, including the proposed read-only queue inspect operation; Codex briefs helper only after clearance. No wrapper tests/code yet. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Sonnet reviews frozen wrapper initial2 infrastructure RED/test bodies; Codex then records actual-entry behavioral RED and helper expands compile-only after clearance. Production code has not started. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -898,3 +898,12 @@ Wrapper contract amendments760417e are independently ACCEPTED by docs diff read,
 Sonnet conditionally accepted64356d2 payload freeze and requested P1-P5. Docs-only amendments now specify every CLI decision/API outcome versus dispatched/acknowledged/uncertain/cancelling and work evidence. A transient503/timeout/OSError BEFORE CLI injection is wait/retry on next normal poll, with no held latch; definitive refusal releases failed, and post-injection uncertainty holds without replay. API idle held/quarantined outcomes release failed/local_delivery_failure where allowed, retaining saved results for operator recovery; uncertain possibly live invocation never pretends to be idle. Existing fixed categories stay unchanged.
 
 Every artifact release uses current exact-dispatch state and rechecks after refusal/lost response, branching to proven API cancellation receipt or unsupported CLI hold. New read-only QueueClient.inspect/POST queue inspect is PROPOSED for review because using claim as a post-release reread could accidentally claim a successor. It reuses owned-record/consumer validation, changes no ledger event/state and gets actual auth/no-store/no-mutation tests. Fixed receipt guidance plus one optional validated held_artifact status entry make holds visible without granting ownership or falsifying liveness. Root Event tests cover cancel between result response and release, cancel after ACK, and cancel after inspection before release. Root also captures actual unmodified ordinary/review injected prompt bytes and queue call order before any purpose edit. Activation at preflight is explicitly intended; parent failure can leave ACTIVE until failed delivery is settled by resume/startup or cancel. No wrapper tests/code/helper briefing before this changed-paragraph review; authority source stays frozen7ba8ade and full1467/four skips242.152s remains its accepted implementation-owner evidence.
+
+
+## Wrapper initial RED freeze and pre-change goldens, 2026-10-25 06:39 UTC
+
+Sonnet accepted P1-P5 atbf22ec2 by docs/source read and CLEARED the bounded helper brief; its exact inspect/auth/no-mutation and three Event races remain root-owned requirements. Helper owns ONLY NEW tests/test_artifact_workers.py. First EXACT2 infrastructure RED before production:2 ModuleNotFoundError artifact_worker,0.019s, no behavioral authorization/redelivery claim. Root read both bodies; they use real shared owned fixture files and service with explicit process/callback doubles, no inheritance/double collection, native process or provider. They remain frozen at2 until reviewer checks the pin/output; expansion waits.
+
+Before wrapper edits the same unchanged151 baseline PASS12.963s, tracked25a22a70-0d02-4a2f-af20-6bfde91e4a8a, .audit-tmp/ticket20-wrapper-prechange-baseline.log. Root captured actual old _queue_watcher plus CliConsumer and temporary real QueueStore with controlled role/rules/identity/transport callbacks: ordinary prompt SHA256b199f7a098b90d38e80353f5a952cb8688585ba140cc94fdee3deaeefec7c66a, review prompt113597483d96d93ab46c9f3ac4b91444074845a7ea9236bb80454c25e418965e. Both ordered calls claim,ack,cooperative release,close uncertain exactly as observed, no hand-derived expected prompt. Tracked tests/fixtures/artifact_legacy_prompts.json preserves raw strings, actual records/calls and source hashes; original .audit-tmp/ticket20-wrapper-legacy-before.json retained.
+
+Root also enumerated actual FastMCP list_tools in-process, without invoking tools, binding listeners or network:15 legacy tool schemas, order and docstrings captured in tests/fixtures/artifact_legacy_tools.json (original .audit-tmp/ticket20-wrapper-tools-before.json SHA256bb73c31e1ec71a0f3b8f4c5766ea722df33941b36dc4cb2544d1bad9f06dafbf). New two tool names will append explicitly; existing schema/docstring goldens remain unchanged. The global instruction string gets only its planned artifact exception and is not falsely claimed byte-identical. No production wrapper/transport/service changes yet; artifact capability remains empty. Next owner Sonnet reviews frozen initial2 and goldens; Codex then captures a separate actual-entry behavioral RED before implementation, and helper expands compile-only after clearance.
