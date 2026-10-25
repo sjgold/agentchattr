@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 08:59 UTC (#20 lifecycle-backup payload revisions awaiting clearance)
+**Updated:** 2026-10-25 09:21 UTC (#20 lifecycle-backup literal payload consistency recheck next)
 
 ## At a glance
 
@@ -21,6 +21,8 @@
 | Next | Sonnet reviews the DOCS-ONLY amended [lifecycle/backup payload freeze](TICKET-20-LIFECYCLE-BACKUP.md) before tests/code/helper briefing. Codex owns implementation after clearance. Production capability stays empty; operator creation/K6, reader, acceptance and activation remain later |
 
 ## Current handoff
+
+- Lifecycle/backup final consistency revision remains docs-only: duplicate/skipped counters, literal request/queue states and held flags, single top-level partial Boolean, structural validation before all history writes, exact imported audit/row keys and manifest/type definitions are frozen for reviewer recheck. All-channel artifact selection uses a healthy immutable ID snapshot; bounds precedence, fixed wire/WS errors, level6 compression, ZIP scope and exact4MiB/100-lineage/10-commit <=0.300s benchmark are explicit. No next-package test/code/capture/helper run; product stays c5ae029.
 
 - Revised lifecycle/backup payload remains DOCS ONLY, not cleared for tests. Follow-up rulings preserve legacy export calls through a private identity sentinel while configured None/held owners refuse; section rejection is distinct from per-lineage skips; terminal missing-queue rows do not block (no new store bit), while live queued/active missing records are held. Exporter-built projections exclude authority; raw packet user metadata is retained exactly and disclosed as sensitive. Revised format limits, wire/error/report shapes and a <=0.300s timing acceptance gate are proposed for reviewer clearance.
 
