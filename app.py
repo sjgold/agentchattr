@@ -2341,7 +2341,12 @@ async def export_history():
         zip_bytes = _archive.build_export(
             store, jobs, rules, summaries,
             app_version=config.get("server", {}).get("version", ""),
+            artifact_store=artifacts,
         )
+    except _archive.ArtifactArchiveLimit as error:
+        return JSONResponse(error.projection(), status_code=413)
+    except _archive.artifact_codec.ArtifactSectionError as error:
+        return JSONResponse({'code': error.code, 'error': error.error}, status_code=error.http_status)
     except Exception as exc:
         return JSONResponse({"error": f"export failed: {exc}"}, status_code=500)
     filename = f"agentchattr-export-{_time.strftime('%Y%m%d-%H%M%S')}.zip"
@@ -2359,7 +2364,7 @@ async def import_history(file: UploadFile = File(...)):
     if not file.filename or not file.filename.lower().endswith(".zip"):
         return JSONResponse({"error": "unsupported file type: expected .zip"}, status_code=400)
     content = await file.read()
-    if len(content) > _archive.MAX_IMPORT_SIZE:
+    if len(content) > _archive.MAX_IMPORT_SIZE and not _archive.is_artifact_archive(content):
         return JSONResponse(
             {"error": f"file too large (max {_archive.MAX_IMPORT_SIZE // 1024 // 1024}MB)"},
             status_code=400,
@@ -2369,7 +2374,7 @@ async def import_history(file: UploadFile = File(...)):
     try:
         report = await asyncio.to_thread(_archive.import_archive,
             content, store, jobs, rules, summaries, channel_list,
-            max_channels=max_ch, channel_policy=_channels())
+            max_channels=max_ch, channel_policy=_channels(), artifact_store=artifacts)
     except ChannelConflict as error:
         return JSONResponse({'error': str(error)}, status_code=409)
     except (ChannelUnavailable, OSError):
@@ -2377,6 +2382,9 @@ async def import_history(file: UploadFile = File(...)):
     except ValueError:
         return JSONResponse({'error': 'Invalid import request.'}, status_code=400)
     if not report.get("ok"):
+        section_error = report.get('sections', {}).get('artifacts', {}).get('section_error')
+        if isinstance(section_error, dict) and section_error.get('code') in _archive.artifact_codec.ERRORS:
+            return JSONResponse(report, status_code=_archive.artifact_codec.ERRORS[section_error['code']][0])
         error = report.get("error", "import failed")
         status = 409 if "already running" in error else 400
         return JSONResponse({"error": error}, status_code=status)

@@ -12,6 +12,7 @@ from fastapi import FastAPI, UploadFile
 from fastapi.testclient import TestClient
 import app
 import archive
+from artifact_store import ArtifactStore
 from rules import RuleStore
 from tests import test_channel_import as fixture
 
@@ -24,7 +25,7 @@ class ChannelImportRouteTests(unittest.TestCase):
     def setUp(self):
         fixture.ChannelImportTests.setUp(self)
         self.rules = RuleStore(str(self.root / 'rules.json'))
-        for name, value in dict(store=self.messages, jobs=self.jobs, rules=self.rules,
+        for name, value in dict(store=self.messages, jobs=self.jobs, rules=self.rules, artifacts=ArtifactStore(self.root),
                 summaries=self.summaries, schedules=self.schedules, registry=self.registry,
                 agents=self.trigger, session_engine=self.engine, channel_service=self.service,
                 room_settings=self.settings, ws_clients=set(),

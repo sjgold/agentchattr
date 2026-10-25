@@ -243,3 +243,7 @@ D1-D3 reproduced on actual zlib/EOF/backing-stream I/O/Unicode-year paths before
 ## Ticket20 driver preparation receipt (2026-10-25)
 
 Pure codec cleared23fba31 (reviewer210/144.462s). Private staging receipt rootRED4/1FAIL+3ERROR0.189s -> affected49 PASS7.174s; no persisted/public schema or helper changes. Actual pre-driver legacy large-manifest reports captured, guards2 PASS0.029s; discriminator remains bounded with legacy fallback for oversized/no-artifact manifests as ruled. archive.py still unchanged. Small receipt recheck then driver integration; no activation.
+
+## Ticket20 archive driver candidate (2026-10-25)
+
+Private receipt independently accepted7d4daad (216/143.485s). Artifact-aware writer/importer, sentinel, real app owner call sites, typed measured export limits and fixed full failure reports implemented. Focused144 PASS8.993s; full configured discovery then independent review next. Old merge extraction AST identical and schema1 ZIP/report goldens unchanged. Only approved future-schema/setup fixture follow-ups, assertions preserved. Whole lifecycle metadata/cancel UI and later operator/K6/reader/acceptance/activation still pending.

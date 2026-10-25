@@ -206,7 +206,7 @@ class ArchiveRoundTripTests(unittest.TestCase):
                 "manifest.json",
                 json.dumps(
                     {
-                        "schema_version": archive.SCHEMA_VERSION + 1,
+                        "schema_version": archive.MAX_SCHEMA_VERSION + 1,
                         "archive_id": "future-archive",
                         "created_at": "2099-01-01T00:00:00Z",
                     }
@@ -282,6 +282,8 @@ class ImportExportApiTests(unittest.TestCase):
             save_settings=app._save_settings, migrate_cursors=None, router=None, migrate_last_active=None)
         from unittest.mock import patch
         self.enterContext(patch.object(app, 'channel_service', service))
+        from artifact_store import ArtifactStore
+        self.enterContext(patch.object(app, 'artifacts', ArtifactStore(self.root / 'appdata')))
 
     def test_export_endpoint_returns_zip_with_manifest(self):
         seed_history(self.store, self.jobs, self.rules, self.summaries)
