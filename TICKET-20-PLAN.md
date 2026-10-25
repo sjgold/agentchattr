@@ -50,7 +50,7 @@ Proposed shared interfaces:
 
 - [x] Run existing result suites GREEN before refactoring: `python -m unittest tests.test_result_outbox tests.test_result_delivery tests.test_saved_result_recovery tests.test_result_brief_seal tests.test_session_events tests.test_restart_startup tests.test_corrected_restart`.
 - [x] Apply the pure refactor, then rerun the SAME unchanged suites and configured full discovery. No artifact module, schema, method or test exists yet. Capture current Unicode/CRLF/literal-backslash golden HMAC vectors and the distinct ASCII-escaped review_brief._revision hash before edits, and assert them unchanged after. All existing170 Python test files must stay byte-identical. Inspect the diff for exact review-v1 preservation.
-- [ ] Freeze/commit and obtain Sonnet review of extraction before Task1. This is the explicit green-only refactor exception, not a fabricated RED.
+- [x] Freeze/commit and obtain Sonnet review of extraction before Task1. This is the explicit green-only refactor exception, not a fabricated RED.
 
 ## Task 1: Artifact metadata and immutable-object store
 
@@ -157,3 +157,10 @@ Before reserve, durably put the exact source packet under a deterministic reques
 Queue-authoritative mapping for a matching live dispatch: no record -> enqueue, queued -> mark queued, dispatched/acknowledged/uncertain -> active, released/failed with a matching saved result -> admission, cancelled/cancelling -> cancelled/no enqueue. Terminal requests never enqueue. Cancel/Stop versus enqueue share engine/catalog boundary and state recheck, including prepared cancellation with no dispatch. Startup resume precedes background threads, scans only owned live prepared/queued requests, shows prepared as resume pending, no timers. An explicit operator resume may use the same checks. Saved-result redelivery for a matching active pending request is distinct from re-enqueue; this distinction is being confirmed before store schemas.
 
 Packet snapshot/preview token is checked under one outer boundary with IDs, UIDs, bytes and hashes from the same read; measure max2MiB/1000-message hold with a concurrent loop-thread require_active. Retained packet text is copied source audit, included in backups and disclosed on delete/guide. Reviewer accepted this ordering by contract reasoning; source-level store verification waits for that package.
+
+
+Task0 independent PASS at65bcb56: Sonnet personally executed unchanged82 tests9.855s; no tests changed; old/new3000 seeded random MAC vectors0mismatches, NaN/inf same ValueError; bounded-read parity5cases same errors/results; private imports resolve. It read immutable-save ordering/lock deadline, did not rerun full. Nonblocking nit: remove unused result_outbox hashlib/json imports in a later bounded commit; preserve ensure_ascii distinction.
+
+K4 clarified: startup prepared/queued repair is enqueue/queue-state repair only. Saved-outbox redelivery is separately allowed only for matching LIVE ACTIVE request with same dispatch/request/brief/seat claim, never enqueue/regenerate. Unmatched/terminal/cancelled saved results quarantined. A single startup pass must not both repair-enqueue and redeliver the same dispatch; test this explicitly.
+
+TICKET-20-STORE-SCHEMA.md now freezes proposed exact store method/payload/state/read/error/IO semantics for reviewer approval before helper tests or product store code. No store implementation exists yet.
