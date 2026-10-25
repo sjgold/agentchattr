@@ -1,8 +1,8 @@
 # Ticket 19 channel lifecycle interface freeze candidate
 
-**Current checkpoint:** Backend and Manage UI components independently accepted. Latest scoped hover/focus correction90078e1 independently PASS. Native independently reproduced PASS at1034fbc. Root browser3 at90078e1 PASS and Sonnet independently reproduced bounded browser acceptance; final whole-ticket PASS WITH NONBLOCKING NOTES. Prior browser1/2 remain non-acceptance. Final configured full regression1374 tests104.844s OK(skipped4), tracked748f8265. Nothing from Ticket19 is published.
+**Current checkpoint:** Backend and Manage UI components independently accepted. Latest scoped hover/focus correction90078e1 independently PASS. Native independently reproduced PASS at1034fbc. Root browser3 at90078e1 PASS and Sonnet independently reproduced bounded browser acceptance; final whole-ticket PASS WITH NONBLOCKING NOTES. Prior browser1/2 remain non-acceptance. Final configured full regression1374 tests104.844s OK(skipped4), tracked748f8265. Published on origin/main21fac29fd7ce1a112814e6cf44c8ee411b3ac9ca; issue19 closed/completed after exact remote/API rereads.
 
-**Next:** Codex commits final documentation, fast-forward merges, runs post-merge checks, then publishes/closes under the standing authorization. Source stays frozen at90078e1; final receipt REVIEW-CLAUDE-TICKET-19.md and guide CHANNELS.md record limitations. See TICKET-19-ACCEPTANCE.md for exact methods, corrections and limits.
+**Next:** Ticket19 complete. Codex records closure; Ticket20 source/spec reconnaissance and plan freeze are next under standing backlog authorization.
 
 
 Goal: discoverable rename, archive/reopen and deliberate deletion; preserve history/artifacts appropriately, block automatic routing into archived channels, protect general, and require finished/stopped work before removal. Scope authority specv1.7 RC-2/AT-11 and issue19. Blocker10 is verified closed. Base published main3845c5ef46ef7dbbc0453b5cf61dadc95a2c1491; baseline1040tests/four platform skips. Prior18 complete with independent acceptance/publication/closure.
@@ -743,3 +743,8 @@ Final Sonnet whole-ticket PASS WITH NONBLOCKING NOTES: bounded independent brows
 
 
 Postmerge main6bbe28d:1374 tests110.873s OK(skipped4), tracked3db1946e; Node12/4/12/12/2/2 zero failures, syntax/diff clean. Product and accepted tool blobs unchanged. Git checkout CRLF conversion was verified against identical90078e1/HEAD blobs; restored LF working bytes match all three original raw hashes. Publication and explicit repository issue closure are next.
+
+
+## Publication verified
+
+Published origin/main21fac29fd7ce1a112814e6cf44c8ee411b3ac9ca after final independent PASS and postmerge1374/four skips110.873s. Exact git ls-remote hash matched local HEAD. Explicit sjgold/agentchattr issue19 comment records methods and all nine nonblocking notes; closed/completed2026-10-25T02:02:50Z, reread through gh-axi and GitHub API. This final closure update changes documentation only. Next backlog item20 scope/plan belongs to its own ticket; Ticket19 acceptance sources stay frozen.

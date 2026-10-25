@@ -1,6 +1,6 @@
 # Ticket 19 acceptance draft
 
-Status: Native independently reproduced PASS at1034fbc. Correction90078e1 independently PASS. Root fresh browser3 PASS at90078e1, independent evidence reread and bounded reproduction PASS (reviewer scratch zaucfc23). Browser1/2 remain non-acceptance. Final full regression1374 tests104.844s OK(skipped4); whole-ticket publication remains gated.
+Status: Native independently reproduced PASS at1034fbc. Correction90078e1 independently PASS. Root fresh browser3 PASS at90078e1, independent evidence reread and bounded reproduction PASS (reviewer scratch zaucfc23). Browser1/2 remain non-acceptance. Final full regression1374 tests104.844s OK(skipped4); whole-ticket publication completed on21fac29; issue19 closed/completed2026-10-25T02:02:50Z.
 
 ## Two bounded cases
 
@@ -167,3 +167,8 @@ Root final configured full at90078e1:1374 tests104.844s OK(skipped4), tracked748
 
 
 Postmerge main6bbe28d:1374 tests110.873s OK(skipped4), tracked3db1946e; Node12/4/12/12/2/2 zero failures, syntax/diff clean. Product and accepted tool blobs unchanged. Git checkout CRLF conversion was verified against identical90078e1/HEAD blobs; restored LF working bytes match all three original raw hashes. Publication and explicit repository issue closure are next.
+
+
+## Publication verified
+
+Published origin/main21fac29fd7ce1a112814e6cf44c8ee411b3ac9ca after final independent PASS and postmerge1374/four skips110.873s. Exact git ls-remote hash matched local HEAD. Explicit sjgold/agentchattr issue19 comment records methods and all nine nonblocking notes; closed/completed2026-10-25T02:02:50Z, reread through gh-axi and GitHub API. This final closure update changes documentation only. Next backlog item20 scope/plan belongs to its own ticket; Ticket19 acceptance sources stay frozen.
