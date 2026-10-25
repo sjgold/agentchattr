@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 05:55 UTC (#20 authority review correction passed197 focused tests; independent recheck next)
+**Updated:** 2026-10-25 06:03 UTC (#20 authority component independently cleared; wrapper contract draft awaiting review)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20 storage and the disabled capability gate are accepted. Admission and recovery are implemented as an internal component, with focused checks passing; independent component review is next.**
+**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is drafted for review; artifact production remains disabled.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -16,9 +16,9 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Store and disabled capability gate independently accepted; internal admission/recovery candidate tested, not yet independently accepted |
-| Latest checks | Correction197 PASS24.346s; preceding442b5ab full1458 tests229.594s OK, four skips, implementation-owner run |
-| Next | Codex freezes the C-1/P-1/N1-N4 correction after focused checks; Sonnet rechecks and clears the authority package. Public creation timing, routes, wrappers, lifecycle, reader and backup remain later work |
+| Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
+| Latest checks | Corrected52d52f1 full1463 tests256.029s OK, four skips (implementation owner); independent230 focused26.298s plus probes PASS |
+| Next | Sonnet reviews TICKET-20-WRAPPERS.md contract; Codex resolves its two interface amendments and activation proposal, then freezes helper payloads before tests/code. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
 
@@ -863,3 +863,12 @@ Root reviewer regressions before correction:5 tests,5FAIL+3ERROR0.977s, confirmi
 Component timing at three pending rows, nine repetitions under the actual boundary: old442b5ab median19.371ms, max23.000ms, three producer verifications per call; correction median7.666ms, max8.731ms, one verification per call. Raw receipt .audit-tmp/ticket20-eligibility-before-after.json. Initial timing script had a fixture error because the global Popen double intercepted git show; reading the old source before setting up the fixture corrected that harness issue, with no product or behavior assertion change. No general latency guarantee or source-cap timing claim.
 
 Frozen correction focused group197 PASS24.346s, tracked1479deb7-54f0-4c38-b192-72e0ae264f7c, .audit-tmp/ticket20-authority-review-correction-focused.log. Includes the same unchanged151 baseline and all46 current authority component tests. Helper files remain unchanged/frozen. Next: Sonnet recheck of this small correction and fresh full discovery on its frozen pin; no public integration or capability enablement until component clearance.
+
+
+## Authority component cleared; wrapper contract next, 2026-10-25 06:03 UTC
+
+Sonnet independently CLEARED52d52f103973daf940cf04b8e06ccc6e94d78f78:230 focused tests26.298s, seven own probes plus repeated timing, and correction source diff read. C-1/P-1/N1-N4 closed; reviewed scope is component only. It did not read artifact_brief.py or all test bodies, rerun full discovery, or verify any HTTP/MCP/native/provider/app/UI integration. N3 caveat: absent queue record means no remaining cancellation fence to write, not proof of worker exit; a lost/pruned post-dispatch record has the same limitation.
+
+Corrected full discovery on frozen52d52f1 PASS1463 tests256.029s, four skips, tracked70161e23-3593-4c3c-9842-6cffcef166c4, .audit-tmp/ticket20-authority-corrected-full-52d52f1.log. Implementation-owner evidence only. Source/tree stayed unchanged throughout. Production capability remains empty.
+
+Next owner Codex/Sonnet: new TICKET-20-WRAPPERS.md is a docs-only contract proposal, not implementation clearance. It traces the actual wrapper/MCP/API/factory code, proposes explicit purpose branches before review/chat, per-result model metadata, saved-byte redelivery and cancellation proof, source-closure maintenance and conservative later activation. Two explicit authority amendments need review: oversized invalid-response no-body reports and an assigned immutable parent read for revision context. No helper briefing/tests/code/resources before contract and payload clearance. Public creation/K6 snapshot timing, lifecycle blockers/rename/backup, reader/UI and end-to-end acceptance remain later gates.

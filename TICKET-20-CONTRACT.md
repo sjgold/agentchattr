@@ -1,6 +1,6 @@
 # Ticket 20 requested artifacts, contract draft
 
-Status: approach/P1-P4 accepted with reviewer conditions; implementation plan is drafted for review, not frozen. No product code or tests changed. Base published main `400d6de808dafbaebe1d378b40099c2fead5edd6`; branch `codex/ticket-20-artifacts`. Owner Codex GPT-6.1; reviewer Claude Sonnet 5.5. Standing autonomous backlog authorization applies; no new agents, live provider, Omarchy, Desktop or global changes.
+Status: contract/plan accepted; store, disabled capability gate and authority/admission COMPONENT independently cleared. Corrected authority source52d52f1 has implementation-owner full1463/four skips256.029s and separate reviewer230 focused26.298s plus probes. Next is the docs-only wrapper-purpose contract review (TICKET-20-WRAPPERS.md), then exact helper payloads before tests/code. Artifact production remains disabled; no public integration or whole-ticket acceptance. Base published main `400d6de808dafbaebe1d378b40099c2fead5edd6`; branch `codex/ticket-20-artifacts`. Owner Codex GPT-6.1; reviewer Claude Sonnet 5.5. Standing autonomous backlog authorization applies; no new agents, live provider, Omarchy, Desktop or global changes.
 
 ## Scope and source-grounded baseline
 
