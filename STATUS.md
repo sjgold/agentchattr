@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 01:59 UTC (#1-18 closed; #19 final independent PASS; publication checks next)
+**Updated:** 2026-10-25 02:02 UTC (#19 independent PASS; merged locally; post-merge checks passed)
 
 ## At a glance
 
@@ -10,15 +10,15 @@
 | --- | --- |
 | Tickets 1-18 | Published and closed |
 | Ticket 19 implementation | Implemented locally; latest UI fixes tested and independently accepted at `90078e1` |
-| Full regression | Latest freeze90078e1: 1,374 tests, four skips, passed in104.844s |
+| Full regression | Final1374/four skips104.844s; post-merge1374/four skips110.873s, both passed |
 | Independent review | Backend, UI and latest correction batch `90078e1` accepted |
 | Windows native check | Passed by Codex and independently by Sonnet; cleanup complete |
 | First browser run | Stopped after finding a dialog-focus bug; evidence retained |
 | Focus correction | Fixed, regression tested and independently reviewed |
 | Second browser run | Focus fix passed at both widths; stopped on hidden action icons and a browser-tool runtime handoff |
 | Browser run 3 | Root PASS and independently reproduced by Sonnet at90078e1; both clean cleanup |
-| Next | Codex commits documentation, fast-forward merges and runs post-merge checks before publication |
-| Before shipping | Final whole-ticket verdict, merge/post-merge checks, push and issue closure |
+| Next | Codex publishes main, verifies the remote hash and closes issue19 |
+| Before shipping | Push and verify origin/main; close and reread issue19 |
 
 Codex owns implementation and verification; Sonnet is the independent reviewer. The latest correction passed Sonnet's independent review. Root's fresh browser run passed in Traycer-managed isolated Electron Chromium at both widths. Sonnet independently reproduced the bounded browser flow and returned final PASS WITH NONBLOCKING NOTES. See CHANNELS.md and REVIEW-CLAUDE-TICKET-19.md for coverage and limits. All acceptance servers, workers and browser sessions are stopped; the final unit regression passed. The inherited mobile page overflow is documented; this ticket's dialog fits the mobile viewport.
 
@@ -782,3 +782,6 @@ Published main5cac753a9339ed70a26064ee3d561261f7dd66b7, gitls-remote exacthashve
 ## Ticket19 channel lifecycle proposal, no implementation
 
 Issue19 open/Archive and manage channels safely, blocker10closed verified; branch codex/ticket-19-channel-lifecycle/base3845c5e. Ownership77b543b7 after18role relinquished. Source: WS rename/delete directly mutate settings/messages, no archive state/work guard; history/settings rewrites non-atomic; schedules, job threads, sessions/queue and MCP fallback span the boundary. No standalone artifact store present; retain available data and do not claim future artifact integration. Root proposed small lifecycle service/shared dispatch boundary/durable intent and explicit confirmation; OPEN C1-C5 include name reuse vsstableIDs, cross-store rename/recovery, queued manual work, reopen scheduling and configured-service migration. Sonnet critique before exact interface/TDD freeze; no source/tests/native/browser changes. Graphindex absent/no matchingregistry, two OpenBrainqueries no relevantthought, boundedrgsource reads only. Ticket18completepublished3845c5e, issueclosed/completedverified, allresourcesended.
+
+
+Ticket19 post-merge checkpoint: final docs6bbe28d fast-forward merged into main. Full1374 tests110.873s OK(skipped4), tracked3db1946e/.audit-tmp/ticket19-postmerge-full.log. Postmerge Node actual-source groups12/4/12/12/2/2 all0failures, JS syntax/diff checks clean. Guide additions reviewed/applied. Checkout core.autocrlf rewrote the three acceptance files CRLF; all three repository blobs are identical to90078e1, and restoring LF bytes reproduces the exact pinned raw hashes. No logical/source change. Next authorized push, exact remote hash verification and explicit sjgold/agentchattr issue19 close/reread. gh-axi requires --repo here; implicit lookup selected upstream and was corrected before any mutation.
