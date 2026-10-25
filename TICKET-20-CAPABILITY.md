@@ -1,6 +1,6 @@
 # Ticket 20 producer capability gate, review draft
 
-Status: disabled capability component independently cleared at265d95f. The wrapper package now extends the fixed source sets; a separate old-manifest compatibility correction is implemented and focused checks pass, with independent recheck pending. This package does not enable artifact generation or public artifact requests.
+Status: disabled capability component independently cleared at265d95f. The wrapper package now extends the fixed source sets; a separate old-manifest compatibility correction is implemented and focused checks pass, independently cleared at8d8894f (reviewer110 PASS14.706s plus probes42/43 and direct shape/matcher checks). This package does not enable artifact generation or public artifact requests.
 
 ## Authority and compatibility
 

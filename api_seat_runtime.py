@@ -34,8 +34,16 @@ class SeatManager:
         self.lock = threading.RLock()
         self.closed = threading.Event()
         if monitor:
-            self.thread = threading.Thread(target=self._monitor, daemon=True)
-            self.thread.start()
+            self.start_monitor()
+
+    def start_monitor(self):
+        """Factory may defer observation until owned startup recovery is complete."""
+        with self.lock:
+            if self.closed.is_set():
+                raise SeatError('Runtime manager is closed.')
+            if not hasattr(self, 'thread'):
+                self.thread = threading.Thread(target=self._monitor, daemon=True)
+                self.thread.start()
 
     def _monitor(self):
         while not self.closed.wait(0.5):

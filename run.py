@@ -84,6 +84,8 @@ def main():
     mcp_bridge.agents = app_agents
     mcp_bridge.review_briefs = session_store.briefs
     mcp_bridge.session_engine = session_engine
+    from app import artifact_authority
+    mcp_bridge.artifact_authority = artifact_authority
 
     # Enable cursor and role persistence across restarts
     data_dir = ROOT / config.get("server", {}).get("data_dir", "./data")

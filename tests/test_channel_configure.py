@@ -25,13 +25,14 @@ class ChannelConfigureTests(unittest.TestCase):
         self.stack = ExitStack()
         self.addCleanup(self.stack.close)
         for name in ('store', 'rules', 'summaries', 'jobs', 'schedules', 'router', 'agents', 'registry',
-                     'session_store', 'session_engine', 'channel_service', 'config', 'api_seat_store', 'api_seat_manager', '_event_loop'):
+                     'session_store', 'session_engine', 'channel_service', 'config', 'api_seat_store', 'api_seat_manager', '_event_loop',
+                     'artifacts', 'artifact_briefs', 'artifact_authority', 'artifact_recovery'):
             self.stack.enter_context(patch.object(app, name, None))
         self.stack.enter_context(patch.object(app, 'room_settings', {'channels': ['general'], 'username': 'operator', 'history_limit': 'all'}))
         self.stack.enter_context(patch.object(app, 'ws_clients', set()))
         self.stack.enter_context(patch.object(mcp_bridge, 'channel_policy_getter', None))
         self.manager = SimpleNamespace(boot_id=uuid.uuid4().hex, reconcile_runtime=Mock(),
-            shutdown=Mock(), launch_provenance=lambda instance: None)
+            shutdown=Mock(), start_monitor=Mock(), launch_provenance=lambda instance: None)
         self.thread_starts = []
         self.events = []
         self.manager.reconcile_runtime.side_effect = lambda: self.events.append('inventory')
@@ -60,7 +61,10 @@ class ChannelConfigureTests(unittest.TestCase):
             return result
         with ExitStack() as seams:
             seams.enter_context(patch.object(app, '_install_security_middleware'))
-            seams.enter_context(patch('api_seat_runtime.SeatManager', return_value=self.manager))
+            def manager(root, cfg, store, registry, **kwargs):
+                self.manager.store, self.manager.registry = store, registry
+                return self.manager
+            seams.enter_context(patch('api_seat_runtime.SeatManager', side_effect=manager))
             seams.enter_context(patch.object(app.threading, 'Thread', side_effect=thread))
             if trace:
                 from queue_coordinator import CoordinatedQueue

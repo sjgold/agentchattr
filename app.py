@@ -34,6 +34,8 @@ from channel_service import ChannelService
 log = logging.getLogger(__name__)
 
 app = FastAPI(title="agentchattr")
+artifact_authority = None  # shared configured service; never request-supplied
+artifacts = artifact_briefs = artifact_recovery = None
 
 # --- globals (set by configure()) ---
 store: MessageStore | None = None
@@ -201,6 +203,8 @@ def _initialize_channel_lifecycle(data_dir):
     session_engine.bind_channel_policy(_channels)
     jobs.bind_channel_policy(_channels)
     schedules.bind_channel_policy(_channels)
+    if artifacts is not None:
+        artifacts.bind_channel_policy(_channels)
     import mcp_bridge
     mcp_bridge.channel_policy_getter = _channels
     catalog = ChannelStore(Path(data_dir) / 'channel_lifecycle.json')
@@ -251,6 +255,10 @@ def _resolve_authenticated_agent(request: Request) -> dict | None:
     return registry.resolve_token(token)
 
 
+from artifact_transport import create_router as _artifact_router
+app.include_router(_artifact_router(lambda: artifact_authority, _resolve_authenticated_agent))
+
+
 # --- Security middleware ---
 # Paths that don't require the session token (public assets).
 _PUBLIC_PREFIXES = ("/", "/static/")
@@ -293,9 +301,13 @@ def _install_security_middleware(token: str, cfg: dict):
                 return await call_next(request)
 
             # --- Origin check (blocks cross-origin / DNS-rebinding attacks) ---
-            transport_headers = {"Cache-Control": "no-store"} if path == '/api/queue/inspect' else {}
+            artifact_path = path == '/api/artifact-results' or path.startswith('/api/artifact-briefs/')
+            transport_headers = {"Cache-Control": "no-store"} if path == '/api/queue/inspect' or artifact_path else {}
             origin = request.headers.get("origin")
             if origin and origin not in allowed_origins:
+                if artifact_path:
+                    from artifact_transport import error_body
+                    return JSONResponse(error_body('artifact_access_denied'), status_code=403, headers=transport_headers)
                 return JSONResponse(
                     {"error": "forbidden: origin not allowed"},
                     status_code=403,
@@ -310,6 +322,14 @@ def _install_security_middleware(token: str, cfg: dict):
                 bearer = auth_header[7:].strip()
                 if _self.registry and _self.registry.resolve_token(bearer):
                     return await call_next(request)
+
+            if artifact_path:
+                from artifact_transport import error_body
+                auth = request.headers.getlist('authorization')
+                if (len(auth) == 1 and auth[0].lower().startswith('bearer ')
+                        and _self.registry and _self.registry.resolve_token(auth[0][7:].strip())):
+                    return await call_next(request)
+                return JSONResponse(error_body('artifact_access_denied'), status_code=403, headers=transport_headers)
 
             req_token = (
                 request.headers.get("x-session-token")
@@ -521,12 +541,23 @@ async def release_api_seats():
 
 def configure(cfg: dict, session_token: str = ""):
     global store, rules, summaries, jobs, schedules, router, agents, registry, session_store, session_engine, config
+    global artifacts, artifact_briefs, artifact_authority, artifact_recovery, channel_service
+    channel_service = None
+    artifact_authority = artifact_recovery = None
+    import mcp_bridge
+    mcp_bridge.artifact_authority = None
     config = cfg
     # --- Security: store the session token and install middleware ---
     _install_security_middleware(session_token, cfg)
 
     data_dir = cfg.get("server", {}).get("data_dir", "./data")
     Path(data_dir).mkdir(parents=True, exist_ok=True)
+
+    from artifact_store import ArtifactStore
+    from artifact_brief import ArtifactBriefStore
+    artifacts = ArtifactStore(data_dir, hold_unreadable=True)
+    artifact_briefs = ArtifactBriefStore(data_dir)
+    artifacts.bind_channel_policy(_channels)
 
     log_path = Path(data_dir) / "agentchattr_log.jsonl"
     legacy_log_path = Path(data_dir) / "room_log.jsonl"
@@ -574,7 +605,7 @@ def configure(cfg: dict, session_token: str = ""):
         api_seat_manager.shutdown()
     from cli_seats import cli_templates
     api_seat_store = SeatStore(Path(data_dir).resolve(), {**provider_templates(cfg), **cli_templates(cfg)})
-    api_seat_manager = SeatManager(Path(__file__).parent, cfg, api_seat_store, registry)
+    api_seat_manager = SeatManager(Path(__file__).parent, cfg, api_seat_store, registry, monitor=False)
 
     # Router starts with base agent names (backward compat for direct MCP users),
     # registry.on_change updates it dynamically when instances register/deregister
@@ -605,10 +636,25 @@ def configure(cfg: dict, session_token: str = ""):
     except (ChannelUnavailable, OSError, ValueError):
         log.error('Channel state is unavailable; publication and new claims are held.')
 
+    from artifact_service import ArtifactService
+    from artifact_store import ArtifactValidationError
+    if channel_service is not None:
+        try:
+            artifact_authority = ArtifactService(store=artifacts, briefs=artifact_briefs,
+                agents=agents, seats=api_seat_manager, channels=channel_service, registry=registry)
+        except ArtifactValidationError:
+            # Preserve other healthy owners while artifact wiring stays closed.
+            log.error('Artifact ownership binding is unavailable; artifact work is held.')
+    agents.bind_artifact_policy(lambda: artifact_authority)
+    agents.queue.bind_artifact_policy(lambda: artifact_authority)
+
     # This runs before HTTP/MCP publication or background claim/monitor loops.
     # Cold run eligibility is persisted before surviving workers can reconnect.
     api_seat_manager.reconcile_runtime()
     session_engine.resume_active_sessions(boot_id=api_seat_manager.boot_id)
+    artifact_recovery = (artifact_authority.recover_startup() if artifact_authority is not None else
+        {'held': [{'request_id': None, 'dispatch_id': None, 'reason': 'storage_unavailable'}]})
+    api_seat_manager.start_monitor()
 
     # Bridge: when ANY message is added to store (including via MCP),
     # broadcast to all WebSocket clients

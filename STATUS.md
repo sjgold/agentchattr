@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 07:54 UTC (#20 actual wrapper entries180 PASS; server bridge next)
+**Updated:** 2026-10-25 08:05 UTC (#20 wrapper bridge/factory209 PASS; full and independent review next)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured API/CLI entry checks pass; transport/MCP/factory wiring remains incomplete. Artifact production remains disabled.**
+**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured API/CLI entries and transport/MCP/factory pass focused component checks; full and independent wrapper review remain pending. Artifact production remains disabled.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
 | Latest checks | Authority7ba8ade full1467 tests242.152s OK, four skips (implementation owner); independent234 focused29.952s plus probes PASS |
-| Next | Codex completes agent transport/MCP/factory binding and tests, then requests independent wrapper-package review. Actual entries and Event races now pass component checks. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
+| Next | Codex freezes the wrapper candidate for full discovery and Sonnet independent review. After clearance, lifecycle/public creation/K6, reader/backup and acceptance remain. Production capability stays empty. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
 
 ## Current handoff
+
+- Latest wrapper candidate:209 focused PASS30.089s, including unchanged151 baseline, real in-process HTTP/MCP/factory boundaries and existing proxy tests. Actual source entries/races were green180/22.998s in prior12b7268. Two HTTPError resource warnings reproduce in unchanged proxy tests (isolated5 PASS4.742s); artifact helper cleanup stays warning-free. Full discovery and independent wrapper review next; production capability remains disabled.
 
 - Actual wrapper entry checkpoint: combined180 PASS22.998s (implementation owner), including unchanged151 baseline, frozen worker helper12, actual nested API handler/same-call model observation, managed CLI watcher, optional held status, Event cancellation races and legacy prompt goldens. Independent manifest compatibility clearance110 PASS14.706s at8d8894f. Server artifact routes/MCP/factory remain unbound; production capability empty.
 
