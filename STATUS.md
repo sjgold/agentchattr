@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 08:18 UTC (#20 wrapper review corrections222 PASS; corrected full/recheck next)
+**Updated:** 2026-10-25 08:28 UTC (#20 wrapper cleared/full1516 PASS; lifecycle-backup contract review next)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured API/CLI entries and transport/MCP/factory pass focused component checks; full and independent wrapper review remain pending. Artifact production remains disabled.**
+**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured API/CLI entries and transport/MCP/factory are independently component-cleared, and corrected full discovery passes. Artifact production remains disabled.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -16,11 +16,13 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Store, disabled capability gate and authority/admission COMPONENT independently cleared; no public integration/whole-ticket acceptance |
-| Latest checks | Wrapper correction222 focused PASS32.696s; prior692e50d full1512 failed2 route-enumeration errors/four skips. Source registration corrected with original fixtures unchanged; fresh full pending |
-| Next | Codex runs a fresh full discovery and Sonnet rechecks wrapper F1-F4 plus ordinary route registration. After clearance, lifecycle/public creation/K6, reader/backup and acceptance remain. Production capability stays empty. Helper12 is frozen. Public creation timing, lifecycle, reader and backup remain later work |
+| Ticket20 | Store, disabled capability, authority/admission and wrappers independently COMPONENT-cleared; no whole-ticket acceptance or activation |
+| Latest checks | Corrected c5ae029 full1516 PASS259.504s/four skips (implementation owner); reviewer341 PASS161.176s. Earlier692e50d full remains a recorded non-pass |
+| Next | Sonnet reviews DOCS-ONLY [lifecycle/backup contract](TICKET-20-LIFECYCLE-BACKUP.md), then exact payload freeze before tests/code. Codex owns implementation after clearance. Production capability stays empty; operator creation/K6, reader, acceptance and activation remain later |
 
 ## Current handoff
+
+- Wrapper c5ae029 independently COMPONENT-cleared (reviewer341/161.176s) and corrected full1516/259.504s PASS/four skips (implementation owner, tracked1599dba8). No source changes during the run. Next contract is [lifecycle/backup](TICKET-20-LIFECYCLE-BACKUP.md), docs-only, with imported unversioned attempts/authority stripping and archive format proposals explicitly awaiting review. No next-package tests or code yet.
 
 - Wrapper correction:222 focused PASS32.696s. New root4 observed9 assertion failures before F1-F4 fixes; correction plus original route fixtures6 PASS1.171s. Prior full1512/255.489s had two lazy-router enumeration errors; final source uses ordinary app route registration and both existing tests remain unchanged. Reviewer candidate132+196 suites passed but correction recheck/full remain pending. Production capability empty.
 
