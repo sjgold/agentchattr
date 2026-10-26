@@ -1,5 +1,6 @@
 """Serialize durable run eligibility with queue mutations, without store nesting."""
 import math
+import logging
 import re
 from contextlib import contextmanager, nullcontext
 
@@ -51,6 +52,9 @@ def allowed_review_dispatch_ids(runs, identity_id):
     return {min(ordered)[2]} if ordered else None
 
 
+log = logging.getLogger(__name__)
+
+
 class CoordinatedQueue:
     def __init__(self, queue, sessions, lock):
         self._queue, self._sessions, self._lock = queue, sessions, lock
@@ -58,6 +62,7 @@ class CoordinatedQueue:
         self._artifact_policy = None
         self._artifact_stop_reports = {}
         self._artifact_repair_cursor = 0
+        self._artifact_repair_warning = None
 
     def bind_artifact_policy(self, getter):
         if not callable(getter):
@@ -154,7 +159,8 @@ class CoordinatedQueue:
             artifact_eligible = set()
             if self._artifact_policy is not None:
                 try:
-                    artifact_eligible = self._artifact_policy().eligible_dispatch_ids(instance)
+                    artifact_eligible = self._artifact_policy().eligible_dispatch_ids(instance,
+                        stopped_source_runs={run['run_id'] for run in runs if run.get('stop_id')})
                     if (not isinstance(artifact_eligible, set) or any(
                             not isinstance(value, str) or not re.fullmatch('[0-9a-f]{32}', value)
                             for value in artifact_eligible)):
@@ -172,8 +178,12 @@ class CoordinatedQueue:
                                      artifact_eligible=artifact_eligible)
 
     def repair_artifact_stops(self):
-        with self._channel_boundary():
-            self._repair_retained_artifact_stops()
+        from channel_lifecycle import ChannelUnavailable
+        try:
+            with self._channel_boundary():
+                self._repair_retained_artifact_stops()
+        except ChannelUnavailable:
+            pass  # Optional startup repair stays idle under the global channel hold.
 
     def _repair_retained_artifact_stops(self):
         # One bounded retained-record pass, independent of historical run count.
@@ -182,7 +192,7 @@ class CoordinatedQueue:
             return
         ids = [row['envelope']['artifact_request_id'] for row in self._queue.records()
                if row['envelope'].get('purpose') == 'artifact-v1'
-               and row['state'] in ACTIVE
+               and row['state'] in ACTIVE | {'queued'}
                and not (row.get('cancellation_id') or row.get('stop_id'))]
         if ids:
             start = self._artifact_repair_cursor % len(ids)
@@ -193,13 +203,18 @@ class CoordinatedQueue:
             return
         try:
             policy = self._artifact_policy()
+            if policy is None:
+                return
             for effect in policy.fence_retained_source_requests(ids):
-                report = self._artifact_stop_reports.setdefault(effect['run_id'], {'dispatch_ids': [], 'warning': None})
+                report = self._artifact_stop_reports.get(effect['run_id'], {'dispatch_ids': [], 'warning': None})
+                self._remember_artifact_stop(effect['run_id'], report)
                 if effect['dispatch_id'] not in report['dispatch_ids']:
                     report['dispatch_ids'].append(effect['dispatch_id'])
             policy.repair_cancel_fences(ids)
-        except (ArtifactUnavailable, OSError):
-            pass  # A held artifact owner never blocks ordinary review transport.
+            self._artifact_repair_warning = None
+        except Exception as error:
+            self._artifact_repair_warning = self._artifact_failure_warning(error)
+            log.warning('Artifact retained Stop repair held (%s)', type(error).__name__)
 
     def cancel_run(self, run_id, stop_id, *, fence_artifacts=False):
         from artifact_store import ArtifactUnavailable
@@ -209,28 +224,45 @@ class CoordinatedQueue:
                 return records
             try:
                 policy = self._artifact_policy()
+                if policy is None:
+                    return records
                 affected = policy.fence_source_requests(run_id)
-                self._artifact_stop_reports[run_id] = {
-                    'dispatch_ids': list(affected['dispatch_ids']), 'warning': None}
+                self._remember_artifact_stop(run_id, {
+                    'dispatch_ids': list(affected['dispatch_ids']), 'warning': None})
                 ids = affected['request_ids']
                 for start in range(0, len(ids), 100):
                     policy.repair_cancel_fences(ids[start:start+100])
-            except (ArtifactUnavailable, OSError):
+            except Exception as error:
                 previous = self._artifact_stop_reports.get(run_id, {'dispatch_ids': []})
-                self._artifact_stop_reports[run_id] = dict(previous, warning='storage_unavailable')
+                self._remember_artifact_stop(run_id, dict(previous, warning=self._artifact_failure_warning(error)))
+                log.warning('Artifact source Stop fencing held (%s)', type(error).__name__)
             # Artifact transport has its own status, never review stop receipts.
             return records
+
+    @staticmethod
+    def _artifact_failure_warning(error):
+        from artifact_store import ArtifactUnavailable
+        return 'storage_unavailable' if isinstance(error, (ArtifactUnavailable, OSError)) else 'artifact_fence_failed'
+
+    def _remember_artifact_stop(self, run_id, report):
+        # Observation cache only; persisted requests/transport remain authoritative.
+        self._artifact_stop_reports.pop(run_id, None)
+        self._artifact_stop_reports[run_id] = report
+        while len(self._artifact_stop_reports) > 128:
+            self._artifact_stop_reports.pop(next(iter(self._artifact_stop_reports)))
 
     def artifact_stop_status(self, run_id):
         with self._lock:
             report = self._artifact_stop_reports.get(run_id, {'dispatch_ids': [], 'warning': None})
             wanted = set(report['dispatch_ids'])
+            if not wanted:
+                return {'warning': report['warning'] or self._artifact_repair_warning, 'unconfirmed_dispatch_ids': []}
             terminal = {'cancelled', 'released', 'failed', 'settled_recovered'}
             rows = {row['envelope']['dispatch_id']: row for row in self._queue.records()
                     if row['envelope']['dispatch_id'] in wanted}
             unconfirmed = sorted(identifier for identifier in wanted
                                  if identifier not in rows or rows[identifier]['state'] not in terminal)
-            return {'warning': report['warning'] or ('transport_unconfirmed' if unconfirmed else None),
+            return {'warning': report['warning'] or self._artifact_repair_warning or ('transport_unconfirmed' if unconfirmed else None),
                     'unconfirmed_dispatch_ids': unconfirmed}
 
     def __getattr__(self, name):

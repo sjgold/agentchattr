@@ -132,6 +132,99 @@ class ArtifactSourceStopWiringTests(unittest.TestCase):
         self.assertEqual(status['termination_offers'],[])
         self.assertIn(audit['dispatch_id'],status['artifact_cancellation']['unconfirmed_dispatch_ids'])
 
+    def test_optional_retained_repair_respects_held_channel_startup(self):
+        from channel_lifecycle import ChannelUnavailable
+        case,audit,instance,consumer,record,box,session=self.fixture()
+        with patch.object(case.trigger.queue,'_channel_policy',side_effect=ChannelUnavailable('held channel')):
+            case.trigger.queue.repair_artifact_stops()
+            with self.assertRaises(ChannelUnavailable):case.trigger.queue.claim(instance,'owner')
+
+    def test_no_artifact_stop_report_does_not_read_transport(self):
+        case,audit,instance,consumer,record,box,session=self.fixture()
+        with patch.object(case.trigger.queue._queue,'records',side_effect=AssertionError('no transport read')):
+            status=case.trigger.queue.artifact_stop_status(session['run_id'])
+        self.assertEqual(status,{'warning':None,'unconfirmed_dispatch_ids':[]})
+
+    def test_bound_none_artifact_policy_is_no_effect_on_stop_and_claim(self):
+        case,audit,instance,consumer,record,box,session=self.fixture()
+        case.trigger.queue.bind_artifact_policy(lambda:None)
+        result=case.engine.stop_session(session['id'])
+        self.assertTrue(result['stop_id']);self.assertIsNone(result['artifact_cancellation']['warning'])
+        case.trigger.queue._reconcile()
+        self.assertIsNone(case.engine.stop_status(session['id'])['artifact_cancellation']['warning'])
+        from dispatch_queue import QueueBusy
+        with self.assertRaises(QueueBusy):case.trigger.queue.claim(instance,'different-consumer')
+        other,_,_=case.launch_binding('api')
+        self.assertIsNone(case.trigger.queue.claim(other,'ordinary-consumer'))
+
+    def test_all_artifact_policy_errors_are_contained_after_durable_stop(self):
+        for error in (artifact_store.ArtifactConflict('conflict'),artifact_store.ArtifactValidationError('invalid'),
+                      KeyError('session_id'),RuntimeError('owner read failure')):
+            with self.subTest(error=type(error).__name__):
+                case,audit,instance,consumer,record,box,session=self.fixture()
+                with patch.object(case.authority,'fence_source_requests',side_effect=error):
+                    try:result=case.engine.stop_session(session['id'])
+                    except Exception as escaped:self.fail('Artifact fault escaped durable Stop: '+type(escaped).__name__)
+                self.assertEqual(result['artifact_cancellation']['warning'],'artifact_fence_failed')
+                with patch.object(case.authority,'fence_retained_source_requests',side_effect=error):
+                    try:
+                        case.trigger.queue._reconcile();case.engine.stop_status(session['id'])
+                    except Exception as escaped:self.fail('Artifact fault escaped retained repair: '+type(escaped).__name__)
+                self.assertTrue(case.sessions.get(session['id'])['stop_id'])
+
+    def test_queued_stopped_source_never_claims_even_when_repair_fails(self):
+        from tests.test_artifact_operator_core import ArtifactOperatorCoreTests,accepted_source
+        from artifact_operator import ArtifactOperator
+        owner=ArtifactOperatorCoreTests();self.addCleanup(owner.doCleanups);case=owner.context()
+        session,_,_=accepted_source(case,state='active')
+        intent={'request_id':uuid.uuid4().hex,'channel':'review','session_id':session['id'],
+            'run_id':session['run_id'],'instruction':'report'}
+        ArtifactOperator(authority=case.authority,sessions=case.sessions,messages=case.messages).create(intent)
+        with patch.object(case.authority,'fence_source_requests',side_effect=artifact_store.ArtifactUnavailable('held')):
+            case.engine.stop_session(session['id'])
+        with patch.object(case.authority,'fence_retained_source_requests',side_effect=RuntimeError('repair failed')):
+            self.assertIsNone(case.trigger.queue.claim(case.instance,'late-worker'))
+        self.assertEqual(case.artifacts.get_request(intent['request_id'])['state'],'queued')
+        self.assertIsNone(case.trigger.queue.claim(case.instance,'late-worker'))
+        self.assertEqual(case.artifacts.get_request(intent['request_id'])['reason'],'source_stopped')
+
+    def test_prepared_without_transport_is_ineligible_after_source_stop(self):
+        from tests.test_artifact_operator_core import ArtifactOperatorCoreTests,accepted_source
+        from artifact_operator import ArtifactOperator,ArtifactOperatorError
+        owner=ArtifactOperatorCoreTests();self.addCleanup(owner.doCleanups);case=owner.context()
+        session,_,_=accepted_source(case,state='active')
+        intent={'request_id':uuid.uuid4().hex,'channel':'review','session_id':session['id'],
+            'run_id':session['run_id'],'instruction':'report'}
+        def reserved(audit,packet,identifier):
+            case.artifacts.reserve_request(audit,identifier);raise OSError('crash before enqueue')
+        operator=ArtifactOperator(authority=case.authority,sessions=case.sessions,messages=case.messages)
+        with patch.object(case.authority,'prepare_request',reserved),self.assertRaises(ArtifactOperatorError):operator.create(intent)
+        with patch.object(case.authority,'fence_source_requests',side_effect=artifact_store.ArtifactUnavailable('held')):
+            case.engine.stop_session(session['id'])
+        self.assertEqual(case.artifacts.get_request(intent['request_id'])['state'],'prepared')
+        self.assertEqual(case.authority.eligible_dispatch_ids(case.instance),set())
+        self.assertIsNone(case.trigger.queue.claim(case.instance,'late-worker'))
+
+    def test_restart_retained_repair_uses_real_source_fences_and_shrinking_candidates(self):
+        from queue_coordinator import CoordinatedQueue
+        case,audit,instance,consumer,record,box,session=self.fixture()
+        with patch.object(case.authority,'fence_source_requests',side_effect=artifact_store.ArtifactUnavailable('transient owner hold')):
+            case.engine.stop_session(session['id'])
+        restored=CoordinatedQueue(case.trigger.queue._queue,case.sessions,case.engine._lock)
+        restored.bind_channel_policy(lambda:case.service);restored.bind_artifact_policy(lambda:case.authority)
+        self.assertEqual(restored._artifact_repair_cursor,0)
+        with patch.object(case.artifacts,'channel_names',side_effect=AssertionError('retained repair must not scan index channels')):
+            restored.repair_artifact_stops();restored.repair_artifact_stops()
+        self.assertEqual(case.artifacts.get_request(audit['request_id'])['reason'],'source_stopped')
+        transport=case.trigger.queue.owned(instance,audit['dispatch_id'])
+        self.assertEqual(transport['state'],'cancelling');self.assertTrue(transport['cancellation_id'])
+        self.assertIn(audit['dispatch_id'],restored.artifact_stop_status(session['run_id'])['unconfirmed_dispatch_ids'])
+        with patch.object(case.authority,'fence_retained_source_requests',side_effect=RuntimeError('unrelated artifact failure')):
+            status=case.engine.stop_status(session['id'])
+        self.assertEqual(status['state'],'stopped')
+        from turn_events import EventConflict
+        with self.assertRaises(EventConflict):case.engine.terminate_seat(session['id'],audit['dispatch_id'],'not-a-review-launch',case.manager)
+
     def test_run_without_artifact_policy_keeps_ordinary_stop(self):
         from tests import test_channel_import as fixture
         from pathlib import Path

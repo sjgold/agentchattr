@@ -296,6 +296,21 @@ class ArtifactOperatorCoreTests(unittest.TestCase):
                 with self.assertRaises(module.ArtifactOperatorError) as caught:operator.create(intent)
             self.assertEqual((caught.exception.code,caught.exception.cause),('no_author_available','producer_unavailable'))
 
+    def test_identical_orphan_retry_succeeds_and_prepare_capability_off_is_typed(self):
+        case=self.context();session,_,_=accepted_source(case)
+        module=importlib.import_module('artifact_operator');operator=module.ArtifactOperator(authority=case.authority,sessions=case.sessions,messages=case.messages)
+        intent={'request_id':uuid.uuid4().hex,'channel':'review','session_id':session['id'],
+            'run_id':session['run_id'],'instruction':'report'}
+        original=case.authority.prepare_request
+        def capability_off(*args,**kwargs):
+            with patch('runtime_protocol.SUPPORTED_CAPABILITIES',()):return original(*args,**kwargs)
+        with patch.object(case.authority,'prepare_request',capability_off),self.assertRaises(module.ArtifactOperatorError) as caught:
+            operator.create(intent)
+        self.assertEqual((caught.exception.code,caught.exception.cause),('no_author_available','capability_off'))
+        self.assertEqual(caught.exception.durability,'not_recorded')
+        result=operator.create(intent)
+        self.assertTrue(result.created);self.assertEqual(result['request']['request_id'],intent['request_id'])
+
     def test_imported_matching_intent_replays_without_live_source_or_capability(self):
         from artifact_archive import portable_lineage
         case=self.context();session,_,_=accepted_source(case)

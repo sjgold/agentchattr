@@ -79,13 +79,13 @@ class SessionStopTests(unittest.TestCase):
     def test_fence_is_persisted_before_queue_cleanup(self):
         original_cancel = self.queue.cancel_run
         observed = []
-        def checked_cancel(run_id, stop_id):
+        def checked_cancel(run_id, stop_id, *, fence_artifacts=False):
             durable = SessionStore(str(self.path)).get(self.session_id)
             observed.append(durable)
             self.assertFalse(durable['dispatch_eligible'])
             self.assertEqual(durable['stop_id'], stop_id)
             self.assertEqual(durable['run_id'], run_id)
-            return original_cancel(run_id, stop_id)
+            return original_cancel(run_id, stop_id, fence_artifacts=fence_artifacts)
         with patch.object(self.queue, 'cancel_run', side_effect=checked_cancel):
             self.engine.stop_session(self.session_id)
         self.assertTrue(observed)

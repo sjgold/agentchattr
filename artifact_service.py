@@ -27,6 +27,10 @@ class _ArtifactProducerUnavailable(ArtifactConflict):
     """Internal classification, with the same public conflict/error family."""
 
 
+class _ArtifactCapabilityUnavailable(ArtifactConflict):
+    code = 'artifact_capability_off'
+
+
 class ArtifactInputError(ArtifactValidationError):
     def __init__(self, diagnostic_id, *, received_truncated=False):
         super().__init__('Invalid Markdown. Correct the argument and submit again within the byte limit.')
@@ -373,7 +377,7 @@ class ArtifactService:
     @staticmethod
     def _enabled():
         if 'artifact-v1' not in runtime_protocol.SUPPORTED_CAPABILITIES:
-            raise ArtifactConflict('Artifact authoring is not enabled for this wrapper implementation.')
+            raise _ArtifactCapabilityUnavailable('Artifact authoring is not enabled for this wrapper implementation.')
 
     def _instance(self, identity):
         return active_artifact_instance(self.registry, identity)
@@ -513,16 +517,22 @@ class ArtifactService:
             raise ArtifactUnavailable('Artifact private brief differs from its request.')
         self.store.get_packet(row['audit']['scope']['packet_id'])
 
-    def eligible_dispatch_ids(self, instance):
+    def eligible_dispatch_ids(self, instance, *, stopped_source_runs=None):
         result = set()
         bindings = {}  # Per-call observations only; no eligibility survives this call.
         if not isinstance(instance, dict):
             return result
         try:
             self._enabled()
+            if stopped_source_runs is None:
+                stopped_source_runs = {run['run_id'] for run in self.channels.engine._store.list_all() if run.get('stop_id')}
             for channel in self.store.channel_names():
                 for pending in self.store.pending(channel):
                     row = self.store.get_request(pending['request_id'])
+                    source = row['audit']['source_run'] or {}
+                    if (source.get('run_id') in stopped_source_runs
+                            and source.get('state_at_request') not in ('complete', 'stopping', 'stopped', 'unresolved')):
+                        continue
                     if row['audit']['producer']['identity_id'] != instance.get('identity_id'):
                         continue
                     try:

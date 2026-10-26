@@ -84,6 +84,11 @@ class ArtifactOperatorRouteTests(unittest.TestCase):
             'path':self.read,'query_string':b'','headers':[(b'host',b'127.0.0.1:18300')],
             'scheme':'http','server':('127.0.0.1',18300)}),no_endpoint,token='OPERATOR_ONLY',port=18300))
         self.assertEqual(response.status_code,403);self.assertEqual(response.body,b'')
+        from fastapi.responses import JSONResponse
+        async def success(request):return JSONResponse({'visible':'GET body'})
+        scope.update(method='HEAD',path=self.read,headers=[(b'host',b'127.0.0.1:18300'),(b'x-session-token',b'OPERATOR_ONLY')])
+        response=asyncio.run(artifact_routes.operator_prefix(Request(scope),success,token='OPERATOR_ONLY',port=18300))
+        self.assertEqual(response.status_code,200);self.assertEqual(response.body,b'')
 
     def test_duplicate_session_query_fields_refuse_before_listing(self):
         case,client=self.real_routes()

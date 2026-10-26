@@ -74,12 +74,12 @@ class ArtifactCoordinationTests(unittest.TestCase):
                 original_validate = case.authority.validate_enqueue
                 def observe():
                     observations.append((case.engine._lock._is_owned(), getattr(local, 'depth', 0)))
-                def eligible(instance):
+                def eligible(instance, **kwargs):
                     observe()
                     rendezvous.wait(5)
                     if not release.wait(5):
                         raise AssertionError('Test did not release claim hook')
-                    return original_eligible(instance)
+                    return original_eligible(instance, **kwargs)
                 def validate(instance, envelope):
                     observe()
                     return original_validate(instance, envelope)

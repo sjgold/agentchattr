@@ -220,6 +220,11 @@ class ArtifactOperator:
         if getattr(error, 'code', None) == 'artifact_boundary_held':
             return ArtifactOperatorError('boundary_held', request_id=request_id,
                                          durability='unknown' if request_id is not None else None)
+        elif getattr(error, 'code', None) == 'artifact_capability_off':
+            refusal = ArtifactOperatorError('no_author_available', cause='capability_off')
+            if request_id is not None:
+                self._describe_effects(refusal, request_id)
+            return refusal
         elif isinstance(error, (_ArtifactProducerUnavailable, ArtifactAccessError)):
             code = 'no_author_available'
         elif isinstance(error, storage.ArtifactUnavailable) or isinstance(error, OSError):
