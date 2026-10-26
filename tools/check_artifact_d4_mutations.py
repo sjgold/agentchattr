@@ -33,6 +33,8 @@ def rewritten(cls,name,old,new):
 def main():
     S=service.ArtifactService
     checks=[
+        ('startup cancel-winner storage containment',S,'recover_startup',"                except (OSError, ValueError, RuntimeError):\n                    held(request, dispatch, 'storage_unavailable')", "                except KeyError:\n                    held(request, dispatch, 'storage_unavailable')",'test_startup_cancel_winner_storage_fault_is_held_per_item'),
+        ('startup fresh warning mapping',S,'recover_startup',"mode = current['state'] if current is not None else None", "mode = snapshot['state'] if snapshot is not None else None",'test_startup_storage_mapping_reads_fresh_state_and_falls_back_on_read_failure'),
         ('receipt intent identity',S,'_settle_diagnostic_intent','receipt.intent is not intent','False','test_foreign_receipt_and_second_settlement_are_refused_without_effect'),
         ('receipt token',S,'_settle_diagnostic_intent','receipt.token is not invocation_key','False','test_foreign_receipt_and_second_settlement_are_refused_without_effect'),
         ('authority audit comparison',S,'_verify_diagnostic_guard','guard.audit_bytes):',"_frozen(row['audit'])):",'test_corrupt_guard_proof_pairs_cannot_become_terminal_winner_results'),

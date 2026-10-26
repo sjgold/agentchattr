@@ -1196,17 +1196,25 @@ class ArtifactService:
                 held(request, dispatch, 'producer_unavailable')
             except ArtifactConflict as error:
                 if isinstance(error, _DiagnosticAuthorityChanged) and error.cancel_winner:
-                    with self.channels._boundary():
-                        current = self.store.get_request_by_dispatch(dispatch)
-                        if current is not None and current['state'] == 'cancelled':
-                            self._startup_cancel_repair(current, result)
-                        else:
-                            held(request, dispatch, 'operator_recovery_required')
+                    try:
+                        with self.channels._boundary():
+                            current = self.store.get_request_by_dispatch(dispatch)
+                            if current is not None and current['state'] == 'cancelled':
+                                self._startup_cancel_repair(current, result)
+                            else:
+                                held(request, dispatch, 'operator_recovery_required')
+                    except (OSError, ValueError, RuntimeError):
+                        held(request, dispatch, 'storage_unavailable')
                 else:
                     held(request, dispatch, 'operator_recovery_required')
             except (OSError, ValueError, RuntimeError):
-                # The ACK-repair branch historically uses its narrower inner map.
-                mode = snapshot['state'] if snapshot is not None else None
+                # Warning projection uses fresh authority, not the inventory snapshot.
+                # A failed refresh itself remains a per-item storage warning.
+                try:
+                    current = self.store.get_request_by_dispatch(dispatch)
+                    mode = current['state'] if current is not None else None
+                except (OSError, ValueError, RuntimeError):
+                    mode = None
                 held(request, dispatch, 'operator_recovery_required' if mode == 'fulfilled' else 'storage_unavailable')
         for dispatch in list(tasks)[limit:]:
             snapshot = tasks[dispatch]

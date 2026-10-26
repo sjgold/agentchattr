@@ -271,6 +271,61 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
         self.assertNotIn(audit['request_id'],outcome[1]['enqueue_repaired'])
         self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'cancelled')
 
+    def test_startup_cancel_winner_storage_fault_is_held_per_item(self):
+        values,_=self.action('resume');case,audit,*_=values
+        extra=case.prepare(channel='peer')
+        visited=[];capture=case.authority._startup_capture
+        def observed(dispatch,*args):
+            visited.append(dispatch);return capture(dispatch,*args)
+        with patch.object(case.authority,'_startup_capture',observed),patch.object(
+                case.authority,'_startup_cancel_repair',side_effect=storage.ArtifactUnavailable('cancel repair storage fault')):
+            outcome,other=self.pause(case,case.authority.recover_startup,
+                lambda:case.authority.cancel_request(audit['request_id']))
+        self.assertEqual(other[0],'ok');self.assertEqual(outcome[0],'ok')
+        self.assertEqual(outcome[1]['scanned'],2)
+        self.assertIn(extra['dispatch_id'],visited)
+        self.assertIn({'request_id':audit['request_id'],'dispatch_id':audit['dispatch_id'],
+            'reason':'storage_unavailable'},outcome[1]['held'])
+
+    def test_startup_storage_mapping_reads_fresh_state_and_falls_back_on_read_failure(self):
+        for fresh_state in ('fulfilled','cancelled','unreadable'):
+            with self.subTest(fresh_state=fresh_state):
+                values,_=self.action('resume');case,audit,*_=values
+                lookup=case.artifacts.get_request_by_dispatch;failed=[];fresh_reads=[]
+                def broken_capture(*args):
+                    failed.append(True);raise storage.ArtifactUnavailable('item storage fault')
+                def current(dispatch):
+                    row=lookup(dispatch)
+                    if failed:
+                        fresh_reads.append(dispatch)
+                        if fresh_state=='unreadable':raise storage.ArtifactUnavailable('fresh read fault')
+                        row=deepcopy(row);row['state']=fresh_state
+                    return row
+                with patch.object(case.authority,'_startup_capture',broken_capture),patch.object(
+                        case.artifacts,'get_request_by_dispatch',current):result=case.authority.recover_startup()
+                self.assertEqual(result['scanned'],1);self.assertEqual(fresh_reads,[audit['dispatch_id']])
+                expected='operator_recovery_required' if fresh_state=='fulfilled' else 'storage_unavailable'
+                self.assertEqual(result['held'],[{'request_id':audit['request_id'],
+                    'dispatch_id':audit['dispatch_id'],'reason':expected}])
+
+    def test_legacy_marker_after_candidate_encoding_can_leave_only_an_orphan_body(self):
+        values,_=self.action('reject');case,audit,*_=values
+        owner=case.artifacts.diagnostic_store;encoded=owner._encoded
+        before=owner.path.read_bytes() if owner.path.exists() else None
+        authoring=case.artifacts.path.read_bytes();puts=[];put=owner._put_bytes
+        def mark(value):
+            result=encoded(value);case.artifacts._diagnostic_legacy_marker.set();return result
+        def landed(path,raw):
+            result=put(path,raw);puts.append((path,raw));return result
+        with patch.object(owner,'_encoded',mark),patch.object(owner,'_put_bytes',landed),self.assertRaises(storage.ArtifactDiagnosticsUnavailable):
+            owner.record(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],
+                reason='invalid_content',content='orphan seam',attached_request_id=audit['request_id'])
+        self.assertEqual(len(puts),1);self.assertEqual(puts[0][0].read_bytes(),b'orphan seam')
+        self.assertEqual(owner.path.read_bytes() if owner.path.exists() else None,before)
+        self.assertEqual(case.artifacts.path.read_bytes(),authoring)
+        self.assertEqual(owner._data['diagnostics'],{})
+        with self.assertRaises(storage.ArtifactDiagnosticsUnavailable):owner.request_diagnostics(audit['request_id'])
+
     def test_startup_terminal_diagnostic_allows_independent_peer(self):
         (case,*_),action=self.action('startup')
         peer=case.prepare(channel='peer')

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 builder regression green, frozen timing MISS; sentinel/coverage freeze cleared after H1-H6; DESIGN10 complete; final Smoke19+gate190 raw PASS; independent review pending)
+**Updated:** 2026-10-26 (D4 independently accepted in substance; Q1 startup error fix implemented, Q2-Q4 clarified; final regression green; Q follow-up independent review pending)
 
 ## At a glance
 
@@ -16,17 +16,17 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 final builder gate190 passed; independent acceptance review pending, prior misses retained. No whole-ticket acceptance or activation. |
-| Latest checks | Product4968 unchanged: builder1814/four skips OK,15 mutants killed. Final frozen f2a6e52 Smoke19+production190 all raw comparisons PASS, no attribution/repeats/errors;27 harness controls pass. Earlier real misses/instrument failures retained. |
-| Next | Independent reviewer reruns D4, mutation spot checks and production static audit at the final evidence pin. Read TICKET-20-D4-FINAL-GATE.md for all190 raw rows, smoke receipts, limits and EVERY prior attempt. D4/R2 acceptance still pending. R3/operator/capacity/activation/push held. |
+| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 final builder gate190 passed and independent review accepted it in substance; Q1-Q4 implemented/documented with final builder regressions green; final independent acceptance pending, prior misses retained. No whole-ticket acceptance or activation. |
+| Latest checks | Q1 startup error fix: focused161 and artifact437 pass;17 mutants killed. ONE post-Q full1817/four skips OK337.595s. Final frozen product4968/toolsf2 Smoke19+gate190 passed; earlier misses retained. |
+| Next | Independent reviewer: verify Q1-Q4 follow-up pin and issue final acceptance ruling. Read TICKET-20-D4-FINAL-FOLLOWUPS.md and TICKET-20-D4-FINAL-GATE.md. R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 
-- Active branch/worktree: codex/ticket-20-r2-on-a1 under C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr. Product frozen4968e47059e2c744d0611f4d96293afe705fa9d7; final toolsf2a6e52700eb48ea47cc70ce580d0fca923d8a14; all measured source/tool hashes retained. A1 independent unit stays closed; preserved original R2/main source remains untouched.
-- D4 immutable A/B/C implementation, sticky legacy Event, outside-boundary reads and per-item startup are implemented, not independently accepted. Builder full1814/four skips OK342.250s and15 assertion-based mutation kills;27 final harness controls passed. No product edits since4968.
-- LAST authorized attempt after smoke: all19 real smoke selections succeeded (timing not counted), then service110/facade-read-import60/summaries20 all raw comparisons passed with healthy sentinel, no counted retries/faults/missing samples/exclusion/repeat. Admit_saved A max0.1749244s with live spans/prepared130-request peer context; service peer max0.2028559s; import full hold/peer max0.2045121/0.2051848s, held0.1971833/0.1976493s. Complete final receipts and prior-attempt ledger: TICKET-20-D4-FINAL-GATE.md/shared d4-final-gate artifact.
-- Earlier real misses (.359/.286 R2, D1/D2 heavy/structural, D4 A1.166, later admit_saved.218/.271) and instrument-invalid31/facade3 setup failures remain explicitly recorded. Valid DESIGN studies did not establish their cause. Fixture helper bugs have controls and repaired lifecycle. No retrospective attribution or threshold/budget changes.
-- Next owner is independent reviewer: D4 module rerun, guard/receipt/ownership mutation spot checks and static production audit, then acceptance ruling. R2/D4 NOT accepted yet; no more full-gate attempt or source optimization on root initiative. R3 refs-out-of-index contract comes next only after that ruling; operator routes/reader UI/capacity/activation/whole-ticket acceptance/push remain held. SUPPORTED_CAPABILITIES remains empty.
+- Active worktree: codex/ticket-20-r2-on-a1. Reviewer independently reran phase44/artifact434, killed five driver mutants and statically audited production at40b269a3. D4 accepted in substance, final acceptance requires Q1-Q4 follow-ups.
+- Q1 now contains storage errors in the startup cancel-winner handler and uses a fresh request read for held-reason mapping. Two new methods observed four assertion failures before source; after source, these and the Q3 seam control pass. Focused161 tests OK44.170s;17 mutation checks killed by assertions after correcting one invalid mutation anchor. Artifact437 tests OK231.042s. ONE builder full discovery1817/four skips OK337.595s, sequential shell349bcdd5.
+- Q2 is a contract correction: reservation_resume has no private brief check. Q3 retains the documented body-orphan seam and adds a passing baseline control; no marker check or extra brief read changes measured paths. Q4 intentional private invariants/regression seams are listed in PHASES. Read TICKET-20-D4-FINAL-FOLLOWUPS.md.
+- Final frozenf2 gate190 passed with sentinel and no attribution/repeats. Prior misses, unknown causes and instrument-invalid attempts remain in TICKET-20-D4-FINAL-GATE.md. Timing evidence stays on product4968; Q1 changes only exceptional startup warning/repair failure handling. No new timing run initiated.
+- Next owner: independent reviewer for final Q1-Q4 acceptance on the committed follow-up pin. R3 docs comes after that ruling; operator routes/capacity/activation/push remain held. SUPPORTED_CAPABILITIES stays empty.
 
 ## Earlier correction-review pointers (historical)
 
