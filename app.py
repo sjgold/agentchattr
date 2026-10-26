@@ -263,6 +263,18 @@ for _route in _artifact_router(lambda: artifact_authority, _resolve_authenticate
 
 
 # --- Security middleware ---
+def _configured_artifact_operator():
+    if artifact_authority is None:
+        return None
+    from artifact_operator import ArtifactOperator
+    return ArtifactOperator(authority=artifact_authority, sessions=session_store, messages=store)
+
+
+from artifact_routes import create_router as _artifact_operator_router
+for _route in _artifact_operator_router(_configured_artifact_operator).routes:
+    app.add_api_route(_route.path, _route.endpoint, methods=_route.methods)
+
+
 # Paths that don't require the session token (public assets).
 _PUBLIC_PREFIXES = ("/", "/static/")
 
@@ -281,6 +293,10 @@ def _install_security_middleware(token: str, cfg: dict):
     class SecurityMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request: Request, call_next):
             path = request.url.path
+            if path == '/api/artifacts' or path.startswith('/api/artifacts/'):
+                from artifact_routes import operator_prefix
+                return await operator_prefix(request, call_next, token=token, port=port)
+
 
             if path == "/api/health":
                 if not request.client or request.client.host not in ("127.0.0.1", "::1", "localhost"):

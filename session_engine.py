@@ -17,6 +17,12 @@ _DISSENT_ROLES = {"reviewer", "red_team", "critic", "challenger", "against"}
 PROJECTION_REPAIR_STATES = frozenset({'complete', 'stopped', 'unresolved', 'interrupted'})
 
 
+def event_projection_text(session, event, metadata):
+    """Shared exact projector text, keyed by this message's output marker."""
+    from participant_skip import footer
+    return event['content'] + (footer(session) if metadata.get('session_output') is True else '')
+
+
 class SessionEngine:
     """Orchestrates session turn flow on top of existing chat infrastructure.
 
@@ -1206,7 +1212,7 @@ class SessionEngine:
                     from review_brief import missing_contributions
                     metadata['missing_contributions'] = missing_contributions(session)
             message = self._messages.add_once('session-event:' + event['event_id'], event['sender'],
-                event['content'] + (footer(session) if metadata.get('session_output') else ''),
+                event_projection_text(session, event, metadata),
                 msg_type='session_result' if event['kind'] == 'final' else 'session_question',
                 channel=session['channel'], metadata=metadata)
             self._store.link_event_projection(session_id, event['event_id'], message['id'])

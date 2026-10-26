@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (reduced20 backend red scope cleared; C1-C11 folded;27 ROOT reds observed; production held for review)
+**Updated:** 2026-10-26 (reduced20 backend production authorized/implemented;46 ROOT green; affected/full verification next; cleanup before delivery)
 
 ## At a glance
 
@@ -18,10 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Q1 startup error fix: focused161 and artifact437 pass;17 mutants killed. ONE post-Q full1817/four skips OK337.595s. Final frozen product4968/toolsf2 Smoke19+gate190 passed; earlier misses retained. |
-| Next | Reviewer executes/audits four ROOT backend red files and C1-C11 contract corrections.27 methods:16 FAIL/20 ERROR/one guard PASS. No production edits; UI/transcript/screen/activation/push held. |
+| Next | Freeze reduced backend, rerun targeted mutations then affected artifact suites and ONE full builder discovery; independent review before acceptance. UI/transcript/screen/activation/push held. Delivery file cleanup required. |
 
 ## Current handoff
 
+- Delivery requirement2026-10-26, Seth: "Before delivery please clean up the file stucture its kinda  a mess". Organize accumulated ticket/review docs and historical receipts under docs/ before delivery, preserve current guidance/history and verify links/imports/tests. Prepare the concrete move map after functional work stabilizes; no cleanup moves/deletions yet.
 - Scope authority, Seth's exact answer2026-10-26: "20-22 yes 23 separate 24-26 sperate multi file is more impiortant to me than automatic synthisis". Follow-up: "update status and docs please". Approved reduced20-22 first release;23 multi-file is the next separate priority,24-26 automatic review/quote/synthesis later. The preceding proposal explicitly deferred R3/preview/source/producer pickers/revision browser/advanced recovery UI and replaced strict0.270s worst-case acceptance with basic responsiveness. This supersedes the earlier R3-before-operator instruction. It does not relax safety or authorize deletion, provider spend, activation or push.
 - Authoritative scope: TICKET-20-22-REDUCED-RELEASE.md and dated amendment in specificationv1.7. Source/author defaults and numeric typical-case screen are reviewer-facing proposals, not choices falsely attributed to Seth. Reviewer cleared backend reds at2279329b, with C1-C11 corrections folded into this pin. Ordered agent binding identity only; POST-only required Origin, GET/HEAD absent-Origin compatibility; real Lock snapshot; capture/manager I/O outside boundary; new source-Stop wiring; typed errors/status/version DTO; completed sessions. Transcript admission/skip ordering later. Scope unchanged: reduced20-22,23next,24-26later. No reduced route/reader/transcript implementation in this docs update.
 - Accepted publishable backend branch/tip: codex/ticket-20-r2-on-a1 product220f340042056b80c09091807690af74f36dafec, unit from closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca. R2+D4 FINAL ACCEPTANCE: reviewer170 focused OK47.5s; builder focused161/artifact437/full1817 (4 skips) pass;17 assertion mutants killed; previous190 gate retained. Older codex/ticket-20-artifacts WIP67e9e05 is superseded and preserved. No publication performed.

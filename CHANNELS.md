@@ -67,7 +67,7 @@ Storage compaction (R3) is deferred. Source refs remain copied into request and 
 
 The final retained performance run passed190 comparisons with a stall sentinel. On that fixture, max-source service A phases were typically about0.16-0.18s and4MiB import measurements were about0.20-0.21s. Earlier runs include unexplained roughly1.1s stalls and failed measurements, all retained in [the attempt history](TICKET-20-D4-FINAL-GATE.md). These observations describe the tested machine and data; large histories can be slower.
 
-Diagnostic logs use a separate private file. Channel backups exclude diagnostic logs and retained diagnostic bodies. Deleting a channel retains those files. The strict worst-case latency promise is deferred for the reduced release; its smaller responsiveness check will be reviewed before implementation.
+Diagnostic logs use a separate private file. Diagnostic logs and retained diagnostic bodies are excluded from channel backups. Deleting a channel retains those diagnostic files. The strict worst-case latency promise is deferred for the reduced release; its smaller responsiveness check will be reviewed before implementation.
 
 ## Verification and limits
 

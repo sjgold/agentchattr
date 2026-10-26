@@ -82,7 +82,7 @@ class CoordinatedQueue:
         unpublished_holds = set()
         for run in self._sessions.list_all():
             if run.get('stop_id'):
-                self._queue.cancel_run(run['run_id'], run['stop_id'])
+                self.cancel_run(run['run_id'], run['stop_id'])
             for attempt in run.get('superseded_attempts', []):
                 if (attempt.get('reason') in ('participant_replacement', 'participant_skipped')
                         and (attempt.get('old_transport') or {}).get('resolved') is not True):
@@ -167,6 +167,30 @@ class CoordinatedQueue:
                                      blocked_identity_ids=unpublished_holds, allowed_dispatch_ids=allowed,
                                      blocked_channel_names=blocked_channels, active_channel_names=active_channels,
                                      artifact_eligible=artifact_eligible)
+
+    def cancel_run(self, run_id, stop_id):
+        with self._channel_boundary():
+            records = self._queue.cancel_run(run_id, stop_id)
+            policy = self._artifact_policy() if self._artifact_policy is not None else None
+            if policy is None:
+                return records
+            affected = policy.fence_source_requests(run_id)
+            ids = affected['request_ids']
+            for start in range(0, len(ids), 100):
+                result = policy.repair_cancel_fences(ids[start:start+100])
+                if result['unconfirmed']:
+                    retained = {row['envelope']['dispatch_id']: row for row in self._queue.records()}
+                    if any(identifier not in retained or retained[identifier]['state'] != 'cancelling'
+                            or not (retained[identifier].get('cancellation_id') or retained[identifier].get('stop_id'))
+                            for identifier in result['unconfirmed']):
+                        from artifact_store import ArtifactUnavailable
+                        raise ArtifactUnavailable('Artifact cancellation transport is unconfirmed.')
+            wanted = set(affected['dispatch_ids'])
+            combined = {row['envelope']['dispatch_id']: row for row in records}
+            for row in self._queue.records():
+                if row['envelope']['dispatch_id'] in wanted:
+                    combined[row['envelope']['dispatch_id']] = row
+            return list(combined.values())
 
     def __getattr__(self, name):
         attribute = getattr(self._queue, name)

@@ -26,6 +26,7 @@ from summaries import SummaryStore
 class ChannelImportTests(unittest.TestCase):
     def setUp(self):
         scratch = Path(__file__).resolve().parents[1] / '.audit-tmp'
+        scratch.mkdir(parents=True, exist_ok=True)
         temporary = tempfile.TemporaryDirectory(dir=scratch)
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)

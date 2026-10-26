@@ -40,6 +40,10 @@ def _operator_receipt(routing, uid):
     return {'version': 1, 'message_uid': uid, **deepcopy(routing)}
 
 
+class MessageSnapshotUnavailable(ValueError):
+    """A requested same-channel snapshot cannot be returned in full."""
+
+
 class MessageStore:
     def __init__(self, path: str):
         self._path = Path(path)
@@ -310,6 +314,19 @@ class MessageStore:
                 if m["id"] == msg_id:
                     return m
             return None
+
+    def snapshot_selected(self, channel, message_ids):
+        if (not isinstance(channel, str) or not isinstance(message_ids, list)
+                or any(type(value) is not int or value < 0 for value in message_ids)
+                or len(set(message_ids)) != len(message_ids)):
+            raise MessageSnapshotUnavailable('Invalid message snapshot selection.')
+        with self._lock:
+            wanted = set(message_ids)
+            rows = {row['id']: row for row in self._messages
+                    if row['id'] in wanted and row.get('channel', 'general') == channel}
+            if set(rows) != wanted:
+                raise MessageSnapshotUnavailable('Selected messages are unavailable.')
+            return deepcopy([rows[identifier] for identifier in message_ids])
 
     def get_snapshot(self, msg_id: int) -> dict | None:
         """Copy a complete message without exposing the stored mutable record."""

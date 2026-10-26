@@ -131,6 +131,14 @@ def _packet_service_entry(method):
     return invoke
 
 
+def active_artifact_instance(registry, identity):
+    values = [row for row in registry.get_all().values()
+              if row['identity_id'] == identity and row.get('state') == 'active']
+    if len(values) != 1:
+        raise ArtifactAccessError('Artifact producer identity is unavailable.')
+    return values[0]
+
+
 class ArtifactService:
     def _packet_invocation(self, step):
         with _packet_validation_invocation(self.store):
@@ -368,11 +376,7 @@ class ArtifactService:
             raise ArtifactConflict('Artifact authoring is not enabled for this wrapper implementation.')
 
     def _instance(self, identity):
-        values = [row for row in self.registry.get_all().values()
-                  if row['identity_id'] == identity and row.get('state') == 'active']
-        if len(values) != 1:
-            raise ArtifactAccessError('Artifact producer identity is unavailable.')
-        return values[0]
+        return active_artifact_instance(self.registry, identity)
 
     def _producer(self, audit, instance, *, _binding=None):
         self._enabled()
@@ -402,6 +406,23 @@ class ArtifactService:
         if producer['requested_model'] != model or producer['requested_model_reason'] != reason:
             raise ArtifactConflict('Requested model differs from the immutable producer launch.')
         return live
+
+    def request_producer(self, identity):
+        """Build the operator audit through the same binding checks as prepare."""
+        self._enabled()
+        live = self._instance(identity)
+        current = self.seats.artifact_producer(live)
+        provenance = self.seats.launch_provenance(live)
+        if current['available'] is not True or provenance is None:
+            raise _ArtifactProducerUnavailable('Artifact producer binding is unavailable or changed.')
+        model = provenance['effective']['seat'].get('model') or None
+        producer = {'name': live['name'], 'identity_id': identity, 'adapter': current['adapter'],
+            **{key: current[key] for key in ('launch_attempt', 'launch_nonce', 'fingerprint')},
+            'requested_model': model, 'requested_model_reason': None if model else
+                ('cli_model_unverified' if current['adapter'] == 'cli' else 'provider_default'),
+            'capabilities': ['artifact-v1']}
+        self._producer({'producer': producer}, live, _binding=(live, current, provenance))
+        return producer
 
     @staticmethod
     def _brief(audit):
@@ -813,6 +834,16 @@ class ArtifactService:
                 self._envelope(row, {'identity_id': row['audit']['producer']['identity_id']}, record['envelope'])
             return self._projection(row)
 
+    def request_status(self, request_id):
+        _hex(request_id)
+        with self.channels._boundary():
+            row = self.store.get_request(request_id)
+            if row is None:
+                return None
+            record = self._queue_record(row) if row['state'] in LIVE else None
+            return {'request': self._projection(row),
+                    'needs_resume': row['state'] in LIVE and record is None}
+
     def cancel_request(self, request_id):
         with self.channels._boundary():
             row = self.store.get_request(request_id)
@@ -843,12 +874,26 @@ class ArtifactService:
             for channel in self.store.channel_names():
                 for pending in self.store.pending(channel):
                     row = self.store.get_request(pending['request_id'])
-                    if (row['audit']['source_run'] or {}).get('run_id') != run_id:
-                        continue
+                    source = row['audit']['source_run'] or {}
+                    if (source.get('run_id') != run_id or source.get('state_at_request') in
+                            ('complete', 'stopping', 'stopped', 'unresolved')):
+                        continue  # An explicitly post-run document is independent of that run's Stop.
                     self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
                         {'state': 'cancelled', 'reason': 'source_stopped'})
                     requests.append(row['audit']['request_id'])
                     dispatches.append(row['audit']['dispatch_id'])
+        # A prior Stop may have durably cancelled the row but failed its fence.
+        # Retained transport records keep that exact source cancellation retryable.
+        with self.channels._boundary():
+            for record in self.agents.queue.records():
+                envelope = record['envelope']
+                if envelope.get('purpose') != 'artifact-v1':
+                    continue
+                row = self.store.get_request(envelope.get('artifact_request_id'))
+                if (row is not None and row['state'] == 'cancelled' and row['reason'] == 'source_stopped'
+                        and (row['audit']['source_run'] or {}).get('run_id') == run_id
+                        and row['audit']['request_id'] not in requests):
+                    requests.append(row['audit']['request_id']); dispatches.append(envelope['dispatch_id'])
         return {'request_ids': requests, 'dispatch_ids': dispatches}
 
     def repair_cancel_fences(self, request_ids=None, *, limit=100):
