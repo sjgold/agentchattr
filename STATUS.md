@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 A1 required expiry fix verified; reviewer final check pending)
+**Updated:** 2026-10-26 (#20 A1 CLOSED locally; R2 merge planning next)
 
 ## At a glance
 
@@ -17,10 +17,14 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
-| Latest checks | Reviewer f769:56 focused OK7.19s,artifact336OK205.5s,5 key mutants killed, own90 A samples<=0.216 (brief max0.1832). Required expiry correction:builder57 focused PASS7.354s,affected419PASS220.412s,24 mutants killed; reviewer final correction check pending. |
-| Next | Reviewer checks corrected expiry pina8862f3 (R1-isolated). Red1method/2FAIL0.047s ->57 focused PASS7.354s; affected419PASS220.412s/no skips;24 mutants killed. Prior f769 own reviewer runs passed; new fix still awaits own focused/mutation confirmation. No full/timing rerun requested. No push/activation/D4/R2/R3/operator/capacity work. |
+| Latest checks | Reviewer final ca47:57 focused OK7.07s; raw/packet-id/thread mutations killed; expiry flag/guards verified. Earlier reviewer artifact336/own timing passed; builder expiry419PASS220.412s. Builder full1714 remains separate prior-pin evidence. A1 closed at component scope only. |
+| Next | A1 CLOSED by reviewer atca47a8bf (producta8862f38), unit74f4697..ca47a8bf recorded locally, no remote push authorized. Root previews/plans R2-on-A1 merge preserving histories; R2/D4 remains unaccepted on original branch. Refresh D4 contract after reconciliation, then R3 contract before operator create. No activation or queued-package implementation yet. |
 
 ## Current handoff
+
+- A1 CLOSED and cleared for publication by reviewer atca47a8bfcc9cbcd95b8cba284489f85797c07ab3, producta8862f38e0618491e5eb987a75ccbaf30bbab712, base74f4697. Exact reviewed unit74f4697..ca47a8bf. Own reviewer final57PASS7.07s and raw/packet-id/thread mutations killed; expiry presence/checks verified, no new product beyond flag. Publication result: recorded/committed locally only; no explicit Seth push authorization, so no remote publication or activation. Main codex/ticket-20-artifacts source remains unaccepted R2 WIP at67e9e05 (later docs-only pointers). Next root merge preview/plan R2 ON TOP of A1, preserving both histories; report semantic conflicts before resolving. D4/R2 contract refresh follows, R3 still before operator; no queued work started.
+
+## Prior verification checkpoints (historical)
 
 - Required A1 expiry fix VERIFIED BY BUILDER, reviewer final check next: producta8862f3, only active flag/clear entries+issued/finally guards. Red normal+exceptional same-thread copied context1method/2FAIL0.047s; focused57PASS7.354s; affected419/58modules PASS220.412s/no skips, import max0.188553900s;24 mutants killed. Reviewer had independently cleared f769 with this required fix after own56/artifact336/key-mutants/design runs; final correction not yet independently confirmed. Original full1714/timing90 stay pinned8443/f769, not relabeled as correction runs. No repeated full/timing requested. All receipts appended in verification doc; source base R1 remains independent of R2 WIP. No optional edits, push or activation.
 

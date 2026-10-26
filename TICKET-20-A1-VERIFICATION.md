@@ -1,6 +1,6 @@
 # Ticket 20 A1: independent cleared-base verification
 
-Status: REVIEWER CLEARED f769e40 with one required expiry fix before publication. That flag/cleanup-only correction is implemented and builder-verified; reviewer final fix check pending. No publication or activation. Branch codex/ticket-20-a1-isolated is based on CLEARED R1 product74f4697efcc6e66f91f228983a3d6a630ec41fff, which was independently cleared atbd1f3922 with identical product bytes. The original codex/ticket-20-artifacts history stays at67e9e05 WIP checkpoint. R2 diagnostic-v2/D1 inventory/D2 shared atomic_json are EXCLUDED. No D4 phase split, R3, operator or capacity implementation.
+Status: A1 CLOSED by reviewer atca47a8bf (producta8862f38), with expiry fix independently confirmed. Reviewed unit74f4697..ca47a8bf recorded locally; no remote publication or activation authorized/performed. Branch codex/ticket-20-a1-isolated is based on CLEARED R1 product74f4697efcc6e66f91f228983a3d6a630ec41fff, which was independently cleared atbd1f3922 with identical product bytes. The original codex/ticket-20-artifacts history stays at67e9e05 WIP checkpoint. R2 diagnostic-v2/D1 inventory/D2 shared atomic_json are EXCLUDED. No D4 phase split, R3, operator or capacity implementation.
 
 Historical full/timing product/tool freeze:8443e1c02868dfbffd0c3074f11b3e70c9dfeccf, reviewed atf769e40. Its first follow-up added only two key/pair tests and receipts. The required expiry correction now changes artifact_store.py ONLY (active flag/cleanup/checks), producta8862f38e0618491e5eb987a75ccbaf30bbab712. The source hashes in the ORIGINAL measurement below belong to8443/f769, not the corrected store. Service/MCP/API-seat/tool bytes remain unchanged. No full or timing rerun was requested for this flag-only correction; new focused/affected/mutation evidence is appended. Do not interpret this as R2 or whole-Ticket20 acceptance.
 
@@ -4594,3 +4594,10 @@ Product change is limited to8 added/changed source lines in artifact_store.py. N
   }
 }
 ```
+
+
+## Final independent closure and publication result
+
+Reviewer CLOSED A1 atca47a8bfcc9cbcd95b8cba284489f85797c07ab3, producta8862f38e0618491e5eb987a75ccbaf30bbab712, base74f4697efcc6e66f91f228983a3d6a630ec41fff. Exact reviewed commit range:74f4697..ca47a8bf, on codex/ticket-20-a1-isolated. Reviewer executed57 focused tests OK7.07s from the isolated worktree and killed raw-equality, packet-id and thread-binding mutants; verified active flag/finally/guards. Its earlier static audit stands, no affected/full rerun claimed by reviewer. Prior own affected419 and full1714 remain separately attributed builder evidence.
+
+Publication result: local reviewed unit recorded, no git push or remote publication. Reviewer clearance is technical acceptance; the session has no explicit Seth authorization to push. Capability stays empty and nothing activates. Main codex/ticket-20-artifacts still carries unaccepted R2 WIP source at67e9e05; later commits there only point to this independent unit. Merge R2 on top of A1, never replace the reviewed A1 unit with R2; preserve history and review any semantic conflict. No R2/D4/R3/operator/reader/acceptance/activation work is implied by this closure.

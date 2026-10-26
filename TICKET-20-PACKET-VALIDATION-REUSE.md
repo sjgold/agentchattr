@@ -1,6 +1,6 @@
 # Ticket 20 A1: one packet validation per service invocation
 
-Status: Reviewer CLEARED A1 atf769e40 with required expired-context fix before publication. The fix is implemented/red-first/focused-green, affected/reviewer recheck pending. Independent implementation now ported to CLEARED R1 product74f4697, separate branch codex/ticket-20-a1-isolated; focused54 tests PASS7.225s. NOT yet independently accepted. R2 WIP/D1/D2 excluded from this base. M1-M9/B1-B6 test additions and broader/mutation/timing verification remain part of acceptance; no D4 source or activation. This is behavior-preserving invocation-local reuse, not R3 reference compaction, authoring capacity policy or a persistent cache.
+Status: A1 CLOSED by reviewer atca47a8bf (producta8862f38), exact unit74f4697..ca47a8bf. Closure recorded locally only; no push or activation authorized. R2/D4 remains separately unaccepted.
 
 ## Purpose and current evidence
 
