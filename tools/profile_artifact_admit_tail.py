@@ -115,7 +115,7 @@ def main():
     try:
         for arm in report['fixed_order']:
             for sample in range(1,args.samples+1):
-                ordinal+=1;case=None
+                ordinal+=1;case=None;row=None
                 try:
                     tracker=SetupFsyncObserver()
                     with patch.object(os,'fsync',tracker.sync):
@@ -143,7 +143,7 @@ def main():
                     receipt.append('samples',row)
                     print(json.dumps({'arm':arm,'sample':sample,'A_seconds':row['A_seconds'],'setup_fsync_max':tracker.maximum['seconds'],'first_after_heavy':new_heavy}),flush=True)
                 except Exception as error:
-                    receipt.append('samples',{'arm':arm,'sample':sample,'ordinal':ordinal,'error':type(error).__name__,'message':str(error)})
+                    receipt.append('samples',{**(row or {}),'arm':arm,'sample':sample,'ordinal':ordinal,'error':type(error).__name__,'message':str(error)})
                 finally:
                     if case is not None:authority.cleanup_probe(case,case.root,arm,lambda failure:receipt.append('samples',{**failure,'arm':arm,'sample':sample}))
     finally:receipt.close()

@@ -38,3 +38,12 @@ Run only after the remaining d43 facade/summary commands have exited; no overlap
   "tools/test_artifact_admit_tail_controls.py": "077ceab6356367109caa96b407ab86f3efc4a3be25e78408450286d02c310e6d"
 }
 ```
+
+Error rows also retain any already observed A/C/B data; setup errors retain their sample identity. Final tool hashes:
+
+```json
+{
+  "tools/profile_artifact_admit_tail.py": "9d814ddbcd414f64de261f901d9aa65f7d9e6cd0e37dc77fb02cf2bd78d1549b",
+  "tools/test_artifact_admit_tail_controls.py": "077ceab6356367109caa96b407ab86f3efc4a3be25e78408450286d02c310e6d"
+}
+```
