@@ -158,3 +158,8 @@ Store review clarifications: every fulfilled/imported request must name its own 
 
 
 Authority C1 enum amendment: response_too_large separates an omitted oversize body from an earlier retained empty-string diagnostic through the existing reason key. Only this fixed quarantine enum member is added; request state reasons, diagnostic UUID key, schemas, caps and row shapes stay unchanged. Nothing shipped, so no migration or rekeying is needed. Root regression observed the missing-enum refusal before the change, then distinct ids/no-body and unchanged real-limit overflow validation passed.
+
+
+## Proposed R2 document amendment, not implemented
+
+R2 replaces the request-row/debug and diagnostic paragraphs (82/103/105/113/116): authoring-v2 rows have audit/channel/state/reason/updated_at/version_id (+import_source only for imported); no stored quarantine_ids or computed overflow_count. Independent diagnostics.json owns attachments/summaries, separate request_diagnostics supplies debug reads. All8/256/1024 and body budgets remain. See [R2 diagnostic ownership](TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.

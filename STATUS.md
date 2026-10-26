@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 R1 cleared; R2 diagnostics contract proposed for review)
+**Updated:** 2026-10-25 (#20 R1 cleared; R2 F1-F10 docs and design timing proposed)
 
 ## At a glance
 
@@ -18,11 +18,13 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer evaluates proposed TICKET-20-DIAGNOSTICS.md before any R2 reds/code; root amends/finalizes its payload freeze from that review. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
+| Next | Reviewer evaluates amended R2 F1-F10 contract and design-only timing receipt before any R2 reds/code; root freezes exact payload only after clearance. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
 
 ## Current handoff
 
-- R2 DOCS proposal in TICKET-20-DIAGNOSTICS.md: independent1MiB diagnostics file/owner (same module), authoring indexv2 drops diagnostic containers/attachment refs, explicit request_diagnostics read, own corruption/lock/budget semantics. Proposal preserves8/256/1024,8MiBbody/1024objects and all state/enum/authority wires. Design projection of existing R1-valid worst metadata plus attached_request_id is810186B,238390B undercap; not a tested R2 validator. Two explicit review choices: remove internal request debug fields to separate read; hold nonempty dev-v1 unchanged with no auto conversion. No R2 tests/helper/source/data migration. Root sends docs pin for independent design review before exact payload freeze/reds; R3 separate. R1 remainsCLEARED, capability empty/no push.
+- R2 F1-F10 DOCS amendment: governing removal/legacy choices accepted; exact freeze still pending. Full production/service/docs/test movement enumerated, None diagnostic bypass, exact503 wire and held-v1 facade marker defined. Normal .270s gate vs fault20s process-lock waits plus unbounded IO/scheduling accepted by reviewer; existing body/index waits already inside service boundary. Design-only derived-attachment structural810186B/1024files/8MiB prototype ten read/write pairs realfsync: read max0.193662100s, write0.267954700s, peer0.268551000s, narrow PASS. NOT complete R2 validator/writer acceptance or reachable-history proof. Complete implementation must remeasure and return to review if .270s fails. Source/tests/helper unchanged; no R2 reds until payload cleared. R3/operator/capacity/activation/push held. Next owner reviewer F1-F10 docs, then root exact freeze/reds.
+
+- R2 DOCS proposal in TICKET-20-DIAGNOSTICS.md: independent1MiB diagnostics file/owner (same module), authoring indexv2 drops diagnostic containers/attachment refs, explicit request_diagnostics read, own corruption/lock/budget semantics. Proposal preserves8/256/1024,8MiBbody/1024objects and all state/enum/authority wires. Design projection of existing R1-valid worst metadata plus attached_request_id is810186B,238390B undercap; not a tested R2 validator. Both governing choices accepted: remove internal request debug fields to separate read; hold nonempty dev-v1 unchanged with no auto conversion. Exact payload remains proposed. No R2 tests/helper/source/data migration. Root sends docs pin for independent design review before exact payload freeze/reds; R3 separate. R1 remainsCLEARED, capability empty/no push.
 
 - R1 independently CLEARED at bd1f3922/product74f4697. Reviewer own18OK2.2s +artifact301OK193.5s, import max0.2057s. Static analyst9PASS; own mutants label280fail/integer26/indextext65, float-token cap lifted0fails EXPECTED (type consequence, defensive untestable positive24). Root seven kills included timestamp INTEGER cap, not float-token proof. Reviewer did not run full1681 or non-artifact affected876, retained builder evidence. No remaining R1 finding, no activation/publication. Root now drafts R2 diagnostics-owner DOCS contract before any tests/code; R3 follows separate contract. Existing helper files frozen. Original_reason future store question and HELD operator ids retained.
 
