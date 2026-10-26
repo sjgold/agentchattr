@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 first production timing gate MISSED; design review resumes. No whole-ticket acceptance or activation. |
 | Latest checks | Builder full1814 tests OK/four skips342.250s (221modules, includes434artifact tests); phase/recovery49 OK28.848s;15 D4 mutations killed by assertions with source unchanged;4 harness controls OK0.758s. |
-| Next | Reviewer DESIGN ruling after corrected d43b6e6 SMOKE19 passed and service110 completed with two admit_saved misses: A0.218279/0.271496s, peers0.216788/0.270375s. Sentinel healthy/max0.133917s, no qualifying overlap or repeat eligibility. All rows retained in TICKET-20-D4-SENTINEL-GATE.md. Later60+20 acceptance groups and all repeats held; product unchanged4968e47. No R3/operator/capacity/activation/push. |
+| Next | Reviewer amended this gate to complete independent remaining legs: facade/read/import60 retained57 successes+3 structural peer-setup TypeErrors; summaries20 pass. Product/tool hashes match exactd43; source unchanged. Next authorized DESIGN:30 fresh sentinel-only admit_saved samples then30 nested DESIGN10 samples, same fixtures/order, all retained, no product edit/limit change. See TICKET-20-D4-ADMIT-TAIL.md. R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 
