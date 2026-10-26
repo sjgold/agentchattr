@@ -156,6 +156,7 @@ class Profile:
 
 
 def main():
+    raise SystemExit('Archived R2 profile is incompatible with D2; use profile_artifact_authority_phases.py --design-attribution with the stall sentinel')
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=10)
     args = parser.parse_args()

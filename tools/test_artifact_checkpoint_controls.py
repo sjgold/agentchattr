@@ -33,7 +33,7 @@ class CheckpointControlTests(unittest.TestCase):
             if len(seen)==1: raise AssertionError('synthetic failure after A')
             return {'caller':kind,'A_seconds':123,'C_probe_seconds':456}
         with patch.object(a,'probe',probe), patch.object(sys,'argv',['authority','--samples','10']), contextlib.redirect_stdout(io.StringIO()):
-            a.main()
+            a.historical_design(10)
         ar = json.loads(next(iter(set(root.glob('r2-*-design-*.json'))-before)).read_text(encoding='utf-8'))
         self.assertEqual((len(ar['samples']),len(ar['phase_observations'])),(90,90))
         self.assertEqual(ar['samples'][0]['error']['type'],'AssertionError')
@@ -101,12 +101,19 @@ class CheckpointControlTests(unittest.TestCase):
         def require_active(channel):
             with service._boundary():return channel
         service.require_active=require_active;case.service=service
-        observed=[]
+        observed=[];peer_progress=threading.Event()
+        original_require=service.require_active
+        def progressed(channel):
+            value=original_require(channel);peer_progress.set();return value
+        service.require_active=progressed
         def writer(intent):
             observed.append(tuple(owner._lock._is_owned() for owner in (case.engine,case.catalog,case.artifacts)))
+            self.assertTrue(peer_progress.wait(1))  # Synthetic control rendezvous only.
             return b'{}'
-        case.authority=SimpleNamespace(_persist_diagnostic_intent=writer,_settle_diagnostic_intent=lambda *args:'settled')
+        case.authority=SimpleNamespace(_persist_diagnostic_intent=writer,_settle_diagnostic_intent=lambda *args:'settled',
+            agents=SimpleNamespace(queue=SimpleNamespace(_lock=case.engine._lock)))
         def action():
+            with case.authority.agents.queue._lock:pass  # Startup's cached engine-lock alias.
             with service._boundary():pass
             receipt=case.authority._persist_diagnostic_intent('synthetic')
             with service._boundary():return case.authority._settle_diagnostic_intent(receipt)
@@ -115,6 +122,7 @@ class CheckpointControlTests(unittest.TestCase):
         self.assertEqual([hold['phase'] for hold in row['holds']],['A','C'])
         self.assertEqual(len(row['B_seconds']),1);self.assertTrue(row['peer_waits'])
         self.assertEqual(row['peer_errors'],[])
+        self.assertTrue(any(item['measured_thread'] and item['incidental_to_boundary'] for item in row['engine_holds']))
         def healthy():
             with service._boundary():return 'healthy'
         row,value=a.production_observe(case,healthy,healthy=True)
@@ -123,6 +131,152 @@ class CheckpointControlTests(unittest.TestCase):
         row,value=a.production_observe(case,lambda:'read',persist=False)
         self.assertEqual(value,'read');self.assertEqual(row['holds'],[])
         self.assertEqual(row['B_authority_owned'],[[False,False,False]])
+        self.assertIn('whole_call',row);self.assertIn('A_plus_C_seconds',row)
+        self.assertFalse(any(item['measured_thread'] for item in row['engine_holds']))
+
+    def test_sentinel_thresholds_intervals_and_independent_error_lifecycle(self):
+        import tempfile
+        from artifact_measurement_support import MachineSentinel
+        with tempfile.TemporaryDirectory(dir=ROOT/'.audit-tmp') as directory:
+            notifications=[];sentinel=MachineSentinel(directory,lambda:notifications.append('gap'))
+            sentinel.observe_cycle(0,100000000,10,20,{})
+            sentinel.observe_cycle(100000000,200000001,20,30,{})
+            state=sentinel.snapshot()
+            self.assertEqual(state['cycles'],2);self.assertEqual(len(state['gaps_over_100ms']),1)
+            self.assertEqual(state['gaps_over_100ms'][0]['start_monotonic_ns'],100000000)
+            self.assertEqual(notifications,['gap']);sentinel.scratch.rmdir()
+            def fails():raise OSError('synthetic sentinel IO fault')
+            sentinel=MachineSentinel(directory,cycle=fails);sentinel.start();sentinel.close()
+            state=sentinel.snapshot();self.assertFalse(state['running'])
+            self.assertEqual(state['errors'][0]['type'],'OSError')
+            import threading
+            self.assertNotEqual(state['thread_id'],threading.get_ident())
+
+    def test_temporal_policy_never_excludes_or_changes_original_miss(self):
+        from artifact_measurement_support import classify_misses
+        def span(start,end,limit=.216):return {'start_monotonic_ns':start,'end_monotonic_ns':end,'seconds':(end-start)/1e9,'limit_seconds':limit}
+        rows=[{'caller':'overlap','pass':False,'gate_intervals':[span(100000000,700000000)]},
+            {'caller':'no_overlap','pass':False,'gate_intervals':[span(900000000,1500000000)]},
+            {'caller':'mixed','pass':False,'gate_intervals':[span(100000000,700000000),span(900000000,1500000000)]}]
+        state={'gaps_over_100ms':[span(0,600000000)],'errors':[]}
+        self.assertEqual(classify_misses(rows,state),['overlap'])
+        self.assertTrue(all(row['pass'] is False for row in rows));self.assertEqual(len(rows),3)
+        state['gaps_over_100ms']=[span(0,500000000)]
+        self.assertEqual(classify_misses(rows,state),[])  # Strict >0.5 s.
+        state['gaps_over_100ms']=[span(700000000,1300000000)]
+        classify_misses(rows,state)
+        self.assertEqual(rows[0]['miss_classifications'][0]['classification'],'unattributed-real-miss')
+
+    def test_sentinel_gap_is_incrementally_journaled_then_embedded(self):
+        import tempfile
+        from artifact_measurement_support import MeasurementReceipt
+        class FakeSentinel:
+            def __init__(self,parent,notify):
+                self.notify=notify;self.data={'gaps_over_100ms':[],'errors':[],'running':False,'cycles':1}
+            def snapshot(self):return json.loads(json.dumps(self.data))
+            def start(self):self.data['running']=True
+            def close(self):self.data['running']=False
+        with tempfile.TemporaryDirectory(dir=ROOT/'.audit-tmp') as directory:
+            path=Path(directory)/'receipt.json';report={'samples':[],'phase_observations':[]}
+            receipt=MeasurementReceipt(path,report,sentinel_factory=FakeSentinel)
+            receipt.append('samples',{'sample':1,'pass':False})
+            receipt.sentinel.data['gaps_over_100ms'].append({'seconds':.6,'start_monotonic_ns':1,'end_monotonic_ns':600000001})
+            receipt.sentinel.notify()
+            events=[json.loads(line) for line in receipt.journal.read_text(encoding='utf-8').splitlines()]
+            self.assertEqual([event['type'] for event in events],['samples','gaps_over_100ms'])
+            self.assertEqual(json.loads(path.read_text(encoding='utf-8'))['journal_counts']['samples'],1)
+            receipt.close();final=json.loads(path.read_text(encoding='utf-8'))
+            self.assertEqual(final['samples'],[{'sample':1,'pass':False}]);self.assertFalse(final['machine_sentinel']['running'])
+            self.assertEqual(len(final['machine_sentinel']['gaps_over_100ms']),1)
+
+    def test_profile_spans_are_inclusive_nested_and_main_thread_A_only(self):
+        import threading
+        from artifact_measurement_support import PhaseAttribution
+        phase=['A'];profile=PhaseAttribution(phase)
+        inner=profile.wrap('inner',lambda:7);outer=profile.wrap('outer',inner)
+        with patch('artifact_measurement_support.time.perf_counter_ns',side_effect=[10,20,30,40]):
+            self.assertEqual(outer(),7)
+        self.assertEqual([(row['name'],row['depth']) for row in profile.rows],[('inner',1),('outer',0)])
+        self.assertEqual([row['seconds'] for row in profile.rows],[1e-8,3e-8])
+        phase[0]='B';outer();phase[0]='A'
+        thread=threading.Thread(target=outer);thread.start();thread.join()
+        self.assertEqual(len(profile.rows),2)
+
+    def test_incidental_engine_lock_hold_is_observed_without_a_boundary(self):
+        import threading
+        from artifact_measurement_support import ObservedRLock
+        original=threading.RLock();rows=[];observed=ObservedRLock(original,rows.append)
+        with observed:
+            self.assertTrue(observed._is_owned())
+            with observed:pass
+        self.assertFalse(original._is_owned());self.assertEqual(len(rows),1)
+        try:
+            with observed:raise ValueError('synthetic body failure')
+        except ValueError:pass
+        self.assertEqual(len(rows),2);self.assertFalse(original._is_owned())
+
+    def test_real_mutating_peer_builders_use_independent_requests(self):
+        # Functional fixture check only, no clocks, maximum fixture or gate samples.
+        from tests.test_artifact_admission import ArtifactAdmissionTests
+        for ordinal,expected in enumerate(('cancel','stop','independent_request')):
+            with self.subTest(peer=expected):
+                fixture=ArtifactAdmissionTests();fixture.setUp()
+                try:
+                    fixture.setup_authority()
+                    kind,mutate=a.prepare_measurement_peer(fixture,fixture.instance,ordinal)
+                    result=mutate()
+                    self.assertEqual(kind,expected)
+                    self.assertEqual(result['request_state'],'active' if ordinal==2 else 'cancelled')
+                finally:fixture.doCleanups()
+
+    def test_current_cli_rejects_unsentinelled_historical_measurement_modes(self):
+        for module,arguments in ((a,['authority']), (m,['facade','--design-checkpoint'])):
+            with self.subTest(arguments=arguments),patch.object(sys,'argv',arguments),contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as caught:module.main()
+                self.assertEqual(caught.exception.code,2)
+
+    def test_actual_attribution_hooks_with_synthetic_clock_and_small_fixture(self):
+        # This exercises hook signatures and unchanged product bytes, not timing.
+        import itertools
+        from tests.test_artifact_admission import ArtifactAdmissionTests
+        case=ArtifactAdmissionTests();case.setUp()
+        try:
+            case.setup_authority();audit=case.prepare();consumer=case.claim(audit)
+            first=case.sealed_fixture_record(audit,consumer,'# First')
+            private=case.briefs.get_private(audit['brief_id'])
+            box=a.ArtifactOutbox(case.root/'api_seat_runtime'/audit['producer']['launch_attempt'])
+            box.save(first['payload'],private['_artifact_seal']['seal_secret'])
+            second=case.sealed_fixture_record(audit,consumer,'# Different')
+            ticks=itertools.count(1000000,1000)
+            with patch('time.perf_counter_ns',side_effect=lambda:next(ticks)):
+                row,value=a.production_observe(case,lambda:case.authority.admit_saved(second,case.instance),attribution=True)
+            self.assertEqual(value['status'],'quarantined');self.assertIsNone(row['exception_type'])
+            names={span['name'] for span in row['attribution_spans']}
+            self.assertTrue({'validate_payload','context','producer','seal_verify','packet',
+                'activation','authoring_persist','index_validation','json_encode','stream_write',
+                'fsync','replace','outbox_find','capture'}<=names,names)
+            self.assertTrue(any(hold['phase']=='C' for hold in row['holds']))
+        finally:case.doCleanups()
+
+    def test_real_sentinel_thread_uses_real_fsync_replace_outside_fixture(self):
+        # A tiny IO lifecycle control, not a latency sample or gate.
+        import tempfile,threading,os
+        from artifact_measurement_support import MachineSentinel
+        with tempfile.TemporaryDirectory(dir=ROOT/'.audit-tmp') as directory:
+            sentinel=MachineSentinel(directory);completed=threading.Event();threads=[]
+            original_cycle=sentinel.cycle;real_fsync=sentinel.fsync
+            def sync(descriptor):threads.append(threading.get_ident());return real_fsync(descriptor)
+            sentinel.fsync=sync
+            def cycle():
+                result=original_cycle();completed.set();return result
+            sentinel.cycle=cycle;sentinel.start()
+            try:
+                self.assertTrue(completed.wait(2))
+                self.assertEqual((sentinel.scratch/'pulse.json').read_bytes(),b'{"sentinel":1}\n')
+            finally:sentinel.close()
+            self.assertTrue(threads);self.assertTrue(all(t!=threading.get_ident() for t in threads))
+            state=sentinel.snapshot();self.assertEqual(state['errors'],[]);self.assertGreaterEqual(state['cycles'],1)
+            self.assertFalse(sentinel.scratch.exists())
 
 
 if __name__ == '__main__':

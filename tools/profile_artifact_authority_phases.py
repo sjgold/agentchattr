@@ -68,7 +68,9 @@ def checkpoint_provenance(tool):
     fixtures = sorted({Path(module.__file__).resolve().relative_to(ROOT).as_posix()
         for name, module in list(sys.modules.items()) if name.startswith('tests.test_')
         and getattr(module, '__file__', None) and Path(module.__file__).resolve().is_relative_to(ROOT)})
-    extra = ['sealed_result_io.py', 'artifact_worker.py', *fixtures]
+    extra = ['sealed_result_io.py', 'artifact_worker.py', *fixtures,
+        'tools/artifact_measurement_support.py','tools/profile_artifact_authority_phases.py',
+        'tools/measure_artifact_diagnostics.py']
     dirty = subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True)
     return {'fsync_mocked': not inspect.isbuiltin(os.fsync),
             'filesystem_primitives_verified_unpatched_before_counters': True,
@@ -330,96 +332,183 @@ def cleanup_probe(case, fixture_root, kind, checkpoint):
                     'error': {'type': type(exc).__name__, 'message': str(exc)}})
 
 
-def production_observe(case, action, *, persist=True, healthy=False, checkpoint=None):
-    """Observe real outermost lock holds, real B IO, and repeated same-boundary peers."""
+def prepare_measurement_peer(case, instance, ordinal):
+    """One real independent mutation per sample, then repeated boundary users."""
+    mode=('cancel','stop','independent_request')[ordinal%3]
+    audit,packet=case.new_request(instance=instance,channel='peer')
+    source=None
+    if mode=='stop':
+        case.sessions._load_templates(ROOT/'session_templates')
+        source=case.sessions.create('planning','peer',
+            {'planner':'planner','challenger':'challenger','synthesiser':'synthesiser'},
+            'operator',goal='Measurement peer source',input_text='Sentinel gate peer')
+        revision=hashlib.sha256(b'Sentinel gate peer').hexdigest()
+        run={'session_id':source['id'],'run_id':source['run_id'],'input_revision':revision,'state_at_request':source['state']}
+        packet.update(scope_kind='run_accepted_messages',source_run=run,
+            input={'text':'Sentinel gate peer','input_revision':revision,'source_document':None})
+        request=uuid.uuid4().hex;ids=request_ids(request)
+        audit.update(request_id=request,**{key:ids[key] for key in ('lineage_id','attempt_id','dispatch_id','brief_id')})
+        audit.update(source_run=deepcopy(run),scope=case.artifacts.put_packet(request,packet))
+    case.authority.prepare_request(audit,packet,audit['request_id'])
+    if mode=='independent_request':case.claim(audit,instance)
+    def mutate():
+        if mode=='cancel':case.authority.cancel_request(audit['request_id'])
+        elif mode=='stop':
+            with case.service._boundary():
+                fenced=case.authority.fence_source_requests(source['run_id'])
+                case.engine.stop_session(source['id'])
+            case.authority.repair_cancel_fences(fenced['request_ids'])
+        else:case.authority.get_brief(audit['brief_id'],instance)
+        return {'kind':mode,'request_state':case.artifacts.get_request(audit['request_id'])['state']}
+    return mode,mutate
+
+
+def production_observe(case, action, *, persist=True, healthy=False, checkpoint=None,
+                       peer_action=None, attribution=False):
+    """Real acquired holds and continuing peer work, with monotonic intervals."""
     import threading
     from contextlib import contextmanager
-    boundary = case.service._boundary
-    writer = case.authority._persist_diagnostic_intent
-    settle = case.authority._settle_diagnostic_intent
-    local = threading.local()
-    phase = ['A']; holds = []; latencies = []; waits = []; errors = []; ownership = []
-    retries = {'A': 0, 'B': 0, 'C': 0}
-    entered = threading.Event(); finished = threading.Event(); peer_started = threading.Event()
+    import artifact_store as storage_module
+    import artifact_service as service_module
+    from artifact_measurement_support import interval,ObservedRLock,PhaseAttribution,overlaps
+    boundary=case.service._boundary;writer=case.authority._persist_diagnostic_intent
+    settle=case.authority._settle_diagnostic_intent;local=threading.local()
+    main_thread=threading.get_ident();phase=['A'];holds=[];B=[];peers=[];errors=[];ownership=[];engine_holds=[]
+    retries={'A':0,'B':0,'C':0,'between':0};entered=threading.Event();finished=threading.Event();ready=threading.Event()
+    profile=PhaseAttribution(phase);instrument_errors=[]
     def peer():
-        if not entered.wait(30):
-            errors.append('peer_never_started'); return
+        ready.set();entered.wait()
+        mutated=False
         while not finished.is_set():
-            started = time.perf_counter(); peer_started.set()
-            try: case.service.require_active('peer')
-            except Exception as error: errors.append(type(error).__name__)
-            waits.append(time.perf_counter() - started)
-            finished.wait(.001)
+            current_phase=phase[0];mutation=not mutated and peer_action is not None and (current_phase=='B' or healthy)
+            start=time.perf_counter_ns();outcome=None
+            try:
+                outcome=peer_action() if mutation else case.service.require_active('peer')
+            except Exception as error:errors.append(type(error).__name__)
+            end=time.perf_counter_ns()
+            if mutation:mutated=True
+            peers.append({**interval(start,end),'phase_at_start':current_phase,'mutation':mutation,
+                'outcome':outcome if mutation else None})
+            # Scheduler yield only; no rendezvous or condition on the measured phase.
+            time.sleep(0)
     @contextmanager
     def observed_boundary():
-        depth = getattr(local, 'depth', 0)
-        local.depth = depth + 1
-        completed=None
+        depth=getattr(local,'depth',0);local.depth=depth+1;completed=None
+        acquisition=time.perf_counter_ns()
         try:
             with boundary():
-                started = time.perf_counter()
-                if healthy and depth==0 and threading.current_thread() is threading.main_thread():entered.set()
-                try: yield
+                start=time.perf_counter_ns()
+                if depth==0 and threading.get_ident()==main_thread:entered.set()
+                try:yield
                 finally:
-                    if depth == 0 and threading.current_thread() is threading.main_thread():
-                        completed={'phase': phase[0], 'seconds': time.perf_counter() - started}
+                    if depth==0 and threading.get_ident()==main_thread:
+                        completed={**interval(start,time.perf_counter_ns()),'phase':phase[0],
+                            'acquisition_wait_seconds':(start-acquisition)/1e9}
                         holds.append(completed)
         finally:
-            local.depth = depth
-            # Receipt IO happens after releasing the measured authority locks.
-            if completed is not None and checkpoint is not None:checkpoint(completed)
+            local.depth=depth
+            if completed is not None:
+                phase[0]='between'
+                if checkpoint is not None:checkpoint(completed)
     def measured_work(work):
-        phase[0] = 'B'
-        ownership.append([owner._lock._is_owned() for owner in (case.engine, case.catalog, case.artifacts)])
-        entered.set()
-        if not peer_started.wait(5): raise RuntimeError('No concurrent boundary peer')
-        started = time.perf_counter()
-        try: return work()
+        phase[0]='B';owned=[owner._lock._is_owned() for owner in (case.engine,case.catalog,case.artifacts)]
+        ownership.append(owned);entered.set();start=time.perf_counter_ns()
+        try:return work()
         finally:
-            latencies.append(time.perf_counter() - started); finished.set()
-            if checkpoint is not None:checkpoint({'phase':'B','seconds':latencies[-1],
-                'authority_owned':ownership[-1],'peer_samples_so_far':len(waits)})
-    def persisted(intent):
-        return measured_work(lambda: writer(intent))
-    def settled(*args, **kwargs):
-        phase[0] = 'C'
-        return settle(*args, **kwargs)
-    replace = Path.replace
-    def counted(source, target):
-        try: return replace(source, target)
+            row={**interval(start,time.perf_counter_ns()),'phase':'B','authority_owned':owned};B.append(row)
+            phase[0]='between'
+            if checkpoint is not None:checkpoint(row)
+    def persisted(intent):return measured_work(lambda:writer(intent))
+    def settled(*args,**kwargs):phase[0]='C';return settle(*args,**kwargs)
+    replace=Path.replace
+    def counted(source,target):
+        try:return replace(source,target)
         except PermissionError:
-            retries[phase[0]] += 1; raise
-    thread = threading.Thread(target=peer, name='D4-boundary-peer')
-    thread.start(); outcome = None; value = None
+            if threading.current_thread().name!='D4-machine-stall-sentinel':
+                retries.setdefault(phase[0],0);retries[phase[0]]+=1
+            raise
+    def engine_observed(row):engine_holds.append({**row,'phase_at_release':phase[0],
+        'measured_thread':row['thread_id']==main_thread,'incidental_to_boundary':getattr(local,'depth',0)==0})
+    thread=threading.Thread(target=peer,name='D4-boundary-peer');thread.start()
+    if not ready.wait(5):raise RuntimeError('Boundary peer not ready before measurement')
+    outcome=None;value=None;start_call=time.perf_counter_ns()
     try:
         with ExitStack() as stack:
-            stack.enter_context(patch.object(case.service, '_boundary', observed_boundary))
-            stack.enter_context(patch.object(case.authority, '_persist_diagnostic_intent', persisted))
-            stack.enter_context(patch.object(case.authority, '_settle_diagnostic_intent', settled))
-            stack.enter_context(patch.object(Path, 'replace', counted))
-            try: value = action() if persist else measured_work(action)
-            except Exception as error: outcome = type(error).__name__
+            original_engine_lock=case.engine._lock
+            observed_engine_lock=ObservedRLock(original_engine_lock,engine_observed)
+            stack.enter_context(patch.object(case.engine,'_lock',observed_engine_lock))
+            queue=getattr(getattr(case.authority,'agents',None),'queue',None)
+            if queue is not None:
+                if queue._lock is not original_engine_lock:raise RuntimeError('Queue/engine lock alias differs before instrumentation')
+                stack.enter_context(patch.object(queue,'_lock',observed_engine_lock))
+            stack.enter_context(patch.object(case.service,'_boundary',observed_boundary))
+            stack.enter_context(patch.object(case.authority,'_persist_diagnostic_intent',persisted))
+            stack.enter_context(patch.object(case.authority,'_settle_diagnostic_intent',settled))
+            stack.enter_context(patch.object(Path,'replace',counted))
+            if attribution:
+                from artifact_measurement_support import ProfiledStream
+                original_open=Path.open
+                def profiled_open(path,*args,**kwargs):
+                    stream=original_open(path,*args,**kwargs)
+                    return ProfiledStream(stream,profile)
+                stack.enter_context(patch.object(Path,'open',profiled_open))
+                for label,owner,name in (
+                    ('validate_payload',service_module,'validate_payload'),('context',case.authority,'_context'),
+                    ('producer',case.authority,'_producer'),('seal_verify',service_module,'verify_result'),
+                    ('packet',case.authority,'_packet'),('packet_content',case.artifacts,'_read_validated_packet_content'),
+                    ('activation',case.authority,'_activate'),('authoring_persist',case.artifacts,'_persist'),
+                    ('index_validation',case.artifacts,'_validate_index'),('atomic_json',storage_module,'atomic_json'),
+                    ('json_encode',json,'dumps'),('fsync',os,'fsync'),('replace',Path,'replace'),
+                    ('outbox_find',ArtifactOutbox,'find'),('outbox_get_ack',ArtifactOutbox,'get_ack'),
+                    ('outbox_get_disposition',ArtifactOutbox,'get_disposition'),
+                    ('capture',case.authority,'_capture_diagnostic')):
+                    stack.enter_context(patch.object(owner,name,profile.wrap(label,getattr(owner,name))))
+            try:value=action() if persist else measured_work(action)
+            except Exception as error:outcome=type(error).__name__
     finally:
-        finished.set(); entered.set(); thread.join(timeout=30)
-    if thread.is_alive(): raise RuntimeError('Boundary peer did not finish')
-    expected = outcome in (None, 'ArtifactInputError', 'ArtifactUnavailable')
-    hard = expected and not errors and bool(waits) and all(not any(row) for row in ownership)
-    hard = hard and all(row['seconds'] <= .270 and row['phase'] != 'B' for row in holds) and max(waits, default=1) <= .270
-    margin = hard and all(row['seconds'] <= .216 for row in holds) and max(waits, default=1) <= .216
-    return {'holds': holds, 'B_seconds': latencies, 'B_authority_owned': ownership,
-            'peer_waits': waits, 'peer_max_seconds': max(waits, default=None), 'peer_errors': errors,
-            'replace_retries': retries, 'exception_type': outcome,
-            'hard_pass': hard, 'margin_pass': margin, 'pass': margin and not any(retries.values())}, value
+        end_call=time.perf_counter_ns();finished.set();entered.set();thread.join(timeout=30)
+    if thread.is_alive():raise RuntimeError('Boundary peer did not finish')
+    whole=interval(start_call,end_call)
+    peers=[row for row in peers if overlaps(row,whole)]
+    if not peers:instrument_errors.append('No peer interval overlaps this operation')
+    mutations=[row for row in peers if row['mutation']]
+    if peer_action is not None and not mutations:instrument_errors.append('Mutating peer was not observed')
+    if persist and not healthy and peer_action is not None and not any(overlaps(m,b) for m in mutations for b in B):
+        instrument_errors.append('Mutating peer did not overlap real diagnostic B')
+    for row in engine_holds:row['limit_seconds']=.216
+    gate_intervals=[{**row,'limit_seconds':.216,'kind':'boundary_hold'} for row in holds]
+    gate_intervals.extend({**row,'limit_seconds':.216,'kind':'boundary_peer'} for row in peers)
+    gate_intervals.extend({**row,'kind':'engine_only_or_nested_hold'} for row in engine_holds)
+    expected=outcome in (None,'ArtifactInputError','ArtifactUnavailable')
+    base=expected and not errors and not instrument_errors and all(not any(row) for row in ownership)
+    hard=base and all(row['seconds']<=.270 for row in gate_intervals)
+    margin=base and all(row['seconds']<=.216 for row in gate_intervals)
+    profile_summary={}
+    for span in profile.rows:
+        summary=profile_summary.setdefault(span['name'],{'count':0,'inclusive_seconds':0,'max_seconds':0})
+        summary['count']+=1;summary['inclusive_seconds']+=span['seconds'];summary['max_seconds']=max(summary['max_seconds'],span['seconds'])
+    A_total=sum(row['seconds'] for row in holds if row['phase']=='A')
+    top_level=sum(row['seconds'] for row in profile.rows if row['depth']==0)
+    return {'holds':holds,'B_intervals':B,'B_seconds':[row['seconds'] for row in B],
+        'B_authority_owned':ownership,'peer_intervals':peers,'peer_waits':[row['seconds'] for row in peers],
+        'peer_max_seconds':max((row['seconds'] for row in peers),default=None),'peer_errors':errors,
+        'peer_mutations':mutations,'engine_holds':engine_holds,'gate_intervals':gate_intervals,
+        'A_plus_C_seconds':sum(row['seconds'] for row in holds if row['phase'] in ('A','C')),
+        'whole_call':whole,'attribution_spans':profile.rows,'attribution_inclusive_summary':profile_summary,
+        'A_attributed_top_level_seconds':top_level,'A_residual_including_wrapper_overhead_seconds':A_total-top_level,
+        'instrument_errors':instrument_errors,
+        'replace_retries':retries,'exception_type':outcome,'exception_unexpected':not expected,
+        'hard_pass':hard,'margin_pass':margin,'pass':margin and not any(retries.values())},value
 
 
-def production_gate(count, *, facade=False):
+def production_gate(count, *, facade=False, supplemental=False, attribution=False):
     """Separate acceptance mode. Historical DESIGN receipts are never relabeled."""
     from measure_artifact_diagnostics import setup as diagnostic_setup, body, record as diagnostic_record, import_gates
     from tests.test_artifact_diagnostic_owner import ArtifactDiagnosticOwnerTests
-    kinds = (('facade_reads',) if facade else ('brief_context', 'delivery', 'submit_cli', 'admit_saved',
+    kinds = (('admit_saved',) if attribution else ('summary_cli','summary_reject') if supplemental else ('facade_reads',) if facade else ('brief_context', 'delivery', 'submit_cli', 'admit_saved',
         'reject_response', 'resume', 'retained_recovery', 'ack_repair', 'startup_terminal', 'healthy_brief_context', 'healthy_delivery'))
-    destination = ROOT / '.audit-tmp' / ('d4-production-' + ('reads-imports-' if facade else 'service-') + uuid.uuid4().hex + '.json')
-    result = {'kind': 'D4 PRODUCTION acceptance gate', 'samples': [], 'phase_observations': [],
+    destination = ROOT / '.audit-tmp' / (('d4-design-attribution-' if attribution else 'd4-production-') + ('reads-imports-' if facade else 'summary-' if supplemental else 'service-') + uuid.uuid4().hex + '.json')
+    result = {'kind': 'D4 DESIGN admit_saved A attribution' if attribution else 'D4 PRODUCTION acceptance gate', 'samples': [], 'phase_observations': [],
         'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
         'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
             for name in ('artifact_store.py','artifact_service.py','mcp_bridge.py','api_seats.py')},
@@ -427,102 +516,152 @@ def production_gate(count, *, facade=False):
         'resampling': 'None; every original miss, retry and error retained.',
         'cache_disclosure': 'Warm after setup; structural report forces metadata reread. Cold restart tails unmeasured.',
         'phase_definition': 'Outermost acquired main-thread boundary holds; B and C identified by private production hooks. No guard-copy or hypothetical C probe.',
-        'peer_definition': 'Repeated require_active on the same engine/catalog locks during real B. Waits include contention through completion; B has no wall clock gate.',
+        'peer_definition': 'Real independent cancel/Stop/brief mutation once, repeated require_active across A/B/C. No B handshake; interval overlap verified. DESIGN attribution uses passive peer only.',
         'limits': {'hard': .270, 'changed_hold_and_peer': .216, 'import': .300}}
     result.update(checkpoint_provenance(__file__))
+    from artifact_measurement_support import MeasurementReceipt,classify_misses
+    receipt=MeasurementReceipt(destination,result)
     def retain(row=None):
-        if row is not None: result['samples'].append(row)
-        destination.write_text(json.dumps(result, indent=2), encoding='utf-8')
-        if row is not None: print(json.dumps(row), flush=True)
+        if row is not None:
+            if attribution:row={key:value for key,value in row.items() if key not in ('pass','hard_pass','margin_pass')}
+            receipt.append('samples',row);print(json.dumps(row),flush=True)
+        else:receipt.save()
     retain()
-    for kind in kinds:
-        for number in range(1, count + 1):
-            case = None
-            def checkpoint(observation):
-                result['phase_observations'].append({**observation,'caller':kind,'sample':number})
-                retain()
-            try:
-                case, audit, instance, saved_record, box = setup('brief_context' if facade else kind.removeprefix('healthy_'))
-                audits = [row['audit'] for row in case.artifacts._data['requests'].values()
-                          if row['audit']['request_id'] != audit['request_id']][:127] + [audit]
-                diagnostic_setup(case, store=case.artifacts, audits=audits)
-                store = case.artifacts
-                if facade:
-                    actions = [('heavy', lambda: diagnostic_record(store, audit, body(1023,524288).decode('ascii')))]
-                    for label, action in actions:
-                        row, value = production_observe(case, action, persist=False,checkpoint=checkpoint)
-                        if value is None or value['kind'] != 'quarantine': row['pass'] = False
-                        row.update(caller=kind, phase=label, sample=number)
-                        retain(row)
-                    diagnostic_record(store,audit,'distinct summary key one')
-                    row,value = production_observe(case,lambda:diagnostic_record(store,audit,'distinct summary key two'),persist=False,checkpoint=checkpoint)
-                    if value is None or value['kind'] != 'dispatch_overflow': row['pass']=False
-                    row.update(caller=kind,phase='summary',sample=number);retain(row)
-                    def attached_reads():
-                        attached=store.request_diagnostics(audit['request_id'])
-                        unattached=store.request_diagnostics('f'*32)
-                        assert attached['available'] and unattached['available']
-                        return attached
-                    row,_=production_observe(case,attached_reads,persist=False,checkpoint=checkpoint)
-                    row.update(caller=kind,phase='request_diagnostics',sample=number);retain(row)
-                    ledger=ArtifactDiagnosticOwnerTests.maximum_ledger()
-                    store.diagnostic_store._persist_diagnostics(ledger)
-                    previous=store.diagnostic_store._stamp
-                    atomic_json(store.diagnostic_store.path,ledger)
-                    if store.diagnostic_store._fingerprint()==previous:
-                        info=store.diagnostic_store.path.stat()
-                        os.utime(store.diagnostic_store.path,ns=(info.st_atime_ns,info.st_mtime_ns+1000000))
-                    row,value=production_observe(case,lambda:store.diagnostics(limit=100),persist=False,checkpoint=checkpoint)
-                    if value is None or value['detailed_count'] != 1024: row['pass']=False
-                    row.update(caller=kind,phase='structural_read',sample=number,metadata_bytes=810186);retain(row)
-                    continue
-                original_packet=store.get_packet;packet_reads=[0]
-                def packet(*args,**kwargs):
-                    value=original_packet(*args,**kwargs);packet_reads[0]+=1
-                    if kind=='brief_context' and packet_reads[0]==1:return value
-                    raise ArtifactUnavailable('Gate late-read source fault after full content validation')
-                # Source failure entries pay for the full healthy validation before the fault.
-                source_fault = kind in ('brief_context','delivery','resume','retained_recovery')
-                action = {
-                    'brief_context': lambda:case.authority.get_brief_context(audit['brief_id'],instance),
-                    'delivery': lambda:case.authority.get_delivery(audit['brief_id'],instance),
-                    'submit_cli': lambda:case.authority.submit_cli(audit['brief_id'],' '*524288,instance),
-                    'admit_saved': lambda:case.authority.admit_saved(saved_record,instance),
-                    'reject_response': lambda:case.authority.reject_response(audit['brief_id'],'x'*524288,instance),
-                    'resume': lambda:case.authority.resume_request(audit['request_id']),
-                    'retained_recovery': lambda:case.authority.resume_request(audit['request_id'],recover_saved=True),
-                    'ack_repair': lambda:case.authority.resume_request(audit['request_id'],recover_saved=True),
-                    'startup_terminal': case.authority.recover_startup,
-                    'healthy_brief_context': lambda:case.authority.get_brief_context(audit['brief_id'],instance),
-                    'healthy_delivery': lambda:case.authority.get_delivery(audit['brief_id'],instance)}[kind]
-                with patch.object(store,'get_packet',packet) if source_fault else ExitStack():
-                    row,value=production_observe(case,action,healthy=kind.startswith('healthy_'),checkpoint=checkpoint)
-                if kind.startswith('healthy_'):
-                    if row['exception_type'] is not None or row['B_seconds'] or not row['holds']:row['pass']=False
-                    # MCP encoding is outside the boundary under D4, latency remains visible.
-                    encoded_start=time.perf_counter();encoded=json.dumps(value,ensure_ascii=True,allow_nan=False)
-                    row['outside_boundary_response_encode_seconds']=time.perf_counter()-encoded_start
-                    row['response_bytes']=len(encoded.encode('utf-8'))
-                elif len(row['B_seconds']) != 1 or not any(h['phase']=='C' for h in row['holds']): row['pass']=False
-                row.update(caller=kind,sample=number,source_fault_hook_calls=packet_reads[0],authoring_requests=len(store._data['requests']),
-                    packet_bytes=2097152,message_refs=1000,parent_bytes=524288,markdown_bytes=524288,
-                    source_fault='after full successful bounded read/validation' if source_fault else None,
-                    diagnostic_body_objects=len(store.diagnostic_store._body_inventory()[0]),
-                    diagnostic_body_bytes=store.diagnostic_store._body_inventory()[1])
-                retain(row)
-            except Exception as error:
-                retain({'caller':kind,'sample':number,'error':type(error).__name__,'message':str(error),'pass':False})
-            finally:
-                if case is not None: cleanup_probe(case,case.root,kind,lambda row:retain({**row,'sample':number,'pass':False}))
-    if facade:
-        existing=[graph(1) for _ in range(100)];large=graph(128,exact_bytes=4194304)
-        for mode in ('full','held'):
-            for number in range(1,count+1):
+    try:
+        for kind in kinds:
+            for number in range(1, count + 1):
+                case = None
+                def checkpoint(observation):
+                    receipt.append('phase_observations',{**observation,'caller':kind,'sample':number})
                 try:
-                    row=import_gates(number,existing,large,mode,checkpoint=lambda observation:(result['phase_observations'].append({**observation,'sample':number}),retain()))
-                    row['pass']=row['normal_pass'];retain(row)
-                except Exception as error: retain({'phase':'import_'+mode,'sample':number,'error':type(error).__name__,'pass':False})
-    result['pass']=all(row['pass'] for row in result['samples']) and len(result['samples'])==(6 if facade else 11)*count
+                    case, audit, instance, saved_record, box = setup('brief_context' if facade else 'submit_cli' if kind=='summary_cli' else 'reject_response' if kind=='summary_reject' else kind.removeprefix('healthy_'))
+                    audits = [row['audit'] for row in case.artifacts._data['requests'].values()
+                              if row['audit']['request_id'] != audit['request_id']][:127] + [audit]
+                    diagnostic_setup(case, store=case.artifacts, audits=audits)
+                    store = case.artifacts
+                    def observed(action,*,persist=True,healthy=False,ordinal=0):
+                        peer_kind,mutator=(('passive_design',None) if attribution else
+                            prepare_measurement_peer(case,instance,(number-1+ordinal)%3))
+                        row,value=production_observe(case,action,persist=persist,healthy=healthy,
+                            checkpoint=checkpoint,peer_action=mutator,attribution=attribution)
+                        row.update(peer_kind=peer_kind,authoring_requests=len(store._data['requests']))
+                        return row,value
+                    if supplemental:
+                        filled=diagnostic_record(store,audit,body(1023,524288).decode('ascii'))
+                        first=diagnostic_record(store,audit,'distinct summary key one')
+                        assert filled['kind']=='quarantine' and first['counter']==1
+                    if facade:
+                        actions = [('heavy', lambda: diagnostic_record(store, audit, body(1023,524288).decode('ascii')))]
+                        for label, action in actions:
+                            row, value = observed(action,persist=False,ordinal=0)
+                            if value is None or value['kind'] != 'quarantine': row['pass']=False;row['functional_failure']=True
+                            row.update(caller=kind, phase=label, sample=number)
+                            retain(row)
+                        diagnostic_record(store,audit,'distinct summary key one')
+                        row,value = observed(lambda:diagnostic_record(store,audit,'distinct summary key two'),persist=False,ordinal=1)
+                        if value is None or value['kind'] != 'dispatch_overflow': row['pass']=False;row['functional_failure']=True
+                        row.update(caller=kind,phase='summary',sample=number);retain(row)
+                        def attached_reads():
+                            attached=store.request_diagnostics(audit['request_id'])
+                            unattached=store.request_diagnostics(audits[0]['request_id'])
+                            assert attached['available'] and unattached['available']
+                            return attached
+                        row,_=observed(attached_reads,persist=False,ordinal=2)
+                        row.update(caller=kind,phase='request_diagnostics',sample=number);retain(row)
+                        ledger=ArtifactDiagnosticOwnerTests.maximum_ledger()
+                        store.diagnostic_store._persist_diagnostics(ledger)
+                        previous=store.diagnostic_store._stamp
+                        atomic_json(store.diagnostic_store.path,ledger)
+                        if store.diagnostic_store._fingerprint()==previous:
+                            info=store.diagnostic_store.path.stat()
+                            os.utime(store.diagnostic_store.path,ns=(info.st_atime_ns,info.st_mtime_ns+1000000))
+                        row,value=observed(lambda:store.diagnostics(limit=100),persist=False,ordinal=3)
+                        if value is None or value['detailed_count'] != 1024: row['pass']=False;row['functional_failure']=True
+                        row.update(caller=kind,phase='structural_read',sample=number,metadata_bytes=810186);retain(row)
+                        continue
+                    original_packet=store.get_packet;packet_reads=[0]
+                    def packet(*args,**kwargs):
+                        value=original_packet(*args,**kwargs);packet_reads[0]+=1
+                        if kind=='brief_context' and packet_reads[0]==1:return value
+                        raise ArtifactUnavailable('Gate late-read source fault after full content validation')
+                    # Source failure entries pay for the full healthy validation before the fault.
+                    source_fault = kind in ('brief_context','delivery','resume','retained_recovery')
+                    action = {
+                        'brief_context': lambda:case.authority.get_brief_context(audit['brief_id'],instance),
+                        'delivery': lambda:case.authority.get_delivery(audit['brief_id'],instance),
+                        'submit_cli': lambda:case.authority.submit_cli(audit['brief_id'],' '*524288,instance),
+                        'admit_saved': lambda:case.authority.admit_saved(saved_record,instance),
+                        'reject_response': lambda:case.authority.reject_response(audit['brief_id'],'x'*524288,instance),
+                        'resume': lambda:case.authority.resume_request(audit['request_id']),
+                        'retained_recovery': lambda:case.authority.resume_request(audit['request_id'],recover_saved=True),
+                        'ack_repair': lambda:case.authority.resume_request(audit['request_id'],recover_saved=True),
+                        'startup_terminal': case.authority.recover_startup,
+                        'healthy_brief_context': lambda:case.authority.get_brief_context(audit['brief_id'],instance),
+                        'healthy_delivery': lambda:case.authority.get_delivery(audit['brief_id'],instance),
+                        'summary_cli':lambda:case.authority.submit_cli(audit['brief_id'],' '*524288,instance),
+                        'summary_reject':lambda:case.authority.reject_response(audit['brief_id'],'x'*524288,instance)}[kind]
+                    with patch.object(store,'get_packet',packet) if source_fault else ExitStack():
+                        row,value=observed(action,healthy=kind.startswith('healthy_'))
+                    if kind.startswith('healthy_'):
+                        if row['exception_type'] is not None or row['B_seconds'] or not row['holds']:row['pass']=False;row['functional_failure']=True
+                        # MCP encoding is outside the boundary under D4, latency remains visible.
+                        encoded_start=time.perf_counter();encoded=json.dumps(value,ensure_ascii=True,allow_nan=False)
+                        row['outside_boundary_response_encode_seconds']=time.perf_counter()-encoded_start
+                        row['response_bytes']=len(encoded.encode('utf-8'))
+                    elif len(row['B_seconds']) != 1 or not any(h['phase']=='C' for h in row['holds']): row['pass']=False;row['functional_failure']=True
+                    if supplemental:
+                        summary=store.diagnostic_store._data['dispatch_overflow'][audit['dispatch_id']]
+                        if summary['counter']!=2:row['pass']=False;row['functional_failure']=True
+                        row['summary_counter']=summary['counter'];row['summary_id']=summary['id']
+                    actual=store.get_request(audit['request_id'])
+                    row['candidate_state']=actual['state'];row['candidate_reason']=actual['reason']
+                    if source_fault:
+                        if (actual['state'],actual['reason'])!=('failed','source_packet_unavailable'):row['pass']=False;row['functional_failure']=True
+                    elif kind in ('reject_response','summary_reject'):
+                        if actual['state']!='quarantined' or row['exception_type'] is not None:row['pass']=False;row['functional_failure']=True
+                    elif kind in ('submit_cli','summary_cli'):
+                        if actual['state']!='active' or row['exception_type']!='ArtifactInputError':row['pass']=False;row['functional_failure']=True
+                    elif kind=='admit_saved':
+                        if actual['state']!='active' or not isinstance(value,dict) or value.get('status')!='quarantined':row['pass']=False;row['functional_failure']=True
+                    elif kind.startswith('healthy_'):
+                        if actual['state']!='active':row['pass']=False;row['functional_failure']=True
+                    elif kind=='ack_repair':
+                        if actual['state']!='fulfilled' or not isinstance(value,dict) or value.get('warning')!='operator_recovery_required':row['pass']=False;row['functional_failure']=True
+                    elif kind=='startup_terminal':
+                        if actual['state']!='cancelled' or not isinstance(value,dict) or len(value.get('quarantined',[]))!=1:row['pass']=False;row['functional_failure']=True
+                    row.update(caller=kind,sample=number,source_fault_hook_calls=packet_reads[0],authoring_requests=len(store._data['requests']),
+                        packet_bytes=2097152,message_refs=1000,parent_bytes=524288,markdown_bytes=524288,
+                        source_fault='after full successful bounded read/validation' if source_fault else None,
+                        diagnostic_body_objects=len(store.diagnostic_store._body_inventory()[0]),
+                        diagnostic_body_bytes=store.diagnostic_store._body_inventory()[1])
+                    retain(row)
+                except Exception as error:
+                    retain({'caller':kind,'sample':number,'error':type(error).__name__,'message':str(error),'pass':False})
+                finally:
+                    if case is not None: cleanup_probe(case,case.root,kind,lambda row:retain({**row,'sample':number,'pass':False}))
+        if facade:
+            existing=[graph(1) for _ in range(100)];large=graph(128,exact_bytes=4194304)
+            for mode in ('full','held'):
+                for number in range(1,count+1):
+                    try:
+                        row=import_gates(number,existing,large,mode,checkpoint=lambda observation:receipt.append('phase_observations',{**observation,'sample':number}))
+                        row['pass']=row['normal_pass'];retain(row)
+                    except Exception as error: retain({'phase':'import_'+mode,'sample':number,'error':type(error).__name__,'pass':False})
+    finally:
+        receipt.close()
+    result['instrument_valid']=(not result['machine_sentinel']['errors'] and not result['machine_sentinel']['running']
+        and result['machine_sentinel']['cycles']>0)
+    expected=(1 if attribution else 2 if supplemental else 6 if facade else 11)*count
+    if attribution:
+        result['comparators_only']=True;result['acceptance_claim']=False
+        result['measurement_complete']=len(result['samples'])==expected and not any('error' in row for row in result['samples'])
+        retain();print(json.dumps({'receipt':str(destination),'measurement_complete':result['measurement_complete']}),flush=True)
+        return 0 if result['measurement_complete'] and result['instrument_valid'] else 1
+    result['repeat_required_classes']=classify_misses(result['samples'],result['machine_sentinel'])
+    result['raw_gate_pass']=all(row['pass'] for row in result['samples']) and len(result['samples'])==expected
+    result['pass']=result['raw_gate_pass'] and result['instrument_valid']
+    result['acceptance_claim']=False  # A single tool run never clears D4 or independent review.
+    result['repeat_policy']='Never automatic. Original misses retained; complete caller/phase repeat requires reviewer direction.'
     retain();print(json.dumps({'receipt':str(destination),'pass':result['pass'],'rows':len(result['samples'])}),flush=True)
     return 0 if result['pass'] else 1
 
@@ -530,12 +669,20 @@ def production_gate(count, *, facade=False):
 def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=10)
-    parser.add_argument('--production-gate', action='store_true')
+    modes=parser.add_mutually_exclusive_group()
+    modes.add_argument('--production-gate', action='store_true')
+    modes.add_argument('--summary-gate', action='store_true')
+    modes.add_argument('--design-attribution', action='store_true')
     args = parser.parse_args()
     if args.samples < 10:
         parser.error('At least 10 fresh samples per caller are required')
-    if args.production_gate:
-        return production_gate(args.samples)
+    if args.production_gate or args.summary_gate or args.design_attribution:
+        return production_gate(args.samples,supplemental=args.summary_gate,attribution=args.design_attribution)
+    parser.error('Historical C-probe mode is archived; select --production-gate, --summary-gate or --design-attribution')
+
+
+def historical_design(count):
+    # Retained solely for historical receipt/orchestration controls, not a runnable D4 measurement.
     kinds = ('brief_context', 'delivery', 'submit_cli', 'admit_saved', 'reject_response',
              'resume', 'retained_recovery', 'ack_repair', 'startup_terminal')
     rows = []
@@ -551,7 +698,7 @@ def main():
               'closed_a1_base': '2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca',
               'preserved_r2_parent': 'be6fd6522474fe2fab0e6f0573ec6e9ccb9eab4a',
               'authoring_schema': 2, 'r2_d1_d2_present': True,
-              'fixed_order': list(kinds), 'samples_per_caller': args.samples,
+              'fixed_order': list(kinds), 'samples_per_caller': count,
               'cache_disclosure': 'Owner caches warm after setup; no cold-restart tail measurement.',
               'warmup_discarded': 0, 'resampling': 'None; error rows retained, continue remaining samples/callers.'}
     result.update(checkpoint_provenance(__file__))
@@ -563,7 +710,7 @@ def main():
             print(json.dumps(row), flush=True)
     retain()
     for kind in kinds:
-        for sample in range(args.samples):
+        for sample in range(count):
             try:
                 def checkpoint(observation):
                     result['phase_observations'].append({**observation, 'sample': sample + 1})

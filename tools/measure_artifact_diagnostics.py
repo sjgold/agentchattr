@@ -124,36 +124,39 @@ def measure(case, store, audit, phase, checkpoint=None):
                            and hold <= .270 and waits[0] <= .270}
 
 
-def measure_action(case, owner, action, phase, limit, checkpoint=None):
-    """Same real outer boundary and peer; no serializer/clock/fsync mocks."""
-    entered=threading.Event();waits=[];errors=[];retries=[0]
+def measure_action(case,owner,action,phase,limit,checkpoint=None):
+    """Historical import boundary retained, now with sentinel-overlap intervals."""
+    from artifact_measurement_support import interval
+    entered=threading.Event();waits=[];errors=[];retries=[0];peer_intervals=[]
     def peer():
-        entered.wait();started=time.perf_counter()
+        entered.wait();started=time.perf_counter_ns()
         try:case.service.require_active('peer')
         except Exception as error:errors.append(type(error).__name__)
-        waits.append(time.perf_counter()-started)
+        row=interval(started,time.perf_counter_ns());peer_intervals.append(row);waits.append(row['seconds'])
     original=Path.replace
     def replace(source,target):
         try:return original(source,target)
         except PermissionError:
-            if Path(target)==owner.path:retries[0]+=1
+            if Path(target).is_relative_to(owner.root):retries[0]+=1
             raise
-    thread=threading.Thread(target=peer,daemon=True);thread.start()
-    failure=None;result=None
+    thread=threading.Thread(target=peer);thread.start();failure=None;result=None
+    whole_start=time.perf_counter_ns()
     with patch.object(Path,'replace',replace):
         with case.service._boundary():
-            started=time.perf_counter();entered.set()
+            started=time.perf_counter_ns();entered.set()
             try:result=action()
             except Exception as error:failure=type(error).__name__
-            hold=time.perf_counter()-started
-    thread.join(timeout=30)
+            held=interval(started,time.perf_counter_ns())
+    whole_end=time.perf_counter_ns();thread.join(timeout=30)
     if thread.is_alive():raise RuntimeError('Gate peer did not finish')
-    if checkpoint is not None:
-        checkpoint({'phase': phase, 'hold': hold, 'peer_wait': waits[0],
-                    'replace_retries': retries[0], 'exception_type': failure, 'peer_errors': errors})
-    return {'phase':phase,'hold':hold,'peer_wait':waits[0],'replace_retries':retries[0],
-            'exception_type':failure,'peer_errors':errors,'limit_seconds':limit,
-            'normal_pass':failure is None and not errors and retries[0]==0 and hold<=limit and waits[0]<=limit},result
+    gate_intervals=[{**held,'kind':'boundary_hold','limit_seconds':limit}]
+    gate_intervals.extend({**row,'kind':'boundary_peer','limit_seconds':limit} for row in peer_intervals)
+    row={'phase':phase,'hold':held['seconds'],'peer_wait':waits[0], 'whole_call':interval(whole_start,whole_end),
+        'gate_intervals':gate_intervals,'replace_retries':retries[0], 'exception_type':failure,
+        'peer_errors':errors,'limit_seconds':limit,'exception_unexpected':failure is not None,
+        'normal_pass':failure is None and not errors and retries[0]==0 and all(x['seconds']<=limit for x in gate_intervals)}
+    if checkpoint is not None:checkpoint(row)
+    return row,result
 
 
 def structural_read(case,store,checkpoint=None):
@@ -366,6 +369,7 @@ def main():
     if args.production_gate:
         from profile_artifact_authority_phases import production_gate
         return production_gate(args.samples, facade=True)
+    parser.error('Historical in-boundary R2 modes are archived under D4; select --production-gate (or --check-plan for arithmetic only)')
     if args.design_checkpoint:
         return design_checkpoint(args.samples)
     samples = []
