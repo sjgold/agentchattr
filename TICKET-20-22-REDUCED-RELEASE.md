@@ -1,6 +1,6 @@
 # Reduced release: tickets 20-22, then multi-file 23
 
-Status: PRODUCT SCOPE APPROVED by Seth2026-10-26 and reviewer atb2b31adb. Backend red scope CLEARED at2279329b with C1-C11 corrections below folded into the red pin. Reviewer independently confirmed27 reds and CLEARED BACKEND PRODUCTION at6788311 with F1-F8 green preconditions. Backend acceptance remains pending. No product code, activation or push is authorized by this document edit. Accepted backend product220f3400 remains unchanged.
+Status: PRODUCT SCOPE APPROVED by Seth2026-10-26 and reviewer atb2b31adb. Backend red scope CLEARED at2279329b with C1-C11 corrections below folded into the red pin. Reviewer independently confirmed27 reds and CLEARED BACKEND PRODUCTION at6788311 with F1-F8 green preconditions. Backend acceptance remains pending. Reduced backend candidate97c7196 is implemented and undergoing final verification on top of accepted foundation220f3400. UI/transcript remain pending. Activation and push remain held.
 
 ## Authority and priority
 
