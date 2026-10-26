@@ -1,12 +1,13 @@
 """Artifact authority component under construction; no runtime/public binding."""
 from copy import deepcopy
+from functools import wraps
 import hashlib
 import json
 import time
 import uuid
 
 from artifact_store import (ArtifactConflict, ArtifactUnavailable, ArtifactValidationError,
-    LIVE, _audit, _hex, _path_key, _text, _observation, _label_text)
+    LIVE, _audit, _hex, _path_key, _text, _observation, _label_text, _packet_validation_invocation)
 from artifact_protocol import (validate_brief, validate_payload, MAX_RESULT_RECORD_BYTES,
                                MAX_ARTIFACT_BYTES, verify_result)
 from artifact_delivery import ArtifactOutbox
@@ -32,7 +33,18 @@ class ArtifactInputError(ArtifactValidationError):
         self.received_truncated = received_truncated
 
 
+def _packet_service_entry(method):
+    @wraps(method)
+    def invoke(self, *args, **kwargs):
+        return self._packet_invocation(lambda: method(self, *args, **kwargs))
+    return invoke
+
+
 class ArtifactService:
+    def _packet_invocation(self, step):
+        with _packet_validation_invocation(self.store):
+            return step()
+
     def __init__(self, *, store, briefs, agents, seats, channels, registry):
         if (not isinstance(agents.queue, CoordinatedQueue) or agents.queue._lock is not channels.engine._lock
                 or agents._registry is not registry or seats.registry is not registry
@@ -109,6 +121,7 @@ class ArtifactService:
         return {'request': self._projection(row), 'dispatch': dispatch, 'admission': admission,
                 'transport_settled': transport_settled, 'notice': notice, 'warning': warning}
 
+    @_packet_service_entry
     def prepare_request(self, audit, packet, request_id):
         try:
             audit = _audit(audit)
@@ -269,15 +282,20 @@ class ArtifactService:
         return self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
                                              {'state': 'active', 'reason': None})
 
+    @_packet_service_entry
     def get_brief(self, brief_id, instance):
         with self.channels._boundary():
-            private, row, live, _ = self._context(brief_id, instance)
-            packet = self._packet(row, live)
-            self._activate(row)
-            public = {key: deepcopy(value) for key, value in private.items() if key != '_artifact_seal'}
-            public['producer'].pop('launch_nonce')
-            return {'brief': public, 'packet': packet}
+            return self._get_brief_locked(brief_id, instance)
 
+    def _get_brief_locked(self, brief_id, instance):
+        private, row, live, _ = self._context(brief_id, instance)
+        packet = self._packet(row, live)
+        self._activate(row)
+        public = {key: deepcopy(value) for key, value in private.items() if key != '_artifact_seal'}
+        public['producer'].pop('launch_nonce')
+        return {'brief': public, 'packet': packet}
+
+    @_packet_service_entry
     def get_delivery(self, brief_id, instance):
         with self.channels._boundary():
             private, row, live, record = self._context(brief_id, instance)
@@ -289,30 +307,41 @@ class ArtifactService:
                 'packet': packet, 'seal_secret': private['_artifact_seal']['seal_secret'],
                 'result_owner': deepcopy(private['_artifact_seal']['owner']), 'consumer_id': record['consumer_id']}
 
+    @_packet_service_entry
     def get_parent(self, brief_id, instance):
         """Read only this claimed request's immutable parent; never activate work."""
         with self.channels._boundary():
-            _, row, _, _ = self._context(brief_id, instance)
-            self.store.get_packet(row['audit']['scope']['packet_id'])
-            expected = row['audit']['expected_parent']
-            if expected is None:
-                return {'parent': None}
-            saved = self.store.get_version(expected['version_id'])
-            if saved is None:
-                raise ArtifactUnavailable('Assigned artifact parent is unavailable.')
-            metadata, text = saved['metadata'], saved['markdown']
-            raw = text.encode('utf-8')
-            if (metadata['id'] != expected['version_id'] or metadata['sequence'] != expected['sequence']
-                    or metadata['sha256'] != expected['sha256'] or len(raw) != metadata['byte_length']
-                    or len(raw) > MAX_ARTIFACT_BYTES or hashlib.sha256(raw).hexdigest() != metadata['sha256']):
-                raise ArtifactUnavailable('Assigned artifact parent is unavailable.')
-            return {'parent': {**deepcopy(expected), 'byte_length': len(raw), 'markdown': text}}
+            return self._get_parent_locked(brief_id, instance)
+
+    def _get_parent_locked(self, brief_id, instance):
+        _, row, _, _ = self._context(brief_id, instance)
+        self.store.get_packet(row['audit']['scope']['packet_id'])
+        expected = row['audit']['expected_parent']
+        if expected is None:
+            return {'parent': None}
+        saved = self.store.get_version(expected['version_id'])
+        if saved is None:
+            raise ArtifactUnavailable('Assigned artifact parent is unavailable.')
+        metadata, text = saved['metadata'], saved['markdown']
+        raw = text.encode('utf-8')
+        if (metadata['id'] != expected['version_id'] or metadata['sequence'] != expected['sequence']
+                or metadata['sha256'] != expected['sha256'] or len(raw) != metadata['byte_length']
+                or len(raw) > MAX_ARTIFACT_BYTES or hashlib.sha256(raw).hexdigest() != metadata['sha256']):
+            raise ArtifactUnavailable('Assigned artifact parent is unavailable.')
+        return {'parent': {**deepcopy(expected), 'byte_length': len(raw), 'markdown': text}}
+
+    @_packet_service_entry
+    def get_brief_context(self, brief_id, instance):
+        with self.channels._boundary():
+            parent = self._get_parent_locked(brief_id, instance)
+            return {**self._get_brief_locked(brief_id, instance), **parent}
 
     @staticmethod
     def _ack(metadata):
         return {'status': 'admitted', 'event_id': metadata['dispatch_id'], 'request_id': metadata['request_id'],
                 'version_id': metadata['id'], 'sha256': metadata['sha256']}
 
+    @_packet_service_entry
     def submit_cli(self, brief_id, markdown, instance):
         with self.channels._boundary():
             private, row, live, record = self._context(brief_id, instance, replay=True)
@@ -376,6 +405,7 @@ class ArtifactService:
             return 'superseded'
         return None
 
+    @_packet_service_entry
     def admit_saved(self, record, instance):
         payload = validate_payload(record.get('payload') if isinstance(record, dict) else None)
         with self.channels._boundary():
@@ -434,6 +464,7 @@ class ArtifactService:
             box.acknowledge(audit['dispatch_id'], audit['dispatch_id'])
             return self._ack(metadata)
 
+    @_packet_service_entry
     def reject_response(self, brief_id, content, instance, *, received_truncated=False):
         if (type(received_truncated) is not bool or
                 not ((isinstance(content, str) and not received_truncated) or
@@ -669,6 +700,7 @@ class ArtifactService:
         return self.store.set_attempt_state(audit['request_id'], audit['attempt_id'], row['state'],
                                             {'state': 'failed', 'reason': 'delivery_unconfirmed'})
 
+    @_packet_service_entry
     def resume_request(self, request_id, *, recover_saved=False):
         with self.channels._boundary():
             row = self.store.get_request(request_id)

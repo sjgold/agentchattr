@@ -113,6 +113,10 @@ class ArtifactPacketReuseTests(unittest.TestCase):
             first['packet']['messages'][0]['text'] = 'external mutation'
             second = self.mcp_context(case, audit)
         self.assertEqual(second['packet'], original)
+        # STORE-level detachment, independent of MCP's JSON decoding.
+        direct = case.artifacts.get_packet(audit['scope']['packet_id'])
+        direct['messages'][0]['text'] = 'mutated store return'
+        self.assertEqual(case.artifacts.get_packet(audit['scope']['packet_id']), original)
         self.assertEqual(reads.call_count, 5)  # Three initial, two idempotent repeat.
         self.assertEqual(content.call_count, 2)
 
@@ -224,7 +228,8 @@ class ArtifactPacketReuseTests(unittest.TestCase):
             raw = owner._object_path('packet', key).read_bytes()
             original = storage.json.loads
             def parse(value, *args, **kwargs):
-                self.assertNotEqual(value, raw, 'Discard hit parsed the packet instead of audit-view bytes')
+                compared = value.encode('utf-8') if isinstance(value, str) else value
+                self.assertNotEqual(compared, raw, 'Discard hit parsed the packet instead of audit-view bytes')
                 return original(value, *args, **kwargs)
             with patch.object(storage.json, 'loads', side_effect=parse), \
                     patch.object(storage.hashlib, 'sha256', side_effect=AssertionError('Hit rehashed packet')), \
@@ -263,6 +268,7 @@ class ArtifactPacketReuseTests(unittest.TestCase):
         errors, results = [], []
         with self.scope(owner), patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
             owner.get_packet(key)
+            before_entries = dict(self.state().entries)
             copied = copy_context()
             def read():
                 try:
@@ -275,6 +281,8 @@ class ArtifactPacketReuseTests(unittest.TestCase):
             self.assertFalse(thread.is_alive())
             self.assertEqual(errors, [])
             self.assertEqual(results, [packet])
+            self.assertEqual(self.state().entries, before_entries)
+            self.assertTrue(all(self.state().entries[k] is value for k, value in before_entries.items()))
             self.assertEqual(owner.get_packet(key), packet)
             self.assertEqual(content.call_count, 2)
         with patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
@@ -500,12 +508,12 @@ class ArtifactPacketReuseTests(unittest.TestCase):
             'result_owner': private['_artifact_seal']['owner'], 'consumer_id': consumer}
         with self.scope(case.artifacts):
             case.artifacts.get_packet(audit['scope']['packet_id'])
-            for action in (lambda: worker._check_brief(response, box, entry),
-                           lambda: worker.artifact_messages(delivery, {'parent': None}),
-                           lambda: case.artifacts.put_packet(audit['request_id'], response['packet'])):
-                with patch.object(storage, '_canonical', wraps=storage._canonical) as walked:
+            for module, action in ((worker, lambda: worker._check_brief(response, box, entry)),
+                           (worker, lambda: worker.artifact_messages(delivery, {'parent': None})),
+                           (storage, lambda: case.artifacts.put_packet(audit['request_id'], response['packet']))):
+                with patch.object(module, '_packet_scope', wraps=module._packet_scope) as walked:
                     action()
-                self.assertGreater(walked.call_count, 0)
+                self.assertEqual(walked.call_count, 1)
             invalid = deepcopy(response)
             invalid['packet']['messages'][0]['uid'] = '\0'
             with self.assertRaises(storage.ArtifactValidationError):
@@ -524,13 +532,13 @@ class ArtifactPacketReuseTests(unittest.TestCase):
                 zf.writestr(codec.member_name(kind, identifier), raw)
         with self.scope(case.artifacts):
             case.artifacts.get_packet(packet_id)
-            with patch.object(storage, '_canonical', wraps=storage._canonical) as import_walked:
+            with patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as import_walked:
                 case.artifacts.prepare_import_lineage(portable, objects)
-            self.assertGreater(import_walked.call_count, 0)
-            with patch.object(storage, '_canonical', wraps=storage._canonical) as archive_walked:
+            self.assertEqual(import_walked.call_count, 1)
+            with patch.object(codec, '_packet_scope', wraps=codec._packet_scope) as archive_walked:
                 with zipfile.ZipFile(io.BytesIO(stream.getvalue())) as zf:
                     self.assertEqual(codec.read_lineage_objects(zf, portable), objects)
-            self.assertGreater(archive_walked.call_count, 0)
+            self.assertEqual(archive_walked.call_count, 1)
             bad_portable, bad_objects = deepcopy(portable), deepcopy(objects)
             bad_packet = json.loads(bad_objects[('packet', packet_id)])
             bad_packet['unexpected'] = 'Unknown schema key'
@@ -572,6 +580,207 @@ class ArtifactPacketReuseTests(unittest.TestCase):
                         sha256=reference['sha256'], byte_length=reference['byte_length'])
                     self.assertEqual(raw, canonical_utf8(owner.get_packet(key)))
                 self.assertEqual(content.call_count, 1 if selected else 4)
+
+    def test_audit_failure_after_valid_content_registers_no_evidence(self):
+        _, owner, audit, _ = self.stored()
+        key = audit['scope']['packet_id']
+        bad = deepcopy(owner._data)
+        bad['requests'][audit['request_id']]['audit']['scope']['message_refs'][0]['sha256'] = 'f' * 64
+        owner._persist(bad)
+        with self.scope(owner):
+            self.assertEqual(self.outcome(owner, key)[0], storage.ArtifactUnavailable)
+            self.assertEqual(self.state().entries, {})
+
+    def test_need_packet_false_miss_and_scope_mismatch_hit(self):
+        _, owner, audit, _ = self.stored()
+        key = audit['scope']['packet_id']
+        with self.scope(owner), patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+            with owner._lock:
+                packet, scope = owner._packet(key, _need_packet=False)
+            self.assertIsNone(packet)
+            self.assertEqual(scope, audit['scope'])
+            bad = deepcopy(owner._data)
+            bad['requests'][audit['request_id']]['audit']['scope']['message_refs'][0]['uid'] = 'another-uid'
+            owner._persist(bad)
+            self.assertEqual(self.outcome(owner, key, need_packet=False)[0], storage.ArtifactUnavailable)
+            self.assertEqual(content.call_count, 1)
+
+    def test_successful_hit_clears_real_prior_object_observation(self):
+        _, owner, audit, packet = self.stored()
+        key = audit['scope']['packet_id']
+        path = owner._object_path('packet', key)
+        raw = path.read_bytes()
+        with self.scope(owner), patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+            owner.get_packet(key)
+            with self.damage(path, 'truncate', raw):
+                self.assertEqual(self.outcome(owner, key)[0], storage.ArtifactUnavailable)
+            self.assertEqual(len(self.observations(owner)), 1)
+            self.assertEqual(owner.get_packet(key), packet)
+            self.assertEqual(self.observations(owner), [])
+            self.assertEqual(content.call_count, 1)
+
+    def test_differential_healthy_empty_unicode_crlf_and_max_packets(self):
+        for shape in ('empty', 'unicode_crlf', 'max'):
+            with self.subTest(shape=shape):
+                case = self.fixture()
+                _, owner = case.owner()
+                packet = case.packet()
+                if shape == 'empty':
+                    packet['messages'] = []
+                elif shape == 'max':
+                    base = packet['messages'][0]
+                    packet['messages'] = [{**deepcopy(base), 'id': i, 'uid': 'max-' + str(i), 'text': 'x' * 1000}
+                                          for i in range(1000)]
+                    remaining = storage.MAX_PACKET_BYTES - len(canonical_utf8(packet))
+                    self.assertGreater(remaining, 0)
+                    packet['messages'][-1]['text'] += 'x' * remaining
+                    self.assertEqual(len(canonical_utf8(packet)), storage.MAX_PACKET_BYTES)
+                audit = case.queued(storage, owner, packet=packet)
+                key = audit['scope']['packet_id']
+                baseline = self.outcome(owner, key)
+                before = owner.path.read_bytes()
+                with self.scope(owner), patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+                    self.assertEqual(self.outcome(owner, key), baseline)
+                    self.assertEqual(self.outcome(owner, key), baseline)
+                    self.assertEqual(content.call_count, 1)
+                self.assertEqual(owner.path.read_bytes(), before)
+
+    def test_differential_bad_message_source_run_and_scope(self):
+        for field in ('message', 'source_run', 'scope'):
+            with self.subTest(field=field):
+                _, owner, audit, packet = self.stored(source_run=True)
+                key = audit['scope']['packet_id']
+                path = owner._object_path('packet', key)
+                raw = path.read_bytes()
+                bad = deepcopy(packet)
+                if field == 'message':
+                    bad['messages'][0]['id'] = -1
+                elif field == 'source_run':
+                    bad['source_run']['session_id'] = 2 ** 63
+                else:
+                    bad['scope_kind'] = 'unrecognized'
+                damaged = canonical_utf8(bad)
+                path.write_bytes(damaged)
+                baseline = self.outcome(owner, key)
+                self.assertEqual(baseline[0], storage.ArtifactUnavailable)
+                path.write_bytes(raw)
+                owner._object_errors.clear()
+                with self.scope(owner):
+                    owner.get_packet(key)
+                    path.write_bytes(damaged)
+                    self.assertEqual(self.outcome(owner, key), baseline)
+
+    def test_aggregate_raw_budget_bypasses_registration_independently_of_entry_count(self):
+        case = self.fixture()
+        _, owner = case.owner()
+        large, small = case.packet(), case.packet()
+        large['messages'][0]['text'] = 'L' * 3000
+        small['messages'][0]['text'] = 's'
+        a = owner.put_packet(uuid.uuid4().hex, large)
+        b = owner.put_packet(uuid.uuid4().hex, small)
+        # Test-only change AFTER first valid capture isolates the otherwise
+        # redundant aggregate bound: two legal packets at fixed MAX cannot
+        # exceed2*MAX. No production budget/timing fixture is changed.
+        reduced = a['byte_length'] // 3
+        self.assertLess(b['byte_length'], reduced)
+        self.assertGreater(a['byte_length'] + b['byte_length'], 2 * reduced)
+        with self.scope(owner):
+            owner.get_packet(a['packet_id'])
+            with patch.object(storage, 'MAX_PACKET_BYTES', reduced), \
+                    patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+                owner.get_packet(b['packet_id'])
+                owner.get_packet(b['packet_id'])
+                self.assertEqual(content.call_count, 2)
+                self.assertNotIn(b['packet_id'], self.state().entries)
+                self.assertEqual(len(self.state().entries), 1)
+
+    def test_different_root_does_not_share_evidence(self):
+        case, owner, audit, packet = self.stored()
+        _, other = case.owner('other-root')
+        other.put_packet(audit['request_id'], packet)
+        key = audit['scope']['packet_id']
+        with self.scope(owner), patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+            owner.get_packet(key)
+            other.get_packet(key)
+            owner.get_packet(key)
+            self.assertEqual(content.call_count, 2)
+
+    def test_admit_reject_and_standalone_brief_selected_entries(self):
+        for entry in ('admit', 'reject', 'brief'):
+            with self.subTest(entry=entry):
+                case = self.fixture(managed=True)
+                instance = case.instance
+                if entry == 'reject':
+                    instance, _, _ = case.launch_binding('api')
+                audit = case.prepare(instance=instance)
+                consumer = case.claim(audit, instance)
+                if entry == 'admit':
+                    case.authority.get_brief(audit['brief_id'], instance)
+                sealed = case.sealed_fixture_record(audit, consumer)
+                with patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+                    if entry == 'admit':
+                        self.assertEqual(case.authority.admit_saved(sealed, instance)['status'], 'admitted')
+                    elif entry == 'reject':
+                        self.assertTrue(case.authority.reject_response(audit['brief_id'], 'invalid response', instance)['request_terminal'])
+                    else:
+                        self.assertEqual(case.authority.get_brief(audit['brief_id'], instance)['brief']['request_id'], audit['request_id'])
+                    self.assertEqual(content.call_count, 1)
+                self.assertIsNone(self.state())
+
+    def test_recovery_public_items_have_fresh_invocation_scopes(self):
+        case = self.fixture(managed=True)
+        audits = [case.prepare(), case.prepare(channel='peer')]
+        for audit in audits:
+            case.artifacts.set_attempt_state(audit['request_id'], audit['attempt_id'], 'queued',
+                {'state': 'queued', 'reason': 'resume_pending'})
+        seen = {}
+        original = case.artifacts._read_validated_packet_content
+        def observe(packet_id, *args, **kwargs):
+            self.assertIsNotNone(self.state())
+            seen.setdefault(packet_id, set()).add(self.state().token)
+            return original(packet_id, *args, **kwargs)
+        with patch.object(case.artifacts, '_read_validated_packet_content', side_effect=observe), \
+                patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+            result = case.authority.recover_startup()
+            self.assertEqual(set(result['enqueue_repaired']), {a['request_id'] for a in audits})
+            self.assertEqual(content.call_count, 2)
+        tokens = [next(iter(values)) for values in seen.values()]
+        self.assertEqual(len(tokens), 2)
+        self.assertIsNot(tokens[0], tokens[1])
+        self.assertIsNone(self.state())
+
+    def test_parent_refusal_and_between_read_packet_damage_keep_service_semantics(self):
+        for damaged_read in (1, 2):
+            with self.subTest(damaged_read=damaged_read):
+                case = self.fixture(managed=True)
+                audit = case.prepare()
+                case.claim(audit)
+                key = audit['scope']['packet_id']
+                path = case.artifacts._object_path('packet', key)
+                original = case.artifacts._read_object
+                reads = []
+                def read(kind, identifier, maximum):
+                    if kind == 'packet' and identifier == key:
+                        reads.append(identifier)
+                        if len(reads) == damaged_read:
+                            packet = json.loads(path.read_bytes())
+                            before = path.stat()
+                            text = packet['messages'][0]['text']
+                            packet['messages'][0]['text'] = 'Z' + text[1:]
+                            raw = canonical_utf8(packet)
+                            self.assertEqual(len(raw), before.st_size)
+                            path.write_bytes(raw)
+                            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+                    return original(kind, identifier, maximum)
+                with patch.object(case.artifacts, '_read_object', side_effect=read):
+                    result = self.mcp_context(case, audit)
+                self.assertEqual(result['code'], 'artifact_storage_unavailable')
+                row = case.artifacts.get_request(audit['request_id'])
+                self.assertEqual(row['state'], 'queued' if damaged_read == 1 else 'failed')
+                self.assertEqual(row['reason'], 'queued' if damaged_read == 1 else 'source_packet_unavailable')
+                self.assertEqual(len(reads), damaged_read)
+                self.assertEqual(case.artifacts.list_versions(audit['lineage_id'])['count'], 0)
+                self.assertIsNone(self.state())
 
 
 if __name__ == '__main__':

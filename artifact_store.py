@@ -1,7 +1,8 @@
 """Owned artifact metadata and immutable bytes; no dispatch or admission policy."""
 from contextlib import contextmanager
+from contextvars import ContextVar
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import json
 import math
@@ -394,6 +395,70 @@ def _path_key(path):
         elif value.startswith('\\\\?\\'):
             value = value[4:]
     return os.path.normcase(os.path.normpath(value))
+
+
+@dataclass(frozen=True)
+class _ValidatedPacketBytes:
+    packet_id: str
+    raw: bytes
+    scope_bytes: bytes
+    audit_view_bytes: bytes
+
+
+@dataclass
+class _PacketValidationInvocation:
+    owner: object
+    root_key: tuple
+    thread_id: int
+    token: object = field(default_factory=object)
+    entries: dict = field(default_factory=dict)
+    issued: dict = field(default_factory=dict)
+
+
+_PACKET_VALIDATION_INVOCATION = ContextVar('artifact_packet_validation_invocation', default=None)
+
+
+def _packet_owner_key(owner):
+    try:
+        return (_path_key(owner.root.resolve()), _path_key(owner.path.resolve()))
+    except (OSError, RuntimeError, ValueError):
+        return None  # Evidence eligibility must not change the caller's error precedence.
+
+
+@contextmanager
+def _packet_validation_invocation(owner):
+    state = _PacketValidationInvocation(owner, _packet_owner_key(owner), threading.get_ident())
+    token = _PACKET_VALIDATION_INVOCATION.set(state)
+    try:
+        yield
+    finally:
+        _PACKET_VALIDATION_INVOCATION.reset(token)
+
+
+def _packet_invocation_for(owner):
+    state = _PACKET_VALIDATION_INVOCATION.get()
+    if (isinstance(state, _PacketValidationInvocation) and state.owner is owner
+            and state.thread_id == threading.get_ident() and state.root_key is not None
+            and state.root_key == _packet_owner_key(owner)):
+        return state
+    return None
+
+
+def _packet_evidence(state, packet_id, raw):
+    if state is None:
+        return None
+    entry = state.entries.get(packet_id)
+    if not isinstance(entry, _ValidatedPacketBytes):
+        return None
+    issued = state.issued.get(id(entry))
+    if (type(issued) is not tuple or len(issued) != 5 or issued[0] is not entry or issued[4] is not state.token
+            or entry.packet_id != packet_id or type(entry.raw) is not bytes
+            or type(entry.scope_bytes) is not bytes or type(entry.audit_view_bytes) is not bytes
+            or issued[1] is not entry.raw or issued[2] is not entry.scope_bytes
+            or issued[3] is not entry.audit_view_bytes
+            or len(entry.raw) != len(raw) or entry.raw != raw):
+        return None
+    return entry
 
 
 class _ArtifactOwnedFiles:
@@ -911,23 +976,53 @@ class ArtifactStore(_ArtifactOwnedFiles):
             self._record_object_error(kind, identifier)
             raise ArtifactUnavailable('Artifact object is unavailable.') from None
 
-    def _packet(self, packet_id):
+    def _read_validated_packet_content(self, packet_id, raw, *, need_packet=True):
+        evidence = _packet_evidence(_packet_invocation_for(self), packet_id, raw)
+        if evidence is not None:
+            return (json.loads(raw) if need_packet else None,
+                    json.loads(evidence.scope_bytes), json.loads(evidence.audit_view_bytes))
+        packet = json.loads(raw)
+        scope = _packet_scope(packet_id, packet)
+        if _canonical(packet) != raw:
+            raise ArtifactValidationError('Packet bytes changed.')
+        view = {'channel': packet['channel'], 'source_run': packet['source_run']}
+        return packet if need_packet else None, scope, view
+
+    def _remember_validated_packet(self, packet_id, raw, scope, view):
+        state = _packet_invocation_for(self)
+        if state is None or _packet_evidence(state, packet_id, raw) is not None:
+            return
+        # Bypass storage at the bound; never evict another packet's proof.
+        if packet_id not in state.entries and len(state.entries) >= 2:
+            return
+        total = sum(len(entry.raw) for key, entry in state.entries.items()
+                    if key != packet_id and isinstance(entry, _ValidatedPacketBytes))
+        if total + len(raw) > 2 * MAX_PACKET_BYTES:
+            return
+        entry = _ValidatedPacketBytes(packet_id, raw, canonical_utf8(scope), canonical_utf8(view))
+        prior = state.entries.get(packet_id)
+        if prior is not None:
+            state.issued.pop(id(prior), None)
+        state.entries[packet_id] = entry
+        live = {id(value) for value in state.entries.values()}
+        state.issued = {key: value for key, value in state.issued.items() if key in live}
+        state.issued[id(entry)] = (entry, entry.raw, entry.scope_bytes, entry.audit_view_bytes, state.token)
+
+    def _packet(self, packet_id, *, _need_packet=True):
         try:
             raw = self._read_object('packet', packet_id, MAX_PACKET_BYTES)
-            packet = json.loads(raw)
-            scope = _packet_scope(packet_id, packet)
-            if _canonical(packet) != raw:
-                raise ArtifactValidationError('Packet bytes changed.')
+            packet, scope, view = self._read_validated_packet_content(packet_id, raw, need_packet=_need_packet)
             for row in self._data['requests'].values():
                 audit = row['audit']
                 if audit['scope']['packet_id'] == packet_id and (
-                        audit['scope'] != scope or packet['channel'] != audit['original_channel']
-                        or packet['source_run'] != audit['source_run']):
+                        audit['scope'] != scope or view['channel'] != audit['original_channel']
+                        or view['source_run'] != audit['source_run']):
                     raise ArtifactValidationError('Packet no longer matches its request.')
         except (ValueError, TypeError, KeyError, UnicodeError, ArtifactUnavailable):
             self._record_object_error('packet', packet_id)
             raise ArtifactUnavailable('Artifact source packet is unavailable.') from None
         self._object_errors.pop(('packet', packet_id), None)
+        self._remember_validated_packet(packet_id, raw, scope, view)
         return packet, scope
 
     def _request(self, request_id):
@@ -967,7 +1062,7 @@ class ArtifactStore(_ArtifactOwnedFiles):
         _hex(packet_id)
         with self._lock:
             self._check_index()
-            return deepcopy(self._packet(packet_id)[0])
+            return self._packet(packet_id)[0]  # A fresh parse, never an owner/evidence-owned object.
 
     def export_lineage_ids(self):
         with self._lock:
@@ -1313,7 +1408,7 @@ class ArtifactStore(_ArtifactOwnedFiles):
             if change['state'] not in allowed[row['state']]:
                 raise ArtifactConflict('Artifact state transition is not allowed.')
             if change['state'] in ('queued', 'active'):
-                self._packet(row['audit']['scope']['packet_id'])
+                self._packet(row['audit']['scope']['packet_id'], _need_packet=False)
             stamp = _number(time.time() if now is None else now)
             value = deepcopy(self._data)
             target = value['requests'][request_id]
@@ -1360,7 +1455,7 @@ class ArtifactStore(_ArtifactOwnedFiles):
             if (row['state'] not in ('queued', 'active') or lineage['pending_request_id'] != request_id
                     or self._parent(lineage) != audit['expected_parent']):
                 raise ArtifactConflict('Artifact request is not live or its parent changed.')
-            self._packet(audit['scope']['packet_id'])
+            self._packet(audit['scope']['packet_id'], _need_packet=False)
             stamp = _number(time.time() if now is None else now)
             version_id = request_ids(request_id)['version_id']
             metadata = {'id': version_id, 'lineage_id': audit['lineage_id'],

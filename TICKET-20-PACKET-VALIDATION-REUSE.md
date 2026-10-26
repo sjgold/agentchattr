@@ -154,3 +154,8 @@ Retained earlier executions: initial selector accidentally exposed imported unit
 Final raw unittest log retained at .audit-tmp/a1-packet-reuse-reds-final.log, SHA256 62fd63ddd52e00200b52e12b9ed3edf05fe998ee6b7e542eea40c282b80102ed. No R2/R1 affected suite, full discovery or timing claim is made by this red run. Reviewer reruns/audits before production.
 
 The preceding23-method run had the same6FAIL+30ERROR/2guards in2.458s; final2.464s adds explicit no-SHA-on-hit and same-invocation boundary-release assertions behind the existing infrastructure barrier. Those new assertions are unobserved-red, not measured successful reuse. No source changed between runs.
+
+
+## WIP attribution before isolation, NOT A1 acceptance
+
+Reviewer authorized A1 production ataff51101, then ruled that the unit must be independently based on cleared R1 product74f4697. The current branch includes unaccepted R2 diagnostic index-v2 plus D1/D2; it is preserved as WIP and is NOT the acceptance base. Original23 A1 tests pass2.755s; expanded33 A1+3MCP pass36/4.831s;16 in-memory bound/equivalence mutants killed. Focused96 on this WIP base had2 pre-existing R1 diagnostic-fixture KeyErrors (322/696), independently reproduced against aff51101 code loaded in memory (2errors/2tests0.081s). No claim of a green R1 affected/full gate. All of these are WIP baseline attribution. Root now ports only A1 to separate cleared-base worktree, leaving this history intact; diagnostics fixture migration remains R2 work. Acceptance suites and revised timing must run there.

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 A1 first observed reds; production waits for reviewer)
+**Updated:** 2026-10-26 (#20 A1 WIP checkpoint; porting to isolated cleared R1 base)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer executes/audits A1 ROOT red pin before any production. A1 reds cleared at1bc2df79:23 methods,6 behavioral FAIL+30 missing-API ERROR,2 guards PASS2.464s on unchanged product. M1-M9 folded. D4 reds/source wait until A1 green/measured; R3/operator/capacity/activation/push held. |
+| Next | Root ports A1 to a SEPARATE native worktree/branch from CLEARED R1 product74f4697. This branch and its R2 WIP remain intact. A1-over-aff51101 results are WIP attribution only, not gate evidence. Re-run focused/affected/full/timing on isolated base; no R2 fixtures/D4/R3/operator/capacity/activation/push. |
 
 ## Current handoff
+
+- Reviewer cleared A1 production ataff51101, then required isolation on CLEARED R1 product74f4697, not R2 WIP. Current local A1-over-R2 implementation checkpoint is retained only as WIP; root creates separate branch/worktree, reports any non-mechanical port conflict, and runs acceptance there. On this UNACCEPTED base: original23 A1 green2.755s; expanded33 A1+3MCP=36 green4.831s;16 in-memory mutants killed (source untouched). Focused96 ran12.084s with2 R1 diagnostic-fixture KeyErrors at322/696. Those exact errors reproduced with aff51101 store/service code loaded in memory (2tests2errors0.081s); NOT an A1 regression, NOT an accepted known-red gate. R2 migration remains separate. No timing/affected/full run yet. No R2/D4 production change or push.
 
 - A1 first ROOT red file tests/test_artifact_packet_reuse.py:23 methods,6 behavioral FAIL+30 infrastructure AttributeError records2.464s,2 guards PASS, no skips. Behavioral validation counts combined3vs1/repeat5vs2/prepare4vs2/commit2vs1/queued-resume2vs1/separate-API3vs2, with actual fresh read/state/result checks reached.15 infra methods stop at missing adapter29/ContextVar1; uncached baseline halves ran, all reuse-dependent assertions explicitly unobserved-red. All temp roots cleaned. M1 audit-view bytes/no packet parse on discard, public parent API, no hash on hit, inline legacy site, D4 transport table/report drop, held operator detector and separate HTTP scopes folded in contract. No product edits, D4 tests, helpers or performance run. Next reviewer reruns/static-audits BEFORE A1 production.
 
