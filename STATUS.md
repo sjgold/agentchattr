@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 A1 required expiry correction verified on isolated branch)
+**Updated:** 2026-10-26 (#20 A1 CLOSED locally; R2-on-A1 merge plan proposed)
 
 ## At a glance
 
@@ -17,10 +17,14 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
-| Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer checks isolated A1 expiry-fix pinca47a8bfcc9cbcd95b8cba284489f85797c07ab3 (producta8862f3, R1 base74f4697). New focused57PASS7.354s,affected419PASS220.412s/no skips,24 mutants killed. Prior f769 was cleared with this required fix; corrected pin awaits own focused/mutation confirmation. Main source stays R2 WIP. No push/activation/D4/R3/operator/capacity work. |
+| Latest checks | Reviewer CLOSED A1 ca47:57 focused OK7.07s and key/thread mutants killed; earlier own336 artifact/timing passed. Root correction419PASS220.412s,24 mutants killed. Merge preview only, no working-tree source changed or new runtime test. R2 remains unaccepted. |
+| Next | A1 CLOSED atca47a8bf (unit74f4697..ca47a8bf), local closure docs2c34bbf; no push authorized/performed. Root proposed R2-on-A1 merge in NEW branch/worktree, preview5 conflicted files; class-relocation duplication must be resolved explicitly. Read TICKET-20-R2-ON-A1-MERGE.md; reviewer semantic ruling before source resolution if needed. D4 refresh follows reconciliation; R3 before operator. |
 
 ## Current handoff
+
+- A1 closure/publication recorded: exact reviewed range74f4697..ca47a8bf, producta8862f38, local docs2c34bbf on codex/ticket-20-a1-isolated. No explicit Seth push go-ahead, so no remote publication/activation. Original R2 WIP source67e9e05 preserved. Next [R2-on-A1 merge plan](TICKET-20-R2-ON-A1-MERGE.md): NEW branch starts closed A1, merges preserved original R2 history; no rewrite. Read-only merge-tree found5 conflicts (store/helper relocation, A1 tests/tool/docs). Six A1 store methods AST-match already; _persist intentionally differs (retain R2). Service/MCP same; D2 writer R2-only. Blind merge duplicates helper classes, so deduplicate accepted A1 block while retaining R2 hierarchy/schema2. No merge/source resolution yet. D4 still needed by unchanged diagnostic-IO call-path inference, no new profile run. R3 and later packages queued.
+
+## Earlier correction-review pointers (historical)
 
 - Latest A1 correction handoff: isolated branch codex/ticket-20-a1-isolated atca47a8bfcc9cbcd95b8cba284489f85797c07ab3, producta8862f38e0618491e5eb987a75ccbaf30bbab712. Path C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-a1-isolated. Reviewer independently cleared priorf769 conditional on closing copied-context lifetime; root observed2 reds then fixed active flag/finally maps,57 focused and419 affected pass,24 mutants killed. Only flag/cleanup product changes, no optional optimizations. Prior full1714/timing90 keep8443/f769 attribution; no full/timing rerun requested. Read isolated STATUS and verification doc for current receipts. Main source unchanged at67e9e05 WIP; no merge/acceptance/publication implied.
 
