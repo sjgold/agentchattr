@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (D4 independently accepted in substance; Q1 startup error fix implemented, Q2-Q4 clarified; final regression green; Q follow-up independent review pending)
+**Updated:** 2026-10-26 (R2 + D4 FINAL ACCEPTANCE at220f3400; R3 docs-only contract next)
 
 ## At a glance
 
@@ -16,17 +16,16 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 final builder gate190 passed and independent review accepted it in substance; Q1-Q4 implemented/documented with final builder regressions green; final independent acceptance pending, prior misses retained. No whole-ticket acceptance or activation. |
+| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Q1 startup error fix: focused161 and artifact437 pass;17 mutants killed. ONE post-Q full1817/four skips OK337.595s. Final frozen product4968/toolsf2 Smoke19+gate190 passed; earlier misses retained. |
-| Next | Independent reviewer: verify Q1-Q4 follow-up pin and issue final acceptance ruling. Read TICKET-20-D4-FINAL-FOLLOWUPS.md and TICKET-20-D4-FINAL-GATE.md. R3/operator/capacity/activation/push held. |
+| Next | Root: R3 DOCS ONLY contract then independent review before reds. Operator routes implementation/UI/capacity/activation/push held. |
 
 ## Current handoff
 
-- Active worktree: codex/ticket-20-r2-on-a1. Reviewer independently reran phase44/artifact434, killed five driver mutants and statically audited production at40b269a3. D4 accepted in substance, final acceptance requires Q1-Q4 follow-ups.
-- Q1 now contains storage errors in the startup cancel-winner handler and uses a fresh request read for held-reason mapping. Two new methods observed four assertion failures before source; after source, these and the Q3 seam control pass. Focused161 tests OK44.170s;17 mutation checks killed by assertions after correcting one invalid mutation anchor. Artifact437 tests OK231.042s. ONE builder full discovery1817/four skips OK337.595s, sequential shell349bcdd5.
-- Q2 is a contract correction: reservation_resume has no private brief check. Q3 retains the documented body-orphan seam and adds a passing baseline control; no marker check or extra brief read changes measured paths. Q4 intentional private invariants/regression seams are listed in PHASES. Read TICKET-20-D4-FINAL-FOLLOWUPS.md.
-- Final frozenf2 gate190 passed with sentinel and no attribution/repeats. Prior misses, unknown causes and instrument-invalid attempts remain in TICKET-20-D4-FINAL-GATE.md. Timing evidence stays on product4968; Q1 changes only exceptional startup warning/repair failure handling. No new timing run initiated.
-- Next owner: independent reviewer for final Q1-Q4 acceptance on the committed follow-up pin. R3 docs comes after that ruling; operator routes/capacity/activation/push remain held. SUPPORTED_CAPABILITIES stays empty.
+- Publishable reviewed branch/tip: codex/ticket-20-r2-on-a1 at220f340042056b80c09091807690af74f36dafec, unit base2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca (closed A1). R2 + D4 FINAL ACCEPTANCE granted. Older codex/ticket-20-artifacts product WIP67e9e05 is superseded, preserved in history; later status-pointer commits there do not change product bytes. No remote publication has occurred.
+- Independent final review: clean pin, recover_startup-only Q1 product diff read, focused170 tests OK47.5s. Earlier independent phase44/artifact434/driver mutation/static audit stands. Post-Q builder focused161/artifact437/full1817 (4 skips) pass,17 assertion mutants killed. Complete evidence: TICKET-20-D4-FINAL-FOLLOWUPS.md and TICKET-20-D4-FINAL-GATE.md.
+- Running Seth disclosure list: withdrawn512KiB/128-request quota is not enabled; Seth approved R1-R3, R1/R2+D4/A1 are accepted and R3 pending. Two earlier roughly1.1s stalls remain unattributed; cause unverified. Final max-based190 gate passed with a stall sentinel, all earlier misses/invalid attempts remain listed. Max-source admit/brief A roughly0.16s typical on this machine, no future-tail guarantee. No replacement finite capacity is selected.
+- Next owner: root drafts R3 refs-out-of-index contract DOCS ONLY, reviewer must clear schema/compatibility/measurement plan before reds. Then operator-routes contract refresh/K6 reassessment. Operator implementation/UI/capacity implementation/activation/push remain held. SUPPORTED_CAPABILITIES stays empty.
 
 ## Earlier correction-review pointers (historical)
 

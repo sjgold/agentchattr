@@ -1,6 +1,6 @@
 # D4 final acceptance follow-ups
 
-Status: D4 accepted in substance at 40b269a3; final Q1-Q4 acceptance pending.
+Status: R2 + D4 FINAL ACCEPTANCE granted at220f340042056b80c09091807690af74f36dafec, base closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca. Branch codex/ticket-20-r2-on-a1 is the publishable reviewed unit. No push or activation performed.
 
 1. Q1: observe startup cancel-winner storage failure and fresh held-reason mapping reds, then contain the failure per item. Mutation-check both properties.
 2. Q2: align reservation_resume contract with existing no-private-brief-read behavior.
@@ -276,7 +276,7 @@ FAILED (failures=4)
 
 ## Final functional receipt
 
-Q1-Q4 work is implemented/documented and builder verified. Final independent review remains pending. The unit starts at closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca; no push or activation is authorized. R2 earlier missed gates and all D4 attempt history remain in the final gate document. Capability stays empty. The reviewer may inspect the Q1-only product diff against40b269a3 and reuse its preceding static audit for unchanged product regions.
+Q1-Q4 work is implemented/documented and builder verified. Final independent review is complete. The unit starts at closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca; no push or activation is authorized. R2 earlier missed gates and all D4 attempt history remain in the final gate document. Capability stays empty. The reviewer may inspect the Q1-only product diff against40b269a3 and reuse its preceding static audit for unchanged product regions.
 
 The following is the retained sequential runner output, including the corrected mutation result,437 artifact tests and ONE1817-test discovery. Injected storage/launch refusal messages are expected fixture output, with overall OK as printed.
 
@@ -360,3 +360,11 @@ The following is the retained sequential runner output, including the corrected 
 2026-10-26T17:39:21.298Z === exited (code 0)
 
 ```
+
+## Final independent acceptance
+
+Reviewer Sonnet5.5 granted FINAL ACCEPTANCE at220f3400. Independently executed: clean HEAD; product diff against40b269a3 read and confirmed recover_startup-only Q1; focused D4/A1/MCP/R1/R2/recovery170 tests OK47.5s. Reviewer did not repeat builder artifact437/full1817 or timing190 after Q follow-ups, and explicitly retained prior gate acceptance because measured paths are unchanged. Q2/Q3/Q4 documentation and accepted seams approved.
+
+Reviewed publishable unit:2c34bbfb..220f3400 on codex/ticket-20-r2-on-a1. Original codex/ticket-20-artifacts product WIP67e9e05 is superseded; subsequent pointer-only commits there do not change that product state. Histories remain preserved. Push requires Seth's explicit go-ahead and has not occurred. Capability remains empty.
+
+Next authorized work: R3 contract DOCS ONLY, independent review before reds. Then operator-route contract refresh. No operator/UI/activation/push implementation is authorized.
