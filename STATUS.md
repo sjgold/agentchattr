@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 ROOT reds observed, production held for review)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 production authorized, store marker/report stage green)
 
 ## At a glance
 
@@ -27,7 +27,7 @@
 - Mechanical migration167bfb8 independently ACCEPTED: reviewer379artifact tests OK219.2s and static assertion audit found no weakening. Source/tool/portable goldens unchanged; R2 N additions now follow as its own unit.
 - R2 N coveragea40af574 independently ACCEPTED: reviewer114OK17.8s/static audit. Five small tests/docs-only follow-ups folded into first D4 red pin: nonempty retained-ledger reset/cold cap/parser stale mutations, exact authoring exception, healthy ACK conflict/order-independent warnings, explicit private fixture table and target-only ZIP/substantive docs assertion. Green support114PASS17.395s,5new follow-up mutants killed; prior ERROR-based mutants remain labeled weaker.
 - One new ROOT tests/test_artifact_diagnostic_phases.py is OBSERVED RED on unchanged product:30methods/36.338s,33behavioral assertion failures (writer lock, peer progress, entry guard),28missing frozen API AttributeErrors,4existing guards PASS,0skips; tracked1d8ef42b. [Per-test reachability and F-1..F-5 receipts](TICKET-20-D4-REDS.md). Every assertion after a first red is listed unobserved until green. Product/tool/golden bytes unchanged froma40af574, no D4 implementation yet.
-- Next owner reviewer runs and statically audits this red pin, then may clear D4 production. Root stops at that dependency, no source/gate/full run. Merged DESIGNdd271d1 remains130rows with heavy NORMAL1.103438/peer1.103584 cause unknown; no rerun/threshold change. R3/operator/capacity/activation/push remain held.
+- Reviewer independently confirmed945ea482 reds and CLEARED D4 PRODUCTION with P1-P6 coverage preconditions. Root executing frozen contract in TICKET-20-D4-PRODUCTION.md. P1-P4 fixes observed30/45FAIL+28ERROR27.851s before source. Store Event/capture/report stage now56PASS8.663s including three previous reds; service/startup/MCP/P5/gates still pending. No D4 acceptance or activation, no R3/operator/capacity/push.
 
 ## Earlier correction-review pointers (historical)
 

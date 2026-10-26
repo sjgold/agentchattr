@@ -536,9 +536,12 @@ class ArtifactDiagnosticStore(_ArtifactOwnedFiles):
     _diagnostic_id = staticmethod(_diagnostic_id)
     _summary_id = staticmethod(_summary_id)
 
-    def __init__(self, data_dir, *, hold_unreadable=False, legacy_held=False):
+    def __init__(self, data_dir, *, hold_unreadable=False, legacy_held=False, _legacy_marker=None):
         if type(hold_unreadable) is not bool or type(legacy_held) is not bool:
             raise ArtifactValidationError('Invalid diagnostic startup mode.')
+        if _legacy_marker is not None and not isinstance(_legacy_marker, threading.Event):
+            raise ArtifactValidationError('Invalid diagnostic legacy marker.')
+        self._legacy_marker = _legacy_marker if _legacy_marker is not None else threading.Event()
         self.root = Path(data_dir).absolute()
         self.path = self.root / 'artifacts' / 'diagnostics.json'
         self._lock = threading.RLock()
@@ -549,7 +552,7 @@ class ArtifactDiagnosticStore(_ArtifactOwnedFiles):
         self._known = False
         self._legacy_held = legacy_held
         self._transaction_active = False
-        if legacy_held:
+        if self._legacy_held:
             self._held = _LEGACY_GUIDANCE
             return
         try:
@@ -562,10 +565,25 @@ class ArtifactDiagnosticStore(_ArtifactOwnedFiles):
             if not hold_unreadable:
                 raise ArtifactDiagnosticsUnavailable() from None
 
+    @property
+    def _legacy_held(self):
+        return self._legacy_flag or self._legacy_marker.is_set()
+
+    @_legacy_held.setter
+    def _legacy_held(self, value):
+        self._legacy_flag = value
+        if value:
+            self._legacy_marker.set()
+
     def _set_legacy_hold(self):
-        with self._lock:
-            self._legacy_held = True
+        # Event is the only cross-owner edge; never wait for the diagnostic lock.
+        self._legacy_held = True
+        self._held = _LEGACY_GUIDANCE
+
+    def _require_nonlegacy(self):
+        if self._legacy_held:
             self._held = _LEGACY_GUIDANCE
+            raise ArtifactDiagnosticsUnavailable()
 
     def _load_diagnostics(self):
         try:
@@ -623,6 +641,7 @@ class ArtifactDiagnosticStore(_ArtifactOwnedFiles):
 
     @contextmanager
     def _transaction(self):
+        self._require_nonlegacy()
         with self._lock:
             if self._legacy_held:
                 raise ArtifactDiagnosticsUnavailable()
@@ -652,12 +671,14 @@ class ArtifactDiagnosticStore(_ArtifactOwnedFiles):
             self._validate_diagnostics(value)
             self._encoded(value)
             self._safe(self.path)
+            self._require_nonlegacy()
             try:
                 atomic_json(self.path, value)
                 stamp = self._fingerprint()
+                self._require_nonlegacy()
             except Exception:
                 # Replacement may have landed, even if its final stat failed.
-                self._held = _DIAGNOSTIC_GUIDANCE
+                self._held = _LEGACY_GUIDANCE if self._legacy_held else _DIAGNOSTIC_GUIDANCE
                 self._invalid_stamp = object()
                 raise ArtifactDiagnosticsUnavailable() from None
             self._data, self._stamp = value, stamp
@@ -868,6 +889,7 @@ class ArtifactStore(_ArtifactOwnedFiles):
         self._held = None
         self._known = False
         self._legacy_held = False
+        self._diagnostic_legacy_marker = threading.Event()
         self._object_errors = {}
         self._channel_policy_getter = self._closed_policy
         try:
@@ -879,7 +901,8 @@ class ArtifactStore(_ArtifactOwnedFiles):
             self._invalid_stamp = self._fingerprint_quiet()
             if not hold_unreadable:
                 raise
-        self.diagnostic_store = ArtifactDiagnosticStore(self.root, hold_unreadable=True, legacy_held=self._legacy_held)
+        self.diagnostic_store = ArtifactDiagnosticStore(self.root, hold_unreadable=True, legacy_held=self._legacy_held,
+            _legacy_marker=self._diagnostic_legacy_marker)
 
     @staticmethod
     def _closed_policy():
@@ -916,6 +939,7 @@ class ArtifactStore(_ArtifactOwnedFiles):
                 if value == _empty_legacy_v1():
                     return _empty()
                 self._legacy_held = True
+                self._diagnostic_legacy_marker.set()
                 raise ArtifactUnavailable(_LEGACY_GUIDANCE)
             self._validate_index(value)
             return value
@@ -923,7 +947,7 @@ class ArtifactStore(_ArtifactOwnedFiles):
             raise ArtifactUnavailable('Saved artifact index is unavailable or malformed; nothing was reset.') from None
 
     def _check_index(self):
-        if self._legacy_held:
+        if self._legacy_held or self._diagnostic_legacy_marker.is_set():
             raise ArtifactUnavailable(_LEGACY_GUIDANCE)
         stamp = self._fingerprint_quiet()
         if self._held is None and stamp == self._stamp:
@@ -941,7 +965,7 @@ class ArtifactStore(_ArtifactOwnedFiles):
         self._stamp, self._held = stamp, None
 
     def _persist(self, value):
-        if self._legacy_held:
+        if self._legacy_held or self._diagnostic_legacy_marker.is_set():
             raise ArtifactUnavailable(_LEGACY_GUIDANCE)
         self._validate_index(value)
         try:
@@ -1719,24 +1743,33 @@ class ArtifactStore(_ArtifactOwnedFiles):
 
     def _check_diagnostic_legacy(self):
         with self._lock:
-            legacy = self._legacy_held
+            legacy = self._legacy_held or self._diagnostic_legacy_marker.is_set()
         if legacy:
-            self.diagnostic_store._set_legacy_hold()
+            self._diagnostic_legacy_marker.set()
+
+    def _diagnostic_attachment_locked(self, request_id, dispatch_id):
+        if self._legacy_held or self._diagnostic_legacy_marker.is_set():
+            if request_id is None:
+                raise ArtifactDiagnosticsUnavailable()
+            raise ArtifactUnavailable(_LEGACY_GUIDANCE)
+        if request_id is None:
+            return None
+        if self._held is not None or not self._known:
+            raise ArtifactUnavailable(_AUTHORING_GUIDANCE)
+        row = self._data['requests'].get(request_id)
+        return (request_id if row is not None and row['state'] != 'imported'
+                and row['audit']['dispatch_id'] == dispatch_id else None)
+
+    def _capture_diagnostic_attachment(self, request_id, dispatch_id):
+        if request_id is not None:
+            _hex(request_id)
+        _hex(dispatch_id)
+        with self._lock:
+            return self._diagnostic_attachment_locked(request_id, dispatch_id)
 
     def _snapshot_diagnostic_attachment(self, request_id, dispatch_id):
-        _hex(request_id); _hex(dispatch_id)
-        with self._lock:
-            legacy = self._legacy_held
-            held = self._held is not None or not self._known
-            row = self._data['requests'].get(request_id)
-            attached = (request_id if row is not None and row['state'] != 'imported'
-                        and row['audit']['dispatch_id'] == dispatch_id else None)
-        if legacy:
-            self.diagnostic_store._set_legacy_hold()
-            raise ArtifactUnavailable(_LEGACY_GUIDANCE)
-        if held:
-            raise ArtifactUnavailable(_AUTHORING_GUIDANCE)
-        return attached
+        _hex(request_id)
+        return self._capture_diagnostic_attachment(request_id, dispatch_id)
 
     def quarantine_submission(self, request_id, attempt_id, dispatch_id, *, reason, content=None,
                               actor_identity_id=None, now=None):
@@ -1775,14 +1808,14 @@ class ArtifactStore(_ArtifactOwnedFiles):
                 observations = deepcopy(list(self._object_errors.values()))
                 referenced = {'packet': {row['audit']['scope']['packet_id'] for row in self._data['requests'].values()},
                               'version': set(self._data['versions'])}
-                for kind, folder, suffix in (('packet', self.root / 'artifact_briefs' / 'packets', '.json'),
-                                            ('version', self.root / 'artifacts' / 'objects', '.md')):
-                    self._safe(folder)
-                    for path in folder.glob('*' + suffix):
-                        if path.stem not in referenced[kind]:
-                            self._safe(path)
-                            observations.append({'id': path.stem, 'kind': 'orphan_' + kind, 'updated_at': path.stat().st_mtime})
-                rows.extend(observations)
+            for kind, folder, suffix in (('packet', self.root / 'artifact_briefs' / 'packets', '.json'),
+                                        ('version', self.root / 'artifacts' / 'objects', '.md')):
+                self._safe(folder)
+                for path in folder.glob('*' + suffix):
+                    if path.stem not in referenced[kind]:
+                        self._safe(path)
+                        observations.append({'id': path.stem, 'kind': 'orphan_' + kind, 'updated_at': path.stat().st_mtime})
+            rows.extend(observations)
         except (OSError, ArtifactUnavailable):
             owners['authoring'] = {'available': False, 'reason': 'legacy_schema' if self._legacy_held else 'authoring_unavailable'}
             errors['authoring'] = _owner_error('authoring', self._legacy_held)

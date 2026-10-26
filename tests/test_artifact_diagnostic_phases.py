@@ -109,15 +109,14 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
         try:return ('ok',action())
         except Exception as error:return ('error',error)
 
-    def pause(self,case,action,peer,*,after_durable=False):
+    def pause(self,case,action,peer):
         """Event proof, no sleeps/latency claim. Always release/join on red."""
         entered,proceed,peer_done=threading.Event(),threading.Event(),threading.Event()
         original=case.artifacts.diagnostic_store.record
         def blocked(*args,**kwargs):
-            value=original(*args,**kwargs) if after_durable else None
             entered.set()
             if not proceed.wait(5):raise AssertionError('test failed to release diagnostic I/O')
-            return value if after_durable else original(*args,**kwargs)
+            return original(*args,**kwargs)
         def competing():
             try:return self.outcome(peer)
             finally:peer_done.set()
@@ -141,15 +140,13 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
                 (case,*_),action=self.action(kind);seen=[]
                 original=case.artifacts.diagnostic_store.record
                 def observed(*args,**kwargs):
-                    seen.append(True)
-                    self.assertFalse(case.engine._lock._is_owned(),'B owns engine lock')
-                    self.assertFalse(case.catalog._lock._is_owned(),'B owns catalog lock')
-                    self.assertFalse(case.artifacts._lock._is_owned(),'B owns authoring lock')
+                    seen.append((case.engine._lock._is_owned(),case.catalog._lock._is_owned(),case.artifacts._lock._is_owned()))
                     return original(*args,**kwargs)
                 with patch.object(case.artifacts.diagnostic_store,'record',observed):
                     try:action()
                     except (authority.ArtifactInputError,storage.ArtifactUnavailable):pass
-                self.assertEqual(seen,[True])
+                self.assertEqual(len(seen),1)
+                self.assertEqual(seen[0],(False,False,False),'B owns authority/authoring locks')
 
     def test_diagnostic_io_releases_authority_boundary_for_cancel(self):
         for kind in ('cli','reject','brief','delivery','resume','retained','saved'):
@@ -261,11 +258,13 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
 
     def test_startup_terminal_diagnostic_allows_independent_peer(self):
         (case,*_),action=self.action('startup')
-        outcome,other=self.pause(case,action,lambda:case.service.require_active('peer'))
+        peer=case.prepare(channel='peer')
+        outcome,other=self.pause(case,action,lambda:case.authority.cancel_request(peer['request_id']))
         self.assertEqual(other[0],'ok');self.assertEqual(outcome[0],'ok')
         self.assertEqual(len(outcome[1]['quarantined']),1)
+        self.assertEqual(case.artifacts.get_request(peer['request_id'])['state'],'cancelled')
 
-    def test_startup_snapshot_is_outside_boundary_and_resume_marks_are_fresh(self):
+    def test_startup_snapshot_channel_inventory_is_outside_boundary(self):
         (case,*_),_=self.action('cli');seen=[]
         original=case.artifacts.channel_names
         def names():
@@ -297,18 +296,24 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
         self.assertTrue(finished,'authoring lock blocks cancellation during observational stat')
         self.assertTrue(report['owners']['authoring']['available'])
 
-    def test_request_diagnostic_reads_run_without_authority_or_authoring_locks(self):
-        case,audit,_,_,_,_,_=self.fixture();seen=[]
+    def test_structural_reads_progress_while_another_thread_holds_boundary(self):
+        case,audit,_,_,_,_,_=self.fixture()
         case.artifacts.quarantine_submission(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],reason='invalid_content',content='known')
-        original=case.artifacts.diagnostic_store._check_diagnostics
-        def observed():
-            seen.append(True)
-            self.assertFalse(case.engine._lock._is_owned());self.assertFalse(case.catalog._lock._is_owned())
-            self.assertFalse(case.artifacts._lock._is_owned())
-            return original()
-        with patch.object(case.artifacts.diagnostic_store,'_check_diagnostics',observed):
-            self.assertEqual(len(case.artifacts.request_diagnostics(audit['request_id'])['quarantine_ids']),1)
-        self.assertTrue(seen)  # Existing outside-boundary read guard, not a new red.
+        entered,proceed=threading.Event(),threading.Event()
+        def holder():
+            with case.service._boundary():entered.set();proceed.wait(3)
+        def reads():
+            return (case.artifacts.request_diagnostics(audit['request_id']),
+                case.artifacts.diagnostic_store.report(),case.artifacts.diagnostics())
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            holding=pool.submit(holder)
+            try:
+                self.assertTrue(entered.wait(1))
+                result=pool.submit(reads).result(timeout=.75)
+            finally:proceed.set()
+            holding.result(timeout=2)
+        self.assertEqual(len(result[0]['quarantine_ids']),1)
+        self.assertEqual(result[1]['detailed_count'],1);self.assertTrue(result[2]['owners']['authoring']['available'])
 
     def test_diagnostic_driver_refuses_caller_held_boundary(self):
         for name in ('engine','catalog','authoring'):
@@ -323,16 +328,26 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
                 self.assertEqual(failure(caught.exception)[0],'artifact_storage_unavailable')
                 self.assertEqual(case.files(),before)
 
-    def test_diagnostic_driver_refuses_unsupported_ownership_query(self):
-        case,audit,instance,_,_,_,_=self.fixture();original=case.engine._lock
-        class Unsupported:
-            _is_owned=None
-            def __enter__(self):return original.__enter__()
-            def __exit__(self,*args):return original.__exit__(*args)
-        before=case.files()
-        with patch.object(case.engine,'_lock',Unsupported()),self.assertRaises(storage.ArtifactUnavailable) as caught:
-            case.authority.get_brief(audit['brief_id'],instance)
-        self.assertEqual(caught.exception.code,'artifact_boundary_held');self.assertEqual(case.files(),before)
+    def test_diagnostic_driver_refuses_unsupported_ownership_queries(self):
+        for owner_name in ('engine','catalog','authoring'):
+            for query in ('noncallable','raising','indeterminate','wrong_type'):
+                with self.subTest(owner=owner_name,query=query):
+                    case,audit,instance,_,_,_,_=self.fixture()
+                    owner={'engine':case.engine,'catalog':case.catalog,'authoring':case.artifacts}[owner_name]
+                    original=owner._lock
+                    class Unsupported:
+                        def __enter__(self):return original.__enter__()
+                        def __exit__(self,*args):return original.__exit__(*args)
+                        def acquire(self,*args,**kwargs):return original.acquire(*args,**kwargs)
+                        def release(self):return original.release()
+                    def raises():raise RuntimeError('ownership query failed')
+                    unsupported=Unsupported()
+                    unsupported._is_owned=(None if query=='noncallable' else raises if query=='raising' else
+                        (lambda:None) if query=='indeterminate' else (lambda:'unknown'))
+                    before=case.files()
+                    with patch.object(owner,'_lock',unsupported),self.assertRaises(storage.ArtifactUnavailable) as caught:
+                        case.authority.get_brief(audit['brief_id'],instance)
+                    self.assertEqual(caught.exception.code,'artifact_boundary_held');self.assertEqual(case.files(),before)
 
     def test_guard_modes_capture_current_state_and_immutable_intent(self):
         modes={'cli':'live_claim','reject':'live_claim','brief':'live_claim','delivery':'live_claim',
@@ -344,16 +359,16 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
                 original=case.authority._persist_diagnostic_intent  # INFRASTRUCTURE.
                 seen=[]
                 def persist(intent):
-                    self.assertTrue(is_dataclass(intent));self.assertTrue(is_dataclass(intent.guard))
-                    self.assertEqual(intent.guard.mode,mode)
-                    self.assertEqual(intent.guard.state,case.artifacts.get_request(audit['request_id'])['state'] if kind not in ('unmatched','startup_unmatched') else None)
-                    with self.assertRaises(FrozenInstanceError):intent.reason='changed'
-                    seen.append(intent)
+                    seen.append((intent,case.artifacts.get_request(audit['request_id'])['state'] if kind not in ('unmatched','startup_unmatched') else None))
                     return original(intent)
                 with patch.object(case.authority,'_persist_diagnostic_intent',persist):
                     try:action()
                     except (authority.ArtifactInputError,storage.ArtifactUnavailable):pass
                 self.assertEqual(len(seen),1)
+                intent,state=seen[0]
+                self.assertTrue(is_dataclass(intent));self.assertTrue(is_dataclass(intent.guard))
+                self.assertEqual(intent.guard.mode,mode);self.assertEqual(intent.guard.state,state)
+                with self.assertRaises(FrozenInstanceError):intent.reason='changed'
 
     def test_c_live_claim_allows_acknowledged_transition(self):
         values,action=self.action('reject');case,audit,instance,consumer,*_=values
@@ -368,12 +383,16 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
     def test_c_fulfilled_replay_ignores_queue_release_and_fences(self):
         values,action=self.action('fulfilled');case,audit,instance,consumer,*_=values
         original=case.authority._persist_diagnostic_intent
+        observed=[]
         def persist(intent):
             result=original(intent)
-            case.trigger.queue.release(instance,audit['dispatch_id'],consumer)
-            case.trigger.queue.cancel_dispatch(audit['dispatch_id'],'f'*32)
+            fenced=case.trigger.queue.cancel_dispatch(audit['dispatch_id'],'f'*32)
+            released=case.trigger.queue.release(instance,audit['dispatch_id'],consumer)
+            observed.append((fenced,released))
             return result
         with patch.object(case.authority,'_persist_diagnostic_intent',persist):result=action()
+        self.assertEqual(len(observed),1);self.assertEqual(observed[0][0]['cancellation_id'],'f'*32)
+        self.assertEqual(observed[0][1]['state'],'released');self.assertEqual(observed[0][1]['cancellation_id'],'f'*32)
         self.assertEqual(result['status'],'quarantined');self.assertFalse(result['request_terminal'])
         self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'fulfilled')
 
@@ -424,14 +443,17 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
 
     def test_c_settlement_never_reads_or_writes_diagnostic_owner(self):
         (case,*_),action=self.action('reject')
-        original=case.authority._settle_diagnostic_intent
+        original=case.authority._settle_diagnostic_intent;touched=[]
         def settle(*args,**kwargs):
             with ExitStack() as stack:
                 for name in ('record','report','request_diagnostics','_check_diagnostics'):
-                    stack.enter_context(patch.object(case.artifacts.diagnostic_store,name,side_effect=AssertionError('C touched diagnostic owner')))
+                    method=getattr(case.artifacts.diagnostic_store,name)
+                    def observe(*a,_name=name,_method=method,**kw):
+                        touched.append(_name);return _method(*a,**kw)
+                    stack.enter_context(patch.object(case.artifacts.diagnostic_store,name,observe))
                 return original(*args,**kwargs)
         with patch.object(case.authority,'_settle_diagnostic_intent',settle):result=action()
-        self.assertTrue(result['request_terminal'])
+        self.assertTrue(result['request_terminal']);self.assertEqual(touched,[])
 
     def test_legacy_marker_is_created_before_authoring_load(self):
         root=self.fixture()[0].root/'legacy-marker-construction';seen=[]
@@ -555,6 +577,7 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
         values,action=self.action('reject');case,audit,*_=values
         marker=case.artifacts._diagnostic_legacy_marker  # INFRASTRUCTURE.
         original=storage.atomic_json
+        observed=[]
         def replaced(path,value):
             original(path,value)
             if Path(path)==case.artifacts.diagnostic_store.path:
@@ -562,26 +585,36 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
                 legacy.update(version=1,diagnostics={},dispatch_overflow={},store_overflow=None)
                 for row in legacy['requests'].values():row['quarantine_ids']=[]
                 case.artifacts.path.write_text(json.dumps(legacy),encoding='utf-8')
-                with self.assertRaises(storage.ArtifactUnavailable):case.artifacts._check_index()
-                self.assertTrue(marker.is_set())
+                error=None
+                try:case.artifacts._check_index()
+                except Exception as caught:error=caught
+                observed.append((error,marker.is_set()))
         with patch.object(storage,'atomic_json',replaced),self.assertRaises(storage.ArtifactUnavailable):action()
-        self.assertTrue(case.artifacts.diagnostic_store.path.exists())
+        self.assertEqual(len(observed),1);self.assertIsInstance(observed[0][0],storage.ArtifactUnavailable)
+        self.assertTrue(observed[0][1]);self.assertTrue(case.artifacts.diagnostic_store.path.exists())
         landed=json.loads(case.artifacts.diagnostic_store.path.read_bytes())
         self.assertEqual(len(landed['diagnostics']),1)
         self.assertEqual(case.artifacts._data['requests'][audit['request_id']]['state'],'active')
         with self.assertRaises(storage.ArtifactDiagnosticsUnavailable):case.artifacts.diagnostic_store.report()
 
-    def test_omitted_startup_request_is_reread_before_resume_pending_mark(self):
-        values,_=self.action('resume');case,audit,*_=values
-        extra=case.prepare(channel='peer')
-        def changed():
-            with case.service._boundary():
-                return case.artifacts.set_attempt_state(extra['request_id'],extra['attempt_id'],'queued',{'state':'active','reason':None})
-        result,other=self.pause(case,lambda:case.authority.recover_startup(limit=1),changed)
-        self.assertEqual(other[0],'ok');self.assertEqual(result[0],'ok')
-        row=case.artifacts.get_request(extra['request_id'])
-        self.assertEqual((row['state'],row['reason']),('active',None))
-        self.assertNotIn(extra['request_id'],result[1]['enqueue_repaired'])
+    def test_omitted_startup_request_uses_fresh_state_without_spurious_held(self):
+        for changed in (False,True):
+            with self.subTest(omitted_becomes_active=changed):
+                values,_=self.action('resume');case,audit,*_=values
+                extra=case.prepare(channel='review');pending=case.artifacts.pending
+                def ordered(channel):
+                    return sorted(pending(channel),key=lambda row:row['request_id']!=audit['request_id'])
+                def peer():
+                    if not changed:return case.service.require_active('review')
+                    with case.service._boundary():
+                        return case.artifacts.set_attempt_state(extra['request_id'],extra['attempt_id'],'queued',{'state':'active','reason':None})
+                with patch.object(case.artifacts,'channel_names',return_value=['review']),patch.object(case.artifacts,'pending',ordered):
+                    result,other=self.pause(case,lambda:case.authority.recover_startup(limit=1),peer)
+                self.assertEqual(other[0],'ok');self.assertEqual(result[0],'ok')
+                row=case.artifacts.get_request(extra['request_id'])
+                self.assertEqual((row['state'],row['reason']),('active',None) if changed else ('queued','resume_pending'))
+                self.assertFalse(any(item['request_id']==extra['request_id'] for item in result[1]['held']))
+                self.assertNotIn(extra['request_id'],result[1]['enqueue_repaired'])
 
 
 if __name__=='__main__':
