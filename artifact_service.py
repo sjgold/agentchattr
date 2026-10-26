@@ -1,6 +1,7 @@
 """Artifact authority component under construction; no runtime/public binding."""
 from copy import deepcopy
 from functools import wraps
+from dataclasses import dataclass, field
 import hashlib
 import json
 import time
@@ -14,6 +15,7 @@ from artifact_delivery import ArtifactOutbox
 from dispatch_queue import QueueAccessError
 from launcher import LaunchError
 from queue_coordinator import CoordinatedQueue, allowed_review_dispatch_ids
+from channel_lifecycle import ChannelConflict
 import runtime_protocol
 
 
@@ -33,6 +35,95 @@ class ArtifactInputError(ArtifactValidationError):
         self.received_truncated = received_truncated
 
 
+
+class _ArtifactBoundaryHeld(ArtifactUnavailable):
+    code = 'artifact_boundary_held'
+
+    def __init__(self):
+        super().__init__('Artifact diagnostic operation requires an independent authority boundary.')
+
+
+def _frozen(value):
+    return json.dumps(value, sort_keys=True, ensure_ascii=True, allow_nan=False).encode('utf-8')
+
+
+def _digest(value):
+    return None if value is None else hashlib.sha256(_frozen(value)).hexdigest()
+
+
+@dataclass(frozen=True)
+class _DiagnosticClaim:
+    state: str
+    raw_state: str
+    consumer_id: str | None
+    envelope: bytes = field(repr=False)
+    cancellation_id: str | None
+    stop_id: str | None
+
+
+@dataclass(frozen=True)
+class _DiagnosticGuard:
+    request_id: str | None
+    state: str | None
+    reason: str | None
+    version_id: str | None
+    channel: str | None
+    audit_bytes: bytes | None = field(repr=False)
+    mode: str
+    queue: _DiagnosticClaim | None
+    actor_identity_id: str | None
+    lookup_request_id: str | None
+    dispatch_id: str
+    launch_attempt: str
+    producer_bytes: bytes | None = field(repr=False)
+    record_bytes: bytes | None = field(repr=False)
+    record_digest: str | None
+    saved_digest: str | None
+    ack: bytes | None = field(repr=False)
+    disposition: bytes | None = field(repr=False)
+    brief_bytes: bytes | None = field(repr=False)
+
+
+@dataclass(frozen=True)
+class _DiagnosticContinuation:
+    kind: str
+    origin: str
+    error_text: str | None = field(repr=False)
+
+
+@dataclass(frozen=True)
+class _DiagnosticIntent:
+    request_id: str | None
+    attempt_id: str
+    dispatch_id: str
+    actor_identity_id: str | None
+    reason: str
+    content: str | None = field(repr=False)
+    attached_request_id: str | None
+    received_truncated: bool
+    now: float
+    guard: _DiagnosticGuard
+    continuation: _DiagnosticContinuation
+
+
+class _DiagnosticRequired(Exception):
+    def __init__(self, intent):
+        super().__init__('Artifact diagnostic persistence is required.')
+        self.intent = intent
+
+
+@dataclass(frozen=True)
+class _DiagnosticReceipt:
+    intent: _DiagnosticIntent = field(repr=False)
+    token: object = field(repr=False)
+    payload: bytes = field(repr=False)
+
+
+class _DiagnosticAuthorityChanged(ArtifactConflict):
+    def __init__(self, *, cancel_winner=False):
+        super().__init__('Artifact diagnostic authority changed before settlement.')
+        self.cancel_winner = cancel_winner
+
 def _packet_service_entry(method):
     @wraps(method)
     def invoke(self, *args, **kwargs):
@@ -44,6 +135,223 @@ class ArtifactService:
     def _packet_invocation(self, step):
         with _packet_validation_invocation(self.store):
             return step()
+
+    def _assert_independent_boundary(self):
+        for owner in (self.channels.engine, self.channels.catalog, self.store):
+            try:
+                query = getattr(owner._lock, '_is_owned', None)
+                if not callable(query):
+                    raise _ArtifactBoundaryHeld()
+                owned = query()
+                if type(owned) is not bool or owned:
+                    raise _ArtifactBoundaryHeld()
+            except Exception:
+                raise _ArtifactBoundaryHeld() from None
+
+    def _run_diagnostic_operation(self, step, *, origin):
+        if origin not in ('agent', 'worker', 'resume', 'startup'):
+            raise ArtifactValidationError('Unknown diagnostic caller.')
+        self._assert_independent_boundary()
+        try:
+            with self.channels._boundary():
+                return step()
+        except _DiagnosticRequired as required:
+            intent = required.intent
+        if intent.continuation.origin != origin:
+            raise ArtifactValidationError('Diagnostic caller differs from its capture.')
+        self._assert_independent_boundary()
+        payload = self._persist_diagnostic_intent(intent)
+        key = object()
+        receipt = _DiagnosticReceipt(intent, key, payload)
+        with self.channels._boundary():
+            return self._settle_diagnostic_intent(intent, receipt, invocation_key=key)
+
+    @staticmethod
+    def _diagnostic_claim(record):
+        if record is None:
+            return None
+        state = record['state']
+        return _DiagnosticClaim('claimed_live' if state in ('dispatched', 'acknowledged', 'uncertain')
+            and record['consumer_id'] else state, state, record['consumer_id'], _frozen(record['envelope']),
+            record.get('cancellation_id'), record.get('stop_id'))
+
+    def _capture_diagnostic(self, row, instance, reason, content, *, mode, origin,
+                            kind='return_quarantine', payload=None, incoming=None,
+                            transport=None, launch_attempt=None, error_text=None,
+                            received_truncated=False):
+        if row is not None:
+            row = self.store.get_request(row['audit']['request_id'])
+            audit = row['audit']
+            claim = payload or audit
+            lookup, dispatch, launch = audit['request_id'], audit['dispatch_id'], audit['producer']['launch_attempt']
+            target = lookup
+            if mode != 'fulfilled_ack':
+                transport = self._queue_record(row)
+        else:
+            claim = payload
+            lookup, dispatch = payload['request_id'], payload['dispatch_id']
+            launch = launch_attempt or payload['launch_attempt']
+            target = None
+        key_request = claim.get('request_id') if row is not None else None
+        attached = self.store._capture_diagnostic_attachment(key_request, claim['dispatch_id'])
+        bounded, truncated = (None, False) if content is None else self._bounded(content)
+        truncated = truncated or received_truncated
+        if truncated:
+            reason = 'response_too_large'
+        box = ArtifactOutbox(self.store.root / 'api_seat_runtime' / launch)
+        saved = box.find(dispatch)
+        ack, disposition = box.get_ack(dispatch), box.get_disposition(dispatch)
+        proof = incoming if incoming is not None else saved
+        brief = (self.briefs.get_private(audit['brief_id']) if row is not None
+            and mode in ('live_claim', 'fulfilled_replay', 'fulfilled_ack', 'retained_recovery') else None)
+        producer = None
+        if mode == 'unmatched_saved_live':
+            producer = self.seats.artifact_producer(self._instance(instance['identity_id']))
+        guard = _DiagnosticGuard(target, row['state'] if row else None, row['reason'] if row else None,
+            row['version_id'] if row else None, row['channel'] if row else None,
+            _frozen(audit) if row else None, mode, self._diagnostic_claim(transport),
+            instance.get('identity_id'), lookup, dispatch, launch, _frozen(producer) if producer else None,
+            _frozen(proof) if proof is not None else None, _digest(proof), _digest(saved),
+            _frozen(ack) if ack is not None else None, _frozen(disposition) if disposition is not None else None,
+            _frozen(brief) if brief is not None else None)
+        raise _DiagnosticRequired(_DiagnosticIntent(key_request, claim['attempt_id'], claim['dispatch_id'],
+            instance.get('identity_id'), reason, bounded, attached, truncated, time.time(), guard,
+            _DiagnosticContinuation(kind, origin, error_text)))
+
+    def _persist_diagnostic_intent(self, intent):
+        if (type(intent) is not _DiagnosticIntent or intent.guard.mode not in (
+                'live_claim', 'reservation_resume', 'fulfilled_replay', 'fulfilled_ack', 'retained_recovery',
+                'terminal_saved', 'unmatched_saved_live', 'unmatched_saved_retained') or
+                intent.continuation.kind not in ('return_quarantine', 'raise_invalid_content', 'fail_source_packet',
+                    'quarantine_invalid_response', 'resume_ack_conflict', 'startup_saved_disposition')):
+            raise ArtifactValidationError('Invalid diagnostic intent.')
+        result = self.store.diagnostic_store.record(intent.request_id, intent.attempt_id, intent.dispatch_id,
+            reason=intent.reason, content=intent.content, actor_identity_id=intent.actor_identity_id,
+            attached_request_id=intent.attached_request_id, now=intent.now)
+        return _frozen(result)
+
+    def _interrupted_diagnostic(self, intent, row, record):
+        if (intent.continuation.origin == 'resume' and row is not None and row['state'] not in LIVE
+                and row['state'] != intent.guard.state):
+            settled = record is not None and record['state'] in ('cancelled', 'released', 'failed', 'settled_recovered')
+            warning = None if row['state'] == 'cancelled' and settled else 'operator_recovery_required'
+            return self._mutation(row, record, transport_settled=settled, warning=warning)
+        previous = intent.guard.queue
+        new_fence = (record is not None and (record.get('stop_id') or record.get('cancellation_id')) and
+            (previous is None or record.get('stop_id') != previous.stop_id or
+             record.get('cancellation_id') != previous.cancellation_id or
+             (record['state'] in ('cancelling', 'cancelled') and record['state'] != previous.raw_state)))
+        if intent.continuation.origin == 'resume' and row is not None and new_fence:
+            settled = record['state'] in ('cancelled', 'released', 'failed', 'settled_recovered')
+            return self._mutation(row, record, transport_settled=settled,
+                warning=None if settled else 'operator_recovery_required')
+        raise _DiagnosticAuthorityChanged(cancel_winner=row is not None and row['state'] == 'cancelled')
+
+    def _verify_diagnostic_guard(self, intent):
+        guard = intent.guard
+        if guard.record_bytes is not None and hashlib.sha256(guard.record_bytes).hexdigest() != guard.record_digest:
+            raise ArtifactConflict('Artifact diagnostic record proof differs.')
+        row = self.store.get_request(guard.request_id) if guard.request_id is not None else None
+        record = (self._queue_record(row) if row is not None and guard.mode != 'fulfilled_ack' else None)
+        if guard.request_id is not None:
+            if row is None:
+                raise ArtifactConflict('Artifact diagnostic request is unavailable.')
+            if (row['state'], row['reason'], row['version_id'], row['channel'], _frozen(row['audit'])) != (
+                    guard.state, guard.reason, guard.version_id, guard.channel, guard.audit_bytes):
+                return row, record, False
+            current = self._diagnostic_claim(record)
+            if guard.mode not in ('fulfilled_ack', 'terminal_saved'):
+                if guard.mode == 'fulfilled_replay':
+                    if current is None or guard.queue is None or (current.consumer_id, current.envelope) != (
+                            guard.queue.consumer_id, guard.queue.envelope):
+                        return row, record, False
+                elif current != guard.queue:
+                    # raw_state is observational; moves within the claimed-live class are legal.
+                    if current is None or guard.queue is None or (
+                            current.state, current.consumer_id, current.envelope, current.cancellation_id, current.stop_id) != (
+                            guard.queue.state, guard.queue.consumer_id, guard.queue.envelope,
+                            guard.queue.cancellation_id, guard.queue.stop_id):
+                        return row, record, False
+            audit = row['audit']
+            instance = {'name': audit['producer']['name'], 'identity_id': guard.actor_identity_id}
+            if guard.mode in ('live_claim', 'fulfilled_replay', 'reservation_resume'):
+                self._producer(audit, self._instance(guard.actor_identity_id))
+            elif guard.mode == 'retained_recovery':
+                try:
+                    self._producer(audit, self._instance(guard.actor_identity_id))
+                except (ArtifactAccessError, ArtifactConflict):
+                    if self._recovery_proof(audit).get('local_ended') is not True:
+                        raise ArtifactConflict('Artifact recovered authority changed.') from None
+            if guard.mode in ('live_claim', 'fulfilled_replay', 'reservation_resume', 'retained_recovery') and record is not None:
+                self._envelope(row, instance, record['envelope'])
+            if guard.mode in ('live_claim', 'reservation_resume', 'retained_recovery'):
+                try:
+                    self.channels.require_active(row['channel'])
+                except ChannelConflict:
+                    raise ArtifactConflict('Artifact channel is no longer active.') from None
+            if guard.brief_bytes is not None:
+                private = self.briefs.get_private(audit['brief_id'])
+                if _frozen(private) != guard.brief_bytes:
+                    raise ArtifactConflict('Artifact diagnostic brief authority changed.')
+                if guard.record_bytes is not None:
+                    verify_result(json.loads(guard.record_bytes), private['_artifact_seal']['seal_secret'])
+            if guard.mode == 'fulfilled_ack':
+                if self.store.get_version(row['version_id']) is None:
+                    raise ArtifactUnavailable('Artifact committed version is unavailable.')
+                if guard.queue is not None:
+                    record = {'envelope': {'dispatch_id': guard.dispatch_id}, 'state': guard.queue.raw_state}
+        else:
+            if self.store.get_request(guard.lookup_request_id) is not None or self.store.get_request_by_dispatch(guard.dispatch_id) is not None:
+                raise ArtifactConflict('Previously unmatched artifact now has a request.')
+            if guard.mode == 'unmatched_saved_live':
+                self._enabled()
+                producer = self.seats.artifact_producer(self._instance(guard.actor_identity_id))
+                if producer['available'] is not True or _frozen(producer) != guard.producer_bytes:
+                    raise _ArtifactProducerUnavailable('Artifact producer binding is unavailable or changed.')
+        box = ArtifactOutbox(self.store.root / 'api_seat_runtime' / guard.launch_attempt)
+        if guard.mode in ('terminal_saved', 'unmatched_saved_retained'):
+            from runtime_adoption import _launch_record
+            _launch_record(self.seats, box.runtime_path / 'config.json')
+        saved = box.find(guard.dispatch_id)
+        ack, disposition = box.get_ack(guard.dispatch_id), box.get_disposition(guard.dispatch_id)
+        if (_digest(saved) != guard.saved_digest or
+                (_frozen(ack) if ack is not None else None) != guard.ack or
+                (_frozen(disposition) if disposition is not None else None) != guard.disposition):
+            raise ArtifactConflict('Artifact diagnostic result or receipt changed.')
+        return row, record, True
+
+    def _settle_diagnostic_intent(self, intent, receipt, *, invocation_key):
+        if (type(intent) is not _DiagnosticIntent or type(receipt) is not _DiagnosticReceipt
+                or receipt.intent is not intent or receipt.token is not invocation_key):
+            raise ArtifactConflict('Artifact diagnostic receipt does not belong to this invocation.')
+        row, record, unchanged = self._verify_diagnostic_guard(intent)
+        if not unchanged:
+            return self._interrupted_diagnostic(intent, row, record)
+        diagnostic = json.loads(receipt.payload)
+        identifier = diagnostic.get('id') or diagnostic['latest_diagnostic_id']
+        continuation = intent.continuation
+        result = {'status': 'quarantined', 'diagnostic_id': identifier, 'reason': intent.reason,
+            'request_terminal': continuation.kind == 'quarantine_invalid_response',
+            'received_truncated': intent.received_truncated,
+            'notice': 'response_body_not_retained' if intent.received_truncated else None}
+        if continuation.kind == 'raise_invalid_content':
+            raise ArtifactInputError(identifier, received_truncated=intent.received_truncated)
+        if continuation.kind == 'fail_source_packet':
+            self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
+                {'state': 'failed', 'reason': 'source_packet_unavailable'})
+            self._fence(row)
+            raise ArtifactUnavailable(continuation.error_text) from None
+        if continuation.kind == 'quarantine_invalid_response':
+            self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
+                {'state': 'quarantined', 'reason': 'invalid_response'})
+            self._fence(row)
+        elif continuation.kind == 'resume_ack_conflict' and continuation.origin == 'resume':
+            return self._mutation(row, record, warning='operator_recovery_required',
+                transport_settled=record is not None and record['state'] == 'settled_recovered')
+        elif continuation.kind == 'startup_saved_disposition':
+            box = ArtifactOutbox(self.store.root / 'api_seat_runtime' / intent.guard.launch_attempt)
+            box.quarantine(intent.guard.dispatch_id, identifier, intent.reason)
+        return result
 
     def __init__(self, *, store, briefs, agents, seats, channels, registry):
         if (not isinstance(agents.queue, CoordinatedQueue) or agents.queue._lock is not channels.engine._lock
@@ -251,32 +559,25 @@ class ArtifactService:
                 return None, True
         return content, False
 
-    def _diagnostic(self, row, instance, reason, content, *, terminal=False, payload=None):
-        bounded, truncated = (None, False) if content is None else self._bounded(content)
-        if truncated:
-            reason = 'response_too_large'
-        audit = row['audit']
-        claim = payload or audit
-        diagnostic = self.store.quarantine_submission(claim.get('request_id'), claim.get('attempt_id'),
-            claim.get('dispatch_id'), reason=reason, content=bounded, actor_identity_id=instance['identity_id'])
-        return {'status': 'quarantined', 'diagnostic_id': diagnostic.get('id') or diagnostic['latest_diagnostic_id'],
-                'reason': reason, 'request_terminal': terminal, 'received_truncated': truncated,
-                'notice': 'response_body_not_retained' if truncated else None}
+    def _diagnostic(self, row, instance, reason, content, *, terminal=False, payload=None,
+                    mode=None, origin='agent', kind='return_quarantine', incoming=None,
+                    transport=None, received_truncated=False, error_text=None):
+        mode = mode or ('fulfilled_replay' if row['state'] == 'fulfilled' else 'live_claim')
+        self._capture_diagnostic(row, instance, reason, content, mode=mode, origin=origin,
+            kind=kind, payload=payload, incoming=incoming, transport=transport,
+            error_text=error_text, received_truncated=received_truncated)
 
     def _fence(self, row):
         request = row['audit']['request_id']
         cancellation = uuid.uuid5(uuid.NAMESPACE_URL, 'agentchattr:artifact-v1:cancel:' + request).hex
         return self.agents.queue.cancel_dispatch(row['audit']['dispatch_id'], cancellation)
 
-    def _packet(self, row, instance):
+    def _packet(self, row, instance, *, mode='live_claim', origin='agent'):
         try:
             return self.store.get_packet(row['audit']['scope']['packet_id'])
-        except ArtifactUnavailable:
-            self._diagnostic(row, instance, 'source_packet_unavailable', None, terminal=True)
-            self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
-                {'state': 'failed', 'reason': 'source_packet_unavailable'})
-            self._fence(row)
-            raise
+        except ArtifactUnavailable as error:
+            self._diagnostic(row, instance, 'source_packet_unavailable', None, terminal=True,
+                mode=mode, origin=origin, kind='fail_source_packet', error_text=str(error))
 
     def _activate(self, row):
         return self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
@@ -284,8 +585,7 @@ class ArtifactService:
 
     @_packet_service_entry
     def get_brief(self, brief_id, instance):
-        with self.channels._boundary():
-            return self._get_brief_locked(brief_id, instance)
+        return self._run_diagnostic_operation(lambda: self._get_brief_locked(brief_id, instance), origin='agent')
 
     def _get_brief_locked(self, brief_id, instance):
         private, row, live, _ = self._context(brief_id, instance)
@@ -297,11 +597,14 @@ class ArtifactService:
 
     @_packet_service_entry
     def get_delivery(self, brief_id, instance):
+        return self._run_diagnostic_operation(lambda: self._get_delivery_locked(brief_id, instance), origin='worker')
+
+    def _get_delivery_locked(self, brief_id, instance):
         with self.channels._boundary():
             private, row, live, record = self._context(brief_id, instance)
             if row['audit']['producer']['adapter'] != 'openai-compatible':
                 raise ArtifactAccessError('Private artifact delivery is limited to its managed API worker.')
-            packet = self._packet(row, live)
+            packet = self._packet(row, live, origin='worker')
             self._activate(row)
             return {'brief': {key: deepcopy(value) for key, value in private.items() if key != '_artifact_seal'},
                 'packet': packet, 'seal_secret': private['_artifact_seal']['seal_secret'],
@@ -332,6 +635,9 @@ class ArtifactService:
 
     @_packet_service_entry
     def get_brief_context(self, brief_id, instance):
+        return self._run_diagnostic_operation(lambda: self._get_brief_context_locked(brief_id, instance), origin='agent')
+
+    def _get_brief_context_locked(self, brief_id, instance):
         with self.channels._boundary():
             parent = self._get_parent_locked(brief_id, instance)
             return {**self._get_brief_locked(brief_id, instance), **parent}
@@ -343,6 +649,9 @@ class ArtifactService:
 
     @_packet_service_entry
     def submit_cli(self, brief_id, markdown, instance):
+        return self._run_diagnostic_operation(lambda: self._submit_cli_locked(brief_id, markdown, instance), origin='agent')
+
+    def _submit_cli_locked(self, brief_id, markdown, instance):
         with self.channels._boundary():
             private, row, live, record = self._context(brief_id, instance, replay=True)
             audit = row['audit']
@@ -366,8 +675,7 @@ class ArtifactService:
             try:
                 _text(markdown, MAX_ARTIFACT_BYTES)
             except ArtifactValidationError:
-                error = self._diagnostic(row, live, 'invalid_content', markdown)
-                raise ArtifactInputError(error['diagnostic_id'], received_truncated=error['received_truncated']) from None
+                self._diagnostic(row, live, 'invalid_content', markdown, kind='raise_invalid_content')
             prior = box.find(audit['dispatch_id'])
             if prior is not None and prior['payload']['markdown'] != markdown:
                 return self._diagnostic(row, live, 'conflicting_duplicate', markdown)
@@ -407,6 +715,9 @@ class ArtifactService:
 
     @_packet_service_entry
     def admit_saved(self, record, instance):
+        return self._run_diagnostic_operation(lambda: self._admit_saved_locked(record, instance, origin='worker'), origin='worker')
+
+    def _admit_saved_locked(self, record, instance, *, origin='worker'):
         payload = validate_payload(record.get('payload') if isinstance(record, dict) else None)
         with self.channels._boundary():
             self._enabled()
@@ -417,22 +728,17 @@ class ArtifactService:
                 live = self._instance(instance['identity_id'])
                 if self.seats.artifact_producer(live)['available'] is not True:
                     raise ArtifactAccessError('Managed artifact producer binding is required.')
-                content, truncated = self._bounded(payload['markdown'])
-                reason = 'response_too_large' if truncated else 'unmatched_saved_result'
-                diagnostic = self.store.quarantine_submission(None, payload['attempt_id'], payload['dispatch_id'],
-                    reason=reason, content=content, actor_identity_id=live['identity_id'])
-                return {'status': 'quarantined', 'diagnostic_id': diagnostic['id'], 'reason': reason,
-                    'request_terminal': False, 'received_truncated': truncated,
-                    'notice': 'response_body_not_retained' if truncated else None}
+                self._capture_diagnostic(None, live, 'unmatched_saved_result', payload['markdown'],
+                    mode='unmatched_saved_live', origin=origin, payload=payload, incoming=record)
             private, row, live, owned = self._context(row['audit']['brief_id'], instance, replay=True)
             payload = verify_result(record, private['_artifact_seal']['seal_secret'])
             reason = self._payload_reason(payload, row, owned)
             if reason:
-                return self._diagnostic(row, live, reason, payload['markdown'], payload=payload)
+                return self._diagnostic(row, live, reason, payload['markdown'], payload=payload, incoming=record, origin=origin)
             try:
                 _observation(payload['observation'], row['audit']['producer']['adapter'])
             except ArtifactValidationError:
-                return self._diagnostic(row, live, 'invalid_response', payload['markdown'], payload=payload)
+                return self._diagnostic(row, live, 'invalid_response', payload['markdown'], payload=payload, incoming=record, origin=origin)
             audit = row['audit']
             box = ArtifactOutbox(self.store.root / 'api_seat_runtime' / audit['producer']['launch_attempt'])
             if row['state'] == 'fulfilled':
@@ -440,22 +746,22 @@ class ArtifactService:
                 if saved is None:
                     raise ArtifactUnavailable('Artifact version is unavailable.')
                 if saved['markdown'] != payload['markdown']:
-                    return self._diagnostic(row, live, 'conflicting_duplicate', payload['markdown'], payload=payload)
+                    return self._diagnostic(row, live, 'conflicting_duplicate', payload['markdown'], payload=payload, incoming=record, origin=origin)
                 prior = box.find(audit['dispatch_id'])
                 if prior is None:
                     raise ArtifactUnavailable('Artifact result authority is missing.')
                 verify_result(prior, private['_artifact_seal']['seal_secret'])
                 box.acknowledge(audit['dispatch_id'], audit['dispatch_id'])
                 return self._ack(saved['metadata'])
-            self._packet(row, live)
-            self._activate(row)
+            self._packet(row, live, origin=origin)
+            row = self._activate(row)
             prior = box.find(audit['dispatch_id'])
             if prior is not None:
                 verified = verify_result(prior, private['_artifact_seal']['seal_secret'])
                 if self._payload_reason(verified, row, owned):
                     raise ArtifactUnavailable('Stored artifact result scope differs from its request.')
                 if verified['markdown'] != payload['markdown']:
-                    return self._diagnostic(row, live, 'conflicting_duplicate', payload['markdown'], payload=payload)
+                    return self._diagnostic(row, live, 'conflicting_duplicate', payload['markdown'], payload=payload, incoming=record, origin=origin)
                 payload = verified  # First trusted observation/time remains immutable.
             else:
                 box.save(payload, private['_artifact_seal']['seal_secret'])
@@ -466,6 +772,9 @@ class ArtifactService:
 
     @_packet_service_entry
     def reject_response(self, brief_id, content, instance, *, received_truncated=False):
+        return self._run_diagnostic_operation(lambda: self._reject_response_locked(brief_id, content, instance, received_truncated=received_truncated), origin='worker')
+
+    def _reject_response_locked(self, brief_id, content, instance, *, received_truncated=False):
         if (type(received_truncated) is not bool or
                 not ((isinstance(content, str) and not received_truncated) or
                      (content is None and received_truncated))):
@@ -474,16 +783,11 @@ class ArtifactService:
             _, row, live, _ = self._context(brief_id, instance)
             if row['audit']['producer']['adapter'] != 'openai-compatible':
                 raise ArtifactAccessError('API response rejection requires its managed API producer.')
-            self._packet(row, live)
+            self._packet(row, live, origin='worker')
             row = self._activate(row)
-            result = self._diagnostic(row, live, 'response_too_large' if received_truncated else 'invalid_response',
-                                      content, terminal=True)
-            if received_truncated:
-                result.update(received_truncated=True, notice='response_body_not_retained')
-            self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], 'active',
-                {'state': 'quarantined', 'reason': 'invalid_response'})
-            self._fence(row)
-            return result
+            self._diagnostic(row, live, 'response_too_large' if received_truncated else 'invalid_response',
+                content, terminal=True, origin='worker', kind='quarantine_invalid_response',
+                received_truncated=received_truncated)
 
     def _queue_record(self, row):
         audit = row['audit']
@@ -605,7 +909,7 @@ class ArtifactService:
         except (OSError, ValueError, KeyError, TypeError):
             return {'local_ended': False}
 
-    def _resume_recovered(self, row, transport):
+    def _resume_recovered(self, row, transport, *, origin='resume'):
         self._enabled()
         audit, producer = row['audit'], row['audit']['producer']
         if (row['state'] != 'active' or transport is None or transport['state'] not in
@@ -635,7 +939,7 @@ class ArtifactService:
             if proof.get('local_ended') is not True:
                 raise ArtifactConflict('Saved artifact producer is neither verified live nor proven ended.') from None
         self.channels.require_active(row['channel'])
-        self._packet(row, instance)
+        self._packet(row, instance, mode='retained_recovery', origin=origin)
         metadata = self.store.commit_version(audit['request_id'], audit['attempt_id'], audit['dispatch_id'],
                                              payload['markdown'], payload['observation'])
         box.acknowledge(audit['dispatch_id'], audit['dispatch_id'])
@@ -655,6 +959,10 @@ class ArtifactService:
                     'code': 'admitted_from_recovered_result'}, warning=None if settled else 'transport_unconfirmed')
 
     def _repair_fulfilled_ack(self, row):
+        return self._packet_invocation(lambda: self._run_diagnostic_operation(
+            lambda: self._repair_fulfilled_ack_locked(row, origin='worker'), origin='worker'))
+
+    def _repair_fulfilled_ack_locked(self, row, *, origin, transport=None):
         """Bookkeeping only for content already committed, independent of worker life."""
         audit = row['audit']
         if row['state'] != 'fulfilled':
@@ -678,7 +986,8 @@ class ArtifactService:
         if (payload['markdown'] != saved['markdown'] or len(raw) != metadata['byte_length']
                 or hashlib.sha256(raw).hexdigest() != metadata['sha256']):
             return self._diagnostic(row, {'identity_id': audit['producer']['identity_id']},
-                                    'conflicting_duplicate', payload['markdown'])
+                                    'conflicting_duplicate', payload['markdown'], mode='fulfilled_ack', origin=origin,
+                                    kind='resume_ack_conflict', incoming=record, transport=transport)
         if payload['observation'] != metadata['provenance']['observation']:
             raise ArtifactConflict('Artifact ACK model observation differs from its committed version.')
         box.acknowledge(audit['dispatch_id'], audit['dispatch_id'])
@@ -702,6 +1011,9 @@ class ArtifactService:
 
     @_packet_service_entry
     def resume_request(self, request_id, *, recover_saved=False):
+        return self._run_diagnostic_operation(lambda: self._resume_request_locked(request_id, recover_saved=recover_saved, origin='resume'), origin='resume')
+
+    def _resume_request_locked(self, request_id, *, recover_saved=False, origin='resume'):
         with self.channels._boundary():
             row = self.store.get_request(request_id)
             if row is None:
@@ -710,7 +1022,7 @@ class ArtifactService:
             audit = row['audit']
             if row['state'] not in LIVE:
                 if recover_saved and row['state'] == 'fulfilled':
-                    ack = self._repair_fulfilled_ack(row)
+                    ack = self._repair_fulfilled_ack_locked(row, origin=origin, transport=record)
                     return self._mutation(row, record, admission=ack if ack['status'] == 'admitted' else None,
                         warning=None if ack['status'] == 'admitted' else 'operator_recovery_required',
                         transport_settled=record is not None and record['state'] == 'settled_recovered')
@@ -719,10 +1031,10 @@ class ArtifactService:
             if settled is not None:
                 return self._mutation(settled, record, warning='operator_recovery_required')
             if recover_saved and record is not None and record['state'] in ('released', 'failed', 'settled_recovered'):
-                return self._resume_recovered(row, record)
+                return self._resume_recovered(row, record, origin=origin)
             self.channels.require_active(row['channel'])
             live = self._producer(audit, self._instance(audit['producer']['identity_id']))
-            self._packet(row, live)
+            self._packet(row, live, mode='reservation_resume', origin=origin)
             if record is None:
                 if row['state'] == 'active':
                     raise ArtifactUnavailable('Active artifact transport is missing; explicit repair is required.')
@@ -746,129 +1058,167 @@ class ArtifactService:
             # Terminal transport with saved content needs explicit operator recovery.
             return self._mutation(row, record, warning='operator_recovery_required')
 
+    def _startup_cancel_repair(self, row, result):
+        repair = self.repair_cancel_fences([row['audit']['request_id']])
+        for request in repair['repaired']:
+            if request not in result['cancel_fence_repaired']:
+                result['cancel_fence_repaired'].append(request)
+        if repair['unconfirmed']:
+            entry = {'request_id': row['audit']['request_id'], 'dispatch_id': row['audit']['dispatch_id'],
+                     'reason': 'operator_recovery_required'}
+            if entry not in result['held']:
+                result['held'].append(entry)
+
+    def _startup_capture(self, dispatch, saved, result):
+        row = self.store.get_request_by_dispatch(dispatch)
+        request = row['audit']['request_id'] if row is not None else None
+        def held(reason):
+            result['held'].append({'request_id': request, 'dispatch_id': dispatch, 'reason': reason})
+        if row is not None and row['state'] in ('prepared', 'queued'):
+            repaired = self._resume_request_locked(request, origin='startup')
+            state = repaired['request']['state']
+            if state in LIVE:
+                result['enqueue_repaired'].append(request)
+            elif state == 'failed':
+                held('delivery_unconfirmed')
+            elif state == 'cancelled':
+                self._startup_cancel_repair(self.store.get_request(request), result)
+            else:
+                held('operator_recovery_required')
+            return
+        if row is not None and row['state'] == 'cancelled':
+            self._startup_cancel_repair(row, result)
+        if saved is None:
+            if row is not None and row['state'] == 'active':
+                transport = self._queue_record(row)
+                if transport is None:
+                    held('operator_recovery_required')
+                elif self._settle_empty_transport(row, transport) is not None:
+                    held('delivery_unconfirmed')
+            return
+        launch, expected = saved
+        box = ArtifactOutbox(self.store.root / 'api_seat_runtime' / launch)
+        record = box.get(dispatch)
+        if _digest(record) != _digest(expected):
+            raise ArtifactConflict('Retained artifact result changed after inventory.')
+        if box.get_ack(dispatch) is not None or box.get_disposition(dispatch) is not None:
+            raise ArtifactConflict('Retained artifact receipt changed after inventory.')
+        payload = record['payload']
+        if row is not None and row['state'] == 'fulfilled':
+            try:
+                acknowledgement = self._repair_fulfilled_ack_locked(row, origin='startup')
+                if acknowledgement['status'] == 'quarantined':
+                    result['quarantined'].append(acknowledgement['diagnostic_id'])
+            except (OSError, ValueError, RuntimeError):
+                held('operator_recovery_required')
+            return
+        if row is not None and row['state'] == 'imported':
+            held('operator_recovery_required')
+            return
+        if row is None or row['state'] not in LIVE:
+            reason = ('unmatched_saved_result' if row is None else
+                      'cancelled' if row['state'] == 'cancelled' else 'superseded')
+            self._capture_diagnostic(row, {'identity_id': payload['seat_identity_id']}, reason,
+                payload['markdown'], mode='unmatched_saved_retained' if row is None else 'terminal_saved',
+                origin='startup', kind='startup_saved_disposition', payload=payload,
+                incoming=record, launch_attempt=launch)
+        transport = self._queue_record(row)
+        if transport is None:
+            held('operator_recovery_required')
+        elif transport['state'] in ('released', 'failed', 'settled_recovered'):
+            result['recovery_available'].append(request)
+        elif transport['state'] in ('dispatched', 'acknowledged', 'uncertain'):
+            admission = self._admit_saved_locked(record, self._instance(row['audit']['producer']['identity_id']), origin='startup')
+            if admission['status'] == 'admitted':
+                result['admitted'].append(admission)
+            else:
+                result['quarantined'].append(admission['diagnostic_id'])
+        else:
+            held('operator_recovery_required')
+
     def recover_startup(self, *, limit=100):
-        """One bounded pass over owned work, without spawning or adopting a seat."""
+        """Bounded outside-boundary inventory followed by fresh per-item authority."""
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ArtifactValidationError('Artifact recovery limit must be between 1 and 100.')
+        self._assert_independent_boundary()
         result = {'scanned': 0, 'enqueue_repaired': [], 'admitted': [], 'cancel_fence_repaired': [],
                   'recovery_available': [], 'quarantined': [], 'held': [], 'remaining': 0}
-        with self.channels._boundary():
-            tasks, saved = {}, {}
-            def held(request, dispatch, reason):
-                result['held'].append({'request_id': request, 'dispatch_id': dispatch, 'reason': reason})
+        tasks, saved = {}, {}
+        def held(request, dispatch, reason):
+            result['held'].append({'request_id': request, 'dispatch_id': dispatch, 'reason': reason})
+        try:
+            for channel in sorted(self.store.channel_names()):
+                for pending in self.store.pending(channel):
+                    row = self.store.get_request(pending['request_id'])
+                    tasks[row['audit']['dispatch_id']] = row
+            for record in self.agents.queue.records():
+                if record['envelope'].get('purpose') == 'artifact-v1':
+                    dispatch = record['envelope']['dispatch_id']
+                    row = self.store.get_request_by_dispatch(dispatch)
+                    if row is not None and row['state'] == 'cancelled' and record['state'] in (
+                            'queued', 'dispatched', 'acknowledged', 'uncertain', 'cancelling'):
+                        tasks[dispatch] = row
+        except (OSError, ValueError, RuntimeError):
+            held(None, None, 'storage_unavailable')
+            return result
+        from runtime_adoption import _launch_record
+        for config in sorted((self.store.root / 'api_seat_runtime').glob('*/config.json')):
+            if not (config.parent / 'artifact_results').exists():
+                continue
             try:
-                for channel in self.store.channel_names():
-                    for pending in self.store.pending(channel):
-                        row = self.store.get_request(pending['request_id'])
-                        tasks[row['audit']['dispatch_id']] = row
-                for record in self.agents.queue.records():
-                    if record['envelope'].get('purpose') == 'artifact-v1':
-                        dispatch = record['envelope']['dispatch_id']
-                        row = self.store.get_request_by_dispatch(dispatch)
-                        if row is not None and row['state'] == 'cancelled' and record['state'] in (
-                                'queued', 'dispatched', 'acknowledged', 'uncertain', 'cancelling'):
-                            tasks[dispatch] = row
+                _launch_record(self.seats, config)
+                box = ArtifactOutbox(config.parent)
+                inventory = box.list_records(limit=100)
+                result['remaining'] += max(0, inventory['count'] - len(inventory['rows']))
+                for record in inventory['rows']:
+                    dispatch = record['payload']['dispatch_id']
+                    if box.get_ack(dispatch) is not None or box.get_disposition(dispatch) is not None:
+                        continue
+                    if dispatch in saved:
+                        raise ArtifactUnavailable('Conflicting retained artifact authority.')
+                    saved[dispatch] = (config.parent.name, record)
+                    if dispatch not in tasks:
+                        tasks[dispatch] = self.store.get_request_by_dispatch(dispatch)
             except (OSError, ValueError, RuntimeError):
                 held(None, None, 'storage_unavailable')
-                return result
-            # Inventory only retained managed launches belonging to this server.
-            # No registry registration, heartbeat, process lookup or adoption here.
-            from runtime_adoption import _launch_record
-            for config in sorted((self.store.root / 'api_seat_runtime').glob('*/config.json')):
-                if not (config.parent / 'artifact_results').exists():
-                    continue
-                try:
-                    _launch_record(self.seats, config)
-                    box = ArtifactOutbox(config.parent)
-                    inventory = box.list_records(limit=100)
-                    result['remaining'] += max(0, inventory['count'] - len(inventory['rows']))
-                    for record in inventory['rows']:
-                        dispatch = record['payload']['dispatch_id']
-                        if box.get_ack(dispatch) is not None or box.get_disposition(dispatch) is not None:
-                            continue
-                        if dispatch in saved:
-                            raise ArtifactUnavailable('Conflicting retained artifact authority.')
-                        saved[dispatch] = (box, record)
-                        if dispatch not in tasks:
-                            tasks[dispatch] = self.store.get_request_by_dispatch(dispatch)
-                except (OSError, ValueError, RuntimeError):
-                    held(None, None, 'storage_unavailable')
-            selected = list(tasks)[:limit]
-            result['remaining'] += max(0, len(tasks) - limit)
-            for dispatch in selected:
-                result['scanned'] += 1
-                row = tasks[dispatch]
-                request = row['audit']['request_id'] if row is not None else None
-                try:
-                    if row is not None and row['state'] in ('prepared', 'queued'):
-                        # This dispatch is assigned ONLY queue-state repair this pass.
-                        repaired = self.resume_request(request)
-                        if repaired['request']['state'] == 'failed':
-                            held(request, dispatch, 'delivery_unconfirmed')
+        selected = list(tasks)[:limit]
+        result['remaining'] += max(0, len(tasks) - limit)
+        for dispatch in selected:
+            result['scanned'] += 1
+            snapshot = tasks[dispatch]
+            request = snapshot['audit']['request_id'] if snapshot is not None else None
+            try:
+                outcome = self._packet_invocation(lambda: self._run_diagnostic_operation(
+                    lambda: self._startup_capture(dispatch, saved.get(dispatch), result), origin='startup'))
+                if isinstance(outcome, dict) and outcome.get('status') == 'quarantined':
+                    result['quarantined'].append(outcome['diagnostic_id'])
+            except (ArtifactAccessError, _ArtifactProducerUnavailable):
+                held(request, dispatch, 'producer_unavailable')
+            except ArtifactConflict as error:
+                if isinstance(error, _DiagnosticAuthorityChanged) and error.cancel_winner:
+                    with self.channels._boundary():
+                        current = self.store.get_request_by_dispatch(dispatch)
+                        if current is not None and current['state'] == 'cancelled':
+                            self._startup_cancel_repair(current, result)
                         else:
-                            result['enqueue_repaired'].append(request)
-                        continue
-                    if row is not None and row['state'] == 'cancelled':
-                        repair = self.repair_cancel_fences([request])
-                        result['cancel_fence_repaired'].extend(repair['repaired'])
-                        if repair['unconfirmed']:
                             held(request, dispatch, 'operator_recovery_required')
-                    if dispatch not in saved:
-                        if row is not None and row['state'] == 'active':
-                            transport = self._queue_record(row)
-                            if transport is None:
-                                held(request, dispatch, 'operator_recovery_required')
-                            elif self._settle_empty_transport(row, transport) is not None:
-                                held(request, dispatch, 'delivery_unconfirmed')
-                        continue
-                    box, record = saved[dispatch]
-                    payload = record['payload']
-                    if row is not None and row['state'] == 'fulfilled':
-                        try:
-                            acknowledgement = self._repair_fulfilled_ack(row)
-                            if acknowledgement['status'] == 'quarantined':
-                                result['quarantined'].append(acknowledgement['diagnostic_id'])
-                        except (OSError, ValueError, RuntimeError):
-                            held(request, dispatch, 'operator_recovery_required')
-                        continue  # ACK repair is neither admission nor terminal quarantine.
-                    if row is not None and row['state'] == 'imported':
-                        held(request, dispatch, 'operator_recovery_required')
-                        continue
-                    if row is None or row['state'] not in LIVE:
-                        reason = ('unmatched_saved_result' if row is None else
-                                  'cancelled' if row['state'] == 'cancelled' else 'superseded')
-                        diagnostic = self.store.quarantine_submission(payload['request_id'] if row else None,
-                            payload['attempt_id'], dispatch, reason=reason, content=payload['markdown'],
-                            actor_identity_id=payload['seat_identity_id'])
-                        identifier = diagnostic.get('id') or diagnostic['latest_diagnostic_id']
-                        box.quarantine(dispatch, identifier, reason)
-                        result['quarantined'].append(identifier)
-                        continue
-                    transport = self._queue_record(row)
-                    if transport is None:
-                        held(request, dispatch, 'operator_recovery_required')
-                    elif transport['state'] in ('released', 'failed', 'settled_recovered'):
-                        result['recovery_available'].append(request)
-                    elif transport['state'] in ('dispatched', 'acknowledged', 'uncertain'):
-                        admission = self.admit_saved(record, self._instance(row['audit']['producer']['identity_id']))
-                        if admission['status'] == 'admitted':
-                            result['admitted'].append(admission)
-                        else:
-                            result['quarantined'].append(admission['diagnostic_id'])
-                    else:
-                        held(request, dispatch, 'operator_recovery_required')
-                except (ArtifactAccessError, _ArtifactProducerUnavailable):
-                    held(request, dispatch, 'producer_unavailable')
-                except ArtifactConflict:
+                else:
                     held(request, dispatch, 'operator_recovery_required')
-                except (OSError, ValueError, RuntimeError):
-                    held(request, dispatch, 'storage_unavailable')
-            for dispatch in list(tasks)[limit:]:
-                row = tasks[dispatch]
-                if row is not None and row['state'] in ('prepared', 'queued'):
-                    try:
+            except (OSError, ValueError, RuntimeError):
+                # The ACK-repair branch historically uses its narrower inner map.
+                mode = snapshot['state'] if snapshot is not None else None
+                held(request, dispatch, 'operator_recovery_required' if mode == 'fulfilled' else 'storage_unavailable')
+        for dispatch in list(tasks)[limit:]:
+            snapshot = tasks[dispatch]
+            if snapshot is None:
+                continue
+            try:
+                with self.channels._boundary():
+                    row = self.store.get_request(snapshot['audit']['request_id'])
+                    if (row is not None and row['audit']['attempt_id'] == snapshot['audit']['attempt_id']
+                            and row['state'] in ('prepared', 'queued')):
                         self.store.set_attempt_state(row['audit']['request_id'], row['audit']['attempt_id'], row['state'],
-                                                     {'state': row['state'], 'reason': 'resume_pending'})
-                    except (OSError, ValueError, RuntimeError):
-                        held(row['audit']['request_id'], dispatch, 'storage_unavailable')
+                            {'state': row['state'], 'reason': 'resume_pending'})
+            except (OSError, ValueError, RuntimeError):
+                held(snapshot['audit']['request_id'], dispatch, 'storage_unavailable')
         return result

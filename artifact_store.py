@@ -567,7 +567,9 @@ class ArtifactDiagnosticStore(_ArtifactOwnedFiles):
 
     @property
     def _legacy_held(self):
-        return self._legacy_flag or self._legacy_marker.is_set()
+        if self._legacy_marker.is_set():
+            self._legacy_flag = True
+        return self._legacy_flag
 
     @_legacy_held.setter
     def _legacy_held(self, value):

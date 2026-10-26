@@ -199,7 +199,7 @@ def full_standalone_diagnostics(store):
     assert owner._body_inventory()[1]==8388608
 
 
-def import_gates(number,existing,large,mode):
+def import_gates(number,existing,large,mode,checkpoint=None):
     case=ArtifactStoreTests();case.setUp();fixture_root=case.root
     try:
         _,store=case.owner('import-'+mode)
@@ -226,7 +226,7 @@ def import_gates(number,existing,large,mode):
                 stack.enter_context(patch.object(storage.ArtifactDiagnosticStore,name,
                     side_effect=AssertionError('Authoring called diagnostic '+name)))
             row,result=measure_action(case,store,lambda:store.import_lineage(prepared,channel='review'),
-                                      'import_'+mode,.300)
+                                      'import_'+mode,.300,checkpoint=checkpoint)
         if row['exception_type'] is None:
             assert result['created_requests']==128 and result['created_versions']==128
         row.update(sample=number,portable_envelope_bytes=4194304,existing_lineages=100,existing_versions=100,
@@ -339,6 +339,7 @@ def main():
     parser.add_argument('--samples', type=int, default=10)
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--full-gate', action='store_true')
+    modes.add_argument('--production-gate', action='store_true')
     modes.add_argument('--design-checkpoint', action='store_true')
     args = parser.parse_args()
     assert 127 * 8 + 7 == 1023
@@ -362,6 +363,9 @@ def main():
         parser.error('At least10 independent samples per phase are required')
     if not hasattr(storage, 'ArtifactDiagnosticStore'):
         parser.error('R2 owner is not implemented; measurement unavailable, not a red test')
+    if args.production_gate:
+        from profile_artifact_authority_phases import production_gate
+        return production_gate(args.samples, facade=True)
     if args.design_checkpoint:
         return design_checkpoint(args.samples)
     samples = []

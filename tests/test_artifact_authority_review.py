@@ -60,7 +60,7 @@ class ArtifactAuthorityReviewTests(unittest.TestCase):
     def test_recovery_conflict_reports_operator_action_instead_of_producer_unavailable(self):
         _, case = self.context()
         audit = case.prepare()
-        with patch.object(case.authority, 'resume_request', side_effect=case.storage.ArtifactConflict('fixture mismatch')):
+        with patch.object(case.authority, '_resume_request_locked', side_effect=case.storage.ArtifactConflict('fixture mismatch')):
             result = case.authority.recover_startup()
         self.assertEqual(result['held'], [{'request_id': audit['request_id'], 'dispatch_id': audit['dispatch_id'],
                                           'reason': 'operator_recovery_required'}])

@@ -1156,14 +1156,13 @@ def chat_artifact_brief(brief_id: str, ctx: Context | None = None) -> str:
     if not instance or artifact_authority is None:
         return json.dumps(error_body('artifact_access_denied'))
     try:
-        # Parent first, one shared reentrant boundary: a refused parent must not
-        # activate work by reading the brief before the refusal.
-        with artifact_authority.channels._boundary():
-            context = artifact_authority.get_brief_context(brief_id, instance)
-            encoded = json.dumps(context, ensure_ascii=True, allow_nan=False)
-            if len(encoded.encode('utf-8')) > MAX_CONTEXT_BYTES:
-                return json.dumps(error_body('artifact_context_too_large'))
-            return encoded
+        # The service owns one parent-first capture, unlocked diagnostic I/O,
+        # and guarded settlement. No caller boundary may enclose its I/O.
+        context = artifact_authority.get_brief_context(brief_id, instance)
+        encoded = json.dumps(context, ensure_ascii=True, allow_nan=False)
+        if len(encoded.encode('utf-8')) > MAX_CONTEXT_BYTES:
+            return json.dumps(error_body('artifact_context_too_large'))
+        return encoded
     except Exception as error:
         return json.dumps(failure(error)[1])
 

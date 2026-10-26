@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 production authorized, store marker/report stage green)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 A/B/C regression and mutation checks green; production timing gate next)
 
 ## At a glance
 
@@ -16,9 +16,9 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
-| Latest checks | D4 ROOT30tests/36.338s:33behavioral FAIL+28missing-API ERROR,4existing guards PASS. N follow-ups baseline114PASS17.395s and5additional fault mutants killed. Product/tools unchanged; no D4 source/full/timing gate. |
-| Next | Reviewer independently runs/audits D4 first-red pin before production clearance. Read TICKET-20-D4-REDS.md for per-test unobserved reachability/private seams. Root has not implemented D4. R3/operator/capacity/activation/push held. |
+| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. Timing acceptance remains pending. No whole-ticket acceptance or activation. |
+| Latest checks | Builder full1814 tests OK/four skips342.250s (221modules, includes434artifact tests); phase/recovery49 OK28.848s;15 D4 mutations killed by assertions with source unchanged;4 harness controls OK0.758s. |
+| Next | Freeze this product/tool pin and run the two sequential D4 production-gate tools at10 fresh samples per caller/phase. Retain every result; any miss returns to design. Independent reviewer reruns/static audit remain required. R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 
@@ -27,7 +27,7 @@
 - Mechanical migration167bfb8 independently ACCEPTED: reviewer379artifact tests OK219.2s and static assertion audit found no weakening. Source/tool/portable goldens unchanged; R2 N additions now follow as its own unit.
 - R2 N coveragea40af574 independently ACCEPTED: reviewer114OK17.8s/static audit. Five small tests/docs-only follow-ups folded into first D4 red pin: nonempty retained-ledger reset/cold cap/parser stale mutations, exact authoring exception, healthy ACK conflict/order-independent warnings, explicit private fixture table and target-only ZIP/substantive docs assertion. Green support114PASS17.395s,5new follow-up mutants killed; prior ERROR-based mutants remain labeled weaker.
 - One new ROOT tests/test_artifact_diagnostic_phases.py is OBSERVED RED on unchanged product:30methods/36.338s,33behavioral assertion failures (writer lock, peer progress, entry guard),28missing frozen API AttributeErrors,4existing guards PASS,0skips; tracked1d8ef42b. [Per-test reachability and F-1..F-5 receipts](TICKET-20-D4-REDS.md). Every assertion after a first red is listed unobserved until green. Product/tool/golden bytes unchanged froma40af574, no D4 implementation yet.
-- Reviewer independently confirmed945ea482 reds and CLEARED D4 PRODUCTION with P1-P6 coverage preconditions. Root executing frozen contract in TICKET-20-D4-PRODUCTION.md. P1-P4 fixes observed30/45FAIL+28ERROR27.851s before source. Store Event/capture/report stage now56PASS8.663s including three previous reds; service/startup/MCP/P5/gates still pending. No D4 acceptance or activation, no R3/operator/capacity/push.
+- Reviewer independently confirmed945ea482 reds and CLEARED D4 PRODUCTION with P1-P6 coverage preconditions. Root executing frozen contract in TICKET-20-D4-PRODUCTION.md. P1-P4 fixes observed30/45FAIL+28ERROR27.851s before source. Store Event/capture/report stage56PASS8.663s preceded the service/startup/MCP implementation. D4 now has44 green phase tests including fourteen P5 additions. Two new observed reds fixed sticky external-marker recognition and a captured-terminal proof mismatch incorrectly projected as a new terminal winner. Builder full regression and15 mutation checks now pass; production timing and independent reviewer acceptance remain pending. No D4 acceptance or activation, no R3/operator/capacity/push.
 
 ## Earlier correction-review pointers (historical)
 

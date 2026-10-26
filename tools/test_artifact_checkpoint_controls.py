@@ -90,6 +90,40 @@ class CheckpointControlTests(unittest.TestCase):
         self.assertIn('sealed_result_io.py',value['fixture_and_support_sha256'])
         self.assertIn('tests/test_artifact_store.py',value['fixture_and_support_sha256'])
 
+    def test_production_observation_times_actual_phases_without_an_outer_boundary(self):
+        import threading
+        case=SimpleNamespace(engine=SimpleNamespace(_lock=threading.RLock()),
+            catalog=SimpleNamespace(_lock=threading.RLock()),artifacts=SimpleNamespace(_lock=threading.RLock()))
+        @contextlib.contextmanager
+        def boundary():
+            with case.engine._lock,case.catalog._lock:yield
+        service=SimpleNamespace(_boundary=boundary)
+        def require_active(channel):
+            with service._boundary():return channel
+        service.require_active=require_active;case.service=service
+        observed=[]
+        def writer(intent):
+            observed.append(tuple(owner._lock._is_owned() for owner in (case.engine,case.catalog,case.artifacts)))
+            return b'{}'
+        case.authority=SimpleNamespace(_persist_diagnostic_intent=writer,_settle_diagnostic_intent=lambda *args:'settled')
+        def action():
+            with service._boundary():pass
+            receipt=case.authority._persist_diagnostic_intent('synthetic')
+            with service._boundary():return case.authority._settle_diagnostic_intent(receipt)
+        row,value=a.production_observe(case,action)
+        self.assertEqual(value,'settled');self.assertEqual(observed,[(False,False,False)])
+        self.assertEqual([hold['phase'] for hold in row['holds']],['A','C'])
+        self.assertEqual(len(row['B_seconds']),1);self.assertTrue(row['peer_waits'])
+        self.assertEqual(row['peer_errors'],[])
+        def healthy():
+            with service._boundary():return 'healthy'
+        row,value=a.production_observe(case,healthy,healthy=True)
+        self.assertEqual(value,'healthy');self.assertEqual(row['B_seconds'],[])
+        self.assertEqual([hold['phase'] for hold in row['holds']],['A'])
+        row,value=a.production_observe(case,lambda:'read',persist=False)
+        self.assertEqual(value,'read');self.assertEqual(row['holds'],[])
+        self.assertEqual(row['B_authority_owned'],[[False,False,False]])
+
 
 if __name__ == '__main__':
     unittest.main()

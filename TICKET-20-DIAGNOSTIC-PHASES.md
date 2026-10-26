@@ -1,6 +1,6 @@
 # Ticket 20 R2 D4: diagnostics outside the authority boundary
 
-Status: D4 direction CONFIRMED and ROOT reds AUTHORIZED by reviewer after merged DESIGN checkpoint. The first red file and N follow-ups are observed in TICKET-20-D4-REDS.md; production remains HELD pending independent red-body review. R2 as a whole is NOT accepted. R3, operator routes, capacity, activation and push remain held.
+Status: D4 production CLEARED after independent review of 945ea482 reds. Implementation is in progress; production acceptance, regression and performance gates remain pending. The original reds remain in TICKET-20-D4-REDS.md. R2 as a whole is NOT accepted. R3, operator routes, capacity, activation and push remain held.
 
 ## Why the boundary changes
 
@@ -38,6 +38,25 @@ All types below are private to the existing modules. No new public route, persis
 |`_DiagnosticReceipt`|Frozen invocation-local wrapper binding the exact intent object and a fresh driver-local object token to immutable copies of the returned row/summary fields needed by the existing result builder. The driver wraps B's returned value; the token never lives on an owner or in a diagnostic row. Not accepted by a public method. No lookup by a caller-provided diagnostic id. Preserve the current receipt-id selection, including an overflow summary's own id.|
 |`ArtifactService._settle_diagnostic_intent(intent, receipt, *, invocation_key)`|C only. Verify token identity and exact intent identity against the driver's current locals, revalidate the guard, execute the closed continuation or the changed-state outcome below. It never calls record/report/request_diagnostics and never resumes capture implicitly.|
 |`ArtifactService.get_brief_context(brief_id, instance)`|Existing accepted A1 entry, to be adapted to the D4 driver for the real MCP tool. Within A, validate/read parent first, then perform the same brief capture/activation. Return the existing merged brief/packet/parent dictionary. The MCP wrapper serializes it and enforces the existing MAX_CONTEXT_BYTES limit outside the boundary. A refused parent still prevents activation; context-limit behavior after activation is preserved.|
+
+### Consolidated private implementation and test interfaces (P6)
+
+The table above defines intent/guard/continuation/receipt fields and driver signatures. This extension is the single authoritative table for the additional D4 and diagnostic fixture seams; DIAGNOSTICS F-4 points here.
+
+|Private name|Frozen responsibility|
+|---|---|
+|`_persist_diagnostic_intent(intent)` / `_settle_diagnostic_intent(intent, receipt, *, invocation_key)`|B persistence and C settlement, with the exact signatures above. B errors propagate before C; receipt payload is issued only after the real writer returns.|
+|`_assert_independent_boundary()` / `_ArtifactBoundaryHeld.code`|Strict current-thread engine/catalog/authoring ownership query before A and before B. Code is `artifact_boundary_held`. Applies to healthy driver entries too.|
+|`intent.request_id` / `intent.attached_request_id` / `intent.guard.request_id`|Observed diagnostic key, validated attachment, and independently looked-up authority target respectively. None is meaningful and never selects another request.|
+|`guard.state`, `guard.mode`, `guard.audit_bytes`, `guard.queue`, `guard.record_digest`, `guard.ack`, `guard.disposition`|Frozen capture observations, compared to fresh C authority. Audit/scope data remain private. Tests may corrupt captured proof fields to demonstrate refusal, never as public input.|
+|`_capture_diagnostic_attachment(request_id, dispatch_id)` / `_snapshot_diagnostic_attachment(request_id, dispatch_id)`|Same memory-only authoring predicate under its short RLock. Returns matching non-imported request id or None. Non-null unavailable authoring raises exact ArtifactUnavailable with authoring guidance.|
+|`ArtifactStore._diagnostic_legacy_marker` / `ArtifactDiagnosticStore(..., _legacy_marker=None)`|One shared threading.Event created before authoring load. Constructor accepts only Event or None; an observed legacy hold latches for the lifetime of the owner, even if an external caller clears the Event.|
+|`_get_parent_locked` / `_get_brief_locked` / `_fence` / `_resume_request_locked`|Existing parent-first capture cores, terminal queue fence, and origin-aware startup resume core. Tests patch these to observe order or inject the original conflict; public get_parent remains public.|
+|`ArtifactDiagnosticStore._encoded(value)`|Static encoder, ensure_ascii=True, allow_nan=False, default separators, 1 MiB cap, typed diagnostic refusal before body put. Tests inject that refusal to prove no orphan write.|
+|`diagnostic_store._data` / `diagnostic_store._lock._is_owned()`|Private RAM frame fixture and lock observation. Normal seeds use _persist_diagnostics; only parser-isolation tests inject malformed known RAM while stubbing schema validation. No application bypass.|
+|`owner._fingerprint()`|Stats only that owner's metadata path. No alternate-owner inspection.|
+
+`channels.require_active` remains the sole inactive-channel check seam. A preserves its existing 400 mapping; C converts ChannelConflict to 409 only for active-channel modes. Reject's terminal write followed by a raw OSError in `_fence` still propagates that OSError. The pre-existing QUARANTINED-before-fence crash window is retained; D4 adds no repair for it. No hooks make these outcomes successful.
 
 `_packet` and `_diagnostic` become capture-only private helpers when called by an orchestrator: they raise the private signal with an explicit continuation instead of doing B inside A. They must capture the current store row after any activation, not the possibly stale local variable in `admit_saved` (which currently ignores `_activate`'s returned row). Capture records only the branch actually reached; it cannot turn a source failure into an invalid-response intent.
 

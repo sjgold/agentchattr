@@ -175,7 +175,7 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
                     case.authority.repair_cancel_fences(fenced['request_ids'])
                     return stopped
                 outcome,other=self.pause(case,action,stop)
-                self.assertEqual(other[0],'ok');self.assertEqual(other[1]['state'],'stopped')
+                self.assertEqual(other[0],'ok');self.assertEqual(other[1]['state'],'stopping');self.assertTrue(other[1]['stop_id'])
                 row=case.artifacts.get_request(audit['request_id'])
                 self.assertEqual((row['state'],row['reason']),('cancelled','source_stopped'))
                 self.assertEqual(outcome[0],'error');self.assertIsInstance(outcome[1],storage.ArtifactConflict)
@@ -215,14 +215,29 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
     def test_mcp_parent_first_context_has_no_outer_diagnostic_boundary(self):
         import mcp_bridge
         case,audit,instance,_,_,_,_=self.fixture()
-        original=case.authority._get_parent_locked;parents=[]
+        original=case.authority._get_parent_locked;parents=[];calls=[]
+        original_boundary=case.service._boundary;state={'depth':0,'token':None}
+        @contextmanager
+        def boundary():
+            if state['depth']==0:state['token']=object()
+            state['depth']+=1
+            try:
+                with original_boundary():yield
+            finally:state['depth']-=1
         def parent(*args):
+            calls.append(('parent',state['token'],state['depth']))
             result=original(*args);parents.append(result)
             case.artifacts._object_path('packet',audit['scope']['packet_id']).write_bytes(b'DAMAGE_AFTER_PARENT')
             return result
-        with patch.object(case.authority,'_get_parent_locked',parent),patch.object(mcp_bridge,'artifact_authority',case.authority),patch.object(mcp_bridge,'_authenticated_instance',return_value=instance):
+        original_brief=case.authority._get_brief_locked
+        def brief(*args):
+            calls.append(('brief',state['token'],state['depth']))
+            return original_brief(*args)
+        with patch.object(case.service,'_boundary',boundary),patch.object(case.authority,'_get_parent_locked',parent),patch.object(case.authority,'_get_brief_locked',brief),patch.object(mcp_bridge,'artifact_authority',case.authority),patch.object(mcp_bridge,'_authenticated_instance',return_value=instance):
             outcome,other=self.pause(case,lambda:json.loads(mcp_bridge.chat_artifact_brief(audit['brief_id'])),lambda:case.service.require_active('peer'))
         self.assertEqual(len(parents),1);self.assertEqual(other[0],'ok')
+        self.assertEqual([entry[0] for entry in calls],['parent','brief'])
+        self.assertIs(calls[0][1],calls[1][1]);self.assertTrue(all(entry[2]>0 for entry in calls))
         self.assertEqual(outcome[0],'ok');self.assertEqual(outcome[1]['code'],'artifact_storage_unavailable')
         self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'failed')
 
@@ -380,21 +395,23 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
         with patch.object(case.authority,'_persist_diagnostic_intent',persist):result=action()
         self.assertEqual(result['status'],'quarantined');self.assertTrue(result['request_terminal'])
 
-    def test_c_fulfilled_replay_ignores_queue_release_and_fences(self):
-        values,action=self.action('fulfilled');case,audit,instance,consumer,*_=values
-        original=case.authority._persist_diagnostic_intent
-        observed=[]
-        def persist(intent):
-            result=original(intent)
-            fenced=case.trigger.queue.cancel_dispatch(audit['dispatch_id'],'f'*32)
-            released=case.trigger.queue.release(instance,audit['dispatch_id'],consumer)
-            observed.append((fenced,released))
-            return result
-        with patch.object(case.authority,'_persist_diagnostic_intent',persist):result=action()
-        self.assertEqual(len(observed),1);self.assertEqual(observed[0][0]['cancellation_id'],'f'*32)
-        self.assertEqual(observed[0][1]['state'],'released');self.assertEqual(observed[0][1]['cancellation_id'],'f'*32)
-        self.assertEqual(result['status'],'quarantined');self.assertFalse(result['request_terminal'])
-        self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'fulfilled')
+    def test_c_fulfilled_replay_ignores_legal_release_and_real_fence_evolution(self):
+        for transition in ('release','fence'):
+            with self.subTest(transition=transition):
+                values,action=self.action('fulfilled');case,audit,instance,consumer,*_=values
+                original=case.authority._persist_diagnostic_intent;observed=[]
+                def persist(intent):
+                    result=original(intent)
+                    changed=(case.trigger.queue.release(instance,audit['dispatch_id'],consumer)
+                        if transition=='release' else case.trigger.queue.cancel_dispatch(audit['dispatch_id'],'f'*32))
+                    observed.append(changed)
+                    return result
+                with patch.object(case.authority,'_persist_diagnostic_intent',persist):result=action()
+                self.assertEqual(len(observed),1)
+                self.assertEqual(observed[0]['state'],'released' if transition=='release' else 'cancelling')
+                if transition=='fence':self.assertEqual(observed[0]['cancellation_id'],'f'*32)
+                self.assertEqual(result['status'],'quarantined');self.assertFalse(result['request_terminal'])
+                self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'fulfilled')
 
     def test_inactive_channel_a_maps_400_but_new_inactive_c_maps_409(self):
         case,audit,instance,_,_,_,_=self.fixture('reject')
@@ -434,6 +451,9 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
             captured.append((intent,receipt,invocation_key))
             with self.assertRaises(storage.ArtifactConflict):
                 original(intent,receipt,invocation_key=object())
+            from dataclasses import replace
+            with self.assertRaises(storage.ArtifactConflict):
+                original(replace(intent),receipt,invocation_key=invocation_key)
             return original(intent,receipt,invocation_key=invocation_key)
         with patch.object(case.authority,'_settle_diagnostic_intent',settle):action()
         before=case.files();self.assertEqual(len(captured),1)
@@ -615,6 +635,297 @@ class ArtifactDiagnosticPhaseTests(unittest.TestCase):
                 self.assertEqual((row['state'],row['reason']),('active',None) if changed else ('queued','resume_pending'))
                 self.assertFalse(any(item['request_id']==extra['request_id'] for item in result[1]['held']))
                 self.assertNotIn(extra['request_id'],result[1]['enqueue_repaired'])
+
+    def reservation(self, state):
+        case=admission_fixture.ArtifactAdmissionTests();case.setUp();case.setup_authority()
+        self.addCleanup(lambda:self.assertFalse(case.root.exists()));self.addCleanup(case.doCleanups)
+        audit,packet=case.new_request();raw=storage.canonical_utf8(packet)
+        if state=='absent':case.artifacts.reserve_request(audit,audit['request_id'])
+        else:case.authority.prepare_request(audit,packet,audit['request_id'])
+        consumer=case.claim(audit) if state=='claimed' else None
+        case.artifacts._object_path('packet',audit['scope']['packet_id']).write_bytes(b'BAD_PACKET')
+        return case,audit,packet,raw,consumer
+
+    def test_b_failure_has_no_c_effect_or_fabricated_receipt_per_entry(self):
+        for kind in ('cli','reject','brief','delivery','resume','retained','saved','fulfilled','ack','startup','unmatched','startup_unmatched'):
+            with self.subTest(caller=kind):
+                values,action=self.action(kind);case,audit,_,_,_,box,_=values;at_b=[]
+                def unavailable(*args,**kwargs):
+                    at_b.append(case.artifacts.path.read_bytes() if case.artifacts.path.exists() else None)
+                    raise storage.ArtifactDiagnosticsUnavailable()
+                with patch.object(case.artifacts.diagnostic_store,'record',unavailable),patch.object(case.authority,'_settle_diagnostic_intent',wraps=case.authority._settle_diagnostic_intent) as settle:
+                    outcome=self.outcome(action)
+                self.assertEqual(len(at_b),1);self.assertEqual(settle.call_count,0)
+                self.assertEqual(case.artifacts.path.read_bytes() if case.artifacts.path.exists() else None,at_b[0])
+                self.assertFalse(case.artifacts.diagnostic_store.path.exists())
+                if kind in ('startup','startup_unmatched'):
+                    self.assertEqual(outcome[0],'ok');self.assertEqual(outcome[1]['quarantined'],[])
+                    self.assertTrue(any(row['reason']=='storage_unavailable' for row in outcome[1]['held']))
+                else:
+                    self.assertEqual(outcome[0],'error');self.assertIs(type(outcome[1]),storage.ArtifactDiagnosticsUnavailable)
+                    self.assertEqual(failure(outcome[1])[1]['diagnostic_id'],None)
+                self.assertIsNone(box.get_ack(audit['dispatch_id']));self.assertIsNone(box.get_disposition(audit['dispatch_id']))
+
+    def test_continuation_origins_and_all_guard_proofs_are_captured(self):
+        expected={'cli':('raise_invalid_content','agent'),'reject':('quarantine_invalid_response','worker'),
+            'brief':('fail_source_packet','agent'),'delivery':('fail_source_packet','worker'),
+            'resume':('fail_source_packet','resume'),'retained':('fail_source_packet','resume'),
+            'saved':('return_quarantine','worker'),'fulfilled':('return_quarantine','worker'),
+            'ack':('resume_ack_conflict','resume'),'startup':('startup_saved_disposition','startup'),
+            'unmatched':('return_quarantine','worker'),'startup_unmatched':('startup_saved_disposition','startup')}
+        self.assertFalse(issubclass(authority._DiagnosticRequired,(ValueError,RuntimeError)))
+        for kind,continuation in expected.items():
+            with self.subTest(caller=kind):
+                values,action=self.action(kind);case,audit,*_=values;captured=[]
+                original=case.authority._persist_diagnostic_intent
+                def observed(intent):
+                    row=case.artifacts.get_request(intent.guard.request_id) if intent.guard.request_id else None
+                    record=case.authority._queue_record(row) if row else None
+                    captured.append((intent,row,record))
+                    return original(intent)
+                with patch.object(case.authority,'_persist_diagnostic_intent',observed):outcome=self.outcome(action)
+                self.assertEqual(len(captured),1)
+                if outcome[0]=='error':self.assertNotIsInstance(outcome[1],authority._DiagnosticRequired)
+                intent,row,record=captured[0];guard=intent.guard
+                self.assertEqual((intent.continuation.kind,intent.continuation.origin),continuation)
+                self.assertEqual(guard.audit_bytes,authority._frozen(row['audit']) if row else None)
+                if guard.queue is not None:
+                    self.assertEqual(guard.queue.envelope,authority._frozen(record['envelope']))
+                    self.assertEqual(guard.queue.consumer_id,record['consumer_id'])
+                self.assertIsNone(guard.ack);self.assertIsNone(guard.disposition)
+                self.assertEqual(guard.record_digest,hashlib.sha256(guard.record_bytes).hexdigest() if guard.record_bytes is not None else None)
+
+    def test_pre_b_guard_rechecks_current_thread_ownership(self):
+        values,action=self.action('reject');case,audit,*_=values;calls=[];held=[]
+        original=case.authority._assert_independent_boundary
+        def checked():
+            calls.append(True)
+            if len(calls)==2:case.catalog._lock.acquire();held.append(True)
+            return original()
+        try:
+            with patch.object(case.authority,'_assert_independent_boundary',checked),patch.object(case.artifacts.diagnostic_store,'record',wraps=case.artifacts.diagnostic_store.record) as writer:
+                outcome=self.outcome(action)
+        finally:
+            if held:case.catalog._lock.release()
+        self.assertEqual(len(calls),2);self.assertEqual(writer.call_count,0)
+        self.assertEqual(outcome[0],'error');self.assertEqual(outcome[1].code,'artifact_boundary_held')
+        self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'active')
+
+    def test_reservation_resume_queue_changes_and_existing_fence_precedence(self):
+        for transition in ('absent_present','queued_claimed','new_fence','existing_fence','claimed_ack'):
+            with self.subTest(transition=transition):
+                state='absent' if transition=='absent_present' else 'queued' if transition=='queued_claimed' else 'claimed'
+                case,audit,packet,raw,consumer=self.reservation(state)
+                if transition=='existing_fence':case.trigger.queue.cancel_dispatch(audit['dispatch_id'],'c'*32)
+                original=case.authority._persist_diagnostic_intent
+                def persist(intent):
+                    result=original(intent)
+                    if transition in ('absent_present','queued_claimed'):
+                        case.artifacts._object_path('packet',audit['scope']['packet_id']).write_bytes(raw)
+                    if transition=='absent_present':
+                        case.briefs.put(case.authority._brief(audit),owner=case.authority._owner(audit))
+                        case.trigger.trigger_identity_sync(case.instance['identity_id'],dispatch_id=audit['dispatch_id'],
+                            channel='review',purpose='artifact-v1',artifact_request_id=audit['request_id'],
+                            artifact_attempt_id=audit['attempt_id'],artifact_brief_id=audit['brief_id'],artifact_scope_sha256=audit['scope']['sha256'])
+                    elif transition=='queued_claimed':case.claim(audit)
+                    elif transition=='new_fence':case.trigger.queue.cancel_dispatch(audit['dispatch_id'],'d'*32)
+                    elif transition=='claimed_ack':case.trigger.queue.acknowledge(case.instance,audit['dispatch_id'],consumer)
+                    return result
+                with patch.object(case.authority,'_persist_diagnostic_intent',persist):outcome=self.outcome(lambda:case.authority.resume_request(audit['request_id']))
+                row=case.artifacts.get_request(audit['request_id'])
+                if transition in ('absent_present','queued_claimed'):
+                    self.assertEqual(outcome[0],'error');self.assertIsInstance(outcome[1],storage.ArtifactConflict)
+                    self.assertEqual(row['state'],'prepared' if state=='absent' else 'queued')
+                elif transition=='new_fence':
+                    self.assertEqual(outcome[0],'ok');self.assertIsNone(outcome[1]['admission'])
+                    self.assertEqual(outcome[1]['warning'],'operator_recovery_required');self.assertEqual(row['state'],'queued')
+                else:
+                    self.assertEqual(outcome[0],'error');self.assertIsInstance(outcome[1],storage.ArtifactUnavailable)
+                    self.assertEqual((row['state'],row['reason']),('failed','source_packet_unavailable'))
+
+    def test_resume_inactive_at_c_is_409_for_reservation_and_retained_modes(self):
+        for kind in ('resume','retained'):
+            with self.subTest(mode=kind):
+                values,action=self.action(kind);case,audit,*_=values;original=case.authority._persist_diagnostic_intent
+                with ExitStack() as stack:
+                    def persist(intent):
+                        value=original(intent)
+                        stack.enter_context(patch.object(case.service,'require_active',side_effect=ChannelInactive('inactive after B')))
+                        return value
+                    stack.enter_context(patch.object(case.authority,'_persist_diagnostic_intent',persist))
+                    outcome=self.outcome(action)
+                self.assertEqual(outcome[0],'error');self.assertIsInstance(outcome[1],storage.ArtifactConflict)
+                self.assertEqual(failure(outcome[1])[0],'artifact_conflict')
+                self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'queued' if kind=='resume' else 'active')
+
+    def test_resume_terminal_winner_has_no_invented_admission_and_warns(self):
+        values,action=self.action('resume');case,audit,instance,_,record,_,_=values
+        # Reconstruct the immutable fixture packet, not a replacement UID or fallback source.
+        from tests.test_artifact_store import ArtifactStoreTests
+        raw=storage.canonical_utf8(ArtifactStoreTests.packet(case))
+        original=case.authority._persist_diagnostic_intent
+        def persist(intent):
+            result=original(intent);case.artifacts._object_path('packet',audit['scope']['packet_id']).write_bytes(raw)
+            case.authority.admit_saved(record,instance);return result
+        with patch.object(case.authority,'_persist_diagnostic_intent',persist):result=action()
+        self.assertEqual(result['request']['state'],'fulfilled');self.assertIsNone(result['admission'])
+        self.assertEqual(result['warning'],'operator_recovery_required')
+        self.assertEqual(case.artifacts.list_versions(audit['lineage_id'])['count'],1)
+
+    def test_changed_authoring_fields_and_unreadable_authoring_at_c(self):
+        for field in ('reason','channel','audit','unreadable'):
+            with self.subTest(field=field):
+                values,action=self.action('reject');case,audit,*_=values;original=case.authority._persist_diagnostic_intent
+                def persist(intent):
+                    result=original(intent)
+                    if field=='unreadable':case.artifacts.path.write_bytes(b'BROKEN_AT_C')
+                    else:
+                        with case.service._boundary(),case.artifacts._lock:
+                            value=deepcopy(case.artifacts._data);row=value['requests'][audit['request_id']]
+                            if field=='reason':row['reason']='resume_pending'
+                            elif field=='channel':
+                                row['channel']='peer';value['lineages'][audit['lineage_id']]['channel']='peer'
+                            else:row['audit']['instruction']='Changed trusted fixture instruction'
+                            case.artifacts._persist(value)
+                    return result
+                with patch.object(case.authority,'_persist_diagnostic_intent',persist):outcome=self.outcome(action)
+                self.assertEqual(outcome[0],'error')
+                if field=='unreadable':
+                    self.assertIsInstance(outcome[1],storage.ArtifactUnavailable)
+                    self.assertEqual(failure(outcome[1])[0],'artifact_storage_unavailable')
+                    self.assertEqual(case.artifacts.path.read_bytes(),b'BROKEN_AT_C')
+                else:
+                    self.assertIsInstance(outcome[1],storage.ArtifactConflict)
+                    self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'active')
+                self.assertEqual(case.artifacts.diagnostic_store.report()['detailed_count'],1)
+
+    def test_saved_proof_ack_and_disposition_changes_refuse_c(self):
+        for changed in ('record','ack','disposition','consumer'):
+            with self.subTest(changed=changed):
+                kind='reject' if changed=='consumer' else 'ack'
+                values,action=self.action(kind);case,audit,instance,_,_,box,_=values;original=case.authority._persist_diagnostic_intent
+                def persist(intent):
+                    result=original(intent)
+                    if changed=='record':
+                        record=box.get(audit['dispatch_id']);record['payload']['markdown']='# Different sealed record'
+                        record=case.protocol.seal_result(record['payload'],case.briefs.get_private(audit['brief_id'])['_artifact_seal']['seal_secret'])
+                        box._path(audit['dispatch_id']).write_text(json.dumps(record),encoding='utf-8')
+                    elif changed=='ack':box.acknowledge(audit['dispatch_id'],audit['dispatch_id'])
+                    elif changed=='disposition':
+                        other=case.artifacts.quarantine_submission(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],reason='superseded',content='other writer')
+                        box.quarantine(audit['dispatch_id'],other['id'],'superseded')
+                    else:
+                        raw=case.trigger.queue._queue
+                        with raw._transaction() as ledger:
+                            record=next(row for row in ledger['records'] if row['envelope']['dispatch_id']==audit['dispatch_id'])
+                            record['consumer_id']='new-fixture-consumer';raw._write(ledger)
+                    return result
+                with patch.object(case.authority,'_persist_diagnostic_intent',persist):outcome=self.outcome(action)
+                self.assertEqual(outcome[0],'error');self.assertIsInstance(outcome[1],storage.ArtifactConflict)
+                self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'active' if kind=='reject' else 'fulfilled')
+
+    def test_startup_saved_admission_b_and_outbox_inventory_are_outside_boundary(self):
+        values,_=self.action('saved');case,audit,_,_,record,box,_=values
+        record=deepcopy(record);record['payload']['expected_parent']={'version_id':'e'*32,'sequence':1,'sha256':'f'*64}
+        box.save(record['payload'],case.briefs.get_private(audit['brief_id'])['_artifact_seal']['seal_secret'])
+        inventory=[];writes=[];orig_inventory=ArtifactOutbox.list_records;orig_persist=case.authority._persist_diagnostic_intent
+        def listing(owner,*args,**kwargs):
+            inventory.append((case.engine._lock._is_owned(),case.catalog._lock._is_owned()))
+            return orig_inventory(owner,*args,**kwargs)
+        def persist(intent):
+            writes.append((intent,case.engine._lock._is_owned(),case.catalog._lock._is_owned()))
+            return orig_persist(intent)
+        with patch.object(ArtifactOutbox,'list_records',listing),patch.object(case.authority,'_persist_diagnostic_intent',persist):result=case.authority.recover_startup()
+        self.assertTrue(inventory);self.assertTrue(all(flags==(False,False) for flags in inventory))
+        self.assertEqual(len(writes),1);self.assertEqual(writes[0][1:],(False,False))
+        self.assertEqual((writes[0][0].guard.mode,writes[0][0].continuation.origin),('live_claim','startup'))
+        self.assertEqual(result['scanned'],1);self.assertEqual(len(result['quarantined']),1)
+        self.assertEqual(result['held'],[]);self.assertEqual(result['admitted'],[])
+
+    def test_startup_stale_disposition_and_unraced_source_failure_counts(self):
+        values,action=self.action('startup');case,audit,_,_,_,box,_=values;original=case.authority._persist_diagnostic_intent
+        competing=[]
+        def persist(intent):
+            value=original(intent)
+            other=case.artifacts.quarantine_submission(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],reason='superseded',content='different retained decision')
+            box.quarantine(audit['dispatch_id'],other['id'],'superseded');competing.append(other['id'])
+            return value
+        with patch.object(case.authority,'_persist_diagnostic_intent',persist):result=action()
+        self.assertEqual(result['scanned'],1);self.assertEqual(result['quarantined'],[])
+        self.assertTrue(result['held']);self.assertTrue(all(row['reason']=='operator_recovery_required' for row in result['held']))
+        self.assertEqual(box.get_disposition(audit['dispatch_id'])['diagnostic_id'],competing[0])
+        values,_=self.action('resume');case,audit,*_=values
+        result=case.authority.recover_startup()
+        self.assertEqual(result['scanned'],1);self.assertEqual(result['enqueue_repaired'],[])
+        self.assertEqual(result['held'],[{'request_id':audit['request_id'],'dispatch_id':audit['dispatch_id'],'reason':'storage_unavailable'}])
+        self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'failed')
+
+    def test_capture_imported_held_and_sticky_constructor_marker(self):
+        from tests.test_artifact_imported_store import ArtifactImportedStoreTests
+        fixture=ArtifactImportedStoreTests();fixture.setUp();self.addCleanup(fixture.doCleanups)
+        graph,audit,_=fixture.source_graph(attempts=False)
+        plan=fixture.target.prepare_import_lineage(*graph)
+        with fixture.service._boundary():fixture.target.import_lineage(plan,channel='review')
+        self.assertIsNone(fixture.target._capture_diagnostic_attachment(audit['request_id'],audit['dispatch_id']))
+        fixture.target.path.write_bytes(b'HELD_AUTHORING')
+        with self.assertRaises(storage.ArtifactUnavailable):fixture.target.list_lineages()
+        with self.assertRaises(storage.ArtifactUnavailable) as caught:fixture.target._capture_diagnostic_attachment(audit['request_id'],audit['dispatch_id'])
+        self.assertIs(type(caught.exception),storage.ArtifactUnavailable);self.assertEqual(str(caught.exception),storage._AUTHORING_GUIDANCE)
+        marker=threading.Event();marker.set()
+        root=fixture.root/'external-marker';owner=storage.ArtifactDiagnosticStore(root,_legacy_marker=marker)
+        marker.clear()  # Once observed, a legacy hold cannot clear on that owner.
+        self.assertTrue(owner._legacy_held)
+        with self.assertRaises(storage.ArtifactDiagnosticsUnavailable):owner.report()
+        self.assertFalse(owner.path.exists())
+        case,audit,*_=self.fixture()
+        case.artifacts._diagnostic_legacy_marker.set()
+        first=case.artifacts.request_diagnostics(audit['request_id'])
+        case.artifacts._diagnostic_legacy_marker.clear()
+        second=case.artifacts.request_diagnostics(audit['request_id'])
+        self.assertFalse(first['available']);self.assertEqual(second,first)
+        self.assertFalse(case.artifacts.diagnostic_store.path.exists())
+
+    def test_orphan_scan_oserror_drops_observations_without_latching_authoring(self):
+        case,audit,_,_,_,_,_=self.fixture()
+        for identifier in ('c'*32,'d'*32):case.artifacts._object_path('packet',identifier).write_bytes(b'{}')
+        target=case.artifacts._object_path('packet','d'*32)
+        case.artifacts.quarantine_submission(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],reason='invalid_content',content='retained')
+        original=Path.stat
+        def failed(path,*args,**kwargs):
+            if path==target:raise OSError('controlled mid-scan fault')
+            return original(path,*args,**kwargs)
+        with patch.object(Path,'stat',failed):result=case.artifacts.diagnostics()
+        self.assertFalse(result['owners']['authoring']['available']);self.assertIsNone(result['count'])
+        self.assertTrue(result['partial']);self.assertTrue(result['owners']['diagnostics']['available'])
+        self.assertTrue(all(row['kind']=='quarantine' for row in result['rows']))
+        self.assertIsNone(case.artifacts._held)
+        self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'queued')
+        self.assertTrue(case.artifacts.diagnostics()['owners']['authoring']['available'])
+
+    def test_overflow_summary_id_is_the_receipt_id(self):
+        values,action=self.action('reject');case,audit,*_=values
+        for number in range(8):case.artifacts.quarantine_submission(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],reason='invalid_content',content=str(number))
+        result=action();summary=case.artifacts.diagnostic_store._data['dispatch_overflow'][audit['dispatch_id']]
+        self.assertEqual(result['diagnostic_id'],summary['id']);self.assertNotEqual(result['diagnostic_id'],summary['latest_diagnostic_id'])
+        self.assertTrue(result['request_terminal'])
+    def test_corrupt_guard_proof_pairs_cannot_become_terminal_winner_results(self):
+        for field in ('audit_bytes','record_digest','queue'):
+            with self.subTest(field=field):
+                kind='reject' if field=='queue' else 'ack'
+                values,action=self.action(kind);case,audit,*_=values
+                original=case.authority._persist_diagnostic_intent
+                def persist(intent):
+                    value=original(intent)
+                    if field=='audit_bytes':object.__setattr__(intent.guard,'audit_bytes',b'{}')
+                    elif field=='record_digest':object.__setattr__(intent.guard,'record_digest','0'*64)
+                    else:
+                        from dataclasses import replace
+                        object.__setattr__(intent.guard,'queue',replace(intent.guard.queue,envelope=b'{}'))
+                    return value
+                with patch.object(case.authority,'_persist_diagnostic_intent',persist):outcome=self.outcome(action)
+                self.assertEqual(outcome[0],'error');self.assertIsInstance(outcome[1],storage.ArtifactConflict)
+                self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'active' if kind=='reject' else 'fulfilled')
+
 
 
 if __name__=='__main__':
