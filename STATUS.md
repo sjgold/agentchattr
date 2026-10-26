@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 isolated A1 on cleared R1; focused green, broader verification next)
+**Updated:** 2026-10-26 (#20 independent A1 builder verification complete; reviewer production audit next)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Root verifies independent A1 on branch codex/ticket-20-a1-isolated, base CLEARED R1 product74f4697. Fresh baseline21PASS2.688s; A1+MCP+R1 bounds54PASS7.225s. Affected/full and corrected90-sample design measurement next, no overlaps. R2/D1/D2 WIP excluded; no D4/R3/operator/capacity/activation/push. |
+| Next | Reviewer independently reruns/audits A1 isolated branch, product8443e1c on CLEARED R1 base74f4697. Builder affected416PASS224.439s; full1714PASS/four skips325.416s; final focused56PASS6.963s;20 mutants killed; corrected90 A samples all<=0.216, combined max0.179806s. NOT independently accepted yet. No D4/R2/R3/operator/capacity/activation/push. |
 
 ## Current handoff
+
+- Independent A1 VERIFIED BY BUILDER, reviewer pending: [verification +all raw90 rows](TICKET-20-A1-VERIFICATION.md). Worktree C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-a1-isolated, base74f4697, frozen product/tool8443e1c, no R2/D1/D2. Affected416/58modules PASS224.439s; ONE full1714PASS/four skips325.416s at33 A1 tests. Final two test-only key/pair guards make35 A1; final focused56PASS6.963s,20/20 in-memory mutants killed. Source/tool bytes unchanged after full/timing. Corrected90 A samples target/hard pass, combined max0.179806s including real MCP encode/size and measured guard;3 raw reads/1 walk each. C probes not D4 acceptance, no B/peer gate. Original main branch67e9e05 remains WIP with explicit non-gate results. Next reviewer uses THIS worktree/pin, no publication authorization.
 
 - Independent A1 worktree: C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-a1-isolated, base74f4697efcc6e66f91f228983a3d6a630ec41fff (R1 independently cleared atbd1f3922 with identical product bytes). Original codex/ticket-20-artifacts remains at67e9e05 WIP checkpoint. Mechanical port only:4 affected store methods AST-identical in74f4697/aff51101; added helper block now sits before R1 ArtifactStore, no R2 owner/schema, D1 inventory or D2 atomic_json. Service/MCP bases byte-identical before A1. No merge semantics chosen from R2. Fresh pre-port baseline R1+MCP21PASS2.688s; after port A1+MCP+R1 bounds54PASS7.225s. A1 production authorized but NOT independently accepted. Source freeze/affected/full/mutations/corrected measurement are next. All aff51101 results remain WIP attribution only.
 

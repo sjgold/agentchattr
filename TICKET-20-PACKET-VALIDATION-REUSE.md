@@ -166,3 +166,25 @@ Reviewer authorized A1 production ataff51101, then ruled that the unit must be i
 Acceptance base is74f4697efcc6e66f91f228983a3d6a630ec41fff, R1 product bytes independently cleared atbd1f3922. Branch codex/ticket-20-a1-isolated is a native linked worktree; original codex/ticket-20-artifacts is preserved at67e9e05 WIP checkpoint. No R2 diagnostic index-v2, D1 inventory or D2 shared JSON writer is present. All4 affected old store methods (_packet/get_packet/set_attempt_state/_commit_new) were AST-identical between R1 and pre-A1 aff51101; the evidence helper insertion point changed from before R2 shared base to before R1 ArtifactStore. Service/MCP/MCP-test bases were byte-identical. No nontrivial merge conflict or R2 semantics taken.
 
 Fresh pre-port R1 bounds+MCP21PASS2.688s. After port,33 A1 +3 MCP +18 R1 bounds =54PASS7.225s, including all formerly blocked red bodies, no skip. The R1 maximum991296B golden runs unchanged. Full/affected/mutation/timing evidence must now come from this worktree; old over-R2 results remain labeled WIP attribution and are not gates.
+
+
+## Independent verification complete, review pending
+
+[Complete isolated verification and raw measurements](TICKET-20-A1-VERIFICATION.md): R1 base74f4697, frozen product/tool8443e1c. Affected416PASS224.439s; ONE full discovery1714PASS/four skips325.416s (builder-run,33 A1 tests at that point). Final two test-only key/pair cases bring A1 to35 methods; final focused35+3MCP+18R1=56PASS6.963s, all20 in-memory mutants killed. Source/tool bytes unchanged after the full/timing pin. Corrected90 A samples all<=0.216, combined max0.179806s including MCP encoding/size and measured guard work,3 raw reads/1 content walk each. No D4 B/peer or whole-ticket acceptance. Independent review still required; no push/activation.
+
+
+### Proposed test-name to actual ROOT mapping (B5)
+
+|Contract name|Actual tests.test_artifact_packet_reuse method/variant|
+|---|---|
+|test_combined_brief_reads_three_times_but_validates_content_once|same name|
+|test_changed_packet_bytes_force_full_validation_with_same_size_and_mtime|test_between_read_corruption_matches_uncached_errors_and_observations: same_size_mtime, with actual byte-length equality assertion|
+|test_packet_evidence_is_not_reused_across_calls_or_threads|test_repeat_public_invocations_are_fresh_and_results_detached; test_copied_context_and_second_thread_cannot_consume_or_mutate_evidence; second-owner/different-root methods|
+|test_forged_or_mutated_packet_evidence_falls_back_to_full_validation|test_forged_raw_scope_or_audit_view_pair_falls_back_to_full_validation; test_in_place_scope_and_audit_view_forgery_cannot_reuse_issuance; foreign-invocation/different-packet-id methods|
+|test_packet_validation_reuse_matches_uncached_error_and_observation_outcomes|test_between_read_corruption_matches_uncached_errors_and_observations; test_differential_bad_message_source_run_and_scope; test_differential_healthy_empty_unicode_crlf_and_max_packets|
+|test_between_read_failures_match_uncached_classification|test_between_read_corruption_matches_uncached_errors_and_observations: truncate/oversize/delete/permission/noncanonical/same_size_mtime/deep_nest/decoder_recursion/symlink|
+|test_computed_scope_depends_on_bytes_and_packet_id_not_current_audit|test_scope_is_pure_in_packet_id_and_bytes_not_current_audit|
+|test_current_audit_scope_field_mismatches_refuse_with_or_without_reuse|test_current_audit_scope_mismatches_refuse_identically_after_hit; test_need_packet_false_still_compares_channel_and_source_run|
+|test_direct_worker_import_archive_validators_never_consume_evidence|test_direct_worker_import_archive_validation_does_not_consume_store_evidence|
+|test_no_packet_evidence_survives_scope_exit_or_nested_exception|test_no_evidence_reference_survives_scope_exit; test_nested_public_and_private_scopes_restore_after_exception|
+|test_invocation_hits_recheck_current_audit_and_owned_path_every_time|current-audit mismatch, discard-mismatch and between-read corruption methods; real read counts retained in all six original behavioral tests|

@@ -314,6 +314,38 @@ class ArtifactPacketReuseTests(unittest.TestCase):
                     self.assertEqual(owner.get_packet(key), packet)
                     self.assertEqual(content.call_count, 2)
 
+    def test_registered_evidence_cannot_be_mapped_to_a_different_packet_id(self):
+        """Mutation-checked guard: equal bytes do not erase the packet-id key."""
+        _, owner, audit, packet = self.stored()
+        key = audit['scope']['packet_id']
+        other = owner.put_packet(uuid.uuid4().hex, deepcopy(packet))['packet_id']
+        with self.scope(owner), patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+            owner.get_packet(key)
+            self.state().entries[other] = self.state().entries[key]  # Same issued identity/token, wrong key.
+            with owner._lock:
+                returned, scope = owner._packet(other)
+            self.assertEqual(returned, packet)
+            self.assertEqual(scope['packet_id'], other)
+            self.assertEqual(content.call_count, 2)
+
+    def test_in_place_scope_and_audit_view_forgery_cannot_reuse_issuance(self):
+        """Mutation-checked guard: test each pair binding, not just new identity."""
+        for field in ('scope_bytes', 'audit_view_bytes'):
+            with self.subTest(field=field):
+                _, owner, audit, packet = self.stored()
+                key = audit['scope']['packet_id']
+                with self.scope(owner), patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+                    owner.get_packet(key)
+                    evidence = self.state().entries[key]
+                    if field == 'scope_bytes':
+                        forged = deepcopy(audit['scope'])
+                        forged['message_refs'][0]['sha256'] = 'f' * 64
+                    else:
+                        forged = {'channel': 'peer', 'source_run': None}
+                    object.__setattr__(evidence, field, canonical_utf8(forged))
+                    self.assertEqual(owner.get_packet(key), packet)
+                    self.assertEqual(content.call_count, 2)
+
     def test_no_evidence_reference_survives_scope_exit(self):
         _, owner, audit, _ = self.stored()
         key = audit['scope']['packet_id']
