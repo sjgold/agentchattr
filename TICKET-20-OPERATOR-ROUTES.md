@@ -413,3 +413,6 @@ Deferred ONLY to reader package: request/revision modal and source picker UX, Ma
 ## Proposed R2 document amendment, not implemented
 
 R2 updates private ExistingRequestRow331 to audit/channel/state/reason/updated_at/version_id (+import_source for imported), removing quarantine_ids/overflow_count. Observation diagnostic377 goes to independent diagnostic owner, with existing quarantine/state/wire ordering. Public DTOs and held operator implementation stay unchanged. See [R2 diagnostic ownership](TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
+
+
+HELD A1 detector dependency (M8): the operator package must review/use artifact_store._packet_validation_scope_active(owner)->bool, a token-free same-owner/current-thread activity query, before its own reds. It must never import the A1 ContextVar/token/entries. No detector or operator implementation is added in the first A1 red pin; the existing stat-shortcut isolation rule above remains.
