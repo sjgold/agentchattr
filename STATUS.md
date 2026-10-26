@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 R1 cleared; R2 H1-H7 exact docs amended)
+**Updated:** 2026-10-25 (#20 R1 cleared; R2 J1-J9 exact docs amended)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer evaluates amended R2 H1-H7 exact contract and retained design-only timing receipt before any R2 reds/code; root freezes exact payload only after clearance. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
+| Next | Reviewer evaluates amended R2 J1-J9 exact contract and retained design-only timing receipt before any R2 reds/code; root freezes exact payload only after clearance. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
 
 ## Current handoff
+
+- R2 J1-J9 DOCS amended: exact freeze still pending. Corrected _prepared_import trace/literal version check; named existing/new owner-isolation tests and facade UUID delegates. Structural-only legacy detection, sticky constructor/check/write marker guidance; record(None) observes cached marker only. Diagnostic attachment snapshot now explicitly cached-memory-only, no authoring IO/refresh; no state/authority use. Exact partial rows/null bytes, uncertainty sentinel/restart-only fresh owner, parser/BOM/numeric rules, full normative/fixture/worker mapping and closed validator rules recorded. Heavy profile128groups/1023details/7.5MiB+512KiB matching body, summary and structural samples separately frozen; counted replace-retry-only rerun, no erased misses; guarded full/held4MiB import<=.300.810186B is stated-profile size, NOT all-encoding upper-bound proof. No new tests/spike/source/helper. Next reviewer J1-J9 before reds; R3/operator/capacity/activation/push held.
 
 - R2 H1-H7 DOCS amendment: F3/F5/F6/F7/F10 cleared; exact freeze still pending. Separate v1/v2 templates and independent owner transaction methods named; nonempty dev-v1 holds BOTH owners with no diagnostic file creation. request_diagnostics now ledger-only by attachment, no authoring/existence lookup; exact errors/owners/depth/reload payloads defined. Complete normative/fixture/transport/MCP movement listed. Reachable1023+body and1024summary timing paths each require10+ samples <=.270s, no erased misses; .315s PermissionError retry sleep belongs to FAULT. Prior narrow summary-frame prototype remains design-only, heavy body path unmeasured. No new spike/tests/source/helper. Next reviewer H1-H7 then exact freeze/reds; R3/operator/capacity/activation/push held.
 

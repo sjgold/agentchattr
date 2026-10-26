@@ -166,3 +166,6 @@ R2 replaces the request-row/debug and diagnostic paragraphs (82/103/105/113/116)
 
 
 Additional R2 normative sites: :13 quarantine healthy-index requirement gains ordinary-corruption None bypass with legacy hold exception; :101 diagnostics move ownership; :132 gains exact owners/errors/partial report. Templates are separately defined authoring-v2, empty legacy-v1, diagnostic-v1. Proposed only; see R2 H1-H7.
+
+
+Complete proposed R2 map includes :13/82/101/103/105/113/116/132. Attachment snapshot is explicitly cached memory only; no state/authority decision relies on it. See R2 J3-J5.

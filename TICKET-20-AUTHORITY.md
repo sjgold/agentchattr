@@ -305,3 +305,6 @@ Private RequestProjection currently deep-copies the request row (117/183). On R2
 
 
 Additional R2 normative sites :82/:84/:126: retryable400 and failed-state promises require durable diagnostic success. Diagnostic-held invalid content yields503 artifact_storage_unavailable and no fabricated diagnostic receipt; bad-packet request remains live when its preceding diagnostic cannot persist. Recovery general diagnostic failure is held/storage_unavailable, fulfilled ACK-repair catch remains operator_recovery_required. Proposed only.
+
+
+Complete proposed R2 map includes :82/83/84/117/126/183. Diagnostic-first-then-quarantined at83 requires saved diagnostic success; worker unavailable catches remain mapped to existing held outcomes. See R2 J6.
