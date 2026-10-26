@@ -1,6 +1,6 @@
 # Ticket 20 R2 D4: diagnostics outside the authority boundary
 
-Status: REFRESHED PROPOSED D4 CONTRACT on merge 356a26d9eee33e41e0616d2885a2c8ba53e64b70 (closed A1 first parent 2c34bbfb, preserved R2 second parent be6fd652). A1 is independently CLOSED; R2/D4 is not accepted and D4 reds/source remain held. This refresh records the accepted A1 authority baseline and requires one merged-base DESIGN measurement before committing to the phase split. No timing run accompanies the merge or this refresh. R3, operator routes, capacity, activation and push remain held.
+Status: D4 direction CONFIRMED and ROOT reds AUTHORIZED by reviewer after merged DESIGN checkpoint. The first red file and N follow-ups are observed in TICKET-20-D4-REDS.md; production remains HELD pending independent red-body review. R2 as a whole is NOT accepted. R3, operator routes, capacity, activation and push remain held.
 
 ## Why the boundary changes
 
@@ -280,3 +280,15 @@ Reviewer cleared ONE design run after these harness-only corrections, no re-revi
 ## Merged checkpoint result, awaiting D4 decision
 
 The authorized builder DESIGN collection at dd271d1 is complete: [all130 rows, provenance, G1-G5 delta and comparisons](TICKET-20-MERGED-DESIGN-CHECKPOINT.md). Authority raw A maxima <=0.165248; combined brief/parent median0.159700/max0.165012. Heavy diagnostic hold median0.208047/max1.103438 and peer1.103584 (sample10, no retry/error, retained NORMAL comparator exceedance). Structural hold max0.255557. These are design observations, not a passing gate. Root recommends retaining D4 direction; reviewer contract decision before reds/source. No new experiment, optimization, quota or retention-budget change follows.
+
+## Red-interface clarification and first-pin boundary
+
+One new ROOT file is tests/test_artifact_diagnostic_phases.py. Public entry signatures remain unchanged. The frozen private dataclass attribute names used by red tests are _DiagnosticIntent.request_id and .attached_request_id (the diagnostic key/attachment), .guard, and _DiagnosticGuard.request_id (independently looked-up authority target), .state (fresh captured request state orNone), .mode. They are detached/frozen; no dict/list field reference may survive in the intent/guard/continuation. Captured source audit/claim proof remains immutable as in the contract above. These names are clarified for the red pin, not new persisted DTOs.
+
+The settlement helper refuses a mismatched intent/receipt/invocation_key or stale/already-settled request with ArtifactConflict before effects. The red for a second settlement sees the already-transitioned terminal row; it does not claim an independently tested token-expiry mechanism or a new diagnostic ContextVar. All driver keys stay local, not stored on owners or wire.
+
+Startup held warning ordering is NOT a promised wire order: tests compare the set/multiplicity of expected entries. In the terminal saved-result fixture there are two genuine warnings (unconfirmed claimed-cancel fence and storage refusal); ACK-repair has a healthy-diagnostics control before the corrupt-ledger outcome. No new repair policy is introduced. The separately pinned QUARANTINED-before-fence residual remains.
+
+Stop tests exercise real service fence_source_requests -> engine.stop_session -> cancel-fence repair against a real temporary session. They are service/engine sequencing evidence, not HTTP Stop-route, native process or provider acceptance. Event waits bound the test rendezvous; they are not the0.270/0.216 production latency gate. All paused threads release and join on both red and green paths.
+
+[Exact first-red counts, per-test reachability and F-1..F-5 evidence](TICKET-20-D4-REDS.md) must be independently reviewed before product edits. Existing gates remain unchanged:10+ fresh A/C samples per caller/shape, added/changed holds/peer<=0.216 and hard<=0.270, real diagnostic B outside authority with report-only latency, full/held4MiB import<=0.300, no source optimization or budget change.

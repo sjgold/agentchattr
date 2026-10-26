@@ -162,7 +162,11 @@ class ArtifactDiagnosticIntegrationTests(unittest.TestCase):
                 broken=(root/'artifacts'/'index.json').exists()
                 preserved=None
                 if broken and retained:
-                    preserved=b'{"version":1,"diagnostics":{},"dispatch_overflow":{},"store_overflow":null}'
+                    from tests.test_artifact_diagnostic_owner import ArtifactDiagnosticOwnerTests
+                    ledger=ArtifactDiagnosticOwnerTests.empty_ledger()
+                    detail=ArtifactDiagnosticOwnerTests.detail('a'*32,0)
+                    ledger['diagnostics'][detail['id']]=detail
+                    preserved=json.dumps(ledger).encode('utf-8')
                     path.write_bytes(preserved)
                 original(owner,data_dir,**kwargs)
                 self.assertEqual(owner.diagnostic_store.root,owner.root)
@@ -240,12 +244,18 @@ class ArtifactDiagnosticIntegrationTests(unittest.TestCase):
                 if mode=='terminal':case.authority.cancel_request(audit['request_id'])
                 else:case.artifacts.commit_version(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],
                     '# Different committed bytes',record['payload']['observation'])
+                if mode=='ack_repair':
+                    healthy=case.authority.recover_startup()
+                    self.assertEqual(healthy['held'],[])
+                    self.assertEqual(len(healthy['quarantined']),1)
+                    self.assertEqual(case.artifacts.diagnostics()['rows'][0]['reason'],'conflicting_duplicate')
+                    self.assertIsNone(box.get_ack(audit['dispatch_id']))
                 path=self.corrupt_diagnostics(case.artifacts);before=case.artifacts.path.read_bytes()
                 result=case.authority.recover_startup()
                 expected = (['operator_recovery_required','storage_unavailable'] if mode=='terminal'
                             else ['operator_recovery_required'])
                 # Claimed cancellation fence remains unconfirmed before the diagnostic refusal.
-                self.assertEqual(result['held'],[{'request_id':audit['request_id'], 'dispatch_id':audit['dispatch_id'],
+                self.assertCountEqual(result['held'],[{'request_id':audit['request_id'], 'dispatch_id':audit['dispatch_id'],
                     'reason':reason} for reason in expected])
                 self.assertEqual(result['quarantined'],[]);self.assertEqual(result['admitted'],[])
                 self.assertEqual(path.read_bytes(),b'BROKEN_DIAGNOSTICS');self.assertEqual(case.artifacts.path.read_bytes(),before)
@@ -274,18 +284,21 @@ class ArtifactDiagnosticIntegrationTests(unittest.TestCase):
         fixture=ArtifactArchiveDriverTests();self.addCleanup(fixture.doCleanups);fixture.setUp()
         fixture.source_graph(attempts=False);data=fixture.export()
         corrupted=fixture.repack(data,lambda members:members.update({'artifacts/diagnostics.json':b'{}'}))
-        before={p.relative_to(fixture.root).as_posix():p.read_bytes() for p in fixture.root.rglob('*') if p.is_file()}
+        def target_state():
+            paths=set(fixture.target.root.rglob('*')) | set((fixture.root/'restored-history').rglob('*'))
+            paths.add(fixture.catalog.path)
+            return {p.relative_to(fixture.root).as_posix():p.read_bytes() for p in paths if p.is_file()}
+        before=target_state()
         result=fixture.restore(corrupted)
         self.assertFalse(result['ok']);self.assertFalse(result['partial'])
         self.assertEqual(result['sections']['artifacts']['section_error']['code'],'artifact_archive_invalid_section')
         # restore creates empty target-history owners, which do not write files.
-        self.assertEqual({p.relative_to(fixture.root).as_posix():p.read_bytes() for p in fixture.root.rglob('*') if p.is_file()},before)
+        self.assertEqual(target_state(),before)
 
     def test_channels_documents_diagnostic_backup_exclusion_and_delete_retention(self):
         text=(Path(__file__).resolve().parents[1]/'CHANNELS.md').read_text(encoding='utf-8')
-        self.assertIn('Diagnostic logs and retained diagnostic bodies are excluded from channel backups.',text)
-        self.assertIn('Deleting a channel retains those diagnostic files.',text)
-        self.assertIn('The candidate remains under review and artifact authoring stays disabled.',text)
+        self.assertIn('Diagnostic logs and retained diagnostic bodies are excluded from channel backups. '
+            'Deleting a channel retains those diagnostic files.',text)
 
     def test_shared_atomic_json_single_write_is_byte_identical_for_real_payloads_and_r1_golden(self):
         import api_seats

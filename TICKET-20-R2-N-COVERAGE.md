@@ -1,6 +1,6 @@
 # Ticket 20: remaining R2 N coverage before D4 reds
 
-Status: builder tests/receipts only, awaiting reviewer check. Mechanical migration167bfb8 independently ACCEPTED: reviewer379 artifact tests OK219.2s, builder379OK203.516s. Product/tools remain byte-identical to that accepted migration baseline; R2 remains unaccepted as a whole because D4 is not implemented. No D4 red file or product edit in this pin.
+Status: a40af574 independently ACCEPTED by reviewer; five test/docs follow-ups are folded into the next D4 red pin. Mechanical migration167bfb8 independently ACCEPTED: reviewer379 artifact tests OK219.2s, builder379OK203.516s. Product/tools remain byte-identical to that accepted migration baseline; R2 remains unaccepted as a whole because D4 is not implemented. No D4 red file or product edit in this pin.
 
 ## N1-N10 and M-A/M-B mapping
 
@@ -41,7 +41,7 @@ Private test seams: diagnostic owner _data is the detached fixture-seed/retained
 
 ## Evidence labels and runs
 
-These are additions to already implemented R2 WIP; they do not pretend to be old-product behavioral reds.31 VALID in-memory mutants killed (24owner/core +5integration +1correctedZIP +1deterministic-order); source untouched. Any mutant error is listed alongside assertion failures; parser mutants' cold-raise assertions discriminate the intended missing rule before later invalid-state errors. The rejected global ZIP mutant is separately labeled as a setup mask and NOT counted. CHANNELS is the one newly observed docs red. Remaining pure compatibility/cleanup/byte guard additions are existing guards, all reached in the green run. No unobserved-red follow-on remains in this baseline.
+These are additions to already implemented R2 WIP; they do not pretend to be old-product behavioral reds.31 VALID in-memory mutants killed (23owner/core +6integration +1correctedZIP +1deterministic-order); source untouched. Any mutant error is listed alongside assertion failures; parser mutants' cold-raise assertions discriminate the intended missing rule before later invalid-state errors. The rejected global ZIP mutant is separately labeled as a setup mask and NOT counted. CHANNELS is the one newly observed docs red. Remaining pure compatibility/cleanup/byte guard additions are existing guards, all reached in the green run. No unobserved-red follow-on remains in this baseline.
 
 Development run56 initially had1FAIL+1ERROR from TEST FIXTURE assumptions, not production defects: unmatched payload omitted matching result_id after changing dispatch_id, and terminal startup expected only storage failure instead of the preceding unconfirmed-cancel-fence warning. Fixed those fixtures after source trace, then56PASS11.076s. Final selection includes docs and four M-B tests, A1/MCP/R1:114testsPASS17.654s, no failures/errors/skips, tracked b7328d89. This is focused affected coverage, NOT project full discovery or a new timing gate. Prior379 artifact result retains its migration-pin attribution. Deprecation warnings retained.
 
@@ -349,3 +349,7 @@ D4 reds are next only after this N pin is reviewed; exact new ROOT file will be 
 2026-10-26T11:03:05.670Z === exited (code 0)
 
 ```
+
+## Reviewer follow-ups folded into D4 red pin
+
+Reviewer ACCEPTED a40af574 after its own114 tests OK17.8s and static audit. F-1..F-5 test-only refinements and additional mutation results are recorded in TICKET-20-D4-REDS.md. Several original mutation kills used ERROR outcomes (cold-held parser follow-ons, lifecycle refusal, get_brief/resume fake-receipt paths) and are weaker than a direct assertion failure; the original outputs remain visible, not relabeled. New stale parser mutations now discriminate by direct _check_diagnostics assertion failures under an explicitly seeded RAM fixture. No product code changed.

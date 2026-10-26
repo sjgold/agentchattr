@@ -176,6 +176,7 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
         with self.subTest(owner='authoring'):
             with self.assertRaises(module.ArtifactUnavailable) as caught:
                 held.get_request(audit['request_id'])
+            self.assertIs(type(caught.exception), module.ArtifactUnavailable)
             self.assertEqual(str(caught.exception), 'Saved development artifacts use schema 1. Conversion is required; no files were reset.')
         with self.subTest(owner='diagnostics'):
             self.expect_diagnostic_unavailable(lambda: self.record(held))
@@ -361,8 +362,11 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
                             self.expect_diagnostic_unavailable(lambda: diagnostic_class(root, hold_unreadable=False))
                         else:
                             owner = prior if prior is not None else diagnostic_class(root, hold_unreadable=True)
-                            self.expect_diagnostic_unavailable(lambda: owner.record(None, 'a'*32, 'b'*32,
-                                reason='invalid_content', content='no body'))
+                            if mode == 'stale' and label in ('depth','nonfinite'):
+                                # White-box parser isolation: avoid changed-value inequality
+                                # masking the parser guard under a deliberately known RAM seed.
+                                owner._data = json.loads(raw.decode('utf-8'))
+                            self.expect_diagnostic_unavailable(owner._check_diagnostics)
                     self.assertEqual(path.read_bytes(), raw)
                     self.assertEqual(list(path.parent.glob('quarantine/*.txt')), [])
 
@@ -786,6 +790,7 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
             local.path.parent.mkdir(parents=True,exist_ok=True);raw=json.dumps(legacy).encode();local.path.write_bytes(raw)
             with self.subTest(branch=branch),self.assertRaises(module.ArtifactUnavailable) as caught:
                 local._check_index() if branch=='check' else local._persist(deepcopy(local._data))
+            self.assertIs(type(caught.exception),module.ArtifactUnavailable)
             self.assertEqual(str(caught.exception),module._LEGACY_GUIDANCE)
             self.expect_diagnostic_unavailable(lambda:self.record(local))  # None also refused under legacy.
             self.assertEqual(local.path.read_bytes(),raw);self.assertFalse(local.diagnostic_store.path.exists())

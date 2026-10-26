@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, R2 N additions verified, reviewer check before D4 reds)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 ROOT reds observed, production held for review)
 
 ## At a glance
 
@@ -17,16 +17,17 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
-| Latest checks | R2 N/M tests:114focused PASS17.654s,31valid in-memory mutants killed (one masked ZIP attempt excluded), docs red then green; product/tool bytes unchanged. Reviewer migration379PASS219.2s. No D4 reds/source/full/timing run. |
-| Next | Reviewer checks N1-N10/missing coverage and M-A/M-B pin; root then writes observed-red D4 tests in tests/test_artifact_diagnostic_phases.py. No D4 product yet; R3/operator/capacity/activation/push held. |
+| Latest checks | D4 ROOT30tests/36.338s:33behavioral FAIL+28missing-API ERROR,4existing guards PASS. N follow-ups baseline114PASS17.395s and5additional fault mutants killed. Product/tools unchanged; no D4 source/full/timing gate. |
+| Next | Reviewer independently runs/audits D4 first-red pin before production clearance. Read TICKET-20-D4-REDS.md for per-test unobserved reachability/private seams. Root has not implemented D4. R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 
 - Approved merge executed in C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-r2-on-a1, branch codex/ticket-20-r2-on-a1, starting closed A1 2c34bbfb and merging preserved R2 be6fd652. Both original histories remain intact. Exactly one closed A1 evidence/expiry block, R2 hierarchy/schema 2 and D1/D2 retained. No semantic conflict required a new algorithm. See [conflict resolution and proofs](TICKET-20-R2-ON-A1-MERGE.md).
 - Focused builder selection 99 tests / 13.267 s: 97 pass, two expected R1 fixture KeyErrors at test_artifact_record_bounds.py:322/696 because R2 diagnostics moved out of the authoring index. A1 36, MCP 3 and R2 owner/integration 42 all pass; R1 16 pass, 2 error. No tests migrated in this merge, no R2 acceptance inferred. All 329 tracked Python files compile. Capability remains empty. No timing or full discovery run.
 - Mechanical migration167bfb8 independently ACCEPTED: reviewer379artifact tests OK219.2s and static assertion audit found no weakening. Source/tool/portable goldens unchanged; R2 N additions now follow as its own unit.
-- Root added/fixed N1-N10, missing owner/service/lifecycle/archive/CHANNELS cases and M-A/M-B. [Per-item test mapping and raw mutation receipts](TICKET-20-R2-N-COVERAGE.md). Final114focused PASS17.654s includes A1/MCP/R1golden;31valid in-memory mutants killed, one masked ZIP attempt excluded/replaced by read-validator-only mutant. Positive attached/mixed overflow and group/global precedence, restored authoring-byte checks, stray request keys and standaloneNone legacy refusal explicitly pinned. No product/tool changes or runtime activation.
-- Next owner reviewer checks N pin; then root starts one ROOT tests/test_artifact_diagnostic_phases.py with observed-red races/typed guards/caller modes as contracted. No D4 reds/source yet. Design pin dd271d1 and original failed gates retain attribution, heavy NORMAL1.103438/peer1.103584 cause unknown not rerun. No new gate/full discovery; R3/operator/capacity/activation/push held.
+- R2 N coveragea40af574 independently ACCEPTED: reviewer114OK17.8s/static audit. Five small tests/docs-only follow-ups folded into first D4 red pin: nonempty retained-ledger reset/cold cap/parser stale mutations, exact authoring exception, healthy ACK conflict/order-independent warnings, explicit private fixture table and target-only ZIP/substantive docs assertion. Green support114PASS17.395s,5new follow-up mutants killed; prior ERROR-based mutants remain labeled weaker.
+- One new ROOT tests/test_artifact_diagnostic_phases.py is OBSERVED RED on unchanged product:30methods/36.338s,33behavioral assertion failures (writer lock, peer progress, entry guard),28missing frozen API AttributeErrors,4existing guards PASS,0skips; tracked1d8ef42b. [Per-test reachability and F-1..F-5 receipts](TICKET-20-D4-REDS.md). Every assertion after a first red is listed unobserved until green. Product/tool/golden bytes unchanged froma40af574, no D4 implementation yet.
+- Next owner reviewer runs and statically audits this red pin, then may clear D4 production. Root stops at that dependency, no source/gate/full run. Merged DESIGNdd271d1 remains130rows with heavy NORMAL1.103438/peer1.103584 cause unknown; no rerun/threshold change. R3/operator/capacity/activation/push remain held.
 
 ## Earlier correction-review pointers (historical)
 

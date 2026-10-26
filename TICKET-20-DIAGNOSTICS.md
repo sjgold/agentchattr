@@ -601,3 +601,15 @@ The original in-boundary diagnostic hold/read gate is not satisfied. D1/D2 remai
 ## D4 L1-L9 and authoring feasibility, still proposed
 
 [Amended D4 contract](TICKET-20-DIAGNOSTIC-PHASES.md) lists conditional replacements for the constructor EXACT clause, facade marker-lock wording, service no-phase-split clauses and report inventory scope. Existing text above remains the pre-D4 contract/historical record, not permission to implement a conflicting mechanism. [Ninety harness-only A/C design samples](TICKET-20-DIAGNOSTIC-PHASE-DESIGN.md) show combined brief/parent A misses the0.216s clearance margin10/10 (median0.238026/max0.264433); C is only a prospective guard/effect probe. D4 alone cannot close the current gate. No source/reds/gates until reviewer ruling; R3 still needs its own contract.
+
+## F-4 private test-interface pins, before D4 production
+
+These names are private white-box fixture/observation seams, not application APIs or persisted fields.
+
+|Name|Frozen test use|
+|---|---|
+|ArtifactDiagnosticStore._encoded(value) -> bytes, staticmethod|Encode ensure_ascii=True/allow_nan=False with default separators; actual encoded cap1MiB; typed ArtifactDiagnosticsUnavailable on oversize. The writer calls it before body put. Tests may inject THAT typed refusal here to prove no-orphan ordering; this is not a claim that a valid maximum graph naturally exceeds1MiB.|
+|diagnostic_store._data|RAM diagnostic-v1 frame. Normal valid fixture seeds go through _persist_diagnostics. Parser-isolation tests alone may assign a parsed malformed known RAM seed with schema validation stubbed, so stale-value inequality cannot mask depth/nonfinite parser checks. Never a public bypass or production mechanism.|
+|diagnostic_store._lock._is_owned()|CPython test-only observation that record/persist owns its own RLock and not authoring. D4's separately contracted authority-ownership guard is the first production ownership-query use.|
+|ArtifactStore._snapshot_diagnostic_attachment(request_id,dispatch_id)|Returns matching current Hex32 request_id orNone; no IO; authoring cached snapshot only. New D4 _capture_diagnostic_attachment shares the same pure predicate.|
+|owner._fingerprint()|Stat of that owner's own path, no alternate owner's metadata. This private observation is distinct from the earlier test's uncontracted _stamp name pin.|
