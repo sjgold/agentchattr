@@ -163,3 +163,6 @@ Authority C1 enum amendment: response_too_large separates an omitted oversize bo
 ## Proposed R2 document amendment, not implemented
 
 R2 replaces the request-row/debug and diagnostic paragraphs (82/103/105/113/116): authoring-v2 rows have audit/channel/state/reason/updated_at/version_id (+import_source only for imported); no stored quarantine_ids or computed overflow_count. Independent diagnostics.json owns attachments/summaries, separate request_diagnostics supplies debug reads. All8/256/1024 and body budgets remain. See [R2 diagnostic ownership](TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
+
+
+Additional R2 normative sites: :13 quarantine healthy-index requirement gains ordinary-corruption None bypass with legacy hold exception; :101 diagnostics move ownership; :132 gains exact owners/errors/partial report. Templates are separately defined authoring-v2, empty legacy-v1, diagnostic-v1. Proposed only; see R2 H1-H7.

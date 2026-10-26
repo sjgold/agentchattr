@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 R1 cleared; R2 F1-F10 docs and design timing proposed)
+**Updated:** 2026-10-25 (#20 R1 cleared; R2 H1-H7 exact docs amended)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer evaluates amended R2 F1-F10 contract and design-only timing receipt before any R2 reds/code; root freezes exact payload only after clearance. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
+| Next | Reviewer evaluates amended R2 H1-H7 exact contract and retained design-only timing receipt before any R2 reds/code; root freezes exact payload only after clearance. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
 
 ## Current handoff
+
+- R2 H1-H7 DOCS amendment: F3/F5/F6/F7/F10 cleared; exact freeze still pending. Separate v1/v2 templates and independent owner transaction methods named; nonempty dev-v1 holds BOTH owners with no diagnostic file creation. request_diagnostics now ledger-only by attachment, no authoring/existence lookup; exact errors/owners/depth/reload payloads defined. Complete normative/fixture/transport/MCP movement listed. Reachable1023+body and1024summary timing paths each require10+ samples <=.270s, no erased misses; .315s PermissionError retry sleep belongs to FAULT. Prior narrow summary-frame prototype remains design-only, heavy body path unmeasured. No new spike/tests/source/helper. Next reviewer H1-H7 then exact freeze/reds; R3/operator/capacity/activation/push held.
 
 - R2 F1-F10 DOCS amendment: governing removal/legacy choices accepted; exact freeze still pending. Full production/service/docs/test movement enumerated, None diagnostic bypass, exact503 wire and held-v1 facade marker defined. Normal .270s gate vs fault20s process-lock waits plus unbounded IO/scheduling accepted by reviewer; existing body/index waits already inside service boundary. Design-only derived-attachment structural810186B/1024files/8MiB prototype ten read/write pairs realfsync: read max0.193662100s, write0.267954700s, peer0.268551000s, narrow PASS. NOT complete R2 validator/writer acceptance or reachable-history proof. Complete implementation must remeasure and return to review if .270s fails. Source/tests/helper unchanged; no R2 reds until payload cleared. R3/operator/capacity/activation/push held. Next owner reviewer F1-F10 docs, then root exact freeze/reds.
 

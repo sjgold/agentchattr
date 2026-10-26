@@ -302,3 +302,6 @@ TICKET-20-WRAPPERS.md D1-D3/W1-W6 are amended docs-only: reject-report accepts e
 ## Proposed R2 document amendment, not implemented
 
 Private RequestProjection currently deep-copies the request row (117/183). On R2 implementation it loses quarantine_ids/overflow_count; no state path scans them, and explicit request_diagnostics owns those debug reads. ACK/QuarantineResult and mutation outer shape stay unchanged. See [R2 diagnostic ownership](TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
+
+
+Additional R2 normative sites :82/:84/:126: retryable400 and failed-state promises require durable diagnostic success. Diagnostic-held invalid content yields503 artifact_storage_unavailable and no fabricated diagnostic receipt; bad-packet request remains live when its preceding diagnostic cannot persist. Recovery general diagnostic failure is held/storage_unavailable, fulfilled ACK-repair catch remains operator_recovery_required. Proposed only.
