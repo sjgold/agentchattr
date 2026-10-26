@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 first production timing gate MISSED; design review resumes. No whole-ticket acceptance or activation. |
 | Latest checks | Builder full1814 tests OK/four skips342.250s (221modules, includes434artifact tests); phase/recovery49 OK28.848s;15 D4 mutations killed by assertions with source unchanged;4 harness controls OK0.758s. |
-| Next | Reviewer decision after all190 gate rows and DESIGN30+30: service2 real admit_saved misses remain; facade3 structural setup errors reproduced/fixed with control, not rerun; imports20+summaries20 pass. DESIGN minimal max0.198957/nested0.215733, no reproduced gate tail or heavy-fsync case; no causal remedy selected.23 checkpoint+4 tail controls pass, product4968 unchanged. See TICKET-20-D4-REMAINING-AND-TAIL.md. R3/operator/capacity/activation/push held. |
+| Next | Reviewer authorized LAST full-gate attempt after real smoke: repaired repeated-peer facade case,27 controls green, live admit_saved spans + exact fixture/order fields. Smoke19 first, send pin+result, then new190 sequence. Any real miss/fault stops immediately with not-run plan and escalates; no further complete attempt. Product4968 unchanged. See TICKET-20-D4-LAST-ATTEMPT.md. R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 

@@ -429,6 +429,63 @@ class CheckpointControlTests(unittest.TestCase):
             self.assertEqual(case.trigger.queue.owned(case.instance,audit['dispatch_id'])['consumer_id'],consumer)
         finally:case.doCleanups()
 
+    def test_last_attempt_stop_policy_real_vs_machine_and_fault(self):
+        from copy import deepcopy
+        from artifact_measurement_support import last_attempt_stop_reason
+        row={'caller':'admit_saved','pass':False,'gate_intervals':[{'start_monotonic_ns':1,'end_monotonic_ns':300000001,'seconds':.3,'limit_seconds':.216}]}
+        self.assertIn('unattributed-real-miss',last_attempt_stop_reason(deepcopy(row),{'gaps_over_100ms':[]}))
+        machine={'gaps_over_100ms':[{'start_monotonic_ns':0,'end_monotonic_ns':900000000,'seconds':.9}]}
+        self.assertIsNone(last_attempt_stop_reason(deepcopy(row),machine))
+        self.assertIn('instrument-functional',last_attempt_stop_reason({**deepcopy(row),'functional_failure':True},machine))
+        self.assertIs(row['pass'],False)
+
+    def test_last_attempt_waits_for_sentinel_to_cover_interval(self):
+        from artifact_measurement_support import MachineSentinel
+        states=iter([{'last_cycle_end_monotonic_ns':10,'errors':[],'running':True},
+            {'last_cycle_end_monotonic_ns':100,'errors':[],'running':True}])
+        fake=SimpleNamespace(snapshot=lambda:next(states))
+        self.assertTrue(MachineSentinel.observe_through(fake,50))
+        fake=SimpleNamespace(snapshot=lambda:{'last_cycle_end_monotonic_ns':10,'errors':['IO'],'running':False})
+        self.assertFalse(MachineSentinel.observe_through(fake,50))
+
+    def test_last_attempt_stops_and_retains_the_remaining_plan(self):
+        before=set((ROOT/'.audit-tmp').glob('d4-production-service-*'))
+        with patch.object(a,'setup',side_effect=RuntimeError('synthetic fixture fault')) as setup,contextlib.redirect_stdout(io.StringIO()):
+            result=a.production_gate(10)
+        created=set((ROOT/'.audit-tmp').glob('d4-production-service-*'))-before
+        try:
+            report=json.loads(next(p for p in created if p.suffix=='.json').read_text(encoding='utf-8'))
+            self.assertEqual(result,1);self.assertEqual(setup.call_count,1)
+            self.assertEqual(len(report['samples']),1);self.assertEqual(len(report['not_run']),109)
+            self.assertIn('stopped_before_escalation',report);self.assertFalse(report['acceptance_claim'])
+            self.assertFalse(report['machine_sentinel']['running'])
+        finally:
+            for p in created:p.unlink()
+
+    def test_live_admit_spans_and_mutating_peer_coexist(self):
+        from tests.test_artifact_admission import ArtifactAdmissionTests
+        case=ArtifactAdmissionTests();case.setUp()
+        try:
+            case.setup_authority();audit=case.prepare();consumer=case.claim(audit)
+            first=case.sealed_fixture_record(audit,consumer,'# First')
+            box=a.ArtifactOutbox(case.root/'api_seat_runtime'/audit['producer']['launch_attempt'])
+            box.save(first['payload'],case.briefs.get_private(audit['brief_id'])['_artifact_seal']['seal_secret'])
+            second=case.sealed_fixture_record(audit,consumer,'# Different')
+            _,mutate=a.prepare_measurement_peer(case,case.instance,0)
+            import threading
+            peer_done=threading.Event();original=case.artifacts.diagnostic_store.record
+            def writer(*args,**kwargs):
+                if not peer_done.wait(2):raise AssertionError('Synthetic control peer did not run')
+                return original(*args,**kwargs)
+            def peer():
+                value=mutate();peer_done.set();return value
+            with patch.object(case.artifacts.diagnostic_store,'record',writer):
+                row,value=a.production_observe(case,lambda:case.authority.admit_saved(second,case.instance),peer_action=peer,attribution=True)
+            self.assertEqual(value['status'],'quarantined');self.assertTrue(row['peer_mutations'])
+            self.assertIn('activation',row['attribution_inclusive_summary'])
+            self.assertTrue(row['attribution_spans']);self.assertEqual(row['B_authority_owned'],[[False,False,False]])
+        finally:case.doCleanups()
+
 
 if __name__ == '__main__':
     unittest.main()

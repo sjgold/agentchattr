@@ -74,6 +74,15 @@ class MachineSentinel:
         self.thread.start()
         if not self.started.wait(5):raise RuntimeError('Machine sentinel did not start')
         return self
+    def observe_through(self,end_ns,timeout=30):
+        """Outside measured code only; include a possibly still-running stall cycle."""
+        deadline=time.monotonic()+timeout
+        while time.monotonic()<deadline:
+            state=self.snapshot()
+            if state.get('last_cycle_end_monotonic_ns',0)>=end_ns:return True
+            if state['errors'] or not state['running']:return False
+            time.sleep(.001)
+        return False
     def close(self):
         self.stop.set();self.thread.join(timeout=30)
         if self.thread.is_alive():raise RuntimeError('Machine sentinel did not finish; measurement invalid')
@@ -211,6 +220,17 @@ def verify_machine_repeats(original,repeats):
             'policy_satisfied':not reasons,'refusals':reasons})
     return {'pairs':pairs,'machine_attributed_repeat_policy_satisfied':bool(pairs) and all(p['policy_satisfied'] for p in pairs),
             'acceptance_claim':False}
+
+
+def last_attempt_stop_reason(row,sentinel):
+    if row.get('pass',False):return None
+    classify_misses([row],sentinel)
+    retries=row.get('replace_retries',0)
+    retries=sum(retries.values()) if isinstance(retries,dict) else retries
+    if row.get('error') or row.get('instrument_errors') or row.get('functional_failure') or row.get('peer_errors') or row.get('exception_unexpected') or retries or any(any(x) for x in row.get('B_authority_owned',[])):
+        return 'instrument-functional-or-fault failure; escalate, no new complete gate'
+    if row['repeat_eligible_under_policy']:return None
+    return 'unattributed-real-miss; last complete attempt escalated'
 
 
 class ObservedRLock:

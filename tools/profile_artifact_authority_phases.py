@@ -538,6 +538,10 @@ class _SmokeAbort(BaseException):
     pass
 
 
+class _LastGateAbort(BaseException):
+    pass
+
+
 def production_gate(count, *, facade=False, supplemental=False, attribution=False, class_name=None, smoke=False):
     """Separate acceptance mode. Historical DESIGN receipts are never relabeled."""
     from measure_artifact_diagnostics import setup as diagnostic_setup, body, record as diagnostic_record, import_gates
@@ -574,7 +578,13 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
         'tools/measure_artifact_diagnostics.py','tools/profile_artifact_diagnostics.py','tools/test_artifact_checkpoint_controls.py','tools/verify_artifact_machine_repeats.py']
     result['freeze_sha256_table']={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in freeze_files}
     print(json.dumps({'frozen_hashes':result['freeze_sha256_table'],'tool_sha256':result['tool_sha256']}),flush=True)
-    from artifact_measurement_support import MeasurementReceipt,classify_misses,instrument_valid
+    from artifact_measurement_support import MeasurementReceipt,classify_misses,instrument_valid,last_attempt_stop_reason
+    if facade:
+        plan=[{'caller':'facade_reads','phase':name,'sample':n} for n in range(1,count+1) for name in ('heavy','summary','request_diagnostics','structural_read') if class_name in (None,name)]
+        plan.extend({'phase':'import_'+mode,'sample':n} for mode in ('full','held') if class_name in (None,'import_'+mode) for n in range(1,count+1))
+    else:plan=[{'caller':kind,'sample':n} for kind in kinds for n in range(1,count+1)]
+    result['last_complete_attempt_before_escalation']=not smoke and not attribution
+    result['planned_observations']=plan
     receipt=MeasurementReceipt(destination,result)
     def retain(row=None):
         if row is not None:
@@ -583,7 +593,17 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
                 row['smoke_harness_ok']=not (row.get('error') or row.get('instrument_errors') or row.get('functional_failure') or row.get('exception_unexpected') or row.get('peer_errors') or any(any(x) for x in row.get('B_authority_owned',[])))
                 row={key:value for key,value in row.items() if key not in ('pass','hard_pass','margin_pass','normal_pass')}
             if attribution:row={key:value for key,value in row.items() if key not in ('pass','hard_pass','margin_pass')}
+            row['order_index_in_leg']=len(result['samples'])+1
+            row['leg_order']=2 if facade else 3 if supplemental else 1
             receipt.append('samples',row);print(json.dumps(row),flush=True)
+            if not smoke and not attribution and not row.get('pass',False):
+                end=max([row.get('whole_call',{}).get('end_monotonic_ns',0)]+[x['end_monotonic_ns'] for x in row.get('gate_intervals',[])])
+                if end and not receipt.sentinel.observe_through(end):row.setdefault('instrument_errors',[]).append('Sentinel failed to observe through failed interval')
+                reason=last_attempt_stop_reason(row,receipt.sentinel.snapshot())
+                receipt.save()
+                if reason:
+                    result['stopped_before_escalation']=reason
+                    raise _LastGateAbort()
             if smoke and not row['smoke_harness_ok']:raise _SmokeAbort()
         else:receipt.save()
     retain()
@@ -600,11 +620,20 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
                     diagnostic_setup(case, store=case.artifacts, audits=audits)
                     store = case.artifacts
                     def observed(action,*,persist=True,healthy=False,ordinal=0):
-                        peer_kind,mutator=(('passive_design',None) if attribution else
-                            prepare_measurement_peer(case,instance,(number-1+ordinal)%3))
+                        before=len(store._data['requests']);construct_start=time.perf_counter_ns()
+                        peer_ordinal=(2 if smoke and facade and ordinal in (0,3) else (number-1+ordinal)%3)
+                        peer_kind,mutator=(('passive_design',None) if attribution else prepare_measurement_peer(case,instance,peer_ordinal))
+                        construct_end=time.perf_counter_ns()
+                        live_spans=attribution or kind=='admit_saved'
                         row,value=production_observe(case,action,persist=persist,healthy=healthy,
-                            checkpoint=checkpoint,peer_action=mutator,attribution=attribution)
-                        row.update(peer_kind=peer_kind,authoring_requests=len(store._data['requests']),fixture_identity=case.root.name)
+                            checkpoint=checkpoint,peer_action=mutator,attribution=live_spans)
+                        first_A=next((hold['start_monotonic_ns'] for hold in row['holds'] if hold['phase']=='A'),None)
+                        row.update(peer_kind=peer_kind,authoring_requests=len(store._data['requests']),fixture_identity=case.root.name,
+                            request_count_before_peer=before,peer_prepared=mutator is not None,source_session_prepared=peer_kind=='stop',
+                            peer_construction={**__import__('artifact_measurement_support').interval(construct_start,construct_end),
+                                'seconds_before_A':(first_A-construct_end)/1e9 if first_A else None},
+                            admit_saved_live_spans=kind=='admit_saved',
+                            smoke_repeated_independent_peers=bool(smoke and facade))
                         return row,value
                     if supplemental:
                         filled=diagnostic_record(store,audit,body(1023,524288).decode('ascii'))
@@ -705,6 +734,8 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
                         row=import_gates(number,existing,large,mode,checkpoint=lambda observation:receipt.append('phase_observations',{**observation,'sample':number}))
                         row['pass']=row['normal_pass'];retain(row)
                     except Exception as error: retain({'phase':'import_'+mode,'sample':number,'error':type(error).__name__,'pass':False})
+    except _LastGateAbort:
+        result['not_run']=plan[len(result['samples']):]
     except _SmokeAbort:
         result['smoke_aborted_on_first_harness_error']=True
     finally:
