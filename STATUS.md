@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (first browser run cleared after R fixes:44 controls/compile pass; baseline and detached run next)
+**Updated:** 2026-10-26 (first browser fixture startup invalid, safely recovered; dummy API seat fix45 controls green, retry confirmation next)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer CLEARED first run after R fixes, now44 controls/compile green. Root records baseline and starts approved detached fixture; no acceptance app/managed seat/browser started yet. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
+| Next | Reviewer CLEARED first run after R fixes, now44 controls/compile green. First detached fixture stopped before READY on missing dummy API secret_ref; recovery has no live owned processes/listeners, baseline unchanged. Corrected45-control pin goes to reviewer before retry; browser not opened. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
 
 ## Current handoff
 
@@ -43,6 +43,12 @@ Next concrete action, owner reviewer: check the executable browser harness/tools
 Executable dfecc78 was NOT cleared: review found the fatal Windows socketpair exception and nonexistent worktree venv assumptions before any acceptance attempt. Corrected harness now resolves the original interpreter through Git common-dir, permits only the exact internal socketpair port, watches parent birth/lease, signs owned spawn journals and offers standalone cleanup, bounds JSON replacement/read races, rejects pre-planted/forbidden targets, and refuses finish with missing cases.42 controls OK0.902s and compile-only pass; actual bootstrap children exited0/91/92 as expected, no app/MCP/provider/managed-seat/browser acceptance resources started. Raw control roots and private ownership registry stay local. Current source hashes and detailed coverage/limitations are in the browser design; no product or capability source change.
 
 Reviewer CLEARED first --run after R1/R2/R3, no new round. Root implemented guaranteed watchdog exit and non-ASCII auth refusal, refreshed source hashes;44 controls pass. Next owner root: record baseline then run exact approved detached command and drive isolated rendered acceptance. UI remains independently accepted7d962b07; screen/transcript21/packaging22/activation/cleanup remain later. No push or cleanup moves.
+
+## First rendered-fixture startup attempt
+
+At e4a601f, cleared first run root .audit-tmp/artifact-ui-i2wyom3g stopped before READY: missing fake API seat secret_ref. No browser/document request or managed author launch. Original receipt acceptance_claim=false and initial cleanup errors retained. Later signed cleanup visits2/unresolved=[], both recorded births absent, owned listeners0, guard real attempts0, no watchdog/unowned-port files; baseline data/known ports/Python PIDs exactly unchanged (raw JSON comparison avoids PowerShell DateTime conversion artifacts). Local startup-summary.json retains this evidence.
+
+Actual package-validator control reproduced the refusal then passed after the helper uses the owned dummy key reference.45 controls OK1.027s and compile-only pass. Next owner reviewer: confirm corrected retry pin/attempt2 command; root then repeats fresh guarded fixture with distinct retained outputs and baseline. UI/backend acceptance unchanged. No product/capability edit, activation, push or tracked cleanup moves.
 
 ## Earlier correction-review pointers (historical)
 

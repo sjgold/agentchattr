@@ -118,9 +118,9 @@ Frozen executable source SHA256s:
 
 |File|SHA256|
 |---|---|
-|tools/verify_artifact_ui.py|5f0db8d3104f79d171c464d1f0b56a452d753c6453b59b590e6dff3e311d3f71|
+|tools/verify_artifact_ui.py|9ee53608173a4eea8738b0c0a2f355a7b100be6507a7b8675cc8f808a8181e63|
 |tools/fake_artifact_client.py|57f8232969d0456827b1f19577bb2a780bda0a6435786917d8c6b100b82f6895|
-|tools/test_artifact_ui_harness_controls.py|f3b5c3854e568c7ede161682420ce9c39027d5d348d5dfd6b113e71d3ff257b4|
+|tools/test_artifact_ui_harness_controls.py|dab35cfa0fcc339aa35064c2e29e7174a1f8b39fa3c6bba632e95787422a67b0|
 |tools/channel_guard.py|76fde78539634a7f1c4ef687f59afcddc82bd12de0aeb4c5e01f73649b23a927|
 |runtime_protocol.py|b770452455bcd48b1f50c5f306469aca328e9946292e58b83cd3e9e5cde69b01|
 
@@ -148,3 +148,11 @@ Reviewer cleared30fc9bf for the FIRST --run after R-1/R-2/R-3, no further review
 Known accepted limitations: native _overlapped connects may lack audit events, so fixed literal destinations supplement guard evidence; base interpreter/stdlib/native DLLs remain a trusted un-hashed boundary except the recorded executable/site pins. Already-exited launcher probes can falsely leave unresolved; the expired-lease control can race slow fsync. Creator/HMAC trust is NOT defended against code running inside the fixture (guarded children can read the key), nor the OS user or registry/environment tampering. Inline token/nonce require DOM-only controller observations and scanned exports. No page/script/function source dumps, outbound-link clicks or retained-root archive/export. Each real control root intentionally records one unowned-port refusal; those control files do not belong to the acceptance root.
 
 Before first start: retain known-live-port listener baseline, name/size/mtime manifests of the original data/uploads/.agentchattr roots and Python PIDs/start times; verify no other owned acceptance fixture is running. Control sanity check found14 ended control results (codes0/91/92), no live owned control births; PIDs19936/28248 were absent from control records and were not touched. After the run compare baseline, signed births, per-process guards, no run-root violation/watchdog/missing-case files, all12 observed cases, browser/forward closure and secret scan. Keep acceptance_claim=false for review. Exact approved invocation uses original checkout Python, absolute worktree PYTHONPATH, hidden detached process with stdout/stderr redirected, no tool timeout. No push.
+
+## First attempt e4a601f: retained startup fixture defect
+
+Tracked shell7278f314 launched the exact cleared hidden detached parent. Root .audit-tmp/artifact-ui-i2wyom3g never emitted READY and no browser/document request ran. Real validate_package refused the fake API seat because its secret_ref was empty while the literal provider declares ARTIFACT_FIXTURE_DUMMY_KEY. This is an instrument-invalid fixture startup, not a product/UI failure or acceptance pass. Original artifact-run.out/err, private server.log, receipt.json and cleanup.json remain unchanged.
+
+Initial cleanup retained URLError (server already offline) and a transient exited-launcher probe ValueError. Subsequent independent probes show both signed recorded PIDs41408/3972 absent; standalone signed cleanup visited2 with unresolved=[]. All four owned ports have zero listeners. Guard records show zero real attempts, no unowned-port or watchdog files. The original known ports/data manifest/Python baseline is unchanged. The first PowerShell object comparison falsely reported data/PID differences because ConvertFrom-Json automatically parsed timestamp strings; its false projection is retained in recovery-baseline.json. Raw JSON comparison and -DateKind String confirm exact equality in recovery-baseline-verified.json. No source changed while the failed run was alive.
+
+The fixture package is now a shared literal helper called by the actual server. A new control using real provider_templates/cli_templates/validate_package reproduced the SeatError first (1 ERROR0.026s), then passes after the API seat's secret_ref points to the owned dummy environment variable. No real credential, provider, capability or product edit. Final45 controls OK1.027s and compile-only pass; source table refreshed. Corrected run is held for reviewer confirmation; preserve first attempt outputs and use distinct attempt2 output paths/baseline on retry. Never overwrite the first receipt. Cleanup of tracked docs remains last.

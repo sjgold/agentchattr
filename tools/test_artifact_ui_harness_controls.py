@@ -18,6 +18,15 @@ from tools import fake_artifact_client as client
 
 
 class ArtifactHarnessControls(unittest.TestCase):
+    def test_actual_package_validator_accepts_dummy_api_secret_reference(self):
+        from api_seats import provider_templates,validate_package
+        from cli_seats import cli_templates
+        cfg=harness.literal_config(harness.ROOT/'.audit-tmp/synthetic',[54321,54322,54323,54324])
+        package=validate_package(harness.fixture_package(),{**provider_templates(cfg),**cli_templates(cfg)})
+        api=next(seat for seat in package['seats'] if seat['id']=='api')
+        self.assertEqual(api['secret_ref'],'ARTIFACT_FIXTURE_DUMMY_KEY')
+        self.assertEqual(harness.safe_env({},harness.ROOT,[54321]*4,'nonce',{})[api['secret_ref']],'fixture-only-no-provider')
+
     def test_watchdog_exits_even_when_record_and_callback_fail(self):
         with patch.object(harness,'write_json',side_effect=OSError('held evidence')), \
              patch.object(sys,'_artifact_fixture_shutdown',Mock(side_effect=RuntimeError('callback')),create=True), \

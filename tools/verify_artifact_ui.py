@@ -374,6 +374,14 @@ def literal_config(root, ports):
                 'api_key_env': 'ARTIFACT_FIXTURE_DUMMY_KEY'}}}
 
 
+def fixture_package():
+    common = {'reasoning': None, 'launch_profile': 'standard', 'secret_ref': ''}
+    return {'id': 'artifact-fixture', 'name': 'Local fake document authors', 'seats': [
+        dict(common, id='cli', name='Fixture CLI', adapter='cli', provider='artifact-cli', model=None),
+        dict(common, id='api', name='Fixture API', adapter='openai-compatible', provider='artifact-api',
+            model='fixture-api', secret_ref='ARTIFACT_FIXTURE_DUMMY_KEY')]}
+
+
 def seed_session(app, owner, channel, state='complete'):
     """Actual stores/projection; synthetic accepted source, no review generation."""
     session = app.session_store.create('planning', channel,
@@ -460,11 +468,7 @@ def runtime_server():
             catalog = app.channel_service.catalog.snapshot()
             app.channel_service.catalog.create(channel, expected_revision=catalog['revision'])
         app.channel_service._project(app.channel_service.catalog.snapshot())
-        common = {'reasoning': None, 'launch_profile': 'standard', 'secret_ref': ''}
-        package = {'id': 'artifact-fixture', 'name': 'Local fake document authors', 'seats': [
-            dict(common, id='cli', name='Fixture CLI', adapter='cli', provider='artifact-cli', model=None),
-            dict(common, id='api', name='Fixture API', adapter='openai-compatible', provider='artifact-api', model='fixture-api')]}
-        app.api_seat_store.save(package)
+        app.api_seat_store.save(fixture_package())
         # Launch stays explicit via the nonce control after listeners are ready.
     app.configure = configure
     import artifact_operator
