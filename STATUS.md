@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 A1 WIP checkpoint; porting to isolated cleared R1 base)
+**Updated:** 2026-10-26 (#20 isolated A1 verification complete; independent reviewer next)
 
 ## At a glance
 
@@ -18,9 +18,15 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Root ports A1 to a SEPARATE native worktree/branch from CLEARED R1 product74f4697. This branch and its R2 WIP remain intact. A1-over-aff51101 results are WIP attribution only, not gate evidence. Re-run focused/affected/full/timing on isolated base; no R2 fixtures/D4/R3/operator/capacity/activation/push. |
+| Next | Reviewer runs/audits isolated A1 pinf769e40f2b4a60c737ce079ecc093fc2a2ceb433 (product/tool8443e1c, CLEARED R1 base74f4697), worktree codex-ticket-20-a1-isolated. Builder full1714/four skips PASS325.416s; affected416PASS224.439s; final focused56PASS6.963s;20 mutants killed; corrected90 A samples all<=0.216, combined max0.179806s. This original checkout stays R2 WIP, NOT the A1 acceptance base. No D4/R3/operator/capacity/activation/push. |
 
 ## Current handoff
+
+- Independent A1 review handoff: branch codex/ticket-20-a1-isolated atf769e40f2b4a60c737ce079ecc093fc2a2ceb433, path C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-a1-isolated. Read THAT worktree STATUS.md and TICKET-20-A1-VERIFICATION.md for acceptance evidence. Product/tool bytes8443e1c, base74f4697 (R1 cleared atbd1f3922). Original branch source remains67e9e05 WIP, no history rewritten/source overwritten. No R2/D1/D2 copied into isolated unit, no diagnostic fixture migration. Full1714 was taken before2 final test-only key/pair guards; final35A1+3MCP+18R1=56PASS, source/tool hashes unchanged. Reviewer must execute from isolated path, not this checkout. A1 not independently accepted yet.
+
+## Earlier A1-over-R2 checkpoint evidence, NOT acceptance gates
+
+The current action is the independent review above. The following earlier port/red instructions are historical.
 
 - Reviewer cleared A1 production ataff51101, then required isolation on CLEARED R1 product74f4697, not R2 WIP. Current local A1-over-R2 implementation checkpoint is retained only as WIP; root creates separate branch/worktree, reports any non-mechanical port conflict, and runs acceptance there. On this UNACCEPTED base: original23 A1 green2.755s; expanded33 A1+3MCP=36 green4.831s;16 in-memory mutants killed (source untouched). Focused96 ran12.084s with2 R1 diagnostic-fixture KeyErrors at322/696. Those exact errors reproduced with aff51101 store/service code loaded in memory (2tests2errors0.081s); NOT an A1 regression, NOT an accepted known-red gate. R2 migration remains separate. No timing/affected/full run yet. No R2/D4 production change or push.
 
