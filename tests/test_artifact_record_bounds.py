@@ -318,7 +318,7 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
         with self.subTest(record_field='version.sequence_direct_row'):
             with self.assertRaises(store.ArtifactValidationError):
                 self.source._validate_version(metadata, original['requests'])
-        changed = deepcopy(original)
+        changed = deepcopy(self.source.diagnostic_store._data)
         diagnostic = next(iter(changed['diagnostics'].values()))
         diagnostic['byte_count'] = 2**63
         key = {name: diagnostic[name] for name in ('request_id', 'attempt_id', 'dispatch_id',
@@ -327,24 +327,24 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
         changed['diagnostics'] = {diagnostic['id']: diagnostic}
         with self.subTest(index_field='diagnostic.byte_count'):
             with self.assertRaises(store.ArtifactValidationError):
-                self.source._validate_index(changed)
-        changed = deepcopy(original)
+                self.source.diagnostic_store._validate_diagnostics(changed)
+        changed = deepcopy(self.source.diagnostic_store._data)
         diagnostic = next(iter(changed['diagnostics'].values()))
         diagnostic.update(received_at=2**63, updated_at=2**63)
         with self.subTest(index_field='diagnostic.received_at/updated_at'):
             with self.assertRaises(store.ArtifactValidationError):
-                self.source._validate_index(changed)
+                self.source.diagnostic_store._validate_diagnostics(changed)
         summary = {'id': self.source._summary_id(None), 'kind': 'store_overflow',
             'dispatch_id': None, 'counter': 1, 'latest_diagnostic_id': 'd' * 32,
             'latest_sha256': 'e' * 64, 'latest_byte_count': 2**63,
             'latest_reason': 'invalid_response', 'updated_at': 10}
         with self.subTest(index_field='overflow.latest_byte_count'):
             with self.assertRaises(store.ArtifactValidationError):
-                self.source._validate_summary(summary, None)
+                self.source.diagnostic_store._validate_summary(summary, None)
         summary.update(latest_byte_count=0, updated_at=2**63)
         with self.subTest(index_field='overflow.updated_at'):
             with self.assertRaises(store.ArtifactValidationError):
-                self.source._validate_summary(summary, None)
+                self.source.diagnostic_store._validate_summary(summary, None)
         with self.subTest(record_field='timestamp_helper'):
             with self.assertRaises(store.ArtifactValidationError):
                 store._number(2**63)
@@ -693,17 +693,19 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
         value['lineages'][audit['lineage_id']]['updated_at'] = 2**63-1
         version_id = store.request_ids(audit['request_id'])['version_id']
         value['versions'][version_id]['created_at'] = 2**63-1
-        diagnostic = next(iter(value['diagnostics'].values()))
+        diagnostic_value = deepcopy(self.source.diagnostic_store._data)
+        diagnostic = next(iter(diagnostic_value['diagnostics'].values()))
         diagnostic.update(byte_count=2**63-1, received_at=2**63-1, updated_at=2**63-1)
         key = {name: diagnostic[name] for name in ('request_id', 'attempt_id', 'dispatch_id',
             'reason', 'sha256', 'byte_count', 'actor_identity_id')}
         diagnostic['id'] = self.source._diagnostic_id(key)
-        value['diagnostics'] = {diagnostic['id']: diagnostic}
-        value['store_overflow'] = {'id': self.source._summary_id(None), 'kind': 'store_overflow',
+        diagnostic_value['diagnostics'] = {diagnostic['id']: diagnostic}
+        diagnostic_value['store_overflow'] = {'id': self.source._summary_id(None), 'kind': 'store_overflow',
             'dispatch_id': None, 'counter': 1, 'latest_diagnostic_id': diagnostic['id'],
             'latest_sha256': diagnostic['sha256'], 'latest_byte_count': 2**63-1,
             'latest_reason': 'invalid_response', 'updated_at': 2**63-1}
         self.source._validate_index(value)
+        self.source.diagnostic_store._validate_diagnostics(diagnostic_value)
 
     def maximum_row(self):
         """Build real persisted data, then validate a detached widest row.

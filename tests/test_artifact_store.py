@@ -400,14 +400,14 @@ class ArtifactStoreTests(unittest.TestCase):
         self.assertEqual(store.get_request(audit['request_id']), before)
         mismatch = store.quarantine_submission(audit['request_id'], audit['attempt_id'], uuid.uuid4().hex,
             reason='wrong_dispatch', content='Wrong dispatch', now=101)
-        self.assertNotIn(mismatch['id'], store.get_request(audit['request_id'])['quarantine_ids'])
+        self.assertNotIn(mismatch['id'], store.request_diagnostics(audit['request_id'])['quarantine_ids'])
         wrong_attempt = uuid.uuid4().hex
         detailed = store.quarantine_submission(audit['request_id'], wrong_attempt, audit['dispatch_id'],
             reason='wrong_attempt', content='Exact café\r\nbody', actor_identity_id='b' * 32, now=102)
         row = store.get_request(audit['request_id'])
         self.assertEqual(row['state'], before['state'])
         self.assertEqual(row['audit'], before['audit'])
-        self.assertEqual(row['quarantine_ids'], [detailed['id']])
+        self.assertEqual(store.request_diagnostics(audit['request_id'])['quarantine_ids'], [detailed['id']])
         key = {'request_id': audit['request_id'], 'attempt_id': wrong_attempt, 'dispatch_id': audit['dispatch_id'],
             'reason': 'wrong_attempt', 'sha256': hashlib.sha256('Exact café\r\nbody'.encode()).hexdigest(),
             'byte_count': len('Exact café\r\nbody'.encode()), 'actor_identity_id': 'b' * 32}
@@ -441,7 +441,10 @@ class ArtifactStoreTests(unittest.TestCase):
         self.assertEqual(self.files(store), before)
         self.assertEqual(diagnostic(store, audit['dispatch_id'], 'overflow-B', 201)['counter'], 2)
         self.assertEqual(diagnostic(store, audit['dispatch_id'], 'overflow-A', 202)['counter'], 3)
-        self.assertEqual(store.get_request(audit['request_id'])['overflow_count'], 3)
+        self.assertEqual(next(row for row in store.diagnostics()['rows']
+            if row['kind'] == 'dispatch_overflow' and row['dispatch_id'] == audit['dispatch_id'])['counter'], 3)
+        # These details were deliberately unattached (request_id=None).
+        self.assertEqual(store.request_diagnostics(audit['request_id'])['overflow_count'], 0)
         self.assertEqual(store.get_request(audit['request_id'])['state'], 'queued')
         _, oversized_body = self.owner('oversized-body')
         too_large = 'x' * (512 * 1024 + 1)
@@ -502,7 +505,7 @@ class ArtifactStoreTests(unittest.TestCase):
             store.set_attempt_state(peer['request_id'], peer['attempt_id'], 'queued', {'state': 'active', 'reason': None})
         diagnostic = store.quarantine_submission(peer['request_id'], peer['attempt_id'], peer['dispatch_id'],
             reason='source_packet_unavailable', now=100)
-        self.assertIn(diagnostic['id'], store.get_request(peer['request_id'])['quarantine_ids'])
+        self.assertIn(diagnostic['id'], store.request_diagnostics(peer['request_id'])['quarantine_ids'])
         self.assertEqual(store.set_attempt_state(peer['request_id'], peer['attempt_id'], 'queued',
             {'state': 'failed', 'reason': 'source_packet_unavailable'}, now=101)['state'], 'failed')
         healthy_index = store.path.read_bytes()

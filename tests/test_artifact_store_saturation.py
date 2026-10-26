@@ -30,9 +30,9 @@ class ArtifactDiagnosticSaturationTests(unittest.TestCase):
         self.assertEqual(second['counter'], 2**31 - 1)
         self.assertNotEqual(second['latest_diagnostic_id'], first['latest_diagnostic_id'])
         self.assertEqual(second['latest_byte_count'], len(b'another overflow key'))
-        before = store.path.read_bytes()
+        before = store.diagnostic_store.path.read_bytes()
         self.assertEqual(self.submit(store, dispatch, 'another overflow key', now=999), second)
-        self.assertEqual(store.path.read_bytes(), before)
+        self.assertEqual(store.diagnostic_store.path.read_bytes(), before)
         self.assertEqual(store.list_lineages()['count'], 0)
 
     def test_dispatch_counter_saturates_with_public_calls_after_valid_near_limit_seed(self):
@@ -41,9 +41,9 @@ class ArtifactDiagnosticSaturationTests(unittest.TestCase):
             self.submit(self.store, dispatch, f'detail {number}')
         self.assertEqual(self.submit(self.store, dispatch, 'first overflow')['kind'], 'dispatch_overflow')
         # Explicit white-box storage fixture, built from a real generated index.
-        value = json.loads(self.store.path.read_text(encoding='utf-8'))
+        value = json.loads(self.store.diagnostic_store.path.read_text(encoding='utf-8'))
         value['dispatch_overflow'][dispatch]['counter'] = 2**31 - 2
-        self.store.path.write_text(json.dumps(value), encoding='utf-8')
+        self.store.diagnostic_store.path.write_text(json.dumps(value), encoding='utf-8')
         restored = ArtifactStore(self.root)  # Strict load validates the seeded data.
         self.verify_near_limit(restored, dispatch)
 
@@ -52,9 +52,9 @@ class ArtifactDiagnosticSaturationTests(unittest.TestCase):
             self.submit(self.store, uuid.uuid4().hex, None)
         dispatch = uuid.uuid4().hex
         self.assertEqual(self.submit(self.store, dispatch, 'first overflow')['kind'], 'store_overflow')
-        value = json.loads(self.store.path.read_text(encoding='utf-8'))
+        value = json.loads(self.store.diagnostic_store.path.read_text(encoding='utf-8'))
         value['store_overflow']['counter'] = 2**31 - 2
-        self.store.path.write_text(json.dumps(value), encoding='utf-8')
+        self.store.diagnostic_store.path.write_text(json.dumps(value), encoding='utf-8')
         restored = ArtifactStore(self.root)
         self.verify_near_limit(restored, dispatch)
 

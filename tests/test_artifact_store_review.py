@@ -51,9 +51,11 @@ class ArtifactStoreReviewTests(unittest.TestCase):
                 self.assertTrue(row['not_retained'])
                 self.assertIsNone(row['body_object_id'])
                 before = self.store.path.read_bytes()
+                diagnostic_before = self.store.diagnostic_store.path.read_bytes()
                 self.assertEqual(self.store.quarantine_submission(audit['request_id'], audit['attempt_id'],
                     audit['dispatch_id'], reason='invalid_content', content=text, now=999), row)
                 self.assertEqual(self.store.path.read_bytes(), before)
+                self.assertEqual(self.store.diagnostic_store.path.read_bytes(), diagnostic_before)
         self.assertEqual(self.store.get_request(audit['request_id'])['state'], 'queued')
 
     def test_unknown_packets_and_unreserved_missing_packet_are_not_corruption(self):
@@ -78,9 +80,9 @@ class ArtifactStoreReviewTests(unittest.TestCase):
     def test_full_dispatch_group_uses_its_summary_even_when_global_details_full(self):
         row = self.store.quarantine_submission(None, uuid.uuid4().hex, uuid.uuid4().hex,
             reason='unmatched_saved_result', content=None, now=100)
-        value = json.loads(self.store.path.read_text(encoding='utf-8'))
+        value = json.loads(self.store.diagnostic_store.path.read_text(encoding='utf-8'))
         value['diagnostics'] = {}
-        # Root-owned valid full-index fixture, no patched limits or public setup claim.
+        # Root-owned valid full-diagnostic fixture, no patched limits or public setup claim.
         dispatches = [uuid.uuid4().hex for _ in range(128)]
         for dispatch in dispatches:
             for number in range(8):
@@ -90,7 +92,7 @@ class ArtifactStoreReviewTests(unittest.TestCase):
                     'reason', 'sha256', 'byte_count', 'actor_identity_id')}
                 detail['id'] = self.store._diagnostic_id(key)
                 value['diagnostics'][detail['id']] = detail
-        self.store.path.write_text(json.dumps(value), encoding='utf-8')
+        self.store.diagnostic_store.path.write_text(json.dumps(value), encoding='utf-8')
         restored = artifact_store.ArtifactStore(self.case.root)
         summary = restored.quarantine_submission(None, uuid.uuid4().hex, dispatches[0],
             reason='unmatched_saved_result', content=None, now=200)

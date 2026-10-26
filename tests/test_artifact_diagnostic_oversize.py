@@ -32,10 +32,10 @@ class ArtifactOversizeDiagnosticTests(unittest.TestCase):
         self.assertIsNone(second['body_object_id'])
         self.assertEqual(second['byte_count'], 0)
         self.assertEqual(second['sha256'], hashlib.sha256(b'').hexdigest())
-        before = store.path.read_bytes()
+        before = store.diagnostic_store.path.read_bytes()
         self.assertEqual(store.quarantine_submission(*args, reason='invalid_content', content='',
             actor_identity_id='4' * 32, now=999), first)
-        self.assertEqual(store.path.read_bytes(), before)
+        self.assertEqual(store.diagnostic_store.path.read_bytes(), before)
         self.assertEqual(body.read_bytes(), b'')
 
     def test_oversize_reason_uses_existing_group_and_global_overflow_bounds(self):
@@ -52,7 +52,7 @@ class ArtifactOversizeDiagnosticTests(unittest.TestCase):
                     expected_kind, expected_count, expected_groups = 'dispatch_overflow', 8, 1
                 else:
                     # Strict-loadable metadata-only fixture at REAL limits, no cap patches.
-                    value = json.loads(store.path.read_text(encoding='utf-8'))
+                    value = json.loads(store.diagnostic_store.path.read_text(encoding='utf-8'))
                     value['diagnostics'] = {}
                     for _ in range(256):
                         group = uuid.uuid4().hex
@@ -63,7 +63,7 @@ class ArtifactOversizeDiagnosticTests(unittest.TestCase):
                                 'reason', 'sha256', 'byte_count', 'actor_identity_id')}
                             detail['id'] = uuid.uuid5(uuid.NAMESPACE_URL, canonical_utf8(key).decode('utf-8')).hex
                             value['diagnostics'][detail['id']] = detail
-                    store.path.write_text(json.dumps(value), encoding='utf-8')
+                    store.diagnostic_store.path.write_text(json.dumps(value), encoding='utf-8')
                     store = ArtifactStore(store.root)
                     dispatch = uuid.uuid4().hex
                     expected_kind = 'store_overflow'

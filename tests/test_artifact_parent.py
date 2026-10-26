@@ -64,7 +64,7 @@ class ArtifactParentTests(unittest.TestCase):
             case.authority.get_parent(revision['brief_id'], case.instance)
         self.assertEqual(case.files(), before)
         self.assertEqual(case.artifacts.get_request(revision['request_id'])['state'], 'queued')
-        self.assertEqual(case.artifacts.get_request(revision['request_id'])['quarantine_ids'], [])
+        self.assertEqual(case.artifacts.request_diagnostics(revision['request_id'])['quarantine_ids'], [])
 
     def test_api_no_body_rejection_and_strict_report_shapes_never_grant_cli_authority(self):
         case = self.context()

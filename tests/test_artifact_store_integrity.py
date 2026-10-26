@@ -130,10 +130,14 @@ class ArtifactIndexIntegrityTests(unittest.TestCase):
                 for operation in (held.list_lineages, lambda: held.get_request(r1), lambda: held.get_version(first['id']),
                         lambda: held.set_attempt_state(rp, pending['attempt_id'], 'queued',
                             {'state': 'cancelled', 'reason': 'operator_cancelled'}, now=50),
-                        lambda: held.quarantine_submission(None, uuid.uuid4().hex, uuid.uuid4().hex,
+                        lambda: held.quarantine_submission(r1, uuid.uuid4().hex, uuid.uuid4().hex,
                             reason='unmatched_saved_result', content=None)):
                     with self.assertRaises(module.ArtifactUnavailable):
                         operation()
+                standalone = held.quarantine_submission(None, uuid.uuid4().hex, uuid.uuid4().hex,
+                    reason='unmatched_saved_result', content=None)
+                self.assertEqual(standalone['kind'], 'quarantine')
+                self.assertIsNone(standalone['attached_request_id'])
                 self.assertEqual(store.path.read_bytes(), bad)
 
     def test_valid_index_load_does_not_scan_immutable_bodies(self):

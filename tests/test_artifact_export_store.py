@@ -37,7 +37,8 @@ class ArtifactExportStoreTests(unittest.TestCase):
         for row in index['requests'].values():
             row['import_source'] = {'archive_id': 'archive-fixture',
                 'original_state': row['state'], 'original_reason': row['reason']}
-            row.update(state='imported', reason='imported', quarantine_ids=[])
+            self.assertNotIn('quarantine_ids', row)  # Real v2 source row, not portable allowlist input.
+            row.update(state='imported', reason='imported')
             producer = row['audit']['producer']
             producer.update(adapter='openai-compatible', launch_attempt=None,
                 launch_nonce=None, fingerprint=None, capabilities=[])
@@ -139,7 +140,7 @@ class ArtifactExportStoreTests(unittest.TestCase):
                 reason='superseded', content='late-' + str(position), actor_identity_id='a'*32)
         self.assertEqual(target.export_metadata(audit['lineage_id']), before)
         self.assertEqual(target.get_request(audit['request_id']), public_before)
-        self.assertEqual(target.get_request(audit['request_id'])['quarantine_ids'], [])
+        self.assertEqual(target.request_diagnostics(audit['request_id'])['quarantine_ids'], [])
         diagnostics = target.diagnostics()
         self.assertEqual(diagnostics['detailed_count'], 8)
         self.assertEqual(diagnostics['retained_body_bytes'], 8 * len(b'late-0'))
@@ -147,9 +148,11 @@ class ArtifactExportStoreTests(unittest.TestCase):
         summary = next(row for row in diagnostics['rows'] if row['kind'] == 'dispatch_overflow')
         self.assertEqual(summary['counter'], 2)
         before_bytes = target.path.read_bytes()
+        diagnostic_bytes = target.diagnostic_store.path.read_bytes()
         target.quarantine_submission(audit['request_id'], audit['attempt_id'], audit['dispatch_id'],
             reason='superseded', content='late-0', actor_identity_id='a'*32)
         self.assertEqual(target.path.read_bytes(), before_bytes)
+        self.assertEqual(target.diagnostic_store.path.read_bytes(), diagnostic_bytes)
         for item in (audit, second):
             with self.assertRaises(module.ArtifactConflict):
                 target.commit_version(item['request_id'], item['attempt_id'], item['dispatch_id'], '# Refused',
