@@ -1,6 +1,6 @@
 # Ticket 20 A1: one packet validation per service invocation
 
-Status: A1 production authorized after reviewer execution/audit of aff51101 reds. Independent implementation now ported to CLEARED R1 product74f4697, separate branch codex/ticket-20-a1-isolated; focused54 tests PASS7.225s. NOT yet independently accepted. R2 WIP/D1/D2 excluded from this base. M1-M9/B1-B6 test additions and broader/mutation/timing verification remain part of acceptance; no D4 source or activation. This is behavior-preserving invocation-local reuse, not R3 reference compaction, authoring capacity policy or a persistent cache.
+Status: Reviewer CLEARED A1 atf769e40 with required expired-context fix before publication. The fix is implemented/red-first/focused-green, affected/reviewer recheck pending. Independent implementation now ported to CLEARED R1 product74f4697, separate branch codex/ticket-20-a1-isolated; focused54 tests PASS7.225s. NOT yet independently accepted. R2 WIP/D1/D2 excluded from this base. M1-M9/B1-B6 test additions and broader/mutation/timing verification remain part of acceptance; no D4 source or activation. This is behavior-preserving invocation-local reuse, not R3 reference compaction, authoring capacity policy or a persistent cache.
 
 ## Purpose and current evidence
 
@@ -188,3 +188,10 @@ Fresh pre-port R1 bounds+MCP21PASS2.688s. After port,33 A1 +3 MCP +18 R1 bounds 
 |test_direct_worker_import_archive_validators_never_consume_evidence|test_direct_worker_import_archive_validation_does_not_consume_store_evidence|
 |test_no_packet_evidence_survives_scope_exit_or_nested_exception|test_no_evidence_reference_survives_scope_exit; test_nested_public_and_private_scopes_restore_after_exception|
 |test_invocation_hits_recheck_current_audit_and_owned_path_every_time|current-audit mismatch, discard-mismatch and between-read corruption methods; real read counts retained in all six original behavioral tests|
+
+
+## Required invocation expiry correction after f769e40 review
+
+A copy_context captured inside a scope can retain its state after reset and run later on the SAME thread. The original state had no closed flag, so that retained context could reuse evidence. Root regression test_copied_context_after_exit_is_expired_and_releases_evidence observed2 behavioral failures in1method/0.047s (normal and exceptional exits:0 full walks vs1). The correction adds active=True to the invocation, sets active=False in finally, clears entries AND issued before resetting the ContextVar, and checks active in both _packet_invocation_for and _packet_evidence. After expiry, a retained context always full-validates and cannot re-register evidence; its maps stay empty. The owner/root/thread/raw/audit checks and all ordinary call outcomes stay unchanged.
+
+Focused36A1+3MCP+18R1=57PASS7.354s, no skips.24 in-memory mutants killed, including leaving active, retaining entries, retaining issuance and bypassing the closed-scope guard. Prior20 key/pair/thread mutants still killed. Reviewer requested affected selection once then own focused/mutation rerun; no full or timing rerun is required for this flag/cleanup-only change. Prior full1714 and measured90 retain their original f769/8443 attribution and are not relabeled as runs on the correction. Optional root-key syscall caching and formatting edits were deliberately omitted. Encoding the validated closed scope/audit view into canonical evidence remains outside the original packet-error catch; valid supported scope/view fields are already checked UTF8 JSON, so this adds no new supported-input failure case.

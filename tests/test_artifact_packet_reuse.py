@@ -299,6 +299,31 @@ class ArtifactPacketReuseTests(unittest.TestCase):
             self.assertEqual(owner.get_packet(key), packet)
             self.assertEqual(content.call_count, 2)
 
+    def test_copied_context_after_exit_is_expired_and_releases_evidence(self):
+        """Behavioral regression: copied same-thread contexts outlive reset()."""
+        for exceptional in (False, True):
+            with self.subTest(exceptional=exceptional):
+                _, owner, audit, packet = self.stored()
+                key = audit['scope']['packet_id']
+                try:
+                    with self.scope(owner):
+                        owner.get_packet(key)
+                        state = self.state()
+                        copied = copy_context()
+                        self.assertEqual(set(state.entries), {key})
+                        self.assertTrue(state.issued)
+                        if exceptional:
+                            raise RuntimeError('controlled scope exit')
+                except RuntimeError as error:
+                    self.assertEqual(str(error), 'controlled scope exit')
+                with patch.object(storage, '_packet_scope', wraps=storage._packet_scope) as content:
+                    self.assertEqual(copied.run(owner.get_packet, key), packet)
+                    self.assertEqual(content.call_count, 1)  # Old code reuses expired proof:0.
+                self.assertFalse(state.active)
+                self.assertEqual(state.entries, {})
+                self.assertEqual(state.issued, {})
+                self.assertIsNone(self.state())
+
     def test_forged_raw_scope_or_audit_view_pair_falls_back_to_full_validation(self):
         """INFRASTRUCTURE first; no externally registered evidence is trusted."""
         for field, forged in (('raw', b'forged raw'), ('scope_bytes', b'{}'),

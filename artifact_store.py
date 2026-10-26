@@ -374,6 +374,7 @@ class _PacketValidationInvocation:
     owner: object
     root_key: tuple
     thread_id: int
+    active: bool = True
     token: object = field(default_factory=object)
     entries: dict = field(default_factory=dict)
     issued: dict = field(default_factory=dict)
@@ -396,12 +397,15 @@ def _packet_validation_invocation(owner):
     try:
         yield
     finally:
+        state.active = False
+        state.entries.clear()
+        state.issued.clear()
         _PACKET_VALIDATION_INVOCATION.reset(token)
 
 
 def _packet_invocation_for(owner):
     state = _PACKET_VALIDATION_INVOCATION.get()
-    if (isinstance(state, _PacketValidationInvocation) and state.owner is owner
+    if (isinstance(state, _PacketValidationInvocation) and state.active and state.owner is owner
             and state.thread_id == threading.get_ident() and state.root_key is not None
             and state.root_key == _packet_owner_key(owner)):
         return state
@@ -409,7 +413,7 @@ def _packet_invocation_for(owner):
 
 
 def _packet_evidence(state, packet_id, raw):
-    if state is None:
+    if state is None or not state.active:
         return None
     entry = state.entries.get(packet_id)
     if not isinstance(entry, _ValidatedPacketBytes):

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 independent A1 builder verification complete; reviewer production audit next)
+**Updated:** 2026-10-26 (#20 A1 reviewer-cleared pending required expiry fix; focused green)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Reviewer independently reruns/audits A1 isolated branch, product8443e1c on CLEARED R1 base74f4697. Builder affected416PASS224.439s; full1714PASS/four skips325.416s; final focused56PASS6.963s;20 mutants killed; corrected90 A samples all<=0.216, combined max0.179806s. NOT independently accepted yet. No D4/R2/R3/operator/capacity/activation/push. |
+| Next | Required expiry fix after reviewer A1 clearance: copied-context red1method/2FAIL0.047s; active flag +finally evidence clearing implemented,57 focused PASS7.354s and24 mutants killed. Freeze/run affected selection once, then reviewer reruns focused/mutations before publication. Prior full/timing remain attributed to f769/8443; no timing rerun requested for flag-only fix. No push/activation or D4/R2/R3/operator/capacity work. |
 
 ## Current handoff
+
+- Reviewer CLEARED A1 atf769e40 with one required fix: closed scopes remained usable through same-thread copy_context. Own reviewer56PASS7.19s/artifact336PASS205.5s,5 key mutants killed, own90-sample design allA<=0.216 (brief max0.1832); no full rerun by reviewer. Root added normal/exceptional-exit regression:1method2behavioralFAIL0.047s on old code, then active=False +entries/issued clear in finally, active checks at eligibility/evidence.57 focused PASS7.354s,24 in-memory mutants killed including4 expiry guards. Only expiry flag/cleanup product change; optional root-key/formatting changes untouched. Affected selection and reviewer final fix check next. Source base remains CLEARED R1, R2 WIP separate.
 
 - Independent A1 VERIFIED BY BUILDER, reviewer pending: [verification +all raw90 rows](TICKET-20-A1-VERIFICATION.md). Worktree C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-a1-isolated, base74f4697, frozen product/tool8443e1c, no R2/D1/D2. Affected416/58modules PASS224.439s; ONE full1714PASS/four skips325.416s at33 A1 tests. Final two test-only key/pair guards make35 A1; final focused56PASS6.963s,20/20 in-memory mutants killed. Source/tool bytes unchanged after full/timing. Corrected90 A samples target/hard pass, combined max0.179806s including real MCP encode/size and measured guard;3 raw reads/1 walk each. C probes not D4 acceptance, no B/peer gate. Original main branch67e9e05 remains WIP with explicit non-gate results. Next reviewer uses THIS worktree/pin, no publication authorization.
 
