@@ -332,9 +332,25 @@ def cleanup_probe(case, fixture_root, kind, checkpoint):
                     'error': {'type': type(exc).__name__, 'message': str(exc)}})
 
 
+def late_source_fault(store,audit,kind):
+    original=store.get_packet;reads=[0]
+    def packet(*args,**kwargs):
+        value=original(*args,**kwargs)
+        identifier=args[0] if args else kwargs.get('packet_id')
+        if identifier!=audit['scope']['packet_id']:return value
+        reads[0]+=1
+        if kind=='brief_context' and reads[0]==1:return value
+        raise ArtifactUnavailable('Gate late-read source fault after full content validation')
+    return packet,reads
+
+
 def prepare_measurement_peer(case, instance, ordinal):
     """One real independent mutation per sample, then repeated boundary users."""
     mode=('cancel','stop','independent_request')[ordinal%3]
+    if mode=='independent_request':
+        if instance['identity_id']==case.instance['identity_id']:
+            instance,_,_=case.launch_binding('api')
+        else:instance=case.instance
     audit,packet=case.new_request(instance=instance,channel='peer')
     source=None
     if mode=='stop':
@@ -610,11 +626,7 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
                         facade_phase('structural_read',lambda:store.diagnostics(limit=100),3,
                             lambda value:isinstance(value,dict) and value.get('detailed_count')==1024)
                         continue
-                    original_packet=store.get_packet;packet_reads=[0]
-                    def packet(*args,**kwargs):
-                        value=original_packet(*args,**kwargs);packet_reads[0]+=1
-                        if kind=='brief_context' and packet_reads[0]==1:return value
-                        raise ArtifactUnavailable('Gate late-read source fault after full content validation')
+                    packet,packet_reads=late_source_fault(store,audit,kind)
                     # Source failure entries pay for the full healthy validation before the fault.
                     source_fault = kind in ('brief_context','delivery','resume','retained_recovery')
                     action = {

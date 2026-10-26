@@ -376,6 +376,33 @@ class CheckpointControlTests(unittest.TestCase):
         hashes['artifact_store.py']='wrong'
         with self.assertRaises(RuntimeError):a.verify_frozen_product(hashes)
 
+    def test_peer_independent_request_uses_another_seat_when_candidate_claimed(self):
+        from tests.test_artifact_admission import ArtifactAdmissionTests
+        case=ArtifactAdmissionTests();case.setUp()
+        try:
+            case.setup_authority();audit=case.prepare();consumer=case.claim(audit)
+            kind,mutate=a.prepare_measurement_peer(case,case.instance,2)
+            self.assertEqual(kind,'independent_request');self.assertEqual(mutate()['request_state'],'active')
+            owned=case.trigger.queue.owned(case.instance,audit['dispatch_id'])
+            self.assertEqual(owned['consumer_id'],consumer)
+        finally:case.doCleanups()
+
+    def test_late_fault_is_candidate_only_and_keeps_peer_setup_healthy(self):
+        from tests.test_artifact_admission import ArtifactAdmissionTests
+        case=ArtifactAdmissionTests();case.setUp()
+        try:
+            case.setup_authority();audit=case.prepare();case.claim(audit)
+            fault,reads=a.late_source_fault(case.artifacts,audit,'delivery')
+            with patch.object(case.artifacts,'get_packet',fault):
+                kind,mutate=a.prepare_measurement_peer(case,case.instance,0)
+                self.assertEqual(reads[0],0)
+                with self.assertRaises(a.ArtifactUnavailable):case.authority.get_brief(audit['brief_id'],case.instance)
+                self.assertEqual(mutate()['request_state'],'cancelled')
+            self.assertEqual(reads[0],1)
+            self.assertEqual(case.artifacts.get_request(audit['request_id'])['state'],'failed')
+            self.assertEqual(len(case.artifacts.diagnostic_store._data['diagnostics']),1)
+        finally:case.doCleanups()
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -117,3 +117,22 @@ For heavy/summary/request_diagnostics/structural_read/import_full/import_held, u
   "mcp_bridge.py": "265dd38d36be915b8df6040222cac4de878ef9f8d498127cf99c1b0c253141b8"
 }
 ```
+
+## Recovery freeze after confirmed fixture errors
+
+The e4acae6 DESIGN10 completed, but its service attempt stopped31/110 after confirmed hook-scope and already-claimed-seat fixture errors. All31 observations plus79 not-run entries are retained in TICKET-20-D4-MEASUREMENT-RESULTS.md. No later gate group ran. No timing comparator exceedance was observed, but no acceptance follows an invalid incomplete run.
+
+Two added controls observed both errors before fixing them;21 controls then passed2.004s. late_source_fault now targets ONLY the exact candidate packet id. Independent-request peers use a different managed fixture seat while the candidate's claim remains intact. Product files and all gate policies/limits remain unchanged. A new timing run awaits a reviewer recovery ruling; no silent repeat or sample exclusion. The valid DESIGN10 remains attributed to e4acae6 and is not silently replaced.
+
+### Corrected tool-file hashes (proposed next freeze)
+
+```json
+{
+  "tools/artifact_measurement_support.py": "729a8ab083201fef1a017431287c1c1d3b9bb915be81a4fe6c03d7cae0cb6177",
+  "tools/profile_artifact_authority_phases.py": "815588b1a90b0af082877e65ab714cf4271eb8e3a3fa7552f0c565d74709b4f7",
+  "tools/measure_artifact_diagnostics.py": "538ba1be4c07159caddef96c0e6c37f636925672be6afaf945f0cb174206767b",
+  "tools/profile_artifact_diagnostics.py": "2f4f3a47ff9cfbd41fd21aecdd07ed1f10cb7aa3780c1deb9f3ab4e7e34d0ce2",
+  "tools/test_artifact_checkpoint_controls.py": "563b3d051ebef6abb376c8c5cf09e72ee45d2ceb9d5da5817b0eb28b3318a62f",
+  "tools/verify_artifact_machine_repeats.py": "742fe377da6b837da021e5695b8c7b99bb5a8b09f55a5a3485423fc7c9d9269e"
+}
+```
