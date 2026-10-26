@@ -579,3 +579,8 @@ Intermediate receipts retained: store-only28 tests27FAIL+18ERROR0.651s; initial 
 
 
 Static verification: both files compile, strictUTF8/AST30+10 methods/no BOM, git diff --check; tracked production files unchanged vs74f4697. Measurement harness remains separate and unchanged, with no new timing run. Review this expanded red pin BEFORE R2 production. Thin prototype margin does not waive the real heavy/summary/structural/read/import gates. R3/operator/capacity/activation/push remain held.
+
+
+## Production gate failure and requested profile
+
+Initial WIP producta931275 passes current40 tests but its real reachable heavy gate FAILED2/10 normal samples: maxhold0.359340200s/peer0.359698900s, zero replace retries. Original20 samples retained; no R2 acceptance or limit change. Reviewer requested harness-only phase profiling before any optimization. Ten fresh instrumented heavy samples completed, with product unchanged; [full profile, recommendation and original/new raw receipt](TICKET-20-DIAGNOSTICS-PROFILE.md). Inventory and metadata traversal dominate steady cost; body fsync tails reach21.34ms. Duplicate persist validation+size is roughly43ms but is not proved sufficient to eliminate the old tail. Next reviewer design ruling before any optimization or further tests/fixtures; all remaining N/affected/full/structural/import gates pending.
