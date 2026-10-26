@@ -108,7 +108,7 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
             'bom': b'\xef\xbb\xbf' + empty,
             'duplicate': b'{"version":1,"version":1,"diagnostics":{},"dispatch_overflow":{},"store_overflow":null}',
             'depth': b'{"version":1,"diagnostics":{"x":{"x":{"x":1}}},"dispatch_overflow":{},"store_overflow":null}',
-            'nonfinite': b'{"version":NaN,"diagnostics":{},"dispatch_overflow":{},"store_overflow":null}',
+            'nonfinite': b'{"version":1,"diagnostics":{},"dispatch_overflow":{},"store_overflow":{"updated_at":NaN}}',
             'version': json.dumps({**self.empty_ledger(), 'version': True}).encode('utf-8'),
             'extra_key': json.dumps({**self.empty_ledger(), 'unknown': 1}).encode('utf-8'),
         }
@@ -118,8 +118,7 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
                 path = store.root / 'artifacts' / 'diagnostics.json'
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(raw)
-                with self.assertRaises(module.ArtifactUnavailable):
-                    self.record(store, 'must not be stored')
+                self.expect_diagnostic_unavailable(lambda: self.record(store, 'must not be stored'))
                 # Unobserved-red invariants: malformed metadata untouched and
                 # no body or authoring index created on refusal.
                 self.assertEqual(path.read_bytes(), raw)
@@ -128,13 +127,21 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
 
     def test_request_diagnostics_is_detached_ordered_and_independent_of_authoring_health(self):
         _, store = self.owner()
-        audit = self.queued(module, store)
+        audit = self.queued(module, store, request_id='1'*32)
         later = self.record(store, 'later', request=audit['request_id'], attempt=audit['attempt_id'],
                             dispatch=audit['dispatch_id'], now=30)
-        earlier = self.record(store, 'earlier', request=audit['request_id'], attempt=audit['attempt_id'],
+        def identifier(content):
+            key = {'request_id': audit['request_id'], 'attempt_id': audit['attempt_id'],
+                'dispatch_id': audit['dispatch_id'], 'reason': 'invalid_content',
+                'sha256': hashlib.sha256(content.encode()).hexdigest(), 'byte_count': len(content),
+                'actor_identity_id': None}
+            return module._diagnostic_id(key)
+        first_text, second_text = sorted(('tie-one', 'tie-two'), key=identifier, reverse=True)
+        earlier = self.record(store, first_text, request=audit['request_id'], attempt=audit['attempt_id'],
                               dispatch=audit['dispatch_id'], now=20)
-        tied = self.record(store, 'same timestamp', request=audit['request_id'], attempt=audit['attempt_id'],
+        tied = self.record(store, second_text, request=audit['request_id'], attempt=audit['attempt_id'],
                            dispatch=audit['dispatch_id'], now=20)
+        self.assertLess(tied['id'], earlier['id'])
         store.path.write_bytes(b'BROKEN_AUTHORING_INDEX')
         with self.assertRaises(module.ArtifactUnavailable):
             store.get_request(audit['request_id'])
@@ -183,8 +190,9 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
             path.write_bytes(raw)  # Completed body may survive a reported put failure.
             raise OSError('PRIVATE_BODY_FAULT')
         with patch.object(diagnostics, '_put_bytes', side_effect=failed_body):
-            with self.assertRaises(module.ArtifactUnavailable) as caught:
+            with self.assertRaises(module.ArtifactDiagnosticsUnavailable) as caught:
                 self.record(store, 'surviving orphan')
+        self.assertIs(type(caught.exception), module.ArtifactDiagnosticsUnavailable)
         self.assertEqual(caught.exception.code, 'artifact_diagnostics_unavailable')
         self.assertNotIn('PRIVATE_BODY_FAULT', str(caught.exception))
         self.assertIsNone(diagnostics._held)
@@ -197,7 +205,7 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
         _, store = self.owner()
         diagnostics = store.diagnostic_store  # Infrastructure red.
         self.record(store, 'baseline')
-        stamp = diagnostics._stamp
+        stamp = diagnostics._fingerprint()
         original = module.atomic_json
         attempt, dispatch = uuid.uuid4().hex, uuid.uuid4().hex
         def fail_after_replace(path, value):
@@ -205,16 +213,17 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
             if Path(path) == diagnostics.path:
                 raise OSError('PRIVATE_UNCERTAIN_REPLACE')
         with patch.object(module, 'atomic_json', side_effect=fail_after_replace):
-            with self.assertRaises(module.ArtifactUnavailable):
+            with self.assertRaises(module.ArtifactDiagnosticsUnavailable):
                 self.record(store, 'landed despite exception', attempt=attempt, dispatch=dispatch)
         self.assertIsNotNone(diagnostics._held)
         self.assertNotEqual(diagnostics._invalid_stamp, stamp)
-        with self.assertRaises(module.ArtifactUnavailable):
-            self.record(store, 'stale owner must not overwrite')
+        self.expect_diagnostic_unavailable(lambda: self.record(store, 'stale owner must not overwrite'))
         restored = module.ArtifactStore(store.root)
         before = restored.diagnostic_store.path.read_bytes()
         result = self.record(restored, 'landed despite exception', attempt=attempt, dispatch=dispatch)
         self.assertEqual(result['sha256'], hashlib.sha256(b'landed despite exception').hexdigest())
+        self.assertIn(result['id'], restored.diagnostic_store._data['diagnostics'])
+        self.assertEqual(restored.diagnostic_store._data['diagnostics'][result['id']], result)
         self.assertEqual(restored.diagnostic_store.path.read_bytes(), before)
 
     def test_stale_diagnostic_owner_cannot_overwrite_another_owner(self):
@@ -319,9 +328,10 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
         self.assertEqual(path.read_bytes(), b'{"b": "caf\\u00e9", "a": 1.2345678901234567e-100}')
 
     def expect_diagnostic_unavailable(self, function):
-        with self.assertRaises(module.ArtifactUnavailable) as caught:
+        with self.assertRaises(module.ArtifactDiagnosticsUnavailable) as caught:
             function()
         self.assertIsInstance(caught.exception, module.ArtifactDiagnosticsUnavailable)
+        self.assertIs(type(caught.exception), module.ArtifactDiagnosticsUnavailable)
         self.assertEqual(caught.exception.code, 'artifact_diagnostics_unavailable')
         self.assertEqual(str(caught.exception), 'Artifact diagnostics are unavailable. Repair the diagnostic metadata before retrying.')
 
@@ -332,7 +342,7 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
             'bom': b'\xef\xbb\xbf' + empty,
             'duplicate': b'{"version":1,"version":1,"diagnostics":{},"dispatch_overflow":{},"store_overflow":null}',
             'depth': b'{"version":1,"diagnostics":{"x":{"x":{"x":1}}},"dispatch_overflow":{},"store_overflow":null}',
-            'nonfinite': b'{"version":Infinity,"diagnostics":{},"dispatch_overflow":{},"store_overflow":null}',
+            'nonfinite': b'{"version":1,"diagnostics":{},"dispatch_overflow":{},"store_overflow":{"updated_at":Infinity}}',
             'extra': json.dumps({**self.empty_ledger(), 'unknown': 1}).encode('utf-8'),
         }
         diagnostic_class = module.ArtifactDiagnosticStore  # Infrastructure until class exists.
@@ -344,12 +354,15 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
                     path.parent.mkdir(parents=True)
                     prior = diagnostic_class(root) if mode == 'stale' else None
                     path.write_bytes(raw)
-                    if mode == 'cold_raise':
-                        self.expect_diagnostic_unavailable(lambda: diagnostic_class(root, hold_unreadable=False))
-                    else:
-                        owner = prior if prior is not None else diagnostic_class(root, hold_unreadable=True)
-                        self.expect_diagnostic_unavailable(lambda: owner.record(None, 'a'*32, 'b'*32,
-                            reason='invalid_content', content='no body'))
+                    with ExitStack() as parsing:
+                        if label in ('depth', 'nonfinite'):
+                            parsing.enter_context(patch.object(diagnostic_class, '_validate_diagnostics', return_value=None))
+                        if mode == 'cold_raise':
+                            self.expect_diagnostic_unavailable(lambda: diagnostic_class(root, hold_unreadable=False))
+                        else:
+                            owner = prior if prior is not None else diagnostic_class(root, hold_unreadable=True)
+                            self.expect_diagnostic_unavailable(lambda: owner.record(None, 'a'*32, 'b'*32,
+                                reason='invalid_content', content='no body'))
                     self.assertEqual(path.read_bytes(), raw)
                     self.assertEqual(list(path.parent.glob('quarantine/*.txt')), [])
 
@@ -396,7 +409,9 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
                     for index in range(15):
                         (folder / (f'{index+1:032x}' + '.txt')).write_bytes(b'x' * 524288)
                     self.assertFalse(self.record(store, 'y' * 524288)['not_retained'])
-                    self.assertTrue(self.record(store, 'one byte too many')['not_retained'])
+                    rejected = self.record(store, 'z')
+                    self.assertTrue(rejected['not_retained'])
+                    self.assertEqual(rejected['byte_count'], 1)
                     self.assertEqual(sum(p.stat().st_size for p in folder.glob('*.txt')), 8388608)
                 else:
                     # Zero-byte orphans isolate count from bytes/per-object caps.
@@ -408,7 +423,9 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
 
     def test_authoring_put_bytes_override_still_controls_import_staging(self):
         from tests.test_artifact_imported_store import ArtifactImportedStoreTests
-        case = ArtifactImportedStoreTests(); self.addCleanup(case.doCleanups); case.setUp()
+        case = ArtifactImportedStoreTests(); case.setUp()
+        self.addCleanup(lambda: self.assertFalse(case.root.exists()))
+        self.addCleanup(case.doCleanups)
         graph, _, _ = case.source_graph(attempts=False)
         before = case.target.path.read_bytes() if case.target.path.exists() else None
         with patch.object(case.target, '_put_bytes', side_effect=OSError('controlled staging fault')) as put:
@@ -527,14 +544,24 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
     def test_snapshot_and_none_marker_read_do_no_authoring_io_or_nested_owner_lock(self):
         _, store=self.owner();audit=self.queued(module,store);owner=store.diagnostic_store
         original=owner.record
+        observations=[]
+        original_persist=owner._persist_diagnostics
+        def persist(value):
+            observations.append('persist')
+            self.assertTrue(owner._lock._is_owned())
+            self.assertFalse(store._lock._is_owned())
+            return original_persist(value)
         def observed(*args,**kwargs):
+            observations.append('record')
             self.assertFalse(store._lock._is_owned())
             return original(*args,**kwargs)
         def no_open(*args,**kwargs):raise AssertionError('snapshot did IO')
         with patch.object(Path,'open',no_open),patch.object(Path,'stat',no_open):
             self.assertEqual(store._snapshot_diagnostic_attachment(audit['request_id'],audit['dispatch_id']),audit['request_id'])
             store._check_diagnostic_legacy()
-        with patch.object(owner,'record',side_effect=observed):self.record(store)
+        with patch.object(owner,'record',side_effect=observed), patch.object(owner,'_persist_diagnostics',side_effect=persist):
+            self.record(store)
+        self.assertEqual(observations,['record','persist'])
 
     def test_concurrent_same_diagnostic_id_has_one_body_row_and_stable_receipt(self):
         _,store=self.owner();owner=store.diagnostic_store;attempt=uuid.uuid4().hex;dispatch=uuid.uuid4().hex
@@ -655,6 +682,144 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
         # behavior separately from an error while statting an individual entry.
         with patch.object(os,'scandir',side_effect=PermissionError(13,'fixture enumeration unreadable')):
             self.assertEqual(normalized(previous(owner)),normalized(owner._body_inventory()))
+
+    def test_attached_and_mixed_overflow_counts_are_positive_and_group_beats_global(self):
+        for mode in ('attached','mixed'):
+            with self.subTest(mode=mode):
+                _, store = self.owner('positive-'+mode)
+                audit = self.queued(module,store)
+                for index in range(9):
+                    self.record(store,str(index),request=audit['request_id'] if mode=='attached' or index%2 else None,
+                        attempt=audit['attempt_id'],dispatch=audit['dispatch_id'])
+                projection=store.request_diagnostics(audit['request_id'])
+                self.assertEqual(len(projection['quarantine_ids']),8 if mode=='attached' else 4)
+                self.assertEqual(projection['overflow_count'],1)
+                # Fill the global record budget while keeping this group full.
+                value=deepcopy(store.diagnostic_store._data)
+                for group in range(127):
+                    for ordinal in range(8):
+                        detail=self.detail(f'{group+1:032x}',ordinal)
+                        value['diagnostics'][detail['id']]=detail
+                self.assertEqual(len(value['diagnostics']),1024)
+                store.diagnostic_store._persist_diagnostics(value)
+                summary=self.record(store,'group wins',request=audit['request_id'],
+                    attempt=audit['attempt_id'],dispatch=audit['dispatch_id'])
+                self.assertEqual((summary['kind'],summary['counter']),('dispatch_overflow',2))
+                self.assertEqual(store.request_diagnostics(audit['request_id'])['overflow_count'],2)
+                global_summary=self.record(store,'new group at full budget')
+                self.assertEqual(global_summary['kind'],'store_overflow')
+                self.assertEqual(store.request_diagnostics(audit['request_id'])['overflow_count'],2)
+
+    def test_attachment_matrix_cold_derivation_and_first_attachment_are_exact(self):
+        _,store=self.owner();audit=self.queued(module,store)
+        mismatch=self.record(store,'mismatch',request=audit['request_id'],dispatch='e'*32)
+        self.assertIsNone(mismatch['attached_request_id'])
+        wrong_attempt=self.record(store,'wrong attempt attaches',request=audit['request_id'],
+            attempt='f'*32,dispatch=audit['dispatch_id'])
+        self.assertEqual(wrong_attempt['attached_request_id'],audit['request_id'])
+        request='d'*32;ids=module.request_ids(request)
+        first=self.record(store,'first attachment wins',request=request,attempt=ids['attempt_id'],dispatch=ids['dispatch_id'])
+        later=self.audit(module,store,request_id=request);store.reserve_request(later,request)
+        self.assertEqual(self.record(store,'first attachment wins',request=request,attempt=ids['attempt_id'],dispatch=ids['dispatch_id']),first)
+        self.assertEqual(store.request_diagnostics(request)['quarantine_ids'],[])
+        value=self.empty_ledger();row=self.detail('b'*32,0,attached='c'*32)
+        value['diagnostics'][row['id']]=row
+        root=self.root/'bad-attachment';path=root/'artifacts'/'diagnostics.json';path.parent.mkdir(parents=True)
+        raw=json.dumps(value).encode();path.write_bytes(raw)
+        self.expect_diagnostic_unavailable(lambda:module.ArtifactDiagnosticStore(root))
+        self.assertEqual(path.read_bytes(),raw)
+
+    def test_exact_metadata_cap_accepts_and_write_cap_refusal_precedes_body_put(self):
+        root=self.root/'exact-cap';path=root/'artifacts'/'diagnostics.json';path.parent.mkdir(parents=True)
+        empty=json.dumps(self.empty_ledger()).encode()
+        exact=empty+b' '*(1048576-len(empty));self.assertEqual(len(exact),1048576)
+        path.write_bytes(exact);owner=module.ArtifactDiagnosticStore(root)
+        self.assertEqual(owner.report()['detailed_count'],0)
+        path.write_bytes(exact+b' ')
+        self.expect_diagnostic_unavailable(lambda:module.ArtifactDiagnosticStore(root))
+        # Encoded-size helper pins the real exact boundary independently of schema.
+        frame={'padding':''};width=len(json.dumps(frame).encode())
+        frame['padding']='x'*(1048576-width)
+        self.assertEqual(len(owner._encoded(frame)),1048576)
+        frame['padding']+='x'
+        self.expect_diagnostic_unavailable(lambda:owner._encoded(frame))
+        _,store=self.owner('write-cap');self.queued(module,store)
+        index=store.path.read_bytes();diagnostics=store.diagnostic_store
+        # Valid graphs currently fit below1MiB; inject the typed encoded-cap refusal
+        # at the actual pre-body seam, not a fictional writer-reachable maximum.
+        with patch.object(diagnostics,'_encoded',side_effect=module.ArtifactDiagnosticsUnavailable()):
+            self.expect_diagnostic_unavailable(lambda:self.record(store,'must create no orphan'))
+        self.assertEqual(list(store.path.parent.glob('quarantine/*.txt')),[])
+        self.assertFalse(diagnostics.path.exists());self.assertEqual(store.path.read_bytes(),index)
+
+    def test_diagnostic_and_body_lock_timeouts_preserve_bytes_without_uncertainty(self):
+        for fault in ('diagnostic','body'):
+            with self.subTest(lock=fault):
+                _,store=self.owner('timeout-'+fault);self.queued(module,store)
+                self.record(store,'known');owner=store.diagnostic_store
+                before=owner.path.read_bytes();authoring=store.path.read_bytes()
+                original=module.startup_lock
+                @contextmanager
+                def failed(path,deadline):
+                    selected=(Path(path)==owner.path.with_suffix('.json.lock')) if fault=='diagnostic' else Path(path).parent.name=='quarantine'
+                    if selected:raise module.LaunchError('controlled lock timeout')
+                    with original(path,deadline):yield
+                with patch.object(module,'startup_lock',failed):
+                    self.expect_diagnostic_unavailable(lambda:self.record(store,'blocked lock body'))
+                self.assertEqual(owner.path.read_bytes(),before);self.assertEqual(store.path.read_bytes(),authoring)
+                self.assertIsNone(owner._held)
+                self.assertEqual(len(list(store.path.parent.glob('quarantine/*.txt'))),1)
+
+    def test_request_row_exact_keys_and_v2_writer_and_live_legacy_discovery(self):
+        _,store=self.owner();audit=self.queued(module,store)
+        value=json.loads(store.path.read_bytes());self.assertEqual(value['version'],2)
+        row=value['requests'][audit['request_id']]
+        for field in ('quarantine_ids','overflow_count'):
+            self.assertNotIn(field,row)
+            changed=deepcopy(value);changed['requests'][audit['request_id']][field]=[] if field=='quarantine_ids' else 0
+            with self.subTest(extra=field),self.assertRaises(module.ArtifactValidationError):store._validate_index(changed)
+        for branch in ('check','persist'):
+            root=self.root/('live-legacy-'+branch);local=module.ArtifactStore(root)
+            # Valid nonempty-v1 structural frame: no v1 semantic conversion is attempted.
+            legacy={'version':1,'lineages':{'old':{}},'requests':{},'versions':{},
+                'diagnostics':{},'dispatch_overflow':{},'store_overflow':None}
+            local.path.parent.mkdir(parents=True,exist_ok=True);raw=json.dumps(legacy).encode();local.path.write_bytes(raw)
+            with self.subTest(branch=branch),self.assertRaises(module.ArtifactUnavailable) as caught:
+                local._check_index() if branch=='check' else local._persist(deepcopy(local._data))
+            self.assertEqual(str(caught.exception),module._LEGACY_GUIDANCE)
+            self.expect_diagnostic_unavailable(lambda:self.record(local))  # None also refused under legacy.
+            self.assertEqual(local.path.read_bytes(),raw);self.assertFalse(local.diagnostic_store.path.exists())
+
+    def test_unavailable_request_projection_and_report_owner_errors_are_exact(self):
+        for mode in ('diagnostic','legacy','both'):
+            with self.subTest(mode=mode):
+                _,store=self.owner('projection-'+mode);audit=self.queued(module,store)
+                if mode=='legacy':
+                    value=json.loads(store.path.read_bytes());value.update(version=1,diagnostics={},dispatch_overflow={},store_overflow=None)
+                    for row in value['requests'].values():row['quarantine_ids']=[]
+                    store.path.write_text(json.dumps(value),encoding='utf-8')
+                    store=module.ArtifactStore(store.root,hold_unreadable=True)
+                else:
+                    store.diagnostic_store.path.write_bytes(b'BROKEN_DIAGNOSTICS')
+                    if mode=='both':
+                        store.path.write_bytes(b'BROKEN_AUTHORING')
+                        with self.assertRaises(module.ArtifactUnavailable):store.list_lineages()
+                projection=store.request_diagnostics(audit['request_id'])
+                code='artifact_legacy_schema_unavailable' if mode=='legacy' else 'artifact_diagnostics_unavailable'
+                text=module._LEGACY_GUIDANCE if mode=='legacy' else module._DIAGNOSTIC_GUIDANCE
+                self.assertEqual(projection,{'available':False,'quarantine_ids':None,'overflow_count':None,
+                    'error':{'code':code,'error':text}})
+                report=store.diagnostics()
+                self.assertEqual(report['owners']['diagnostics'],{'available':False,'reason':'legacy_schema' if mode=='legacy' else 'diagnostics_unavailable'})
+                self.assertEqual(report['errors']['diagnostics'],projection['error'])
+                self.assertEqual(report['owners']['authoring']['available'],mode=='diagnostic')
+                if mode!='diagnostic':
+                    self.assertEqual(report['errors']['authoring'], {
+                        'code':'artifact_legacy_schema_unavailable' if mode=='legacy' else 'artifact_storage_unavailable',
+                        'error':module._LEGACY_GUIDANCE if mode=='legacy' else module._AUTHORING_GUIDANCE})
+                    self.assertEqual(report['owners']['authoring']['reason'],'legacy_schema' if mode=='legacy' else 'authoring_unavailable')
+                self.assertTrue(report['partial']);self.assertIsNone(report['count'])
+                self.assertEqual(report['rows'],[]);self.assertIsNone(report['retained_body_bytes'])
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 """Root-owned near-limit storage fixtures, not public setup or native evidence."""
 import json
+from copy import deepcopy
 from pathlib import Path
 import tempfile
 import unittest
@@ -30,9 +31,12 @@ class ArtifactDiagnosticSaturationTests(unittest.TestCase):
         self.assertEqual(second['counter'], 2**31 - 1)
         self.assertNotEqual(second['latest_diagnostic_id'], first['latest_diagnostic_id'])
         self.assertEqual(second['latest_byte_count'], len(b'another overflow key'))
+        store._persist(deepcopy(store._data))
+        authoring_before = store.path.read_bytes()
         before = store.diagnostic_store.path.read_bytes()
         self.assertEqual(self.submit(store, dispatch, 'another overflow key', now=999), second)
         self.assertEqual(store.diagnostic_store.path.read_bytes(), before)
+        self.assertEqual(store.path.read_bytes(), authoring_before)
         self.assertEqual(store.list_lineages()['count'], 0)
 
     def test_dispatch_counter_saturates_with_public_calls_after_valid_near_limit_seed(self):

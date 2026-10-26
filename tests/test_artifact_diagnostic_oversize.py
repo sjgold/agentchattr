@@ -32,10 +32,13 @@ class ArtifactOversizeDiagnosticTests(unittest.TestCase):
         self.assertIsNone(second['body_object_id'])
         self.assertEqual(second['byte_count'], 0)
         self.assertEqual(second['sha256'], hashlib.sha256(b'').hexdigest())
+        store._persist(deepcopy(store._data))  # Establish a real authoring file for both no-write checks.
+        authoring_before = store.path.read_bytes()
         before = store.diagnostic_store.path.read_bytes()
         self.assertEqual(store.quarantine_submission(*args, reason='invalid_content', content='',
             actor_identity_id='4' * 32, now=999), first)
         self.assertEqual(store.diagnostic_store.path.read_bytes(), before)
+        self.assertEqual(store.path.read_bytes(), authoring_before)
         self.assertEqual(body.read_bytes(), b'')
 
     def test_oversize_reason_uses_existing_group_and_global_overflow_bounds(self):

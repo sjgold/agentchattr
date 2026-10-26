@@ -63,6 +63,8 @@ Ticket 20 authoring remains disabled while the approved store redesign is specif
 
 Any future finite quota would count failed, cancelled and imported attempts across all channels, and a successful import could consume it. Exporting or deleting a channel would leave that quota unchanged because artifact purge is unsupported. No replacement quota has been selected.
 
+In the Ticket 20 storage candidate, diagnostic logs use a separate private file. Diagnostic logs and retained diagnostic bodies are excluded from channel backups. Deleting a channel retains those diagnostic files. The candidate remains under review and artifact authoring stays disabled.
+
 ## Verification and limits
 
 Ticket 19 channel-lifecycle acceptance used a managed local fake CLI client with real MCP, plus separate Traycer-managed isolated Electron Chromium browser runs by Codex and Sonnet. No live AI/provider, installed-client, Omarchy, OS drag/picker or assistive-technology compatibility is claimed. Synthetic browser DragEvents exercised the actual job handlers, with network and persisted-order checks. Full discovery at the final product freeze ran 1,374 tests with four platform skips, run by the implementation owner and not re-run by the reviewer.

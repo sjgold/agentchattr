@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, mechanical R2 fixture migration verified)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, R2 N additions verified, reviewer check before D4 reds)
 
 ## At a glance
 
@@ -17,16 +17,16 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
-| Latest checks | Mechanical test-only R2 migration:379 artifact tests PASS203.516s/49modules, no failures/errors/skips; A1/R1 golden and R2 owner/integration green, import benchmark max0.188725s. No product/tool change, no whole-project discovery or new gate. Retained DESIGN heavy1.103438 peer1.103584 remains. |
-| Next | Root sends FIRST fixture-migration pin and complete before/after assertions to reviewer. Then remaining R2 N additions, then observed-red D4 tests under confirmed contract. No D4 product yet; R3/operator/capacity/activation/push held. |
+| Latest checks | R2 N/M tests:114focused PASS17.654s,31valid in-memory mutants killed (one masked ZIP attempt excluded), docs red then green; product/tool bytes unchanged. Reviewer migration379PASS219.2s. No D4 reds/source/full/timing run. |
+| Next | Reviewer checks N1-N10/missing coverage and M-A/M-B pin; root then writes observed-red D4 tests in tests/test_artifact_diagnostic_phases.py. No D4 product yet; R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 
 - Approved merge executed in C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-r2-on-a1, branch codex/ticket-20-r2-on-a1, starting closed A1 2c34bbfb and merging preserved R2 be6fd652. Both original histories remain intact. Exactly one closed A1 evidence/expiry block, R2 hierarchy/schema 2 and D1/D2 retained. No semantic conflict required a new algorithm. See [conflict resolution and proofs](TICKET-20-R2-ON-A1-MERGE.md).
 - Focused builder selection 99 tests / 13.267 s: 97 pass, two expected R1 fixture KeyErrors at test_artifact_record_bounds.py:322/696 because R2 diagnostics moved out of the authoring index. A1 36, MCP 3 and R2 owner/integration 42 all pass; R1 16 pass, 2 error. No tests migrated in this merge, no R2 acceptance inferred. All 329 tracked Python files compile. Capability remains empty. No timing or full discovery run.
-- Reviewer confirmed D4 split direction and cleared its reds AFTER ordered prerequisites. FIRST mechanical R2 fixture migration is now builder-verified: [complete before/after diff and move-list audit](TICKET-20-R2-FIXTURE-MIGRATION.md). Eight test files only; diagnostic access/seeds/validators/snapshots moved to owner, standalone held-authoring exception and unattached overflow attribution pinned without dropping original expected3. Portable unknown-key inputs remain literal, real v2 source row absence asserted. No product/tool/fixture-golden edits.
-- Builder artifact-only selection49modules/379tests PASS203.516s, no errors/failures/skips, tracked a94d1fe1. Includes A1/R1 bounds/golden and all existing R2 files/move-list modules. In-suite4MiB benchmark max0.188725s, not D4 acceptance. First discover invocation collected zero tests due namespace-directory infrastructure; corrected explicit module loader is recorded. No standing reds in this artifact selection; no project-wide claim.
-- Next owner root sends this migration commit FIRST for reviewer check, then the remaining R2 N1-N10/missing coverage additions, then one new ROOT D4 red file with infrastructure/behavioral/unobserved labels as contracted. D4 source still requires red review. The merged DESIGN data remains all130rows atdd271d1, heavy NORMAL1.103438/peer1.103584 cause unknown, no rerun. No threshold change or R3/operator/capacity/activation/push.
+- Mechanical migration167bfb8 independently ACCEPTED: reviewer379artifact tests OK219.2s and static assertion audit found no weakening. Source/tool/portable goldens unchanged; R2 N additions now follow as its own unit.
+- Root added/fixed N1-N10, missing owner/service/lifecycle/archive/CHANNELS cases and M-A/M-B. [Per-item test mapping and raw mutation receipts](TICKET-20-R2-N-COVERAGE.md). Final114focused PASS17.654s includes A1/MCP/R1golden;31valid in-memory mutants killed, one masked ZIP attempt excluded/replaced by read-validator-only mutant. Positive attached/mixed overflow and group/global precedence, restored authoring-byte checks, stray request keys and standaloneNone legacy refusal explicitly pinned. No product/tool changes or runtime activation.
+- Next owner reviewer checks N pin; then root starts one ROOT tests/test_artifact_diagnostic_phases.py with observed-red races/typed guards/caller modes as contracted. No D4 reds/source yet. Design pin dd271d1 and original failed gates retain attribution, heavy NORMAL1.103438/peer1.103584 cause unknown not rerun. No new gate/full discovery; R3/operator/capacity/activation/push held.
 
 ## Earlier correction-review pointers (historical)
 

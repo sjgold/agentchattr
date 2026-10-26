@@ -52,14 +52,19 @@ class ArtifactDiagnosticIntegrationTests(unittest.TestCase):
         record,owned=case.owned(audit)
         box=self.invalid_saved(case,audit,consumer,case.attempt)
         self.corrupt_diagnostics(case.artifacts)
-        before=case.artifacts.path.read_bytes();calls=[]
+        before=case.artifacts.path.read_bytes();calls=[];refusals=[]
         def submit(saved):
             calls.append(saved)
-            return case.authority.admit_saved(saved,case.instance)
+            try:return case.authority.admit_saved(saved,case.instance)
+            except storage.ArtifactDiagnosticsUnavailable as error:
+                refusals.append(error.code)
+                raise
         outcome=worker.preflight_cli_artifact(record,**owned,
             fetch_brief=lambda brief:case.authority.get_brief(brief,case.instance),
             submit_saved=submit)
         self.assertEqual(len(calls),1)
+        self.assertEqual(refusals,['artifact_diagnostics_unavailable'])
+        self.assertEqual((case.artifacts.path.parent/'diagnostics.json').read_bytes(),b'BROKEN_DIAGNOSTICS')
         self.assertEqual((outcome['action'],outcome['reason']),('hold','artifact_delivery_unconfirmed'))
         self.assertEqual(case.artifacts.path.read_bytes(),before)
         self.assert_no_terminal_receipt(case,box,audit)
@@ -68,14 +73,19 @@ class ArtifactDiagnosticIntegrationTests(unittest.TestCase):
         case=self.managed();instance,attempt,audit,consumer,record,owned=case.api_scope()
         box=self.invalid_saved(case,audit,consumer,attempt,api=True)
         self.corrupt_diagnostics(case.artifacts);case.current_brief=audit['brief_id']
-        before=case.artifacts.path.read_bytes();calls=[]
+        before=case.artifacts.path.read_bytes();calls=[];refusals=[]
         callbacks=case.api_callbacks(instance)
         def submit(saved):
             calls.append(saved)
-            return case.authority.admit_saved(saved,instance)
+            try:return case.authority.admit_saved(saved,instance)
+            except storage.ArtifactDiagnosticsUnavailable as error:
+                refusals.append(error.code)
+                raise
         callbacks['submit_saved']=submit
         outcome=worker.complete_api_artifact(record,**owned,**callbacks)
         self.assertEqual(len(calls),1)
+        self.assertEqual(refusals,['artifact_diagnostics_unavailable'])
+        self.assertEqual((case.artifacts.path.parent/'diagnostics.json').read_bytes(),b'BROKEN_DIAGNOSTICS')
         self.assertEqual((outcome['status'],outcome['reason']),('held','artifact_delivery_unconfirmed'))
         self.assertEqual(case.artifacts.path.read_bytes(),before)
         self.assert_no_terminal_receipt(case,box,audit)
@@ -146,21 +156,23 @@ class ArtifactDiagnosticIntegrationTests(unittest.TestCase):
         from tests.test_artifact_factory import ArtifactFactoryTests
         original=storage.ArtifactStore.__init__
         seen=[]
-        def checked(owner,data_dir,**kwargs):
-            root=Path(data_dir);path=root/'artifacts'/'diagnostics.json'
-            broken=(root/'artifacts'/'index.json').exists()
-            preserved=None
-            if broken:
-                preserved=b'{"version":1,"diagnostics":{},"dispatch_overflow":{},"store_overflow":null}'
-                path.write_bytes(preserved)
-            original(owner,data_dir,**kwargs)
-            self.assertEqual(owner.diagnostic_store.root,owner.root)
-            self.assertEqual(path.read_bytes() if path.exists() else None,preserved)
-            seen.append((path,preserved))
-        with patch.object(storage.ArtifactStore,'__init__',checked):
-            ArtifactFactoryTests().test_real_factory_binds_before_catalog_recovers_before_threads_and_holds_corruption()
-        self.assertEqual(len(seen),2)
-        self.assertTrue(all(not path.parent.parent.exists() for path,_ in seen))
+        for retained in (False,True):
+            def checked(owner,data_dir,**kwargs):
+                root=Path(data_dir);path=root/'artifacts'/'diagnostics.json'
+                broken=(root/'artifacts'/'index.json').exists()
+                preserved=None
+                if broken and retained:
+                    preserved=b'{"version":1,"diagnostics":{},"dispatch_overflow":{},"store_overflow":null}'
+                    path.write_bytes(preserved)
+                original(owner,data_dir,**kwargs)
+                self.assertEqual(owner.diagnostic_store.root,owner.root)
+                self.assertEqual(path.read_bytes() if path.exists() else None,preserved)
+                seen.append((path,preserved,broken,retained))
+            with patch.object(storage.ArtifactStore,'__init__',checked):
+                ArtifactFactoryTests().test_real_factory_binds_before_catalog_recovers_before_threads_and_holds_corruption()
+        self.assertTrue(any(broken and not retained and data is None for _,data,broken,retained in seen))
+        self.assertTrue(any(broken and retained and data is not None for _,data,broken,retained in seen))
+        self.assertTrue(all(not path.parent.parent.exists() for path,_,_,_ in seen))
 
     def test_export_and_import_ignore_corrupt_diagnostics_without_resetting_them(self):
         from tests.test_artifact_archive_driver import ArtifactArchiveDriverTests
@@ -189,6 +201,91 @@ class ArtifactDiagnosticIntegrationTests(unittest.TestCase):
         self.assertEqual(case.target.get_request(audit['request_id']),row)
         self.assertEqual(case.target.request_diagnostics(audit['request_id'])['quarantine_ids'],[])
         self.assertIsNone(result['attached_request_id'])
+
+    def test_service_unmatched_conflict_packet_failure_and_ack_repair_with_held_diagnostics(self):
+        for caller in ('unmatched','get_brief','resume','conflicting_duplicate','ack_repair'):
+            with self.subTest(caller=caller):
+                case=self.managed();audit,consumer=case.claimed()
+                record=case.sealed_fixture_record(audit,consumer)
+                box=ArtifactOutbox(case.attempt['snapshot'].parent)
+                if caller in ('conflicting_duplicate','ack_repair'):
+                    case.artifacts.commit_version(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],
+                        '# Committed different',record['payload']['observation'])
+                    box.save(record['payload'],case.briefs.get_private(audit['brief_id'])['_artifact_seal']['seal_secret'])
+                if caller in ('get_brief','resume'):
+                    case.artifacts._object_path('packet',audit['scope']['packet_id']).write_bytes(b'BAD_PACKET')
+                if caller=='unmatched':
+                    record=deepcopy(record);record['payload'].update(request_id='a'*32,dispatch_id='b'*32,result_id='b'*32)
+                path=self.corrupt_diagnostics(case.artifacts)
+                before=case.artifacts.path.read_bytes()
+                row=case.artifacts.get_request(audit['request_id'])
+                with self.assertRaises(storage.ArtifactDiagnosticsUnavailable) as caught:
+                    if caller=='get_brief':case.authority.get_brief(audit['brief_id'],case.instance)
+                    elif caller=='resume':case.authority.resume_request(audit['request_id'])
+                    elif caller=='ack_repair':case.authority._repair_fulfilled_ack(row)
+                    else:case.authority.admit_saved(record,case.instance)
+                self.assertEqual(caught.exception.code,'artifact_diagnostics_unavailable')
+                self.assertEqual(path.read_bytes(),b'BROKEN_DIAGNOSTICS')
+                self.assertEqual(case.artifacts.path.read_bytes(),before)
+                self.assertIsNone(box.get_ack(audit['dispatch_id']))
+                self.assertIsNone(box.get_disposition(audit['dispatch_id']))
+
+    def test_startup_held_diagnostic_reason_distinguishes_terminal_record_and_ack_repair(self):
+        for mode in ('terminal','ack_repair'):
+            with self.subTest(mode=mode):
+                case=self.managed();audit,consumer=case.claimed()
+                record=case.sealed_fixture_record(audit,consumer)
+                box=ArtifactOutbox(case.attempt['snapshot'].parent)
+                box.save(record['payload'],case.briefs.get_private(audit['brief_id'])['_artifact_seal']['seal_secret'])
+                if mode=='terminal':case.authority.cancel_request(audit['request_id'])
+                else:case.artifacts.commit_version(audit['request_id'],audit['attempt_id'],audit['dispatch_id'],
+                    '# Different committed bytes',record['payload']['observation'])
+                path=self.corrupt_diagnostics(case.artifacts);before=case.artifacts.path.read_bytes()
+                result=case.authority.recover_startup()
+                expected = (['operator_recovery_required','storage_unavailable'] if mode=='terminal'
+                            else ['operator_recovery_required'])
+                # Claimed cancellation fence remains unconfirmed before the diagnostic refusal.
+                self.assertEqual(result['held'],[{'request_id':audit['request_id'], 'dispatch_id':audit['dispatch_id'],
+                    'reason':reason} for reason in expected])
+                self.assertEqual(result['quarantined'],[]);self.assertEqual(result['admitted'],[])
+                self.assertEqual(path.read_bytes(),b'BROKEN_DIAGNOSTICS');self.assertEqual(case.artifacts.path.read_bytes(),before)
+                self.assertIsNone(box.get_ack(audit['dispatch_id']));self.assertIsNone(box.get_disposition(audit['dispatch_id']))
+
+    def test_lifecycle_preview_rename_delete_ignore_held_diagnostics(self):
+        from tests.test_artifact_lifecycle import ArtifactLifecycleTests
+        for operation in ('rename','delete'):
+            with self.subTest(operation=operation):
+                fixture=ArtifactLifecycleTests();self.addCleanup(fixture.doCleanups)
+                case=fixture.context();audit,_=case.new_request()
+                case.artifacts.reserve_request(audit,audit['request_id'])
+                case.artifacts.set_attempt_state(audit['request_id'],audit['attempt_id'],'prepared',
+                    {'state':'failed','reason':'generation_failed'})
+                path=self.corrupt_diagnostics(case.artifacts)
+                options={'new_name':'renamed'} if operation=='rename' else {}
+                with patch.object(case.artifacts.diagnostic_store,'report',side_effect=AssertionError('lifecycle read diagnostics')),                        patch.object(case.artifacts.diagnostic_store,'record',side_effect=AssertionError('lifecycle wrote diagnostics')):
+                    preview=case.service.preview(operation,'review',**options)
+                    result=case.service.apply(operation,'review',request_id=__import__('uuid').uuid4().hex,
+                        confirmation='review',preview_token=preview['preview_token'],**options)
+                self.assertTrue(result['ok']);self.assertEqual(path.read_bytes(),b'BROKEN_DIAGNOSTICS')
+                self.assertEqual(case.artifacts.get_request(audit['request_id'])['channel'],'renamed' if operation=='rename' else 'review')
+
+    def test_archive_diagnostic_member_is_refused_before_mutation(self):
+        from tests.test_artifact_archive_driver import ArtifactArchiveDriverTests
+        fixture=ArtifactArchiveDriverTests();self.addCleanup(fixture.doCleanups);fixture.setUp()
+        fixture.source_graph(attempts=False);data=fixture.export()
+        corrupted=fixture.repack(data,lambda members:members.update({'artifacts/diagnostics.json':b'{}'}))
+        before={p.relative_to(fixture.root).as_posix():p.read_bytes() for p in fixture.root.rglob('*') if p.is_file()}
+        result=fixture.restore(corrupted)
+        self.assertFalse(result['ok']);self.assertFalse(result['partial'])
+        self.assertEqual(result['sections']['artifacts']['section_error']['code'],'artifact_archive_invalid_section')
+        # restore creates empty target-history owners, which do not write files.
+        self.assertEqual({p.relative_to(fixture.root).as_posix():p.read_bytes() for p in fixture.root.rglob('*') if p.is_file()},before)
+
+    def test_channels_documents_diagnostic_backup_exclusion_and_delete_retention(self):
+        text=(Path(__file__).resolve().parents[1]/'CHANNELS.md').read_text(encoding='utf-8')
+        self.assertIn('Diagnostic logs and retained diagnostic bodies are excluded from channel backups.',text)
+        self.assertIn('Deleting a channel retains those diagnostic files.',text)
+        self.assertIn('The candidate remains under review and artifact authoring stays disabled.',text)
 
     def test_shared_atomic_json_single_write_is_byte_identical_for_real_payloads_and_r1_golden(self):
         import api_seats
