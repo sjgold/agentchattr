@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 R2 D4 phase-split contract proposed after retained gate miss)
+**Updated:** 2026-10-26 (#20 R2 D4 design feasibility misses brief-context margin; review required)
 
 ## At a glance
 
@@ -18,11 +18,13 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer reviews the DOCS-ONLY D4 diagnostic phase-split contract, then root writes observed reds only after clearance. D1/D2 remain; the fresh50-sample gate FAILED (heavy and structural NORMAL misses). No new source optimization/gate now. N/missing coverage and broader acceptance remain pending; no R3/operator/capacity/activation/push. |
+| Next | Reviewer reviews amended D4 contract plus A/C DESIGN measurement before any reds/source. Combined brief/parent A misses0.216s margin10/10 (median0.238026/max0.264433), so D4 alone cannot clear the current gate; authoring/R3 feasibility remains open. No product optimization/gate now. R3/operator/capacity/activation/push remain held. |
 
 ## Current handoff
 
-- D4 DOCS proposal: [phase-split contract](TICKET-20-DIAGNOSTIC-PHASES.md) captures immutable diagnostic intent under authority, writes outside engine/catalog/authoring locks, then revalidates before settlement. Explicit MCP outer-boundary removal and per-item startup recovery; current-state races refuse stale effects. No source/reds/gates authorized until reviewer contract clearance. Owner: root drafts, reviewer reviews; completion requires reviewed contract then observed reds, implementation and fresh production gates, never documentation alone.
+- D4 L1-L9 amendment and harness-only feasibility complete: [contract](TICKET-20-DIAGNOSTIC-PHASES.md), [all90 design samples plus retained zero-sample setup error](TICKET-20-DIAGNOSTIC-PHASE-DESIGN.md). Nine caller classes x10, real IO/fsync,128 small imported requests plus one local max-source revision,2MiB/1000refs/512KiB parent/Markdown. Combined context A median0.238026/max0.264433s,10/10 clearance-margin misses; other A probes below0.216. C is prospective existing-primitives guard/effect probe, NOT completed D4 and no peer/B measurement. No production edits/reds/gates. D4 direction accepted, exact freeze NOT cleared; root sends this pin for reviewer design ruling. Completion requires a feasible reviewed design before first reds. No R3 implementation or threshold/budget change authorized by the miss.
+
+- D4 DOCS proposal: [phase-split contract](TICKET-20-DIAGNOSTIC-PHASES.md) captures immutable diagnostic intent under authority, writes outside engine/catalog/authoring locks, then revalidates before settlement. Explicit MCP outer-boundary removal and per-item startup recovery; current-state races refuse stale effects. Original proposal79a88131 not cleared; amended L1-L9 plus measurement now await review. No source/reds/gates authorized until reviewer contract clearance. Owner: root drafts, reviewer reviews; completion requires reviewed contract then observed reds, implementation and fresh production gates, never documentation alone.
 
 - Fresh D1/D2 full gate at7fe71f7, trackedbe4f6153 exit1:50 samples, heavy median0.228606800/maxhold0.386682400/peer0.386908700, NORMAL misses8/9, only1/10 margin pass. Structural maxhold0.270486300/peer0.271032500 NORMAL miss8. Summary max0.081246000/0.081832900, import full0.206514900/0.206980000 and held0.197504900/0.197991700 pass their selections. All retries0/errorsnone; no resampling. [Complete raw receipt](TICKET-20-DIAGNOSTICS-D1-D2-GATE.md), earlier misses/profile retained. Reviewer chose D4 design, not D3; no budget/limit change. D1/D2 retained, shared-writer selection1422PASS117.703s/four skips is builder evidence, NOT full discovery.
 

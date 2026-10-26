@@ -596,3 +596,8 @@ Extended measurement harness --full-gate requires10 heavy,10 summary,10 strict s
 ## D4 amendment under review
 
 The original in-boundary diagnostic hold/read gate is not satisfied. D1/D2 remain, but both the heavy write and structural read miss in the retained fresh gate. The proposed D4 contract moves diagnostic IO/structural reads outside the authority boundary, freezes capture/receipt/settlement and changed-state outcomes, and measures real short service phases with the same hard limit plus margin. It supersedes in-boundary diagnostic IO requirements only after review. Budgets, owner schema, privacy, deterministic detail ids, latest-key-only overflow semantics and pending N coverage remain. No further optimization, red or source work until that contract clears.
+
+
+## D4 L1-L9 and authoring feasibility, still proposed
+
+[Amended D4 contract](TICKET-20-DIAGNOSTIC-PHASES.md) lists conditional replacements for the constructor EXACT clause, facade marker-lock wording, service no-phase-split clauses and report inventory scope. Existing text above remains the pre-D4 contract/historical record, not permission to implement a conflicting mechanism. [Ninety harness-only A/C design samples](TICKET-20-DIAGNOSTIC-PHASE-DESIGN.md) show combined brief/parent A misses the0.216s clearance margin10/10 (median0.238026/max0.264433); C is only a prospective guard/effect probe. D4 alone cannot close the current gate. No source/reds/gates until reviewer ruling; R3 still needs its own contract.
