@@ -3,6 +3,8 @@
 Run --check-plan before implementation for arithmetic only. Actual measurements
 require the reviewed R2 diagnostic owner, real fsync and >=10 fresh samples.
 This harness does not implement R2 and is not a unit test or a passing gate.
+--design-checkpoint runs heavy/summary/structural on the shared authority fixture,
+without imports or acceptance booleans; incremental receipts retain errors.
 --full-gate includes structural reads and guarded4MiB imports with diagnostics
 full/held. Heavy-path clearance also requires20percent margin (max<=0.216s).
 """
@@ -12,6 +14,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import subprocess
 import threading
 import time
 from unittest.mock import patch
@@ -31,10 +34,13 @@ def body(ordinal, size):
     return prefix + b'x' * (size - len(prefix))
 
 
-def setup(case):
-    _, store = case.owner('measurement')
+def setup(case, *, store=None, audits=None):
+    if store is None:
+        _, store = case.owner('measurement')
     diagnostics = store.diagnostic_store
-    audits = [case.queued(storage, store, request_id=f'{index + 1:032x}') for index in range(128)]
+    if audits is None:
+        audits = [case.queued(storage, store, request_id=f'{index + 1:032x}') for index in range(128)]
+    assert len(audits) == 128
     ledger = {'version': 1, 'diagnostics': {}, 'dispatch_overflow': {}, 'store_overflow': None}
     for ordinal in range(1023):
         audit = audits[ordinal // 8]
@@ -50,9 +56,9 @@ def setup(case):
         diagnostics._put_bytes(diagnostics._object_path('quarantine', identifier), raw)
         ledger['diagnostics'][identifier] = {'id': identifier, 'kind': 'quarantine', **key,
             'received_at': STAMP, 'updated_at': STAMP, 'not_retained': False,
-            'body_object_id': identifier, 'attached_request_id': audit['request_id']}
+            'body_object_id': identifier, 'attached_request_id': (None if store._data['requests'][audit['request_id']]['state'] == 'imported' else audit['request_id'])}
     # Fixture seed, not a claimed naturally reached transaction history. All128
-    # groups do have actual reserved requests and all bodies match their hashes.
+    # groups have actual stored requests and all bodies match their hashes.
     diagnostics._persist_diagnostics(ledger)
     files, byte_count = diagnostics._body_inventory()
     assert len(files) == 1023 and byte_count == 7864320
@@ -64,7 +70,7 @@ def record(store, audit, text):
         reason='invalid_response', content=text, actor_identity_id='a' * 32, now=STAMP)
 
 
-def measure(case, store, audit, phase):
+def measure(case, store, audit, phase, checkpoint=None):
     entered = threading.Event()
     waits = []
     failures = []
@@ -102,6 +108,9 @@ def measure(case, store, audit, phase):
     thread.join(timeout=30)
     if thread.is_alive():
         raise RuntimeError('Measurement peer did not complete')
+    if checkpoint is not None:
+        checkpoint({'phase': phase, 'hold': hold, 'peer_wait': waits[0],
+                    'replace_retries': retries[0], 'exception_type': exception, 'peer_errors': failures})
     files, size = store.diagnostic_store._body_inventory()
     if exception is None:
         assert len(files) == 1024 and size == 8388608
@@ -115,7 +124,7 @@ def measure(case, store, audit, phase):
                            and hold <= .270 and waits[0] <= .270}
 
 
-def measure_action(case, owner, action, phase, limit):
+def measure_action(case, owner, action, phase, limit, checkpoint=None):
     """Same real outer boundary and peer; no serializer/clock/fsync mocks."""
     entered=threading.Event();waits=[];errors=[];retries=[0]
     def peer():
@@ -139,12 +148,15 @@ def measure_action(case, owner, action, phase, limit):
             hold=time.perf_counter()-started
     thread.join(timeout=30)
     if thread.is_alive():raise RuntimeError('Gate peer did not finish')
+    if checkpoint is not None:
+        checkpoint({'phase': phase, 'hold': hold, 'peer_wait': waits[0],
+                    'replace_retries': retries[0], 'exception_type': failure, 'peer_errors': errors})
     return {'phase':phase,'hold':hold,'peer_wait':waits[0],'replace_retries':retries[0],
             'exception_type':failure,'peer_errors':errors,'limit_seconds':limit,
             'normal_pass':failure is None and not errors and retries[0]==0 and hold<=limit and waits[0]<=limit},result
 
 
-def structural_read(case,store):
+def structural_read(case,store,checkpoint=None):
     from tests.test_artifact_diagnostic_owner import ArtifactDiagnosticOwnerTests
     ledger=ArtifactDiagnosticOwnerTests.maximum_ledger()
     raw=json.dumps(ledger,ensure_ascii=True,allow_nan=False).encode('utf-8')
@@ -157,7 +169,7 @@ def structural_read(case,store):
     if owner._fingerprint()==previous:
         info=owner.path.stat();storage.os.utime(owner.path,ns=(info.st_atime_ns,info.st_mtime_ns+1000000))
     assert owner._fingerprint()!=previous
-    row,report=measure_action(case,owner,lambda:store.diagnostics(limit=100),'structural_read',.270)
+    row,report=measure_action(case,owner,lambda:store.diagnostics(limit=100),'structural_read',.270,checkpoint=checkpoint)
     if row['exception_type'] is None:
         assert report['detailed_count']==1024 and report['dispatch_group_count']==256
         assert report['owners']['authoring']['available'] and report['owners']['diagnostics']['available']
@@ -225,11 +237,93 @@ def import_gates(number,existing,large,mode):
         case.doCleanups();assert not fixture_root.exists()
 
 
+def design_checkpoint(count):
+    # Use the SAME real authoring builder as the authority probe, not 128 tiny reservations.
+    from profile_artifact_authority_phases import setup as authority_setup
+    destination = ROOT / '.audit-tmp' / ('r2-diagnostic-design-' + uuid.uuid4().hex + '.json')
+    destination.parent.mkdir(exist_ok=True)
+    report = {'kind': 'DESIGN checkpoint: facade heavy, summary and structural; NO imports',
+              'samples': [], 'phase_observations': [], 'fsync_mocked': False,
+              'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
+              'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
+                  for name in ('artifact_store.py','artifact_service.py','api_seats.py','mcp_bridge.py')},
+              'tool_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+              'authoring_builder_tool_sha256': hashlib.sha256((ROOT/'tools/profile_artifact_authority_phases.py').read_bytes()).hexdigest(),
+              'authoring_schema': 2, 'r2_d1_d2_present': True, 'samples_per_phase': count,
+              'fixed_order': ['heavy','summary','structural_read'], 'warmup_discarded': 0,
+              'comparators_only': True, 'reference_seconds': .270,
+              'resampling': 'None; retain errors and original retry samples; continue remaining fixtures.'}
+    def retain():
+        destination.write_text(json.dumps(report, indent=2), encoding='utf-8')
+    retain()
+    for number in range(1, count + 1):
+        case = None
+        phase = 'setup'
+        def checkpoint(row):
+            report['phase_observations'].append({**row, 'sample': number})
+            retain()
+        def completed(row):
+            row = {key: value for key, value in row.items()
+                   if key not in ('normal_pass','margin_pass','hard_pass','pass')}
+            row.update(sample=number, hold_minus_0270_seconds=row['hold']-.270,
+                       peer_minus_0270_seconds=row['peer_wait']-.270,
+                       authoring_requests=len(store._data['requests']),
+                       authoring_index_bytes=store.path.stat().st_size,
+                       authoring_schema=store._data['version'],
+                       authoring_shape='128 imported small priors plus local 2 MiB/1000-ref candidate, 512 KiB parent/Markdown')
+            report['samples'].append(row)
+            retain()
+            print(json.dumps(row), flush=True)
+        try:
+            case, candidate, _, _, _ = authority_setup('brief_context')
+            store = case.artifacts
+            priors = [row['audit'] for row in store._data['requests'].values() if row['state']=='imported']
+            assert len(priors)==128 and len(store._data['requests'])==129
+            store, audit = setup(case, store=store, audits=priors[:127]+[candidate])
+            for phase in ('heavy','summary','structural_read'):
+                if phase == 'heavy':
+                    row = measure(case,store,audit,phase,checkpoint=checkpoint)
+                elif phase == 'summary':
+                    first = record(store,audit,'distinct summary key one')
+                    assert first['counter']==1
+                    row = measure(case,store,audit,phase,checkpoint=checkpoint)
+                else:
+                    row = structural_read(case,store,checkpoint=checkpoint)
+                completed(row)
+                if row['exception_type'] is not None:
+                    remaining = ('heavy','summary','structural_read')[('heavy','summary','structural_read').index(phase)+1:]
+                    for skipped in remaining:
+                        report['samples'].append({'sample': number, 'phase': skipped,
+                            'not_run': 'Earlier phase failed; dependent physical state unavailable.'})
+                    retain()
+                    break  # No replacement fixture or fabricated success.
+        except Exception as exc:
+            report['samples'].append({'sample': number, 'phase': phase,
+                'error': {'type': type(exc).__name__, 'message': str(exc)},
+                'remaining_phases_not_run': (['heavy','summary','structural_read'] if phase=='setup' else
+                    list(('heavy','summary','structural_read')[('heavy','summary','structural_read').index(phase)+1:]))})
+            retain()
+        finally:
+            if case is not None:
+                fixture_root=case.root
+                try:
+                    case.doCleanups()
+                    assert not fixture_root.exists()
+                except Exception as exc:
+                    report['samples'].append({'sample':number,'phase':'cleanup',
+                        'error':{'type':type(exc).__name__,'message':str(exc)}})
+                    retain()
+    print(json.dumps({'receipt':str(destination),'rows':len(report['samples'])}),flush=True)
+    return 0  # DESIGN completion is not a latency verdict; errors remain explicit rows.
+
+
 def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--check-plan', action='store_true')
     parser.add_argument('--samples', type=int, default=10)
-    parser.add_argument('--full-gate', action='store_true')
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument('--full-gate', action='store_true')
+    modes.add_argument('--design-checkpoint', action='store_true')
     args = parser.parse_args()
     assert 127 * 8 + 7 == 1023
     assert 1022 * 7680 + 15360 + 524288 == 8388608
@@ -252,7 +346,14 @@ def main():
         parser.error('At least10 independent samples per phase are required')
     if not hasattr(storage, 'ArtifactDiagnosticStore'):
         parser.error('R2 owner is not implemented; measurement unavailable, not a red test')
+    if args.design_checkpoint:
+        return design_checkpoint(args.samples)
     samples = []
+    path = ROOT / '.audit-tmp' / ('r2-diagnostic-measure-' + uuid.uuid4().hex + '.json')
+    path.parent.mkdir(exist_ok=True)
+    def retain():
+        path.write_text(json.dumps({'kind': 'R2 measurement in progress, NOT acceptance', 'samples': samples}, indent=2), encoding='utf-8')
+    retain()
     for index in range(args.samples):
         case = ArtifactStoreTests()
         case.setUp()
@@ -263,6 +364,7 @@ def main():
             heavy['sample'] = index + 1
             heavy['margin_pass'] = max(heavy['hold'],heavy['peer_wait']) <= .216
             samples.append(heavy)
+            retain()
             print(json.dumps(heavy), flush=True)
             if heavy['exception_type'] is None:
                 first = record(store, audit, 'distinct summary key one')
@@ -270,10 +372,11 @@ def main():
                 summary = measure(case, store, audit, 'summary')
                 summary['sample'] = index + 1
                 samples.append(summary)
+                retain()
                 print(json.dumps(summary), flush=True)
             if args.full_gate and heavy['exception_type'] is None:
                 structural=structural_read(case,store);structural['sample']=index+1
-                samples.append(structural);print(json.dumps(structural),flush=True)
+                samples.append(structural);retain();print(json.dumps(structural),flush=True)
         finally:
             case.doCleanups()
             assert not fixture_root.exists()
@@ -284,7 +387,7 @@ def main():
         assert len(canonical_utf8({'version':1,'lineages':[large[0]]}))==4194304
         for mode in ('full','held'):
             for number in range(1,args.samples+1):
-                row=import_gates(number,existing,large,mode);samples.append(row);print(json.dumps(row),flush=True)
+                row=import_gates(number,existing,large,mode);samples.append(row);retain();print(json.dumps(row),flush=True)
     complete=len(samples)==(5 if args.full_gate else 2)*args.samples
     hard_pass=complete and all(row['normal_pass'] for row in samples)
     margin_pass=all(row['margin_pass'] for row in samples if row['phase']=='heavy')
@@ -296,7 +399,6 @@ def main():
               'hard_pass':hard_pass,'heavy_margin_pass':margin_pass,'pass':hard_pass and margin_pass,
               'resampling': 'None automatic; retain counted-retry faults and every normal miss.'}
     report['margin'] = .270 - max(report['max_hold'], report['max_peer_wait'])
-    path = ROOT / '.audit-tmp' / ('r2-diagnostic-measure-' + uuid.uuid4().hex + '.json')
     path.write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps({key: value for key, value in report.items() if key != 'samples'}), flush=True)
     return 0 if report['pass'] else 1

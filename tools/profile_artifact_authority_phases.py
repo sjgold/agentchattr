@@ -67,7 +67,7 @@ def setup(kind):
                 data[group].update(converted[group])
             for (object_kind, identifier), raw in objects.items():
                 case.artifacts._put_bytes(case.artifacts._object_path(object_kind, identifier), raw)
-        # Real valid cleared-R1 graph, seeded outside measurement, no fake persistence.
+        # Real valid imported graph, seeded outside measurement, no fake persistence.
         case.artifacts._persist(data)
         template, _ = case.new_request(instance=instance)
         request = uuid.uuid4().hex
@@ -118,11 +118,19 @@ def stop(*args, **kwargs):
     raise DiagnosticStop()
 
 
-def probe(kind):
+def probe(kind, checkpoint=None):
     case, audit, instance, record, box = setup(kind)
     fixture_root = case.root
     counts = {'packet_reads_A': 0, 'packet_reads_C': 0, 'contexts_A': 0, 'contexts_C': 0, 'packet_raw_reads_A': 0, 'packet_raw_reads_C': 0, 'content_validations_A': 0, 'content_validations_C': 0}
     phase = ['A']
+    retries = {'A': 0, 'C': 0}
+    original_replace = Path.replace
+    def counted_replace(source, target):
+        try:
+            return original_replace(source, target)
+        except PermissionError:
+            retries[phase[0]] += 1
+            raise
     original_packet = case.artifacts.get_packet
     original_context = case.authority._context
     original_read = case.artifacts._read_object
@@ -156,6 +164,7 @@ def probe(kind):
     context_within_limit = None
     try:
         with ExitStack() as stack:
+            stack.enter_context(patch.object(Path, 'replace', counted_replace))
             stack.enter_context(patch.object(case.artifacts, 'get_packet', packet))
             stack.enter_context(patch.object(case.artifacts, '_read_object', read_object))
             stack.enter_context(patch.object(case.storage, '_packet_scope', content_scope))
@@ -198,6 +207,9 @@ def probe(kind):
                 guard_copy()
                 guard_seconds = time.perf_counter() - guard_started
             a_seconds = time.perf_counter() - started
+            if checkpoint is not None:
+                checkpoint({'caller': kind, 'phase': 'A', 'seconds': a_seconds,
+                            'guard_copy_seconds': guard_seconds, 'replace_retries': retries['A'], **counts})
             assert a_exception is not None or kind in ('brief_context', 'delivery'), kind
             phase[0] = 'C'
             started = time.perf_counter()
@@ -229,6 +241,9 @@ def probe(kind):
                     # Harness-only receipt id, no actual diagnostic committed.
                     box.quarantine(audit['dispatch_id'], 'f' * 32, 'cancelled')
             c_seconds = time.perf_counter() - started
+            if checkpoint is not None:
+                checkpoint({'caller': kind, 'phase': 'C_probe', 'seconds': c_seconds,
+                            'replace_retries': retries['C'], **counts})
         actual_packet = json.loads(case.artifacts._object_path('packet', audit['scope']['packet_id']).read_bytes())
         parent_id = audit['expected_parent']['version_id']
         actual_parent_bytes = case.artifacts._object_path('version', parent_id).stat().st_size
@@ -237,15 +252,17 @@ def probe(kind):
         return {'caller': kind, 'A_seconds': a_seconds, 'C_probe_seconds': c_seconds,
                 'A_guard_copy_seconds': guard_seconds, 'A_mcp_encoding_seconds': encoding_seconds,
                 'A_context_response_bytes': encoded_bytes, 'A_context_within_limit': context_within_limit,
-                'A_margin_pass': a_seconds <= .216, 'C_probe_margin_pass': c_seconds <= .216,
-                'A_hard_pass': a_seconds <= .270, 'C_probe_hard_pass': c_seconds <= .270,
+                'A_comparator_seconds': a_seconds - guard_seconds,
+                'A_comparator_minus_0270_seconds': a_seconds - guard_seconds - .270,
+                'C_probe_minus_0270_seconds': c_seconds - .270,
+                'A_replace_retries': retries['A'], 'C_replace_retries': retries['C'],
                 'A_exit': a_exception, **counts,
                 'authoring_requests': actual_requests, 'small_prior_requests': actual_requests - 1,
                 'packet_bytes': len(canonical_utf8(actual_packet)),
                 'message_refs': len(audit['scope']['message_refs']), 'parent_bytes': actual_parent_bytes,
                 'markdown_bytes': actual_markdown_bytes, 'authoring_schema': case.artifacts._data['version'],
                 'authoring_index_bytes': case.artifacts.path.stat().st_size,
-                'limitations': 'A1 cleared-R1-base DESIGN measurement. A includes actual MCP encoding/size and separately measured guard work; no subtraction for pass. No B/peer gate. C is prospective primitives only, not D4. Fixed caller order, no warmup discard; all sizes derived.'}
+                'limitations': 'Merged R2-on-A1 DESIGN checkpoint. A raw includes MCP encode/size and guard_copy; only A_comparator subtracts measured guard_copy. No acceptance booleans or margin gate for unchanged code. C runs outside A1 scope (cold content validation), unlike a future same-scope D4 C. No B/peer gate. Fixed caller order, no warmup discard; sizes derived.'}
     finally:
         case.doCleanups()
         assert not fixture_root.exists()
@@ -255,32 +272,44 @@ def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=10)
     args = parser.parse_args()
-    assert args.samples >= 1
+    if args.samples < 10:
+        parser.error('At least 10 fresh samples per caller are required')
     kinds = ('brief_context', 'delivery', 'submit_cli', 'admit_saved', 'reject_response',
              'resume', 'retained_recovery', 'ack_repair', 'startup_terminal')
     rows = []
-    error = None
-    try:
-        for kind in kinds:
-            for sample in range(args.samples):
-                row = {**probe(kind), 'sample': sample + 1}
-                rows.append(row)
-                print(json.dumps(row), flush=True)
-    except BaseException as exc:
-        error = {'type': type(exc).__name__, 'message': str(exc)}
-        raise
-    finally:
-        result = {'kind': 'R2-on-closed-A1 authority-phase DESIGN, no D4 acceptance', 'samples': rows,
-                  'error': error, 'fsync_mocked': False, 'harness_edits_product': False,
-                  'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
-                  'source_sha256': {name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('artifact_store.py','artifact_service.py','mcp_bridge.py','api_seats.py')},
-                  'peer_measured': False, 'margin_seconds': .216, 'hard_seconds': .270,
-                  'closed_a1_base': '2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca',
-                  'preserved_r2_parent': 'be6fd6522474fe2fab0e6f0573ec6e9ccb9eab4a',
-                  'authoring_schema': 2, 'r2_d1_d2_present': True}
-        destination = ROOT / '.audit-tmp' / ('r2-authority-phase-design-' + uuid.uuid4().hex + '.json')
+    destination = ROOT / '.audit-tmp' / ('r2-authority-phase-design-' + uuid.uuid4().hex + '.json')
+    destination.parent.mkdir(exist_ok=True)
+    result = {'kind': 'DESIGN checkpoint: R2-on-closed-A1 authority phases', 'samples': rows, 'phase_observations': [],
+              'fsync_mocked': False, 'harness_edits_product': False,
+              'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
+              'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
+                  for name in ('artifact_store.py','artifact_service.py','mcp_bridge.py','api_seats.py')},
+              'tool_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+              'peer_measured': False, 'reference_seconds': .270,
+              'closed_a1_base': '2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca',
+              'preserved_r2_parent': 'be6fd6522474fe2fab0e6f0573ec6e9ccb9eab4a',
+              'authoring_schema': 2, 'r2_d1_d2_present': True,
+              'fixed_order': list(kinds), 'samples_per_caller': args.samples,
+              'warmup_discarded': 0, 'resampling': 'None; error rows retained, continue remaining samples/callers.'}
+    def retain(row=None):
+        if row is not None:
+            rows.append(row)
         destination.write_text(json.dumps(result, indent=2), encoding='utf-8')
-        print(json.dumps({'receipt': str(destination), 'samples': len(rows), 'error': error}), flush=True)
+        if row is not None:
+            print(json.dumps(row), flush=True)
+    retain()
+    for kind in kinds:
+        for sample in range(args.samples):
+            try:
+                def checkpoint(observation):
+                    result['phase_observations'].append({**observation, 'sample': sample + 1})
+                    retain()
+                row = {**probe(kind, checkpoint=checkpoint), 'sample': sample + 1}
+            except Exception as exc:
+                row = {'caller': kind, 'sample': sample + 1,
+                       'error': {'type': type(exc).__name__, 'message': str(exc)}}
+            retain(row)
+    print(json.dumps({'receipt': str(destination), 'samples': len(rows)}), flush=True)
 
 
 if __name__ == '__main__':
