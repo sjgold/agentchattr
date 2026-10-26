@@ -48,6 +48,24 @@
         ],
         "createdAt": "2026-10-22T18:42:30.772Z",
         "reason": "Agent decision: both existing matches are semantic reply/quotation markers, in reply-preview and msg-text blockquote. They identify quoted material rather than decorate cards; preserve these domain-appropriate markers."
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "files": [
+          ".lavish/ticket20-store-decision/index.html"
+        ],
+        "createdAt": "2026-10-26T01:28:56.632Z",
+        "reason": "Agent: decision memo intentionally matches the existing agentchattr Inter theme in static/style.css; changing product typography exceeds this review surface."
+      },
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          ".lavish/ticket20-store-decision/index.html"
+        ],
+        "createdAt": "2026-10-26T01:28:56.668Z",
+        "reason": "Agent: detector omits h1 clamp(27px,4vw,42px); the smallest h1/intro ratio is 27/18=1.50 and h1/body is 27/16=1.6875. Existing responsive heading supplies the stronger hierarchy step."
       }
     ]
   }
