@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (R2 + D4 FINAL ACCEPTANCE at220f3400; R3 docs-only contract next)
+**Updated:** 2026-10-26 (R2 + D4 FINAL ACCEPTANCE at220f3400; R3 docs-only contract proposed for review)
 
 ## At a glance
 
@@ -18,14 +18,15 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Q1 startup error fix: focused161 and artifact437 pass;17 mutants killed. ONE post-Q full1817/four skips OK337.595s. Final frozen product4968/toolsf2 Smoke19+gate190 passed; earlier misses retained. |
-| Next | Root: R3 DOCS ONLY contract then independent review before reds. Operator routes implementation/UI/capacity/activation/push held. |
+| Next | Independent reviewer: R3 DOCS ONLY contract in TICKET-20-COMPACT-INDEX.md; choose schema/sidecar/compatibility/API/measurement proposal before any reds. Operator implementation/UI/capacity/activation/push held. |
 
 ## Current handoff
 
 - Publishable reviewed branch/tip: codex/ticket-20-r2-on-a1 at220f340042056b80c09091807690af74f36dafec, unit base2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca (closed A1). R2 + D4 FINAL ACCEPTANCE granted. Older codex/ticket-20-artifacts product WIP67e9e05 is superseded, preserved in history; later status-pointer commits there do not change product bytes. No remote publication has occurred.
 - Independent final review: clean pin, recover_startup-only Q1 product diff read, focused170 tests OK47.5s. Earlier independent phase44/artifact434/driver mutation/static audit stands. Post-Q builder focused161/artifact437/full1817 (4 skips) pass,17 assertion mutants killed. Complete evidence: TICKET-20-D4-FINAL-FOLLOWUPS.md and TICKET-20-D4-FINAL-GATE.md.
 - Running Seth disclosure list: withdrawn512KiB/128-request quota is not enabled; Seth approved R1-R3, R1/R2+D4/A1 are accepted and R3 pending. Two earlier roughly1.1s stalls remain unattributed; cause unverified. Final max-based190 gate passed with a stall sentinel, all earlier misses/invalid attempts remain listed. Max-source admit/brief A roughly0.16s typical on this machine, no future-tail guarantee. No replacement finite capacity is selected.
-- Next owner: root drafts R3 refs-out-of-index contract DOCS ONLY, reviewer must clear schema/compatibility/measurement plan before reds. Then operator-routes contract refresh/K6 reassessment. Operator implementation/UI/capacity implementation/activation/push remain held. SUPPORTED_CAPABILITIES stays empty.
+- R3 proposed contract: TICKET-20-COMPACT-INDEX.md/shared r3-compact-index artifact. Recommended schema3 compact scopes, immutable full-scope sidecar shared by request/version, explicit compact internal readers versus unchanged full projections, offline nonempty schema2 conversion, portable schema unchanged. These choices are proposed, not approved or implemented. Only verification is source/diff/contract review plus pure serialized-width arithmetic, no tests or timing run.
+- Next owner: independent reviewer clears or revises R3 design, then exact signatures/error/fixture and measurement freeze before reds. Then operator-routes contract refresh/K6 reassessment. Operator implementation/UI/capacity implementation/activation/push remain held. SUPPORTED_CAPABILITIES stays empty.
 
 ## Earlier correction-review pointers (historical)
 
