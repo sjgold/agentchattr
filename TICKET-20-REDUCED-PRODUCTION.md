@@ -423,7 +423,7 @@ Independent backend acceptance remains pending. Next owner: reviewer, rerun the 
 2026-10-26T20:13:50.948Z |   MCP proxy: port 55482
 2026-10-26T20:13:50.948Z err| ----------------------------------------------------------------------
 2026-10-26T20:13:50.948Z err| Ran 1865 tests in 362.026s
-2026-10-26T20:13:50.948Z err| 
+2026-10-26T20:13:50.948Z err|
 2026-10-26T20:13:50.948Z err| OK (skipped=4)
 2026-10-26T20:13:51.577Z === exited (code 0)
 
