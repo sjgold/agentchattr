@@ -638,8 +638,10 @@ function renderStopControls(panel, s) {
         const count = artifact.unconfirmed_dispatch_ids?.length || 0;
         const reasons = {storage_unavailable: 'Document storage is unavailable.', artifact_fence_failed: 'Document cancellation could not be checked.',
             transport_unconfirmed: 'Document transport cancellation is unconfirmed.', unconfirmed_overflow: 'Some unconfirmed document cancellations are not listed.'};
+        const detail = count === 0 ? ' No dispatch IDs could be checked; document cancellation remains unconfirmed.'
+            : count === 1 ? ' 1 known document dispatch remains unconfirmed.' : ' ' + count + ' known document dispatches remain unconfirmed.';
         warning.textContent = (reasons[artifact.warning] || 'Document cancellation is unconfirmed.')
-            + ' ' + count + ' known document dispatches remain unconfirmed. The review outcome above is unchanged.';
+            + detail + ' The review outcome above is unchanged.';
         panel.appendChild(warning);
     }
     const receipts = document.createElement('ul');

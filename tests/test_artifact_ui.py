@@ -18,10 +18,10 @@ const fs=require('fs'),vm=require('vm'),assert=require('assert');
 const root=process.argv[2], nodes=new Map(), timers=new Map(), calls=[], watchers=new Map(), hubs=new Map();
 let timerID=0, responder;
 class Element {
- constructor(tag){this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.style={};this.hidden=false;this.disabled=false;this.value='';this._text='';this.listeners={};this.className='';this.isConnected=true;
+ constructor(tag){this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.style={};this.hidden=false;this.disabled=false;this.value='';this._text='';this.textWrites=0;this.listeners={};this.className='';this.isConnected=true;
  this.classList={add:(...names)=>{this.className += ' '+names.join(' ')},remove:()=>{},toggle:()=>{},contains:n=>this.className.split(' ').includes(n)};}
  set id(v){this._id=v;nodes.set(v,this)} get id(){return this._id}
- set textContent(v){for(const c of [...this.children])if(typeof c!=='string')c.remove();this._text=String(v);this.children=[]} get textContent(){return this._text+this.children.map(c=>typeof c==='string'?c:c.textContent).join(' ')}
+ set textContent(v){this.textWrites++;for(const c of [...this.children])if(typeof c!=='string')c.remove();this._text=String(v);this.children=[]} get textContent(){return this._text+this.children.map(c=>typeof c==='string'?c:c.textContent).join(' ')}
  set innerHTML(v){throw Error('UI must build safe DOM/text, not interpolate HTML')}
  append(...items){for(const c of items){this.children.push(c);if(typeof c!=='string')c.parentElement=this}}
  appendChild(c){this.append(c);return c} replaceChildren(...items){for(const c of [...this.children])if(typeof c!=='string')c.remove();this.children=[];this._text='';this.append(...items)}
@@ -38,7 +38,7 @@ class Element {
  querySelector(s){return this.querySelectorAll(s)[0]||null}
 }
 class Option extends Element {constructor(text,value){super('option');this.textContent=text;this.value=value}}
-const document={createTextNode:text=>{const item=new Element('#text');item.textContent=text;return item},body:new Element('body'),activeElement:null,createElement:t=>new Element(t),
+const document={hidden:false,listeners:{},addEventListener(kind,fn){(this.listeners[kind]??=[]).push(fn)},createTextNode:text=>{const item=new Element('#text');item.textContent=text;return item},body:new Element('body'),activeElement:null,createElement:t=>new Element(t),
  getElementById:id=>nodes.get(id)||null,querySelector:s=>s.startsWith('#')?nodes.get(s.slice(1)):document.body.querySelector(s),querySelectorAll:s=>document.body.querySelectorAll(s)};
 for(const [id,tag] of [['session-bar','div'],['session-launch-btn','button'],['artifact-documents-open','button']]){const e=new Element(tag);e.id=id;document.body.append(e)}
 const intervals=[];
@@ -86,10 +86,18 @@ class ArtifactUITests(unittest.TestCase):
         self.assertIsNotNone(node, 'Node is required for the actual JS UI tests')
         if module:
             (ROOT / 'static/artifacts.js').read_text(encoding='utf-8')
-        script = 'const sourceOverrides=' + json.dumps(self.source_overrides) + ';\n' + BOOT + '\n(async()=>{\n' + body + '\n})().catch(error=>{console.error(error.stack);process.exitCode=1});'
+        script = 'const sourceOverrides=' + json.dumps(self.source_overrides) + ';\n' + BOOT + '\n(async()=>{\n' + body + '\nprocess.stdout.write("ARTIFACT_UI_CASE_COMPLETED\\n");\n})().catch(error=>{console.error(error.stack);process.exitCode=1});'
         result = subprocess.run([node, '-', str(ROOT)], input=script, cwd=ROOT,
                                 capture_output=True, text=True, encoding='utf-8', timeout=20)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.count('ARTIFACT_UI_CASE_COMPLETED'),1,'Async test body did not reach completion: '+result.stderr)
+
+    def allow_inflight_reentry(self, old, new):
+        """VM-only fault injection makes a redundant serial guard reachable."""
+        name='static/artifacts.js'
+        source=self.source_overrides.get(name,(ROOT/name).read_text(encoding='utf-8'))
+        self.assertEqual(source.count(old),1)
+        self.source_overrides={**self.source_overrides,name:source.replace(old,new,1)}
 
     def test_stop_warning_is_literal_and_distinct_from_review_outcome(self):
         self.run_js(r"""
@@ -141,7 +149,7 @@ assert(calls.some(c=>c.url.includes('channel=review')));for(const call of calls)
         self.run_js(r"""
 await open();await submit();let posts=calls.filter(c=>c.method==='POST');assert.strictEqual(posts.length,1);
 const first=JSON.parse(posts[0].body);assert.deepStrictEqual(Object.keys(first).sort(),['channel','instruction','request_id','run_id','session_id']);
-assert(/^[0-9a-f]{32}$/.test(first.request_id));assert.strictEqual(first.instruction,'PRIVATE_INSTRUCTION');
+assert(/^[0-9a-f]{32}$/.test(first.request_id));assert.strictEqual(first.instruction,'PRIVATE_INSTRUCTION');assert.strictEqual(new Headers(posts[0].headers).get('Content-Type'),'application/json');
 assert.strictEqual(first.session_id,1);assert.strictEqual(first.run_id,session.run_id);
 current={...current,state:'fulfilled',label:'ready',version_id:'c'.repeat(32)};await activate('artifact-refresh');
 await submit();posts=calls.filter(c=>c.method==='POST');assert.strictEqual(posts.length,2);
@@ -153,7 +161,7 @@ for(const value of storage.values()){assert(!value.includes('OPERATOR_ONLY'));as
         self.run_js(r"""
 await open();let finish;const original=responder;
 responder=async(url,options)=>url.endsWith('/requests')?new Promise((resolve,reject)=>{finish=()=>reject(Error('lost response'))}):original(url,options);
-element('artifact-instruction').value='PRIVATE_INSTRUCTION';const first=element('artifact-submit').click();const second=element('artifact-submit').click();await flush();
+element('artifact-instruction').value='PRIVATE_INSTRUCTION';const first=element('artifact-submit').click();assert(element('artifact-submit').disabled);const second=element('artifact-submit').click();await flush();
 assert.strictEqual(calls.filter(c=>c.method==='POST').length,1);const id=JSON.parse(calls.find(c=>c.method==='POST').body).request_id;
 finish();await Promise.all([first,second]);await flush();
 responder=async(url,options)=>url.endsWith('/requests/'+id)?response({code:'not_found',error:'Not found.'},404):original(url,options);
@@ -191,7 +199,7 @@ assert.strictEqual(document.body.querySelectorAll('script').length,0);assert.str
 element('artifact-reader').textContent='VISIBLE_EDIT';await activate('artifact-download');assert.strictEqual(downloads.length,1);assert.strictEqual(downloads[0].download,'document.md');
 assert.deepStrictEqual(Buffer.from(await blobs.get(downloads[0].href).arrayBuffer()),Buffer.from(markdown,'utf8'));
 for(const value of storage.values()){assert(!value.includes(markdown));assert(!value.includes('PRIVATE_INSTRUCTION'));}
-for(const timer of [...timers.values()])if(timer.delay===0)await timer.fn();
+for(const timer of [...timers.values()])if(timer.delay===1000)await timer.fn();
 assert(revoked.includes(downloads[0].href));assert(calls.some(c=>c.url.endsWith('/download')));assert(calls.filter(c=>c.url.endsWith('/download')).every(c=>new Headers(c.headers).get('X-Session-Token')==='OPERATOR_ONLY'));
 """)
 
@@ -355,4 +363,166 @@ await activate('artifact-download');assert.strictEqual(downloads.length,0);asser
         self.run_js(r"""
 await open();element('artifact-instruction').value='DRAFT_ONLY_IN_MEMORY';window.ArtifactDocuments.close();await window.ArtifactDocuments.open();
 assert.strictEqual(element('artifact-instruction').value,'DRAFT_ONLY_IN_MEMORY');for(const value of storage.values())assert(!value.includes('DRAFT_ONLY_IN_MEMORY'));
+""")
+
+    def test_pre_effect_null_durability_refusals_clear_new_unknown_and_prechecks_preserve_text(self):
+        self.run_js(r"""
+await open();const original=responder;
+for(const bad of ['', '   \t\r\n', 'bad\u0000text', 'bad\u007ftext', 'é'.repeat(16385)]){
+ element('artifact-instruction').value=bad;await activate('artifact-submit');assert.strictEqual(calls.filter(c=>c.method==='POST').length,0);
+ assert(element('artifact-error').textContent);assert(!element('artifact-submit').disabled);
+}
+for(const code of ['invalid_request','request_too_large','operator_forbidden','no_author_available','source_unavailable','source_too_large','session_unknown','run_unknown','channel_mismatch','channel_inactive']){
+ responder=async(url,options)=>url.endsWith('/requests')?response({code,error:'Definitive '+code,durability:null,request:null},409):original(url,options);
+ await submit();assert(!element('artifact-status').textContent.includes('Not confirmed'),code);assert(!element('artifact-submit').disabled);
+ const previous=JSON.parse(calls.filter(c=>c.method==='POST').at(-1).body).request_id;
+ responder=original;element('artifact-instruction').value='  keep\tthis\nexactly  ';await activate('artifact-submit');
+ const next=JSON.parse(calls.filter(c=>c.method==='POST').at(-1).body);assert.notStrictEqual(previous,next.request_id);assert.strictEqual(next.instruction,'  keep\tthis\nexactly  ');
+}
+""")
+
+    def test_live_regions_only_change_for_changed_text_and_focus_is_not_stolen(self):
+        self.run_js(r"""
+load('static/artifacts.js');window.ArtifactDocuments.init();let finish;const original=responder;
+responder=async(url,options)=>url.includes('/sessions?')?new Promise(resolve=>{finish=resolve}):original(url,options);
+const opening=window.ArtifactDocuments.open();await flush();element('artifact-instruction').focus();
+finish(response({sessions:[session],offset:0,has_more:false}));await opening;assert.strictEqual(document.activeElement,element('artifact-instruction'));
+responder=original;await submit();const names=['artifact-status','artifact-source','artifact-error'];
+const counts=names.map(name=>element(name).textWrites);await activate('artifact-refresh');assert.deepStrictEqual(names.map(name=>element(name).textWrites),counts);
+""")
+
+    def test_digest_is_request_salted_and_every_path_id_is_encoded(self):
+        self.run_js(r"""
+const encoded=[];context.encodeURIComponent=value=>{encoded.push(value);return encodeURIComponent(value)};
+await open();await submit();const first=JSON.parse([...storage.values()][0]);
+assert.strictEqual(first.instruction_sha256,require('crypto').createHash('sha256').update(first.request_id+':PRIVATE_INSTRUCTION').digest('hex'));
+current={...current,state:'fulfilled',version_id:'c'.repeat(32),label:'ready'};encoded.length=0;await activate('artifact-refresh');assert(encoded.includes(first.request_id));
+encoded.length=0;await activate('artifact-read');assert(encoded.includes(first.request_id));
+encoded.length=0;await activate('artifact-download');assert(encoded.includes(current.version_id));
+current={...current,state:'queued',version_id:null};await activate('artifact-refresh');encoded.length=0;await activate('artifact-cancel');assert(encoded.includes(first.request_id));
+await submit();const second=JSON.parse([...storage.values()][0]);assert.notStrictEqual(first.instruction_sha256,second.instruction_sha256);
+current={...current,state:'fulfilled',version_id:'../not-a-version',label:'ready'};await activate('artifact-refresh');const before=downloads.length;
+await activate('artifact-download');assert.strictEqual(downloads.length,before);assert(!calls.some(c=>c.url.includes('not-a-version')));
+""")
+
+    def test_url_revoke_is_delayed_and_close_cleans_it_up(self):
+        self.run_js(r"""
+await open();await submit();current={...current,state:'fulfilled',version_id:'c'.repeat(32),label:'ready'};await activate('artifact-refresh');await activate('artifact-download');
+assert.strictEqual(revoked.length,0);assert([...timers.values()].some(timer=>timer.delay===1000));
+window.ArtifactDocuments.close();assert.strictEqual(revoked.length,1);assert.strictEqual(timers.size,0);
+""")
+
+    def test_cancel_not_found_does_not_claim_a_running_worker_and_refresh_serializes(self):
+        self.run_js(r"""
+await open();await submit();const original=responder;let finish;
+responder=async(url,options)=>url.endsWith('/cancel')?new Promise(resolve=>{finish=()=>resolve(response({code:'not_found',error:'Not found'},404))}):original(url,options);
+const cancel=element('artifact-cancel').click();await flush();assert(element('artifact-refresh').disabled);
+const gets=calls.filter(c=>c.method!=='POST').length;await activate('artifact-refresh');await element('artifact-refresh').onclick();assert.strictEqual(calls.filter(c=>c.method!=='POST').length,gets);
+finish();await cancel;assert(!element('artifact-source').textContent.includes('worker may still be running'));
+""")
+
+    def test_hidden_document_pauses_polling_and_list_retry_clears_its_error(self):
+        self.run_js(r"""
+const original=responder;responder=async()=>response({code:'storage_unavailable',error:'LIST_UNAVAILABLE'},503);
+await open();assert(element('artifact-error').textContent.includes('LIST_UNAVAILABLE'));responder=original;
+assert(!element('artifact-more-sessions').hidden);await activate('artifact-more-sessions');assert.strictEqual(element('artifact-error').textContent,'');
+await submit();document.hidden=true;for(const fn of document.listeners.visibilitychange||[])await fn();assert.strictEqual(timers.size,0);
+document.hidden=false;for(const fn of document.listeners.visibilitychange||[])await fn();assert([...timers.values()].some(timer=>timer.delay===2000));
+""")
+
+    def test_stop_singular_and_zero_are_not_false_counts(self):
+        self.run_js(r"""
+load('static/sessions.js');context.panel=new Element('section');context.s={id:1,state:'stopped',admitted_events:[],cancellation_receipts:[],termination_offers:[],quarantined_events:[],artifact_cancellation:{warning:'transport_unconfirmed',unconfirmed_dispatch_ids:['a'.repeat(32)]}};
+vm.runInContext('renderStopControls(panel,s)',context);assert(!context.panel.textContent.includes('1 known document dispatches'));
+context.s.artifact_cancellation={warning:'storage_unavailable',unconfirmed_dispatch_ids:[]};vm.runInContext('renderStopControls(panel,s)',context);
+assert(!context.panel.textContent.includes('0 known'));assert(context.panel.textContent.toLowerCase().includes('unconfirmed'));
+""",module=False)
+
+    def test_definitive_500_and_packet_exists_reset_but_unknown_500_does_not(self):
+        self.run_js(r"""
+await open();const original=responder;
+for(const data of [{code:'unexpected_failure',error:'No effect',durability:'not_recorded'},{code:'request_conflict',cause:'packet_exists',error:'New request id',durability:null}]){
+ responder=async(url,options)=>url.endsWith('/requests')?response(data,500):original(url,options);await submit();const id=JSON.parse(calls.filter(c=>c.method==='POST').at(-1).body).request_id;
+ responder=original;await submit();assert.notStrictEqual(JSON.parse(calls.filter(c=>c.method==='POST').at(-1).body).request_id,id);
+}
+responder=async(url,options)=>url.endsWith('/requests')?response({code:'storage_unavailable',error:'Unknown effect',durability:null},503):original(url,options);await submit();const prior=JSON.parse(calls.filter(c=>c.method==='POST').at(-1).body).request_id;
+await submit();assert.strictEqual(JSON.parse(calls.filter(c=>c.method==='POST').at(-1).body).request_id,prior);
+""")
+
+    def test_encoding_channel_and_ids_never_becomes_url_navigation(self):
+        self.run_js(r"""
+window.activeChannel='review?unexpected=1&more=2';await open();assert(calls[0].url.includes('channel=review%3Funexpected%3D1%26more%3D2'));
+assert(!calls[0].url.includes('?unexpected='));assert(calls.every(call=>call.url.startsWith('/api/artifacts/')));
+""")
+
+    def test_errors_and_author_labels_are_literal_text(self):
+        self.run_js(r"""
+current={...current,author_name:'<img src=x onerror=evil()>'};await open();await submit();
+assert(element('artifact-source').textContent.includes('<img src=x onerror=evil()>'));assert.strictEqual(document.body.querySelectorAll('img').length,0);
+const original=responder;responder=async(url,options)=>url.endsWith('/requests')?response({code:'source_unavailable',error:'<b>LITERAL_ERROR</b>',durability:null},409):original(url,options);
+await submit();assert(element('artifact-error').textContent.includes('<b>LITERAL_ERROR</b>'));assert.strictEqual(document.body.querySelectorAll('b').length,0);
+""")
+
+    def test_close_aborts_inflight_and_hidden_completion_does_not_schedule(self):
+        self.run_js(r"""
+await open();await submit();let finish;const original=responder;
+responder=async(url,options)=>url.includes('/requests/')?new Promise(resolve=>{finish=resolve}):original(url,options);
+const getting=element('artifact-refresh').click();await flush();const signal=calls.at(-1).signal;window.ArtifactDocuments.close();assert(signal.aborted);await getting;
+assert.strictEqual(timers.size,0);finish(response(current));await flush();
+responder=original;await window.ArtifactDocuments.open();await flush();
+responder=async(url,options)=>url.includes('/requests/')?new Promise(resolve=>{finish=resolve}):original(url,options);
+const hidden=element('artifact-refresh').click();await flush();document.hidden=true;for(const fn of document.listeners.visibilitychange||[])await fn();
+finish(response(current));await hidden;assert.strictEqual(timers.size,0);
+""")
+
+    def test_stale_status_after_cancel_cannot_restore_working(self):
+        self.run_js(r"""
+await open();await submit();const original=responder;let finish;
+responder=async(url,options)=>url.includes('/requests/')&&!url.endsWith('/cancel')?new Promise(resolve=>{finish=resolve}):original(url,options);
+const getting=element('artifact-refresh').click();await flush();await activate('artifact-cancel');
+finish(response({...current,state:'active',label:'working',reason:null}));await getting;
+assert(element('artifact-status').textContent.includes('Cancelled'));
+""")
+
+    def test_stale_read_serial_is_independent_of_single_flight(self):
+        self.allow_inflight_reentry('if (!active(s) || !s.row?.version_id || s.reading) return;',
+                                   'if (!active(s) || !s.row?.version_id) return;')
+        self.run_js(r"""
+await open();await submit();current={...current,state:'fulfilled',version_id:'c'.repeat(32),label:'ready'};await activate('artifact-refresh');
+const original=responder;const pending=[];responder=async(url,options)=>url.endsWith('/document')?new Promise(resolve=>pending.push(resolve)):original(url,options);
+const older=element('artifact-read').onclick();await flush();const newer=element('artifact-read').onclick();await flush();assert.strictEqual(pending.length,2);
+pending[1](response({markdown:'NEW_READ'}));await newer;pending[0](response({markdown:'OLD_READ'}));await older;
+assert.strictEqual(element('artifact-reader').textContent,'NEW_READ');
+""")
+
+    def test_stale_list_serial_is_independent_of_single_flight(self):
+        self.allow_inflight_reentry('if (!active(s) || s.listBusy) return;','if (!active(s)) return;')
+        self.run_js(r"""
+await open();const original=responder;const pending=[];
+responder=async(url,options)=>url.includes('/sessions?')?new Promise(resolve=>pending.push(resolve)):original(url,options);
+const older=element('artifact-more-sessions').onclick();await flush();const newer=element('artifact-more-sessions').onclick();await flush();
+pending[1](response({sessions:[{...session,session_id:3,title:'NEW_LIST'}],offset:20,has_more:false}));await newer;
+pending[0](response({sessions:[{...session,session_id:2,title:'OLD_LIST'}],offset:20,has_more:false}));await older;
+assert(element('artifact-session-select').textContent.includes('NEW_LIST'));assert(!element('artifact-session-select').textContent.includes('OLD_LIST'));
+""")
+
+    def test_stale_create_identity_is_independent_of_single_flight(self):
+        self.allow_inflight_reentry('if (!active(s) || s.submitting || !writable(s)) return;',
+                                   'if (!active(s) || !writable(s)) return;')
+        self.run_js(r"""
+await open();const original=responder;const pending=[];
+responder=async(url,options)=>url.endsWith('/requests')?new Promise(resolve=>pending.push({body:JSON.parse(options.body),resolve})):original(url,options);
+element('artifact-instruction').value='PRIVATE_INSTRUCTION';const older=element('artifact-submit').onclick();for(let i=0;i<20&&pending.length<1;i++)await flush();
+await activate('artifact-abandon');await activate('artifact-abandon-confirm');const newer=element('artifact-submit').onclick();for(let i=0;i<20&&pending.length<2;i++)await flush();assert.strictEqual(pending.length,2);
+pending[1].resolve(response({request:{...current,request_id:pending[1].body.request_id,author_name:'NEW_CREATE'},durability:'recorded'},202));await newer;
+pending[0].resolve(response({request:{...current,request_id:pending[0].body.request_id,author_name:'OLD_CREATE'},durability:'recorded'},202));await older;
+assert(element('artifact-source').textContent.includes('NEW_CREATE'));assert(!element('artifact-source').textContent.includes('OLD_CREATE'));
+""")
+
+    def test_older_download_error_does_not_replace_new_request_status(self):
+        self.run_js(r"""
+await open();await submit();current={...current,state:'fulfilled',version_id:'c'.repeat(32),label:'ready'};await activate('artifact-refresh');
+const original=responder;let fail;responder=async(url,options)=>url.endsWith('/download')?new Promise((resolve,reject)=>{fail=()=>reject(Error('OLD_DOWNLOAD_ERROR'))}):original(url,options);
+const older=element('artifact-download').click();await flush();current={...current,state:'queued',version_id:null,label:'queued'};await submit();
+const before=element('artifact-error').textContent;fail();await older;assert.strictEqual(element('artifact-error').textContent,before);
 """)

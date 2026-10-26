@@ -22,6 +22,9 @@ window.ArtifactDocuments = (() => {
         unmanaged: 'The author is not an app-managed seat.', binding_changed: 'The author binding changed.',
         runtime_unverified: 'The author runtime is not verified.', ambiguous: 'The author identity is ambiguous.',
         producer_unavailable: 'The author became unavailable. Refresh the session before trying again.'};
+    const PRE_EFFECT = new Set(['invalid_request', 'request_too_large', 'operator_forbidden', 'capability_off',
+        'no_author_available', 'source_unavailable', 'source_too_large', 'session_unknown', 'run_unknown',
+        'channel_mismatch', 'channel_inactive']);
     const ABANDON = 'The earlier request may still finish and could create a second document.';
     let view = null, initialized = false;
     const drafts = new Map();
@@ -36,6 +39,10 @@ window.ArtifactDocuments = (() => {
         if (id) item.id = id;
         if (text !== undefined) item.textContent = text;
         return item;
+    }
+    function text(item, value) {
+        value = String(value);
+        if (item.textContent !== value) item.textContent = value;
     }
     function button(id, text, action) {
         const item = node('button', id, text); item.type = 'button'; item.onclick = action; return item;
@@ -82,7 +89,7 @@ window.ArtifactDocuments = (() => {
     function stopPoll(s) { if (s.pollTimer) clearTimeout(s.pollTimer); s.pollTimer = null; }
     function schedule(s) {
         stopPoll(s);
-        if (active(s) && s.known && s.row && LIVE.has(s.row.state))
+        if (active(s) && !document.hidden && !s.nodes.panel.hidden && s.known && s.row && LIVE.has(s.row.state))
             s.pollTimer = setTimeout(() => refresh(s), Math.min(30000, 2000 * (2 ** s.failures)));
     }
     async function request(s, path, options = {}, blob = false) {
@@ -104,8 +111,8 @@ window.ArtifactDocuments = (() => {
                     return response.blob();
                 }
                 try { data = await response.json(); }
-                catch (_) { throw Object.assign(new Error('Invalid server response'), {data: {code: response.status >= 500 ? 'storage_unavailable' : 'unexpected_failure'}}); }
-                if (!response.ok) throw Object.assign(new Error('Document operation refused'), {data});
+                catch (_) { throw Object.assign(new Error('Invalid server response'), {status: response.status, data: {code: response.status >= 500 ? 'storage_unavailable' : 'unexpected_failure'}}); }
+                if (!response.ok) throw Object.assign(new Error('Document operation refused'), {status: response.status, data});
                 return data;
             })();
             return await Promise.race([work, interrupted]);
@@ -114,25 +121,25 @@ window.ArtifactDocuments = (() => {
     function render(s) {
         if (!active(s)) return;
         const n = s.nodes, row = s.row;
-        n.status.textContent = row ? textFor(row) + (s.offline ? ' (status unavailable)' : '')
+        text(n.status, row ? textFor(row) + (s.offline ? ' (status unavailable)' : '')
             : s.notFound ? 'Not found yet (the earlier request may still finish)'
-            : s.known?.unknown ? 'Not confirmed' : s.listBusy ? 'Loading sessions...' : 'Choose a session to write from';
+            : s.known?.unknown ? 'Not confirmed' : s.listBusy ? 'Loading sessions...' : 'Choose a session to write from');
         let detail = row ? (row.source.session_id ? 'Session ' + row.source.session_id : 'Imported source') + ' · ' + (row.author_name || 'Author unavailable') + ' · ' + row.source.message_count + ' source messages · '
             + row.source.packet_bytes + ' bytes' + (row.source.source_so_far ? ' · Source so far' : ' · Completed source') : '';
         if (s.cancelWarning) detail += ' Document cancellation is unconfirmed; the worker may still be running.';
         if (s.storageUnavailable) detail += ' Browser status recovery is unavailable after reload.';
-        n.source.textContent = detail;
-        n.error.textContent = s.error || '';
-        n.submit.textContent = s.submitting ? 'Saving request...' : s.known?.unknown ? 'Retry same request' : row ? 'Request another document' : 'Request document';
+        text(n.source, detail);
+        text(n.error, s.error || '');
+        text(n.submit, s.submitting ? 'Saving request...' : s.known?.unknown ? 'Retry same request' : row ? 'Request another document' : 'Request document');
         n.submit.disabled = s.submitting || !writable(s) || (!s.selected && !s.known?.unknown);
         n.select.disabled = s.submitting || s.known?.unknown === true;
         n.cancel.hidden = !row || !LIVE.has(row.state); n.cancel.disabled = s.cancelling;
-        n.refresh.disabled = !s.known || s.refreshing;
-        const ready = !!row?.version_id && ['fulfilled', 'imported'].includes(row.state);
+        n.refresh.disabled = !s.known || s.refreshing || s.cancelling;
+        const ready = hex(row?.version_id) && ['fulfilled', 'imported'].includes(row.state);
         n.read.hidden = !ready; n.download.hidden = !ready;
         n.read.disabled = s.reading; n.download.disabled = s.downloading;
         n.abandon.hidden = !s.known?.unknown;
-        n.policy.textContent = writable(s) ? '' : 'New documents are unavailable while this channel or its artifact storage is archived, held or unavailable.';
+        text(n.policy, writable(s) ? '' : 'New documents are unavailable while this channel or its artifact storage is archived, held or unavailable.');
     }
     function adopt(s, row, id) {
         if (!row || row.request_id !== id || row.channel !== s.channel || !row.source) throw new Error('Mismatched document response');
@@ -142,10 +149,10 @@ window.ArtifactDocuments = (() => {
         s.intent = null; persist(s);
     }
     async function refresh(s) {
-        if (!active(s) || !s.known || s.refreshing) return;
+        if (!active(s) || document.hidden || s.nodes.panel.hidden || !s.known || s.refreshing || s.cancelling) return;
         stopPoll(s); s.refreshing = true; const id = s.known.request_id, serial = ++s.statusSerial; render(s);
         try {
-            const row = await request(s, '/api/artifacts/requests/' + id);
+            const row = await request(s, '/api/artifacts/requests/' + encodeURIComponent(id));
             if (!active(s) || s.known?.request_id !== id || s.statusSerial !== serial) return;
             adopt(s, row, id); s.error = '';
             if (row.transport_settled === true) s.cancelWarning = null;
@@ -163,6 +170,8 @@ window.ArtifactDocuments = (() => {
         try {
             const value = await request(s, '/api/artifacts/sessions?channel=' + encodeURIComponent(s.channel) + '&offset=' + offset);
             if (!active(s) || serial !== s.listSerial) return;
+            if (s.listFailure) { s.error = ''; s.listFailure = false; }
+            text(s.nodes.more, 'More sessions');
             if (!more) { s.sessions.clear(); s.nodes.select.replaceChildren(); }
             for (const item of value.sessions || []) {
                 if (s.sessions.has(item.session_id)) continue;
@@ -174,7 +183,7 @@ window.ArtifactDocuments = (() => {
             const preferred = s.sessions.get(s.known?.session_id) || [...s.sessions.values()][0];
             if (!s.selected && preferred) { s.selected = preferred; s.nodes.select.value = String(preferred.session_id); }
             if (!preferred) s.error = 'No saved sessions in this channel yet. Complete a session, then return here.';
-        } catch (error) { if (active(s)) s.error = errorText(error.data); }
+        } catch (error) { if (active(s)) { s.error = errorText(error.data); s.listFailure = true; s.nodes.more.hidden = false; text(s.nodes.more, 'Retry sessions'); } }
         finally { s.listBusy = false; if (active(s)) { s.nodes.more.disabled = false; render(s); } }
     }
     async function submit(s) {
@@ -182,11 +191,13 @@ window.ArtifactDocuments = (() => {
         s.submitting = true; stopPoll(s); s.error = ''; render(s);
         try {
             const instruction = s.nodes.instruction.value;
-            if (!instruction || new TextEncoder().encode(instruction).length > 32768) {
-                s.error = 'Enter an instruction of at most 32768 UTF-8 bytes.'; return;
+            if (!instruction.trim() || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(instruction) || new TextEncoder().encode(instruction).length > 32768) {
+                s.error = 'Enter a non-blank instruction of at most 32768 UTF-8 bytes; only tab and line-break controls are allowed.'; return;
             }
-            const instructionHash = await digest(instruction);
-            if (!active(s)) return;
+            const wasUnknown = s.known?.unknown === true;
+            const identifier = wasUnknown ? s.known.request_id : window.crypto.randomUUID().replace(/-/g, '');
+            const instructionHash = await digest(identifier + ':' + instruction);
+            if (!active(s) || (wasUnknown && s.known?.request_id !== identifier)) return;
             let intent;
             if (s.known?.unknown) {
                 if (s.known.instruction_sha256 !== instructionHash) {
@@ -196,7 +207,7 @@ window.ArtifactDocuments = (() => {
                     run_id: s.known.run_id, instruction};
             } else {
                 if (!s.selected) return;
-                intent = {request_id: window.crypto.randomUUID().replace(/-/g, ''), channel: s.channel,
+                intent = {request_id: identifier, channel: s.channel,
                     session_id: s.selected.session_id, run_id: s.selected.run_id, instruction};
                 s.cancelWarning = null;
                 s.row = null; s.nodes.reader.textContent = ''; s.nodes.reader.hidden = true;
@@ -213,7 +224,8 @@ window.ArtifactDocuments = (() => {
                 if (!active(s) || s.known?.request_id !== id) return;
                 s.error = errorText(error.data);
                 if (error.data?.request) adopt(s, error.data.request, id);
-                else if (error.data?.cause === 'packet_exists' || (error.data?.durability === 'not_recorded' && error.data?.code)) {
+                else if (error.data?.cause === 'packet_exists' || (error.data?.durability === 'not_recorded' && error.data?.code)
+                    || (!wasUnknown && error.status >= 400 && error.status < 500 && PRE_EFFECT.has(error.data?.code))) {
                     s.known = null; s.intent = null; persist(s);
                 } else s.error = 'Not confirmed. ' + s.error + ' Check status before starting a new request.';
             }
@@ -225,7 +237,7 @@ window.ArtifactDocuments = (() => {
         if (!active(s) || !s.row || !LIVE.has(s.row.state) || s.cancelling) return;
         stopPoll(s); s.cancelling = true; s.statusSerial++; const id = s.row.request_id; render(s);
         try {
-            const value = await request(s, '/api/artifacts/requests/' + id + '/cancel', {method: 'POST', body: '{}'});
+            const value = await request(s, '/api/artifacts/requests/' + encodeURIComponent(id) + '/cancel', {method: 'POST', body: '{}'});
             if (!active(s) || s.known?.request_id !== id) return;
             adopt(s, value.request, id);
             s.cancelWarning = value.transport_settled === true ? null : value.request.warning || 'transport_unconfirmed';
@@ -233,7 +245,8 @@ window.ArtifactDocuments = (() => {
         } catch (error) {
             if (!active(s) || s.known?.request_id !== id) return;
             if (error.data?.request) adopt(s, error.data.request, id);
-            s.cancelWarning = 'transport_unconfirmed'; s.error = errorText(error.data);
+            s.cancelWarning = error.status === 404 && error.data?.code === 'not_found' ? null : 'transport_unconfirmed';
+            s.offline = true; s.error = errorText(error.data);
         } finally { s.cancelling = false; if (active(s)) { render(s); schedule(s); } }
     }
     async function read(s) {
@@ -241,7 +254,7 @@ window.ArtifactDocuments = (() => {
         s.reading = true; s.nodes.reader.hidden = true; s.nodes.reader.textContent = '';
         const serial = ++s.readSerial, id = s.row.request_id; render(s);
         try {
-            const value = await request(s, '/api/artifacts/requests/' + id + '/document');
+            const value = await request(s, '/api/artifacts/requests/' + encodeURIComponent(id) + '/document');
             if (!active(s) || s.known?.request_id !== id || serial !== s.readSerial) return;
             if (typeof value.markdown !== 'string') throw new Error('Document text unavailable');
             s.nodes.reader.textContent = value.markdown; s.nodes.reader.hidden = false; s.error = '';
@@ -251,14 +264,17 @@ window.ArtifactDocuments = (() => {
     }
     async function download(s) {
         if (!active(s) || !s.row?.version_id || s.downloading) return;
+        if (!hex(s.row.version_id)) { s.error = 'Document version is unavailable. Refresh before downloading.'; render(s); return; }
         s.downloading = true; const id = s.known.request_id, version = s.row.version_id; render(s);
         try {
-            const blob = await request(s, '/api/artifacts/versions/' + version + '/download', {}, true);
+            const blob = await request(s, '/api/artifacts/versions/' + encodeURIComponent(version) + '/download', {}, true);
             if (!active(s) || s.known?.request_id !== id) return;
             const url = URL.createObjectURL(blob); s.urls.add(url);
             const anchor = node('a'); anchor.href = url; anchor.download = 'document.md'; document.body.appendChild(anchor);
-            anchor.click(); anchor.remove(); setTimeout(() => { if (s.urls.delete(url)) URL.revokeObjectURL(url); }, 0);
-        } catch (error) { if (active(s)) s.error = errorText(error.data); }
+            anchor.click(); anchor.remove();
+            const timer = setTimeout(() => { s.revokeTimers.delete(timer); if (s.urls.delete(url)) URL.revokeObjectURL(url); }, 1000);
+            s.revokeTimers.add(timer);
+        } catch (error) { if (active(s) && s.known?.request_id === id) s.error = errorText(error.data); }
         finally { s.downloading = false; if (active(s)) render(s); }
     }
     function close(focus = true) {
@@ -266,6 +282,7 @@ window.ArtifactDocuments = (() => {
         drafts.set(s.channel, s.nodes.instruction.value);
         s.closed = true; stopPoll(s); s.requests.forEach(abort => abort());
         s.urls.forEach(url => URL.revokeObjectURL(url)); s.urls.clear();
+        s.revokeTimers.forEach(clearTimeout); s.revokeTimers.clear();
         s.nodes.reader.textContent = ''; s.nodes.reader.hidden = true; s.nodes.panel.hidden = true;
         view = null;
         document.getElementById('artifact-documents-open')?.setAttribute('aria-expanded', 'false');
@@ -314,19 +331,24 @@ window.ArtifactDocuments = (() => {
     }
     async function open() {
         close(false);
+        const openingFocus = document.activeElement;
         const channel = window.activeChannel;
         const s = {channel, closed: false, sessions: new Map(), selected: null, known: saved(channel), row: null,
-            requests: new Set(), urls: new Set(), offset: 0, failures: 0, statusSerial: 0, readSerial: 0, listSerial: 0};
+            requests: new Set(), urls: new Set(), revokeTimers: new Set(), offset: 0, failures: 0, statusSerial: 0, readSerial: 0, listSerial: 0};
         view = s; createPanel(s); render(s);
         document.getElementById('artifact-documents-open')?.setAttribute('aria-expanded', 'true');
         await loadSessions(s);
         if (active(s) && s.known) await refresh(s);
-        if (active(s)) s.nodes.select.focus();
+        if (active(s) && document.activeElement === openingFocus) s.nodes.select.focus();
     }
     function init() {
         if (initialized) return; initialized = true;
         const trigger = document.getElementById('artifact-documents-open');
         if (trigger) { trigger.onclick = open; trigger.setAttribute('aria-expanded', 'false'); }
+        document.addEventListener('visibilitychange', () => {
+            if (!view) return;
+            if (document.hidden) stopPoll(view); else schedule(view);
+        });
         Store.watch('activeChannel', () => close(false));
         Hub.on('channel_lifecycle', () => { if (view) render(view); });
         Hub.on('channel_renamed', event => {

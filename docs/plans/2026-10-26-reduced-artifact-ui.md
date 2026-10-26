@@ -273,3 +273,15 @@ Ran 23 tests in 1.249s
 OK
 
 ```
+
+## Y-1 through Y-7 follow-up, 2026-10-26
+
+Reviewer accepted component ae4ab08f pending these bounded changes. Definitive first-attempt JSON 4xx pre-effect refusals clear the unknown state and leave the draft editable; client validation checks blank/control text and the 32768-byte UTF-8 limit. A previously unknown attempt retains its original identity when a later refusal cannot settle the earlier worker. GET 404 still never permits an automatic new id.
+
+Request/version paths encode ids; versions require hex validation. Stored instruction digests include request_id. Live text updates only on change; delayed session loading preserves user focus. Polling pauses while the document is hidden. Refresh cannot race Cancel. Cancel not_found does not fabricate a worker warning. Session-list retry clears its prior error. Stop warning copy handles zero and one dispatch. Blob URLs revoke after one second or on close. A stale download failure cannot overwrite a newer request card. Script versions are sessions233/artifacts2.
+
+Observed follow-up reds included eight failures in the 29-case run and a separate stale-download failure (0.060s). Final UI/restart selection: 39 tests OK in 2.453s. JS syntax and git diff checks pass. Final mutation receipt: 61/61 assertion-killed, zero errors, source unchanged. Raw receipt: .audit-tmp/artifact-ui-mutations.json; console: .audit-tmp/reduced20-ui-y-mutations-output.txt. Earlier survivors and the incorrect mutation anchor are retained; controls were strengthened/retargeted, product safeguards were preserved.
+
+Harness honesty: each Node case must emit exactly one completion marker, so an unresolved fake promise cannot count as success. Conditional stale read/list/create defenses use explicit in-VM removal of the single-flight entry guard to reach their independent guards; these are fault-injection cases, not claims that normal UI actions allow parallel reads. All other UI tests execute the actual source with fake DOM/network/clock. None is rendered-browser acceptance.
+
+Next owner: root implements the browser harness only after review of docs/plans/2026-10-26-artifact-browser-harness.md. That DESIGN proposes real MCP fake-CLI and local fake-API flows with fixture-only capability, owned guards/resources and desktop/mobile proof. The browser API exposes no isolated download-directory control: actual Blob/click observation with native save intercepted is an explicit open review decision. No browser acceptance process, listener, profile or harness execution has started. Executable tools and controls require a second pin review before acceptance runs. Screen, transcript21, packaging22, activation and cleanup remain later; no push.
