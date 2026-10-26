@@ -41,7 +41,8 @@ def main():
       ('query token excluded',routes,'operator_prefix',"or 'token' in request.query_params",'or False',Routes,'test_query_token_and_authorization_are_never_operator_fallback'),
       ('chunked cap',routes,'operator_prefix','if size > MAX_BODY:','if False:',Routes,'test_json_boundaries_chunked_body_and_scoped_errors'),
       ('duplicate JSON',routes,'_unique','if key in value:','if False:',Routes,'test_post_media_body_limit_and_duplicate_json_refuse_before_endpoint'),
-      ('503 envelope preserved',routes,'operator_prefix',"and not getattr(request.state, 'artifact_error_envelope', False)",'and True',Routes,'test_fixed_error_codes_do_not_become_generic_500'),
+      ('503 envelope preserved',routes,'operator_prefix',"elif response.status_code >= 500 and not getattr(request.state, 'artifact_error_envelope', False):",'elif response.status_code >= 500:',Routes,'test_fixed_error_codes_do_not_become_generic_500'),
+      ('404 domain code preserved',routes,'operator_prefix',"if response.status_code in (404, 405, 422) and not getattr(request.state, 'artifact_error_envelope', False):",'if response.status_code in (404, 405, 422):',Routes,'test_create_202_replay_200_validation_and_detail_errors'),
       ('source UID proof',sources,'capture_artifact_session_source','if not valid:','if False:',Sources,'test_capture_single_read_identity_attribution_and_deep_detachment'),
       ('source caps',sources,'check_packet_bounds','if total > storage.MAX_PACKET_BYTES:','if False:',Sources,'test_cap_precheck_exact_bytes_unicode_escaping_and_count'),
       ('metadata allowlist',sources,'project_artifact_message','if key in PROVENANCE and _primitive(value)','if _primitive(value)',Sources,'test_projection_allowlist_preserves_literal_text_not_server_metadata'),
@@ -60,7 +61,7 @@ def main():
         stream=io.StringIO()
         try:
             with rewrite(owner,name,old,new):result=unittest.TextTestRunner(stream=stream,verbosity=0).run(unittest.TestSuite([case(test)]))
-            row={'label':label,'test':test,'killed':not result.wasSuccessful(),'failures':len(result.failures),'errors':len(result.errors),'output':stream.getvalue()}
+            row={'label':label,'test':test,'killed':not result.wasSuccessful(),'failures':len(result.failures),'errors':len(result.errors),'evidence':'assertion' if result.failures else 'ERROR-only, weaker typed-contract evidence','output':stream.getvalue()}
         except Exception as error:row={'label':label,'killed':False,'harness_error':repr(error)}
         report['checks'].append(row);receipt.write_text(json.dumps(report,indent=2),encoding='utf-8')
         print(json.dumps({key:value for key,value in row.items() if key!='output'}),flush=True)
