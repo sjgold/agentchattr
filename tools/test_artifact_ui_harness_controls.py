@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -18,6 +19,21 @@ from tools import fake_artifact_client as client
 
 
 class ArtifactHarnessControls(unittest.TestCase):
+    def test_actual_shim_supports_every_marked_method_used_by_product(self):
+        required=sorted(set(re.findall(r'\bmarked\.([a-zA-Z]+)',(harness.ROOT/'static/chat.js').read_text(encoding='utf-8'))))
+        code="global.window=global;\n"+harness.marked_shim()+"\nconst assert=require('assert');\n"
+        code+='for(const name of '+json.dumps(required)+')assert.equal(typeof marked[name],"function",name);\n'
+        code+='marked.setOptions({breaks:true,gfm:true});assert.equal(marked.parse("<script>&"),"&lt;script&gt;&amp;");\n'
+        env={k:v for k,v in os.environ.items() if k not in ('NODE_OPTIONS','NODE_PATH')}
+        result=harness.subprocess.run(['node','-'],input=code,text=True,encoding='utf-8',capture_output=True,env=env,timeout=10)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+
+    def test_full_fixture_startup_dry_stops_before_any_listener(self):
+        result=harness.run_bootstrap_control(guard_ok=True,dry_startup=True)
+        self.assertEqual(result['returncode'],0,result)
+        self.assertTrue(result['observed']['dry_pre_listener'])
+        self.assertTrue(result['observed']['no_listener_bind'])
+
     def test_actual_package_validator_accepts_dummy_api_secret_reference(self):
         from api_seats import provider_templates,validate_package
         from cli_seats import cli_templates

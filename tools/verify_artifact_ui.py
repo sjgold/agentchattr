@@ -31,7 +31,8 @@ CONTROL_ACTIONS = frozenset(('seed', 'release_cli', 'hold_api', 'release_api', '
     'fail_read', 'proxy_download', 'poll_failure', 'restore_faults', 'finish', 'shutdown'))
 EVIDENCE_CASES = frozenset(('cli', 'api', 'lost-create', 'refusal', 'cancel-stop', 'lifecycle',
     'read-download', 'viewport-keyboard', 'polling', 'reload', 'stale-response', 'cleanup'))
-PIN_FILES = ('runtime_protocol.py', 'api_seat_runtime.py', 'cli_worker.py', 'wrapper.py',
+PIN_FILES = ('app.py', 'run.py', 'config_loader.py', 'api_seats.py', 'cli_seats.py', 'static/chat.js',
+    'runtime_protocol.py', 'api_seat_runtime.py', 'cli_worker.py', 'wrapper.py',
     'wrapper_windows.py', 'wrapper_api.py', 'artifact_worker.py', 'artifact_operator.py',
     'artifact_routes.py', 'artifact_sources.py', 'artifact_service.py', 'artifact_store.py',
     'static/index.html', 'static/artifacts.js', 'static/artifacts.css', 'static/sessions.js',
@@ -424,7 +425,24 @@ window.__artifactFixtureReport=async payload=>{const r=await fetch('/__artifact_
 })();'''.replace('NONCE', json.dumps(nonce))
 
 
-def runtime_server():
+def marked_shim():
+    return 'window.marked={setOptions:()=>{},parse:s=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")};'
+
+
+def fixture_html(token,nonce):
+    html=(ROOT/'static/index.html').read_text(encoding='utf-8')
+    html,replacements=re.subn(r'<script[^>]+src="https://[^\"]+marked[^\"]*"[^>]*></script>',
+        lambda _: '<script>'+marked_shim()+'</script>',html)
+    if replacements!=1: raise RuntimeError('CDN shim anchor changed')
+    script='<script>window.__SESSION_TOKEN__='+json.dumps(token)+';</script>'
+    return html.replace('</head>',script+'<script>'+browser_observer(nonce)+'</script></head>')
+
+
+class _DryStartupComplete(Exception):
+    pass
+
+
+def runtime_server(*,dry_startup=False):
     root = require_guard()
     private = read_json(root / 'private.json')
     ports, nonce = private['ports'], private['nonce']
@@ -455,12 +473,11 @@ def runtime_server():
                 'usage': {'prompt_tokens': 1, 'completion_tokens': 1, 'total_tokens': 2}}).encode('utf-8')
             self.send_response(200); self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(raw))); self.end_headers(); self.wfile.write(raw)
-    provider = ThreadingHTTPServer(('127.0.0.1', ports[3]), Provider)
-    provider.daemon_threads = True
-    threading.Thread(target=provider.serve_forever, daemon=True).start()
+    provider = None
     app._fetch_latest_release = lambda: None  # disclosed fixture-only upstream lookup suppression
     original_configure = app.configure
     def configure(*args, **kwargs):
+        nonlocal provider
         original_configure(*args, **kwargs)
         private['token'] = app.session_token
         write_json(root / 'private.json', private)
@@ -469,6 +486,11 @@ def runtime_server():
             app.channel_service.catalog.create(channel, expected_revision=catalog['revision'])
         app.channel_service._project(app.channel_service.catalog.snapshot())
         app.api_seat_store.save(fixture_package())
+        # Same full app/config/package path for the listener-free control.
+        if dry_startup: raise _DryStartupComplete()
+        provider = ThreadingHTTPServer(('127.0.0.1', ports[3]), Provider)
+        provider.daemon_threads = True
+        threading.Thread(target=provider.serve_forever, daemon=True).start()
         # Launch stays explicit via the nonce control after listeners are ready.
     app.configure = configure
     import artifact_operator
@@ -578,12 +600,7 @@ def runtime_server():
     async def fixture_page(request, call_next):
         path = request.url.path
         if path == '/':
-            html = (ROOT / 'static/index.html').read_text(encoding='utf-8')
-            html, replacements = re.subn(r'<script[^>]+src="https://[^\"]+marked[^\"]*"[^>]*></script>',
-                '<script>window.marked={parse:s=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")};</script>', html)
-            if replacements != 1: raise RuntimeError('CDN shim anchor changed')
-            script = '<script>window.__SESSION_TOKEN__=' + json.dumps(app.session_token) + ';</script>'
-            html = html.replace('</head>', script + '<script>' + browser_observer(nonce) + '</script></head>')
+            html=fixture_html(app.session_token,nonce)
             origin = owned_origin('http://127.0.0.1:' + str(ports[0]), ports)
             return HTMLResponse(html, headers={'Cache-Control': 'no-store',
                 'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src " + origin + ' ws://127.0.0.1:' + str(ports[0]) + "; object-src 'none'; base-uri 'none'"})
@@ -617,10 +634,16 @@ def runtime_server():
         import run
         sys.argv = ['run.py']
         run.main()
+    except _DryStartupComplete:
+        if not dry_startup: raise
+        # Render construction shares the real route helper; no page is served.
+        fixture_html(app.session_token,nonce)
+        return True
     finally:
         gates['api'].set(); gates['create'].set()
         if app.api_seat_manager: app.api_seat_manager.shutdown()
-        provider.shutdown(); provider.server_close()
+        if provider is not None:
+            provider.shutdown(); provider.server_close()
 
 
 class Fixture:
@@ -812,7 +835,7 @@ def standalone_cleanup(root):
     return result
 
 
-def run_bootstrap_control(*,guard_ok,lease_seconds=30):
+def run_bootstrap_control(*,guard_ok,lease_seconds=30,dry_startup=False):
     """Explicitly authorized real CHILD control, no app/model/acceptance server.
 
     Its only listener is socketpair's internal temporary listener. Retain root.
@@ -846,6 +869,17 @@ with socket.socket() as handle:
  try:handle.connect(('127.0.0.1',54325))
  except PermissionError:refused=True
 print(json.dumps({'capabilities':list(runtime_protocol.SUPPORTED_CAPABILITIES),'asyncio_run':ran,'plain_unowned_refused':refused,'guard_ready':bool(getattr(sys,'_artifact_fixture_guard',None))}))
+'''
+    if dry_startup:
+        code='''import sys,json,os
+from tools.verify_artifact_ui import runtime_server
+ports=set(json.loads(os.environ['ARTIFACT_FIXTURE_PORTS']));binds=[]
+def no_service_bind(event,args):
+ if event=='socket.bind' and isinstance(args[1],tuple) and args[1][1] in ports:
+  binds.append(args[1][1]);raise AssertionError('Dry startup must not bind a service listener')
+sys.addaudithook(no_service_bind)
+ok=runtime_server(dry_startup=True)
+print(json.dumps({'dry_pre_listener':ok,'no_listener_bind':not binds}))
 '''
     process=subprocess.Popen([sys.executable,'-c',code],cwd=ROOT,env=env,
         stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',
