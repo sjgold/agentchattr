@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 R2 heavy gate failed; design phase profile complete)
+**Updated:** 2026-10-26 (#20 R2 D1 inventory equivalent; D2 serializer next)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer evaluates R2 design phase profile/recommendation before optimization. Producta93127540green but heavy gate FAILED2/10 normal samples; original data retained. No further N/fixture/R1/affected/full/structural/import runs until design ruling. R3/operator/capacity/activation/push held. |
+| Next | Root implements reviewed D1 then D2 cheap wins with separate commits/equivalence proofs, then ONE fresh full gate. D1 equivalent and41 tests green; D2 pending. Heavy max hold/peer must also meet20 percent margin (<=0.216s). N/missing coverage and broader acceptance remain pending; no R3/operator/capacity/activation/push. |
 
 ## Current handoff
+
+- D1 inventory candidate: scandir/DirEntry.stat preserves full per-path guards and old nonfile/case/glob-error semantics. Differential old/new1PASS1.111s/1.039s; current R2 focused41PASS5.807s. Same1024-object/8MiB inventory-only DESIGN comparison10 pairs: old median144.402/new122.058ms, both1025 safety checks, guard cost still dominant~114ms. No fresh gate yet; old MISS retained. Reviewer D1/D2 separate commits, shared-writer equivalence next, then ONE fresh full gate with heavy maxhold/peer<=0.216s for20percent margin. D3 evidence only if needed, D4 phase split later; quotas require Seth. No N/fixture/other gate changes yet.
 
 - R2 DESIGN RETURN: frozen producta931275 real heavy gate909d0781 exit1,2/10 normal misses (sample2hold0.359340200/peer0.359698900; sample7hold0.286323100/peer0.286555700), retries0/no exceptions; summary10 maxhold0.097756100/peer0.098154500, no offset. Reviewer accepted MISS, requested profile before optimization. Harness-only profile1f65eff4 exit0 collected10 new heavy samples on unchanged product; instrumented median0.292081450/max0.302141400 (NOT acceptance). Median inventory133.735ms, prevalidate38.292ms/persist38.688ms, size~4ms each, JSONdump53.600ms including streamwrite13.032ms and wrapper overhead; body fsyncmax21.340ms, metadurabilitymax1.651ms. Cannot retrospectively attribute original misses. Full original20/new10 raw receipt and conditional evidence-reuse recommendation in TICKET-20-DIAGNOSTICS-PROFILE.md, mirrored artifact. No optimization/N/fixture edits or other gate/suite runs. Next reviewer profile/design ruling, then exact contract/reds before source changes. R1 history unchanged; R2 not accepted, no activation/push.
 

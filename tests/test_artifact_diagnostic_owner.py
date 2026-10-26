@@ -5,10 +5,11 @@ Assertions after a new expected refusal are unobserved-red postconditions until
 the green run reaches them. Existing fixture tests are aliased, not inherited.
 """
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from copy import deepcopy
 import hashlib
 import json
+import os
 from pathlib import Path
 import threading
 import unittest
@@ -595,6 +596,65 @@ class ArtifactDiagnosticOwnerTests(unittest.TestCase):
         self.assertEqual(store.path.read_bytes(),b'BROKEN_AUTHORING')
         self.assertFalse((store.path.parent/'diagnostics.json').exists())
         self.assertEqual(list(store.path.parent.glob('quarantine/*.txt')),[])
+
+    def test_scandir_inventory_is_equivalent_to_previous_path_scan(self):
+        def previous(owner):
+            # Literal a931275 implementation, independent of the new method.
+            folder=owner.root/'artifacts'/'quarantine';owner._safe(folder)
+            files=list(folder.glob('*.txt')) if folder.exists() else []
+            total=0
+            for path in files:
+                owner._safe(path);total+=path.stat().st_size
+            return files,total
+        def normalized(result):return set(result[0]),result[1]
+        for name in ('absent','empty','orphan','referenced','nonfile','ignored','1024'):
+            with self.subTest(fixture=name):
+                _,store=self.owner('scan-'+name);owner=store.diagnostic_store
+                folder=owner.root/'artifacts'/'quarantine'
+                if name!='absent':folder.mkdir(parents=True)
+                if name in ('orphan','ignored'):
+                    (folder/'a.txt').write_bytes(b'abc');(folder/'b.TXT').write_bytes(b'defgh')
+                if name=='referenced':
+                    self.record(store,'actual referenced body')
+                    (folder/'orphan.txt').write_bytes(b'orphan')
+                if name=='nonfile':
+                    (folder/'directory.txt').mkdir()
+                    (folder/'ordinary_directory').mkdir()
+                if name=='ignored':
+                    for filename in ('a.txt.lock','a.txt.tmp','abc.md','.tmp'):
+                        (folder/filename).write_bytes(b'not a retained body')
+                    (folder/'.txt').write_bytes(b'glob matches this name too')
+                if name=='1024':
+                    for index in range(1024):
+                        (folder/(f'{index+1:032x}'+'.txt')).write_bytes(b'x'*(index%17))
+                self.assertEqual(normalized(owner._body_inventory()),normalized(previous(owner)))
+                with patch.object(owner,'_body_inventory',side_effect=lambda:previous(owner)):
+                    old_report=store.diagnostics()
+                self.assertEqual(store.diagnostics(),old_report)
+        _,store=self.owner('scan-faults');owner=store.diagnostic_store
+        folder=owner.root/'artifacts'/'quarantine';folder.mkdir(parents=True)
+        (folder/'unreadable.txt').write_bytes(b'present')
+        original_stat=Path.stat;original_scan=os.scandir
+        def denied_stat(path,*args,**kwargs):
+            if path.name=='unreadable.txt':raise PermissionError(13,'fixture entry unreadable')
+            return original_stat(path,*args,**kwargs)
+        class Entry:
+            def __init__(self,entry):self.entry=entry
+            def __getattr__(self,key):return getattr(self.entry,key)
+            def stat(self,*args,**kwargs):
+                if self.entry.name=='unreadable.txt':raise PermissionError(13,'fixture entry unreadable')
+                return self.entry.stat(*args,**kwargs)
+        @contextmanager
+        def scan(path):
+            with original_scan(path) as entries:yield (Entry(entry) for entry in entries)
+        with patch.object(Path,'stat',denied_stat),patch.object(os,'scandir',scan):
+            for inventory in (lambda:previous(owner),owner._body_inventory):
+                with self.assertRaises(PermissionError) as caught:inventory()
+                self.assertEqual(caught.exception.errno,13)
+        # Path.glob suppresses enumeration errors; preserve that existing
+        # behavior separately from an error while statting an individual entry.
+        with patch.object(os,'scandir',side_effect=PermissionError(13,'fixture enumeration unreadable')):
+            self.assertEqual(normalized(previous(owner)),normalized(owner._body_inventory()))
 
 
 if __name__ == '__main__':

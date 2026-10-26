@@ -1001,3 +1001,211 @@ The complete original20 and profiled10 samples follow; only these numbers suppor
   "limits": "Instrumentation overhead retained; no retrospective phase attribution for original misses. Serialization-minus-write is wall time, not CPU accounting."
 }
 ```
+
+
+## D1 behavior-preserving inventory change
+
+Reviewer D1-D4 orders cheap wins before one fresh full gate and requires heavy maximum hold/peer<=0.216s (20 percent margin under0.270); old misses remain. D1 now uses os.scandir/DirEntry.stat in one enumeration, retaining EVERY per-entry _safe full-path guard, matching case behavior, matching .txt directories as before, ignoring temp/lock/nonmatching suffixes, preserving glob enumeration-error suppression and entry-stat errors. No cross-pass cache or new file classification. Differential test passes on old1.111s and new1.039s across absent/empty/orphan/referenced/nonfile/temp/1024/unreadable cases; all41 current R2 tests PASS5.807s. These are equivalence checks, not new gate acceptance.
+
+Inventory-only DESIGN comparison on the same1024objects/8MiB fixture,10 old/new pairs: old median144.402ms/max150.949ms; new median122.058ms/max131.763ms, about22.344ms median reduction. Both perform1025 _safe calls/pass. Guard time remains dominant (old median112.522ms, new114.339ms). No guard was removed to produce a larger saving; result/error/report equivalence is required. No fresh full gate has run. D2 shared writer inspection/byte identity is next; N additions and broader acceptance still pending.
+
+`json
+{
+  "kind": "D1 inventory-only DESIGN comparison, not a full timing gate",
+  "rows": [
+    {
+      "sample": 1,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.15094850002788007,
+      "safe_seconds": 0.11791449890006334,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 1,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.13176310004200786,
+      "safe_seconds": 0.12406409892719239,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 2,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.14571549999527633,
+      "safe_seconds": 0.11369939940050244,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 2,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.12897720001637936,
+      "safe_seconds": 0.12113959901034832,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 3,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.14562139997724444,
+      "safe_seconds": 0.11354769847821444,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 3,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.12385839992202818,
+      "safe_seconds": 0.1163457992952317,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 4,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.14797599997837096,
+      "safe_seconds": 0.1154109031194821,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 4,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.12134169996716082,
+      "safe_seconds": 0.11376789852511138,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 5,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.14579340000636876,
+      "safe_seconds": 0.11393369862344116,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 5,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.120457399985753,
+      "safe_seconds": 0.11290590313728899,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 6,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.14274139993358403,
+      "safe_seconds": 0.11127290257718414,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 6,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.12793079996481538,
+      "safe_seconds": 0.11997269897256047,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 7,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.13869440008420497,
+      "safe_seconds": 0.10811080154962838,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 7,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.11795149999670684,
+      "safe_seconds": 0.11077270261012018,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 8,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.14318270003423095,
+      "safe_seconds": 0.11149599985219538,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 8,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.12152540008537471,
+      "safe_seconds": 0.11411810165736824,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 9,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.14266010001301765,
+      "safe_seconds": 0.1104098993819207,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 9,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.11876109999138862,
+      "safe_seconds": 0.11108839802909642,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 10,
+      "method": "previous_path_glob_stat",
+      "seconds": 0.13854910002555698,
+      "safe_seconds": 0.10794830089434981,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    },
+    {
+      "sample": 10,
+      "method": "scandir_direntry_stat",
+      "seconds": 0.12259109993465245,
+      "safe_seconds": 0.11455929966177791,
+      "safe_calls": 1025,
+      "objects": 1024,
+      "bytes": 8388608
+    }
+  ],
+  "summary": {
+    "previous_path_glob_stat": {
+      "median": 0.1444020500057377,
+      "max": 0.15094850002788007,
+      "median_safe": 0.11252184916520491
+    },
+    "scandir_direntry_stat": {
+      "median": 0.12205825001001358,
+      "max": 0.13176310004200786,
+      "median_safe": 0.11433870065957308
+    }
+  },
+  "per_entry_path_guard": "retained,1025 safe checks per pass; no cache across passes"
+}
+`

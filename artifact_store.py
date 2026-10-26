@@ -704,11 +704,27 @@ class ArtifactDiagnosticStore(_ArtifactOwnedFiles):
     def _body_inventory(self):
         folder = self.root / 'artifacts' / 'quarantine'
         self._safe(folder)
-        files = list(folder.glob('*.txt')) if folder.exists() else []
+        if not folder.exists():
+            return [], 0
+        try:
+            with os.scandir(folder) as directory:
+                entries = list(directory)
+        except OSError:
+            # Match Path.glob's enumeration-error behavior. Entry stat errors
+            # below still propagate, and every matching path keeps its guard.
+            return [], 0
+        files = []
         total = 0
-        for path in files:
+        suffix = os.path.normcase('.txt')
+        for entry in entries:
+            if not os.path.normcase(entry.name).endswith(suffix):
+                continue
+            path = Path(entry.path)
             self._safe(path)
-            total += path.stat().st_size
+            # Do not filter is_file: the previous scan also counted matching
+            # directories. DirEntry.stat reuses enumeration metadata on Windows.
+            total += entry.stat().st_size
+            files.append(path)
         return files, total
 
 
