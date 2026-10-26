@@ -616,7 +616,7 @@ function renderRecoveryControls(panel, s) {
 
 function renderStopControls(panel, s) {
     panel.hidden = false;
-    const key = JSON.stringify([s.id, s.state, s.cancellation_receipts, s.termination_offers, s.quarantined_events?.length]);
+    const key = JSON.stringify([s.id, s.state, s.cancellation_receipts, s.termination_offers, s.quarantined_events?.length, s.artifact_cancellation]);
     if (panel.dataset.key === key) return;
     panel.dataset.key = key;
     panel.replaceChildren();
@@ -630,6 +630,18 @@ function renderStopControls(panel, s) {
     note.setAttribute('role', 'status');
     note.textContent = 'Remote provider computation and usage remain unverified. Local termination cannot retract contents already sent.';
     panel.append(title, description, note);
+    const artifact = s.artifact_cancellation;
+    if (artifact?.warning || artifact?.unconfirmed_dispatch_ids?.length) {
+        const warning = document.createElement('p');
+        warning.className = 'session-artifact-warning'; warning.setAttribute('role', 'status');
+        warning.setAttribute('aria-live', 'polite');
+        const count = artifact.unconfirmed_dispatch_ids?.length || 0;
+        const reasons = {storage_unavailable: 'Document storage is unavailable.', artifact_fence_failed: 'Document cancellation could not be checked.',
+            transport_unconfirmed: 'Document transport cancellation is unconfirmed.', unconfirmed_overflow: 'Some unconfirmed document cancellations are not listed.'};
+        warning.textContent = (reasons[artifact.warning] || 'Document cancellation is unconfirmed.')
+            + ' ' + count + ' known document dispatches remain unconfirmed. The review outcome above is unchanged.';
+        panel.appendChild(warning);
+    }
     const receipts = document.createElement('ul');
     for (const receipt of s.cancellation_receipts || []) {
         const row = document.createElement('li');
@@ -2264,6 +2276,7 @@ Store.watch('activeChannel', function (newChannel) {
 // ---------------------------------------------------------------------------
 
 function _sessionsInit() {
+    window.ArtifactDocuments?.init();
     fetchSessionTemplates();
     fetchAllActiveSessions();
     activeSession = null;

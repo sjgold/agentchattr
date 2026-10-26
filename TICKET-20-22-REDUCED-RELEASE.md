@@ -1,6 +1,6 @@
 # Reduced release: tickets 20-22, then multi-file 23
 
-Status: PRODUCT SCOPE APPROVED by Seth2026-10-26 and reviewer atb2b31adb. Backend red scope CLEARED at2279329b with C1-C11 corrections below folded into the red pin. Reviewer independently confirmed27 reds and CLEARED BACKEND PRODUCTION at6788311 with F1-F8 green preconditions. Backend acceptance remains pending. Reduced backend candidate97c7196 is implemented and undergoing final verification on top of accepted foundation220f3400. UI/transcript remain pending. Activation and push remain held.
+Status: reduced20-22 PRODUCT SCOPE APPROVED by Seth2026-10-26. Reduced backend independently ACCEPTED40037dbd with tested D8 follow-upc3a0bf3. Reviewer CLEARED UI production atc685f9a6 with U1-U9 strengthenings; current UI component is implemented and unit-tested, awaiting independent component review and a NEW guarded rendered acceptance package. Canonical UI detail: docs/plans/2026-10-26-reduced-artifact-ui.md. Activation and push remain held; no whole-ticket/UI acceptance is implied.
 
 ## Authority and priority
 
@@ -241,3 +241,6 @@ A missing artifact policy at enqueue is a typed QueueConflict, matching eligibil
 Prepared requests with no queue record use the explicit Stop retry path: after storage recovers, repeating Stop with the existing stable stop_id cancels pending prepared requests as cancelled/source_stopped. This also works after recreating the coordinator. Until retry, source-Stop eligibility refuses them, and the request card can cancel them through the existing minimal Cancel route. A prepared request never becomes claimable merely because no retained record exists. No full-index prepared scan is added to every historical-run claim.
 
 UI release requirement: show artifact_cancellation warning and unconfirmed dispatch status with textContent in both immediate Stop results and polled status. Include artifact_cancellation in the sessions render-cache key so warning changes repaint. This is pending UI work, not a backend acceptance claim. The screen must retain the100+ retained-row claim-poll observation including eligibility channel_names/pending index work, report-only under the reduced scope.
+
+
+UI lost-response clarification2026-10-26: GET404 after an aborted create is not proof that the worker will never save it. Keep the same id/intent through404 and replay; only definitive create refusal, packet_exists or explicit warned abandonment allows a new id. This supersedes the reviewer's initial U1 proposal. SessionStorage retains identity/digest metadata only; original instruction re-entry is required to replay after reload. See the approved UI technical contract for deadline/backoff, sticky cancellation warning, safe reader/download and stale-response rules. Browser acceptance remains pending; capability is empty.
