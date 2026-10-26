@@ -40,7 +40,11 @@ PIN_FILES = ('runtime_protocol.py', 'api_seat_runtime.py', 'cli_worker.py', 'wra
 
 
 def read_json(path):
-    return json.loads(Path(path).read_text(encoding='utf-8'))
+    for attempt in range(10):
+        try: return json.loads(Path(path).read_text(encoding='utf-8'))
+        except PermissionError:
+            if attempt == 9: raise
+            time.sleep(.02)
 
 
 def write_json(path, value):
@@ -50,7 +54,12 @@ def write_json(path, value):
         json.dump(value, stream, ensure_ascii=True, allow_nan=False, indent=2)
         stream.flush()
         os.fsync(stream.fileno())
-    os.replace(temporary, path)
+    for attempt in range(10):
+        try:
+            os.replace(temporary, path); break
+        except PermissionError:
+            if attempt == 9: raise
+            time.sleep(.02)
 
 
 def hash_bytes(raw):
@@ -84,6 +93,156 @@ def check_address(address, ports):
     if (not isinstance(address, tuple) or len(address) < 2
             or address[0] not in ('127.0.0.1', 'localhost', '::1') or address[1] not in ports):
         raise PermissionError('Fixture owned-port allowlist refused connection')
+
+
+def original_checkout():
+    git = ROOT / '.git'
+    if git.is_dir(): return ROOT
+    pointer = git.read_text(encoding='utf-8').strip()
+    if not pointer.startswith('gitdir: '): raise ValueError('Worktree Git pointer invalid')
+    directory = (ROOT / pointer[8:]).resolve()
+    common = (directory / (directory / 'commondir').read_text(encoding='utf-8').strip()).resolve()
+    if common.name != '.git': raise ValueError('Original Git common directory invalid')
+    return common.parent
+
+
+def trusted_manifest(*, executable=None):
+    from tools.verify_channel_lifecycle import TRUSTED_BOOTSTRAP
+    original = original_checkout()
+    venv = original / '.venv-windows'
+    executable = Path(executable or sys.executable)
+    if executable.resolve() != (venv / 'Scripts/python.exe').resolve() or Path(sys.prefix).resolve() != venv.resolve():
+        raise ValueError('Only original checkout trusted interpreter is permitted')
+    if sorted(p.name for p in (venv / 'Lib/site-packages').glob('*.pth')) != ['pywin32.pth']:
+        raise ValueError('Unexpected trusted site initialization')
+    rows = {}
+    for name, expected in TRUSTED_BOOTSTRAP.items():
+        raw = (venv / name).read_bytes()
+        if hash_bytes(raw) != expected: raise ValueError('Trusted site hash changed')
+        rows[name] = {'size':len(raw), 'sha256':hash_bytes(raw)}
+    if 'include-system-site-packages = false' not in (venv/'pyvenv.cfg').read_text(encoding='utf-8').lower():
+        raise ValueError('System site packages not permitted')
+    return {'files':rows, 'interpreter':str(executable.resolve()), 'interpreter_sha256':hash_bytes(executable.read_bytes()),
+        'original_checkout':str(original), 'source_worktree':str(ROOT), 'venv':str(venv),
+        'stdlib_root':sys.base_prefix, 'limitations':'trusted pre-hook Python/site/native boundary, not OS integrity proof'}
+
+
+def register_manifest(root, manifest):
+    """Sibling private registry rejects a pre-planted target-root manifest.
+
+    Trust boundary: attacker control of the target root only, not this registry
+    or this user's process environment. This is not protection from the OS user.
+    """
+    manifest = dict(manifest, tool='artifact-ui-v1', root=str(root.resolve()))
+    write_json(root/'manifest.json',manifest)
+    registry = ROOT/'.audit-tmp/artifact-ui-owners'; registry.mkdir(exist_ok=True)
+    write_json(registry/(root.name+'.json'), {'root':str(root.resolve()),
+        'manifest_sha256':hash_bytes((root/'manifest.json').read_bytes()), 'key':uuid.uuid4().hex+uuid.uuid4().hex})
+
+
+def owned_manifest(root):
+    root=Path(root).resolve()
+    if not root.is_relative_to((ROOT/'.audit-tmp').resolve()) or not root.name.startswith('artifact-ui-'):
+        raise ValueError('Foreign fixture root refused')
+    try: owner=read_json(ROOT/'.audit-tmp/artifact-ui-owners'/(root.name+'.json'))
+    except FileNotFoundError: raise ValueError('No tool creator registration for target root') from None
+    raw=(root/'manifest.json').read_bytes(); manifest=json.loads(raw)
+    if (owner['root'] != str(root) or manifest.get('root') != str(root)
+            or manifest.get('tool') != 'artifact-ui-v1' or hash_bytes(raw) != owner['manifest_sha256']):
+        raise ValueError('Fixture creator record does not match target')
+    ports=manifest['ports']
+    if (len(ports)!=4 or len(set(ports))!=4 or any(type(p)!=int or not 1024<=p<=65535 for p in ports)
+            or set(ports)&(FORBIDDEN_PORTS|set(manifest.get('forbidden_ports',[])))):
+        raise ValueError('Forbidden fixture port')
+    return manifest, owner['key']
+
+
+def signed_record(root, name, value):
+    _,key=owned_manifest(root)
+    payload=json.dumps(value,sort_keys=True,separators=(',',':')).encode()
+    write_json(root/'audit'/name, {'value':value,'signature':hmac.new(key.encode(),payload,'sha256').hexdigest()})
+
+
+def read_signed(root,path):
+    _,key=owned_manifest(root); record=read_json(path)
+    payload=json.dumps(record['value'],sort_keys=True,separators=(',',':')).encode()
+    if not hmac.compare_digest(record['signature'],hmac.new(key.encode(),payload,'sha256').hexdigest()):
+        raise ValueError('Owned birth signature differs')
+    return record['value']
+
+
+def install_port_guard(root, ports):
+    """Thread-local exception for exactly the stdlib socketpair fallback."""
+    local=threading.local(); original_pair=socket.socketpair
+    def pair(*args,**kwargs):
+        previous=getattr(local,'pair',None)
+        local.pair={'listener':None}
+        try: return original_pair(*args,**kwargs)
+        finally: local.pair=previous
+    socket.socketpair=pair
+    def audit(event,args):
+        if event not in ('socket.connect','socket.bind'): return
+        address=args[1]; pair_state=getattr(local,'pair',None)
+        if pair_state is not None and isinstance(address,tuple) and address[0] in ('127.0.0.1','::1'):
+            if event=='socket.bind' and address[1]==0 and pair_state['listener'] is None:
+                pair_state['listener']=args[0]; return
+            listener=pair_state['listener']
+            if event=='socket.connect' and listener is not None and address[1]==listener.getsockname()[1]:
+                if address[1] not in FORBIDDEN_PORTS and address[1] not in json.loads(os.environ['CHANNEL_GUARD_POLICY'])['forbidden_ports']:
+                    return
+        try: check_address(address,ports)
+        except PermissionError:
+            write_json(root/'audit'/('unowned-port-'+str(os.getpid())+'.json'),{'event':event})
+            raise
+    sys.addaudithook(audit)
+
+
+def watchdog_expired(parent, deadline):
+    if time.time() >= deadline: return True
+    from process_identity import open_verified_process
+    result=open_verified_process(parent)
+    handle=result['process']
+    try: return result['status']!='live' or handle is None or handle.poll() is not None
+    finally:
+        if handle: handle.close()
+
+
+def start_watchdog(root, manifest):
+    def watch():
+        while True:
+            try: expired=watchdog_expired(manifest['parent_birth'],manifest['expires_at'])
+            except Exception: expired=True
+            if expired:
+                write_json(root/'audit'/('watchdog-'+str(os.getpid())+'.json'),{'triggered':True})
+                callback=getattr(sys,'_artifact_fixture_shutdown',None)
+                if callback:
+                    threading.Thread(target=callback,daemon=True).start()
+                    time.sleep(5)
+                os._exit(92)
+            time.sleep(.5)
+    threading.Thread(target=watch,daemon=True).start()
+
+
+def capture_spawn(root, process):
+    from process_identity import capture_birth
+    try: record={'birth':capture_birth(process.pid)}
+    except OSError:
+        record={'pid':process.pid,'exit_code':process.poll(),'unverified':True}
+    try: signed_record(root,'spawn-'+str(process.pid)+'.json',record)
+    except Exception:
+        # This is the handle just returned by our Popen, not a PID lookup.
+        if process.poll() is None: process.terminate()
+        process.wait(timeout=10)
+        raise
+
+
+def install_spawn_capture(root):
+    original=subprocess.Popen
+    class CapturedPopen(original):
+        def __init__(self,*args,**kwargs):
+            super().__init__(*args,**kwargs)
+            capture_spawn(root,self)
+    subprocess.Popen=CapturedPopen
 
 
 def authorized(headers, token, nonce):
@@ -132,8 +291,12 @@ def install_fixture_guard():
     root = Path(os.environ['CHANNEL_FIXTURE_ROOT']).resolve()
     ports = json.loads(os.environ['ARTIFACT_FIXTURE_PORTS'])
     private = read_json(root / 'private.json')
+    manifest,_ = owned_manifest(root)
     if ports != private['ports'] or os.environ['CHANNEL_FIXTURE_NONCE'] != private['nonce']:
         raise ValueError('Guard fixture binding mismatch')
+    if (ports != manifest['ports'] or hash_bytes(private['nonce'].encode()) != manifest['nonce_sha256']
+            or hash_bytes(json.dumps(private['config'],sort_keys=True).encode()) != manifest['config_sha256']):
+        raise ValueError('Private binding differs from creator manifest')
     # Pure negative test does not open a socket or leave a real guard violation.
     try:
         check_address(('127.0.0.1', 65500), ports)
@@ -141,22 +304,17 @@ def install_fixture_guard():
         pass
     else:
         raise RuntimeError('Owned-port negative control did not refuse')
-    def audit(event, args):
-        if event in ('socket.connect', 'socket.bind'):
-            try:
-                check_address(args[1], ports)
-            except PermissionError:
-                write_json(root / 'audit' / ('unowned-port-' + str(os.getpid()) + '.json'), {'event': event})
-                raise
-    sys.addaudithook(audit)
+    install_port_guard(root,ports)
     import runtime_protocol
     if runtime_protocol.SUPPORTED_CAPABILITIES != ():
         raise ValueError('Production capability changed')
     runtime_protocol.SUPPORTED_CAPABILITIES = ('artifact-v1',)
     sys._artifact_fixture_guard = str(root)
     from process_identity import capture_birth
-    write_json(root / 'audit' / ('artifact-bootstrap-' + str(os.getpid()) + '.json'),
+    signed_record(root, 'artifact-bootstrap-' + str(os.getpid()) + '.json',
         {'birth': capture_birth(), 'capabilities': ['artifact-v1'], 'owned_port_negative_test': True})
+    install_spawn_capture(root)
+    start_watchdog(root,manifest)
     # Wrapper imports config_loader before reading seat snapshots: do not allow a
     # fallback read of real provider config. The literal owned config is shared.
     import config_loader
@@ -186,6 +344,11 @@ def validate_observation(payload, secrets):
             or len(json.dumps(payload).encode('utf-8')) > 131072):
         raise ValueError('Invalid bounded browser observation')
     return public_evidence(payload, secrets)
+
+
+def missing_cases(rows):
+    observed={row['case'] for row in rows if row.get('observations',{}).get('status')=='observed'}
+    return sorted(EVIDENCE_CASES-observed)
 
 
 def literal_config(root, ports):
@@ -381,6 +544,10 @@ def runtime_server():
         elif action == 'poll_failure': fault['poll'] = True
         elif action == 'finish':
             # An operator completion marker is never evidence of all cases passing.
+            missing=missing_cases([read_json(path) for path in (root/'records').glob('observation-*.json')])
+            if missing:
+                write_json(root/'records/missing-cases.json',{'not_observed':missing})
+                raise HTTPException(409,{'not_observed':missing})
             state['finished'] = True
             write_json(root / 'browser-done.json', {'finished': True})
         elif action == 'shutdown':
@@ -424,6 +591,12 @@ def runtime_server():
         kwargs.update(access_log=False, log_level='warning')
         return original_run(*args, **kwargs)
     uvicorn.run = quiet_run
+    def orderly_stop():
+        gates['api'].set();gates['create'].set()
+        (root/'records/cli-release').write_text('release',encoding='utf-8')
+        if app.api_seat_manager: app.api_seat_manager.shutdown()
+        for server in servers: server.should_exit=True
+    sys._artifact_fixture_shutdown=orderly_stop
     try:
         import run
         sys.argv = ['run.py']
@@ -437,8 +610,8 @@ def runtime_server():
 class Fixture:
     """Explicit construction only after executable review; import has no effects."""
     def __init__(self):
-        from tools.verify_channel_lifecycle import trusted_bootstrap_manifest, repository_head
-        self.trusted = trusted_bootstrap_manifest()
+        from tools.verify_channel_lifecycle import repository_head
+        self.trusted = trusted_manifest()
         self.pin = repository_head()
         self.hashes = {name: hash_bytes((ROOT / name).read_bytes()) for name in PIN_FILES}
         if 'SUPPORTED_CAPABILITIES = ()' not in (ROOT / 'runtime_protocol.py').read_text(encoding='utf-8'):
@@ -459,18 +632,19 @@ class Fixture:
             forbidden_ports = set(FORBIDDEN_PORTS)
             forbidden = [str(ROOT / 'data'), str(ROOT / '.agentchattr')]
             # The interpreter lives in the original checkout, outside this worktree.
-            original_checkout = Path(sys.prefix).parent
-            forbidden += [str(original_checkout / item) for item in ('data', 'uploads', '.agentchattr')]
+            original = original_checkout()
+            forbidden += [str(original / item) for item in ('data', 'uploads', '.agentchattr')]
             original_home = Path.home()
             forbidden += [str(original_home / item) for item in ('.claude', '.codex', '.gemini', '.config', '.agentchattr')]
             import tomllib
             self.config_hashes = {}
-            for name in ('config.toml', 'config.local.toml'):
-                path = ROOT / name
+            for directory,name in ((directory,name) for directory in dict.fromkeys((ROOT,original))
+                                   for name in ('config.toml','config.local.toml')):
+                path = directory / name
                 if path.exists():
-                    raw = path.read_bytes(); self.config_hashes[name] = hash_bytes(raw)
+                    raw = path.read_bytes(); self.config_hashes[str(path)] = hash_bytes(raw)
                     value = tomllib.loads(raw.decode('utf-8'))
-                    if value.get('server', {}).get('data_dir'): forbidden.append(str((ROOT / value['server']['data_dir']).resolve()))
+                    if value.get('server', {}).get('data_dir'): forbidden.append(str((directory / value['server']['data_dir']).resolve()))
                     for group, key in (('server', 'port'), ('mcp', 'http_port'), ('mcp', 'sse_port')):
                         if type(value.get(group, {}).get(key)) is int: forbidden_ports.add(value[group][key])
             if len(set(self.ports)) != 4 or set(self.ports) & forbidden_ports:
@@ -484,11 +658,15 @@ class Fixture:
             self.env = safe_env(os.environ, self.root, self.ports, self.nonce, policy)
             for key in ('HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME'):
                 Path(self.env[key]).mkdir()
-            write_json(self.root / 'private.json', {'nonce': self.nonce, 'ports': self.ports,
-                'config': literal_config(self.root, self.ports)})
+            private={'nonce':self.nonce,'ports':self.ports,'config':literal_config(self.root,self.ports)}
+            write_json(self.root / 'private.json', private)
             (self.root / 'bootstrap/sitecustomize.py').write_text(bootstrap_source(), encoding='utf-8')
-            write_json(self.root / 'manifest.json', {'pin': self.pin, 'hashes': self.hashes,
+            from process_identity import capture_birth
+            register_manifest(self.root, {'pin': self.pin, 'hashes': self.hashes,
                 'ports': self.ports, 'trusted_bootstrap': self.trusted, 'lease_seconds': 1200,
+                'parent_birth':capture_birth(),'expires_at':time.time()+1200,
+                'forbidden_ports':sorted(forbidden_ports), 'nonce_sha256':hash_bytes(self.nonce.encode()),
+                'config_sha256':hash_bytes(json.dumps(private['config'],sort_keys=True).encode()),
                 'native_download_default_intercepted': True})
         finally:
             for handle in handles: handle.close()
@@ -510,6 +688,7 @@ class Fixture:
             self.process = subprocess.Popen([sys.executable, '-u', str(Path(__file__)), '--serve'],
                 cwd=ROOT, env=self.env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                 creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        capture_spawn(self.root,self.process)
         end = time.monotonic() + 90
         import urllib.request
         while time.monotonic() < end:
@@ -520,7 +699,7 @@ class Fixture:
                     if response.status == 200: break
             except (OSError, ValueError, KeyError): time.sleep(.1)
         else: raise TimeoutError('Guarded startup deadline')
-        rows = [read_json(path) for path in (self.root / 'audit').glob('artifact-bootstrap-*.json')]
+        rows = [read_signed(self.root,path) for path in (self.root / 'audit').glob('artifact-bootstrap-*.json')]
         candidates = [row['birth'] for row in rows if row['birth']['pid'] != os.getpid()]
         if len(candidates) != 1: raise ValueError('Initial server birth not unique')
         from process_identity import open_verified_process
@@ -545,9 +724,16 @@ class Fixture:
             if self.token: self.api('shutdown')
         except Exception as error: unresolved.append({'stage': 'cooperative-shutdown', 'error': type(error).__name__})
         from process_identity import open_verified_process
-        births = []
-        for path in (self.root / 'audit').glob('artifact-bootstrap-*.json'):
-            births.append(read_json(path)['birth'])
+        births = []; guarded_pids=set()
+        for pattern in ('artifact-bootstrap-*.json','spawn-*.json'):
+            for path in (self.root/'audit').glob(pattern):
+                try:
+                    record=read_signed(self.root,path)
+                    if pattern=='artifact-bootstrap-*.json': guarded_pids.add(record['birth']['pid'])
+                    if record.get('birth') and record['birth'] not in births: births.append(record['birth'])
+                    elif record.get('unverified') and record.get('exit_code') is None:
+                        unresolved.append({'stage':'unverified-spawn','pid':record['pid']})
+                except Exception as error: unresolved.append({'stage':'birth-record','error':type(error).__name__})
         # Child first, server last. Each fresh open compares PID+creation+image.
         for birth in sorted(births, key=lambda row: row == self.birth):
             try:
@@ -569,12 +755,11 @@ class Fixture:
         try:
             guards = [read_json(path) for path in (self.root / 'audit').glob('guard-*.json')]
             if not guards or any(row['real_attempts'] for row in guards): raise ValueError('Guard violations/missing evidence')
-            if not {row['pid'] for row in guards}.issuperset(row['pid'] for row in births):
+            if not {row['pid'] for row in guards}.issuperset(guarded_pids):
                 raise ValueError('A child has no corresponding guard evidence')
             if list((self.root / 'audit').glob('unowned-port-*.json')): raise ValueError('Owned-port guard violation')
             if self.hashes != {name: hash_bytes((ROOT / name).read_bytes()) for name in PIN_FILES}: raise ValueError('Frozen source changed')
-            from tools.verify_channel_lifecycle import trusted_bootstrap_manifest
-            if self.trusted != trusted_bootstrap_manifest(): raise ValueError('Trusted bootstrap changed')
+            if self.trusted != trusted_manifest(): raise ValueError('Trusted bootstrap changed')
             for name, digest in self.config_hashes.items():
                 if hash_bytes((ROOT / name).read_bytes()) != digest: raise ValueError('Repository config changed')
         except Exception as error: unresolved.append({'stage': 'evidence', 'error': type(error).__name__})
@@ -584,23 +769,112 @@ class Fixture:
         return not unresolved
 
 
+def standalone_cleanup(root):
+    """Recover after parent loss, never control a PID from an unsigned record."""
+    owned_manifest(root)
+    from process_identity import open_verified_process
+    unresolved=[];visited=set();deadline=time.monotonic()+90
+    for pattern in ('spawn-*.json','artifact-bootstrap-*.json'):
+        for path in (root/'audit').glob(pattern):
+            try:
+                record=read_signed(root,path)
+                if not record.get('birth'):
+                    if record.get('exit_code') is None: raise ValueError('Unverified live spawn')
+                    continue
+                birth=record['birth'];key=(birth['pid'],birth['creation_filetime'])
+                if key in visited: continue
+                visited.add(key);result=open_verified_process(birth);handle=result['process']
+                if result['status']=='absent': continue
+                if handle is None: raise ValueError('Birth mismatch or uncertain process')
+                try:
+                    if handle.poll() is None:
+                        handle.terminate();handle.wait(timeout=min(10,max(0,deadline-time.monotonic())))
+                finally: handle.close()
+            except Exception as error: unresolved.append({'record':path.name,'error':type(error).__name__})
+    result={'visited':len(visited),'unresolved':unresolved,'scope':'signed owned Python processes only; controller closes browser/forwards'}
+    write_json(root/'standalone-cleanup.json',result)
+    return result
+
+
+def run_bootstrap_control(*,guard_ok,lease_seconds=30):
+    """Explicitly authorized real CHILD control, no app/model/acceptance server.
+
+    Its only listener is socketpair's internal temporary listener. Retain root.
+    """
+    trusted=trusted_manifest()
+    scratch=ROOT/'.audit-tmp';scratch.mkdir(exist_ok=True)
+    root=Path(tempfile.mkdtemp(prefix='artifact-ui-control-',dir=scratch))
+    for name in ('profiles','audit','records','bootstrap'): (root/name).mkdir()
+    ports=[54321,54322,54323,54324];nonce=uuid.uuid4().hex
+    policy={'forbidden_roots':[str(ROOT/'data'),str(original_checkout()/'data')],
+        'forbidden_ports':sorted(FORBIDDEN_PORTS),
+        'allowed_python_roots':[str(ROOT),str(root),sys.prefix,sys.base_prefix],
+        'guard_sha256':hash_bytes((ROOT/'tools/channel_guard.py').read_bytes()) if guard_ok else '0'*64}
+    env=safe_env(os.environ,root,ports,nonce,policy)
+    for key in ('HOME','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP','XDG_CONFIG_HOME','XDG_DATA_HOME','XDG_CACHE_HOME'):
+        Path(env[key]).mkdir()
+    config=literal_config(root,ports)
+    write_json(root/'private.json',{'nonce':nonce,'ports':ports,'config':config})
+    from process_identity import capture_birth
+    register_manifest(root,{'ports':ports,'parent_birth':capture_birth(),'expires_at':time.time()+lease_seconds,
+        'nonce_sha256':hash_bytes(nonce.encode()),'config_sha256':hash_bytes(json.dumps(config,sort_keys=True).encode()),
+        'control_only':True,'trusted_bootstrap':trusted})
+    (root/'bootstrap/sitecustomize.py').write_text(bootstrap_source(),encoding='utf-8')
+    code='''import asyncio,json,socket,sys
+import runtime_protocol
+loop=asyncio.new_event_loop();loop.close()
+async def done():return True
+ran=asyncio.run(done())
+refused=False
+with socket.socket() as handle:
+ try:handle.connect(('127.0.0.1',54325))
+ except PermissionError:refused=True
+print(json.dumps({'capabilities':list(runtime_protocol.SUPPORTED_CAPABILITIES),'asyncio_run':ran,'plain_unowned_refused':refused,'guard_ready':bool(getattr(sys,'_artifact_fixture_guard',None))}))
+'''
+    process=subprocess.Popen([sys.executable,'-c',code],cwd=ROOT,env=env,
+        stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,encoding='utf-8',
+        creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    capture_spawn(root,process)
+    try: out,err=process.communicate(timeout=20)
+    except subprocess.TimeoutExpired:
+        process.kill();out,err=process.communicate(timeout=5)
+        raise RuntimeError('Real bootstrap control timed out; owned child stopped') from None
+    observed=json.loads(out.strip()) if out.strip() else None
+    result={'returncode':process.returncode,'observed':observed,
+        'bootstrap_record':bool(list((root/'audit').glob('artifact-bootstrap-*.json'))),
+        'stderr':err,'control_only':True,'retained_root':str(root)}
+    public_evidence(result,(nonce,))
+    write_json(root/'control-result.json',result)
+    return result
+
+
 def external_control(root, action):
     """Owned gate operation without putting token/nonce into tool args/output."""
     root = Path(root).resolve()
     if not root.is_relative_to((ROOT / '.audit-tmp').resolve()) or not root.name.startswith('artifact-ui-'):
         raise ValueError('Foreign fixture root refused')
-    if action not in CONTROL_ACTIONS | {'state'}:
+    if action not in CONTROL_ACTIONS | {'state','cleanup','report'}:
         raise ValueError('Fixed fixture action required')
-    manifest = read_json(root / 'manifest.json')
+    manifest,_ = owned_manifest(root)
+    if action=='cleanup': return standalone_cleanup(root)
+    if manifest.get('control_only'): raise ValueError('Not an acceptance fixture')
     if any(hash_bytes((ROOT / name).read_bytes()) != value for name, value in manifest['hashes'].items()):
         raise ValueError('Source/tool freeze changed')
-    if time.time() > read_json(root / 'lease.json')['expires_at']:
+    if time.time() > manifest['expires_at']:
         raise ValueError('Fixture lease expired')
     private = read_json(root / 'private.json')
+    if (private['ports']!=manifest['ports'] or hash_bytes(private['nonce'].encode())!=manifest['nonce_sha256']
+            or hash_bytes(json.dumps(private['config'],sort_keys=True).encode())!=manifest['config_sha256']):
+        raise ValueError('Control private binding mismatch')
     origin = owned_origin('http://127.0.0.1:' + str(private['ports'][0]), manifest['ports'])
     from urllib.request import Request
-    request = Request(origin + CONTROL_PREFIX + ('/state' if action == 'state' else '/control'),
-        data=None if action == 'state' else json.dumps({'action': action}).encode(),
+    payload=None if action=='state' else {'action':action}
+    endpoint='/state' if action=='state' else '/control'
+    if action=='report':
+        payload=validate_observation(read_json(root/'records/controller-observation.json'),(private['token'],private['nonce']))
+        endpoint='/evidence'
+    request = Request(origin + CONTROL_PREFIX + endpoint,
+        data=None if payload is None else json.dumps(payload).encode(),
         headers={'X-Session-Token': private['token'], 'X-Fixture-Nonce': private['nonce'], 'Content-Type': 'application/json'})
     with local_request(request, timeout=30) as response: value = json.load(response)
     return public_evidence(value, (private['token'], private['nonce']))
@@ -612,7 +886,7 @@ def main():
     modes.add_argument('--compile-only', action='store_true')
     modes.add_argument('--run', action='store_true')
     modes.add_argument('--serve', action='store_true', help=argparse.SUPPRESS)
-    modes.add_argument('--control', choices=sorted(CONTROL_ACTIONS | {'state'}))
+    modes.add_argument('--control', choices=sorted(CONTROL_ACTIONS | {'state','cleanup','report'}))
     parser.add_argument('--fixture-root', type=Path)
     args = parser.parse_args()
     if args.compile_only:

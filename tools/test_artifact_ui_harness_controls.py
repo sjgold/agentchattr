@@ -18,6 +18,65 @@ from tools import fake_artifact_client as client
 
 
 class ArtifactHarnessControls(unittest.TestCase):
+    def test_real_guard_child_allows_only_internal_socketpair_and_patches_after_guard(self):
+        result=harness.run_bootstrap_control(guard_ok=True)
+        self.assertEqual(result['returncode'],0,result)
+        self.assertEqual(result['observed']['capabilities'],['artifact-v1'])
+        self.assertTrue(result['observed']['asyncio_run'])
+        self.assertTrue(result['observed']['plain_unowned_refused'])
+        self.assertTrue(result['observed']['guard_ready'])
+
+    def test_real_guard_child_failure_exits_91_before_protocol_patch(self):
+        result=harness.run_bootstrap_control(guard_ok=False)
+        self.assertEqual(result['returncode'],91,result)
+        self.assertFalse(result['bootstrap_record'])
+        self.assertIsNone(result['observed'])
+
+    def test_real_guard_child_exits_on_expired_lease(self):
+        result=harness.run_bootstrap_control(guard_ok=True,lease_seconds=-1)
+        self.assertEqual(result['returncode'],92,result)
+        self.assertTrue(result['bootstrap_record'])
+
+    def test_watchdog_checks_parent_birth_and_closes_handle(self):
+        handle=Mock();handle.poll.return_value=None
+        with patch('process_identity.open_verified_process',return_value={'status':'live','process':handle}):
+            self.assertFalse(harness.watchdog_expired({'pid':123},float('inf')))
+        handle.close.assert_called_once()
+        with patch('process_identity.open_verified_process',return_value={'status':'mismatch','process':None}):
+            self.assertTrue(harness.watchdog_expired({'pid':123},float('inf')))
+        with patch('process_identity.open_verified_process',side_effect=AssertionError('deadline first')):
+            self.assertTrue(harness.watchdog_expired({'pid':123},0))
+
+    def test_trusted_interpreter_is_original_checkout_without_junction(self):
+        result=harness.trusted_manifest()
+        original=harness.original_checkout()
+        self.assertEqual(Path(result['interpreter']).resolve(),(original/'.venv-windows/Scripts/python.exe').resolve())
+        self.assertEqual(Path(result['source_worktree']),harness.ROOT)
+        self.assertEqual(Path(result['original_checkout']),original)
+        with self.assertRaises(ValueError): harness.trusted_manifest(executable=harness.ROOT/'foreign/python.exe')
+
+    def test_private_replace_retries_are_bounded(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path=Path(directory)/'private.json';real=os.replace;calls=[]
+            def replace(source,target):
+                calls.append(1)
+                if len(calls)<3: raise PermissionError('reader race')
+                return real(source,target)
+            with patch('os.replace',side_effect=replace): harness.write_json(path,{'ok':True})
+            self.assertEqual(len(calls),3);self.assertEqual(harness.read_json(path),{'ok':True})
+
+    def test_private_reader_tolerates_bounded_windows_permission_race(self):
+        with patch.object(Path,'read_text',side_effect=[PermissionError('replace race'),'{"ready":true}']) as read:
+            self.assertEqual(harness.read_json(Path('synthetic-private.json')),{'ready':True})
+        self.assertEqual(read.call_count,2)
+
+    def test_finish_refuses_missing_and_not_observed_cases(self):
+        self.assertEqual(set(harness.missing_cases([])),harness.EVIDENCE_CASES)
+        rows=[{'case':case,'observations':{'status':'observed'}} for case in harness.EVIDENCE_CASES]
+        self.assertEqual(harness.missing_cases(rows),[])
+        rows[0]['observations']['status']='not_observed'
+        self.assertEqual(harness.missing_cases(rows),[rows[0]['case']])
+
     def test_import_constructs_no_fixture_listener_process_or_profile(self):
         for name in ('verify_artifact_ui', 'fake_artifact_client'):
             source = harness.ROOT / 'tools' / (name + '.py')
@@ -223,10 +282,62 @@ class ArtifactHarnessControls(unittest.TestCase):
                 return {'status':'mismatch','process':None} if birth['pid']==111 else {'status':'exited','process':handle}
             with patch('process_identity.open_verified_process',side_effect=probe), \
                  patch.object(harness,'PIN_FILES',()), \
-                 patch('tools.verify_channel_lifecycle.trusted_bootstrap_manifest',return_value={}):
+                 patch.object(harness,'trusted_manifest',return_value={}), \
+                 patch.object(harness,'read_signed',side_effect=lambda root,path:harness.read_json(path)):
                 self.assertFalse(fixture.close())
             self.assertEqual(set(visited),{111,222});handle.close.assert_called_once()
             self.assertTrue(any(row.get('pid')==111 for row in fixture.cleanup['unresolved']))
+
+    def test_preplanted_root_without_creator_registration_refused(self):
+        with patch.object(harness,'read_json',side_effect=FileNotFoundError()):
+            with self.assertRaises(ValueError): harness.owned_manifest(harness.ROOT/'.audit-tmp/artifact-ui-preplanted')
+
+    def test_creator_manifest_still_refuses_forbidden_ports(self):
+        scratch=harness.ROOT/'.audit-tmp';scratch.mkdir(exist_ok=True)
+        root=Path(tempfile.mkdtemp(prefix='artifact-ui-port-control-',dir=scratch))
+        harness.register_manifest(root,{'ports':[8300,54322,54323,54324]})
+        with self.assertRaises(ValueError): harness.owned_manifest(root)
+
+    def test_signed_birth_tampering_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'audit').mkdir()
+            with patch.object(harness,'owned_manifest',return_value=({},'outside-root-key')):
+                harness.signed_record(root,'spawn-1.json',{'birth':{'pid':1}})
+                path=root/'audit/spawn-1.json'
+                self.assertEqual(harness.read_signed(root,path)['birth']['pid'],1)
+                value=harness.read_json(path);value['value']['birth']['pid']=999;harness.write_json(path,value)
+                with self.assertRaises(ValueError): harness.read_signed(root,path)
+
+    def test_spawn_record_is_written_even_without_child_bootstrap(self):
+        process=Mock(pid=123)
+        with patch('process_identity.capture_birth',return_value={'pid':123,'creation_filetime':'1'}) as capture, \
+             patch.object(harness,'signed_record') as record:
+            harness.capture_spawn(harness.ROOT,process)
+        capture.assert_called_once_with(123)
+        self.assertEqual(record.call_args.args[1],'spawn-123.json')
+
+    def test_failed_spawn_journal_terminates_only_just_created_handle(self):
+        process=Mock(pid=123);process.poll.return_value=None
+        with patch('process_identity.capture_birth',return_value={'pid':123}), \
+             patch.object(harness,'signed_record',side_effect=OSError('held journal')):
+            with self.assertRaises(OSError): harness.capture_spawn(harness.ROOT,process)
+        process.terminate.assert_called_once();process.wait.assert_called_once_with(timeout=10)
+
+    def test_standalone_cleanup_continues_after_mismatch_and_never_kills_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'audit').mkdir()
+            handle=Mock();handle.poll.return_value=None
+            with patch.object(harness,'owned_manifest',return_value=({},'outside-root-key')):
+                for pid in (1,2):
+                    harness.signed_record(root,'spawn-'+str(pid)+'.json',{'birth':{'pid':pid,'creation_filetime':'1'}})
+                visited=[]
+                def probe(birth):
+                    visited.append(birth['pid'])
+                    return {'status':'mismatch','process':None} if birth['pid']==1 else {'status':'live','process':handle}
+                with patch('process_identity.open_verified_process',side_effect=probe):
+                    result=harness.standalone_cleanup(root)
+            self.assertEqual(set(visited),{1,2});self.assertEqual(result['visited'],2)
+            self.assertTrue(result['unresolved']);handle.terminate.assert_called_once();handle.close.assert_called_once()
 
     def test_cli_entry_without_guard_exits_91_before_birth_or_settings(self):
         with patch.object(harness,'require_guard',side_effect=RuntimeError('absent')), \
