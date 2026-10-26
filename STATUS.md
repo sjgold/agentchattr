@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 A1 reviewer-cleared pending required expiry fix; focused green)
+**Updated:** 2026-10-26 (#20 A1 required expiry fix verified; reviewer final check pending)
 
 ## At a glance
 
@@ -17,10 +17,14 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
-| Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Required expiry fix after reviewer A1 clearance: copied-context red1method/2FAIL0.047s; active flag +finally evidence clearing implemented,57 focused PASS7.354s and24 mutants killed. Freeze/run affected selection once, then reviewer reruns focused/mutations before publication. Prior full/timing remain attributed to f769/8443; no timing rerun requested for flag-only fix. No push/activation or D4/R2/R3/operator/capacity work. |
+| Latest checks | Reviewer f769:56 focused OK7.19s,artifact336OK205.5s,5 key mutants killed, own90 A samples<=0.216 (brief max0.1832). Required expiry correction:builder57 focused PASS7.354s,affected419PASS220.412s,24 mutants killed; reviewer final correction check pending. |
+| Next | Reviewer checks corrected expiry pina8862f3 (R1-isolated). Red1method/2FAIL0.047s ->57 focused PASS7.354s; affected419PASS220.412s/no skips;24 mutants killed. Prior f769 own reviewer runs passed; new fix still awaits own focused/mutation confirmation. No full/timing rerun requested. No push/activation/D4/R2/R3/operator/capacity work. |
 
 ## Current handoff
+
+- Required A1 expiry fix VERIFIED BY BUILDER, reviewer final check next: producta8862f3, only active flag/clear entries+issued/finally guards. Red normal+exceptional same-thread copied context1method/2FAIL0.047s; focused57PASS7.354s; affected419/58modules PASS220.412s/no skips, import max0.188553900s;24 mutants killed. Reviewer had independently cleared f769 with this required fix after own56/artifact336/key-mutants/design runs; final correction not yet independently confirmed. Original full1714/timing90 stay pinned8443/f769, not relabeled as correction runs. No repeated full/timing requested. All receipts appended in verification doc; source base R1 remains independent of R2 WIP. No optional edits, push or activation.
+
+## Earlier A1 verification checkpoints (historical)
 
 - Reviewer CLEARED A1 atf769e40 with one required fix: closed scopes remained usable through same-thread copy_context. Own reviewer56PASS7.19s/artifact336PASS205.5s,5 key mutants killed, own90-sample design allA<=0.216 (brief max0.1832); no full rerun by reviewer. Root added normal/exceptional-exit regression:1method2behavioralFAIL0.047s on old code, then active=False +entries/issued clear in finally, active checks at eligibility/evidence.57 focused PASS7.354s,24 in-memory mutants killed including4 expiry guards. Only expiry flag/cleanup product change; optional root-key/formatting changes untouched. Affected selection and reviewer final fix check next. Source base remains CLEARED R1, R2 WIP separate.
 

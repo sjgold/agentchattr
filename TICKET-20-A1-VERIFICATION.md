@@ -1,8 +1,8 @@
 # Ticket 20 A1: independent cleared-base verification
 
-Status: IMPLEMENTED AND BUILDER-VERIFIED, independent production review pending. No publication or activation. Branch codex/ticket-20-a1-isolated is based on CLEARED R1 product74f4697efcc6e66f91f228983a3d6a630ec41fff, which was independently cleared atbd1f3922 with identical product bytes. The original codex/ticket-20-artifacts history stays at67e9e05 WIP checkpoint. R2 diagnostic-v2/D1 inventory/D2 shared atomic_json are EXCLUDED. No D4 phase split, R3, operator or capacity implementation.
+Status: REVIEWER CLEARED f769e40 with one required expiry fix before publication. That flag/cleanup-only correction is implemented and builder-verified; reviewer final fix check pending. No publication or activation. Branch codex/ticket-20-a1-isolated is based on CLEARED R1 product74f4697efcc6e66f91f228983a3d6a630ec41fff, which was independently cleared atbd1f3922 with identical product bytes. The original codex/ticket-20-artifacts history stays at67e9e05 WIP checkpoint. R2 diagnostic-v2/D1 inventory/D2 shared atomic_json are EXCLUDED. No D4 phase split, R3, operator or capacity implementation.
 
-Product/tool freeze:8443e1c02868dfbffd0c3074f11b3e70c9dfeccf. Final follow-up adds only two key/pair tests and these receipts. Product and measurement-tool bytes are unchanged; all four measured source hashes below match the final working files. Do not interpret this as R2 or whole-Ticket20 acceptance.
+Historical full/timing product/tool freeze:8443e1c02868dfbffd0c3074f11b3e70c9dfeccf, reviewed atf769e40. Its first follow-up added only two key/pair tests and receipts. The required expiry correction now changes artifact_store.py ONLY (active flag/cleanup/checks), producta8862f38e0618491e5eb987a75ccbaf30bbab712. The source hashes in the ORIGINAL measurement below belong to8443/f769, not the corrected store. Service/MCP/API-seat/tool bytes remain unchanged. No full or timing rerun was requested for this flag-only correction; new focused/affected/mutation evidence is appended. Do not interpret this as R2 or whole-Ticket20 acceptance.
 
 ## Results and attribution
 
@@ -3726,5 +3726,871 @@ No product semantics were altered to accommodate a fixture. R1 authoring schema1
     }
   ],
   "all_killed": true
+}
+```
+
+
+## Required expiry correction after independent review
+
+The reviewer executed56 focused tests OK7.19s, all artifact modules336OK205.5s, five evidence-key mutants (all killed), and the corrected ten-per-class design tool on f769e40. Reviewer combined A median~0.1711/max~0.1832s,3 reads/1 content walk every sample, all A rows<=0.216. Its91 output rows comprise90 samples plus the final receipt line. These are reviewer-reported independent results, not root reruns. The reviewer did not rerun builder full1714 or read every builder raw receipt. Analyst static audit passed soundness/isolation/detachment/site/MCP/error checks.
+
+The one required fix was a retained same-thread copy_context outliving ContextVar reset. Root added test_copied_context_after_exit_is_expired_and_releases_evidence: normal and exceptional exits both observed0 full content walks vs1 expected, one method/two behavioral failures0.047s before product edit. After fixing, invocation.active is setFalse in finally, entries AND issued are cleared, both eligibility and evidence lookup reject inactive states, and stale copied contexts full-validate without re-registering evidence. This is a lifetime/retention contract correction, not a finding that exact-byte validation admitted unsafe content.
+
+Product change is limited to8 added/changed source lines in artifact_store.py. No optional root-key optimization, D4 phase split, R2 diagnostic migration, schema/enum/wire or capability change. Corrected producta8862f3: focused57PASS7.354s; affected58modules/419PASS220.412112s, no skips; in-suite import max0.188553900s, limit0.300, real fsync.24 in-memory mutants killed, including leave-active, retain-entries, retain-issuance and bypass-closed-guard, each discriminated by the new normal/exceptional-exit test. All temp cleanup assertions pass. Tracked affected shell916fc412-0706-4417-9a9b-e40058823b15 exited0, no suite overlap. No full/authority-timing rerun per reviewer instruction; old results keep old product attribution. Independent final fix check and publication authorization remain outstanding.
+
+```json
+{
+  "product_pin": "a8862f38e0618491e5eb987a75ccbaf30bbab712",
+  "base": "74f4697efcc6e66f91f228983a3d6a630ec41fff",
+  "red": {
+    "tests": 1,
+    "failures": 2,
+    "errors": 0,
+    "seconds": 0.047,
+    "conditions": [
+      "normal_exit",
+      "exceptional_exit"
+    ],
+    "assertion": "full content validation calls 0 != 1",
+    "log_sha256": "7ab2e3c59f2eee15291b1f90ff2305c735807ed896e0db9d8503fe667f2825a1"
+  },
+  "focused": {
+    "tests": 57,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "seconds": 7.354
+  },
+  "affected": {
+    "kind": "A1 expiry fix affected selection, builder-run NOT full discovery",
+    "modules": [
+      "tests.test_api_seat_runtime",
+      "tests.test_api_seats",
+      "tests.test_archive_feature",
+      "tests.test_artifact_admission",
+      "tests.test_artifact_api_wiring",
+      "tests.test_artifact_archive",
+      "tests.test_artifact_archive_codec",
+      "tests.test_artifact_archive_codec_review",
+      "tests.test_artifact_archive_discrimination",
+      "tests.test_artifact_archive_driver",
+      "tests.test_artifact_archive_driver_review",
+      "tests.test_artifact_authority_review",
+      "tests.test_artifact_capability",
+      "tests.test_artifact_capability_pending",
+      "tests.test_artifact_capability_recovery",
+      "tests.test_artifact_cli_wiring",
+      "tests.test_artifact_coordination",
+      "tests.test_artifact_delivery",
+      "tests.test_artifact_delivery_settlement",
+      "tests.test_artifact_diagnostic_oversize",
+      "tests.test_artifact_export_store",
+      "tests.test_artifact_factory",
+      "tests.test_artifact_import_benchmark",
+      "tests.test_artifact_import_plan",
+      "tests.test_artifact_import_stage_review",
+      "tests.test_artifact_imported_store",
+      "tests.test_artifact_inspect",
+      "tests.test_artifact_lifecycle",
+      "tests.test_artifact_lifecycle_edges",
+      "tests.test_artifact_lifecycle_metadata",
+      "tests.test_artifact_lifecycle_review",
+      "tests.test_artifact_mcp",
+      "tests.test_artifact_packet_reuse",
+      "tests.test_artifact_parent",
+      "tests.test_artifact_protocol",
+      "tests.test_artifact_queue",
+      "tests.test_artifact_record_bounds",
+      "tests.test_artifact_recovery",
+      "tests.test_artifact_service_paths",
+      "tests.test_artifact_staging_receipt",
+      "tests.test_artifact_store",
+      "tests.test_artifact_store_integrity",
+      "tests.test_artifact_store_review",
+      "tests.test_artifact_store_saturation",
+      "tests.test_artifact_transport",
+      "tests.test_artifact_worker_http",
+      "tests.test_artifact_worker_transport",
+      "tests.test_artifact_workers",
+      "tests.test_artifact_wrapper_entries",
+      "tests.test_artifact_wrapper_review",
+      "tests.test_mcp_proxy",
+      "tests.test_runtime_adoption",
+      "tests.test_runtime_heartbeat",
+      "tests.test_runtime_history",
+      "tests.test_runtime_ownership",
+      "tests.test_runtime_protocol_manifest",
+      "tests.test_runtime_protocol_upgrade",
+      "tests.test_runtime_visibility"
+    ],
+    "tests": 419,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 220.41211160004605,
+    "pass": true
+  },
+  "import_benchmark": {
+    "method": "store/catalog real-files Windows default atomic_json",
+    "portable_envelope_bytes": 4194304,
+    "existing_lineages": 100,
+    "existing_versions": 100,
+    "requests": 128,
+    "versions": 128,
+    "packet_objects": 128,
+    "zip_member_count": 262,
+    "baseline_seconds": [
+      0.0003992000129073858,
+      0.0003888999344781041,
+      0.0004988000728189945,
+      0.00040040002204477787,
+      0.00041930004954338074,
+      0.0006157000316306949,
+      0.0003757000667974353,
+      0.00044029997661709785,
+      0.00039489998016506433,
+      0.000480900052934885
+    ],
+    "samples_seconds": [
+      0.18365209992043674,
+      0.1837198999710381,
+      0.18534359999466687,
+      0.17832119995728135,
+      0.18578810000326484,
+      0.18373039993457496,
+      0.17829599999822676,
+      0.18855389999225736,
+      0.18262760003563017,
+      0.17987260001245886
+    ],
+    "maximum_seconds": 0.18855389999225736,
+    "limit_seconds": 0.3,
+    "includes_metadata_parse": true,
+    "includes_whole_index_validation": true,
+    "fsync_mocked": false
+  },
+  "mutations": {
+    "kind": "A1 in-memory mutations, source untouched",
+    "results": [
+      {
+        "mutant": "store_return_alias_without_skipping_reads",
+        "tests": [
+          "test_repeat_public_invocations_are_fresh_and_results_detached",
+          "test_hit_has_no_new_content_work_and_returns_fresh_packet_and_scope"
+        ],
+        "run": 2,
+        "failures": 2,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_repeat_public_invocations_are_fresh_and_results_detached (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_repeat_public_invocations_are_fresh_and_results_detached)",
+            "tail": [
+              "                 'uid': 'source-zero'}],",
+              "   'scope_kind': 'selected_channel_messages',",
+              "   'source_run': None,",
+              "   'version': 1}"
+            ]
+          },
+          {
+            "test": "test_hit_has_no_new_content_work_and_returns_fresh_packet_and_scope (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_hit_has_no_new_content_work_and_returns_fresh_packet_and_scope)",
+            "tail": [
+              "                 'uid': 'source-zero'}],",
+              "   'scope_kind': 'selected_channel_messages',",
+              "   'source_run': None,",
+              "   'version': 1}"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "foreign_thread_clears_evidence",
+        "tests": [
+          "test_copied_context_and_second_thread_cannot_consume_or_mutate_evidence"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_copied_context_and_second_thread_cannot_consume_or_mutate_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_and_second_thread_cannot_consume_or_mutate_evidence)",
+            "tail": [
+              "    self.assertEqual(self.state().entries, before_entries)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: {} != {'2feebf6040255ae5b6c8cabc8fbfc765': _Vali[871 chars]l}')}",
+              "Diff is 10207 characters long. Set self.maxDiff to None to see it."
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "worker_direct_scope_bypass",
+        "tests": [
+          "test_direct_worker_import_archive_validation_does_not_consume_store_evidence"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_direct_worker_import_archive_validation_does_not_consume_store_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_direct_worker_import_archive_validation_does_not_consume_store_evidence)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 573, in test_direct_worker_import_archive_validation_does_not_consume_store_evidence",
+              "    self.assertEqual(walked.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 0 != 1"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "import_direct_scope_bypass",
+        "tests": [
+          "test_direct_worker_import_archive_validation_does_not_consume_store_evidence"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_direct_worker_import_archive_validation_does_not_consume_store_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_direct_worker_import_archive_validation_does_not_consume_store_evidence)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 594, in test_direct_worker_import_archive_validation_does_not_consume_store_evidence",
+              "    self.assertEqual(import_walked.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 0 != 1"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "archive_direct_scope_bypass",
+        "tests": [
+          "test_direct_worker_import_archive_validation_does_not_consume_store_evidence"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_direct_worker_import_archive_validation_does_not_consume_store_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_direct_worker_import_archive_validation_does_not_consume_store_evidence)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 598, in test_direct_worker_import_archive_validation_does_not_consume_store_evidence",
+              "    self.assertEqual(archive_walked.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 0 != 1"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "register_before_audit_check",
+        "tests": [
+          "test_audit_failure_after_valid_content_registers_no_evidence"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_audit_failure_after_valid_content_registers_no_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_audit_failure_after_valid_content_registers_no_evidence)",
+            "tail": [
+              "    self.assertEqual(self.state().entries, {})",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: {'c8cb0af992b156169f245dcda4bfb9f2': _Vali[871 chars]l}')} != {}",
+              "Diff is 10207 characters long. Set self.maxDiff to None to see it."
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "skip_current_audit_comparison",
+        "tests": [
+          "test_need_packet_false_still_compares_channel_and_source_run",
+          "test_need_packet_false_miss_and_scope_mismatch_hit",
+          "test_current_audit_scope_mismatches_refuse_identically_after_hit"
+        ],
+        "run": 3,
+        "failures": 8,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_need_packet_false_still_compares_channel_and_source_run (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_need_packet_false_still_compares_channel_and_source_run) (field='original_channel')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 219, in test_need_packet_false_still_compares_channel_and_source_run",
+              "    self.assertEqual(self.outcome(owner, key, need_packet=False)[0], storage.ArtifactUnavailable)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 'ok' != <class 'artifact_store.ArtifactUnavailable'>"
+            ]
+          },
+          {
+            "test": "test_need_packet_false_still_compares_channel_and_source_run (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_need_packet_false_still_compares_channel_and_source_run) (field='source_run')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 219, in test_need_packet_false_still_compares_channel_and_source_run",
+              "    self.assertEqual(self.outcome(owner, key, need_packet=False)[0], storage.ArtifactUnavailable)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 'ok' != <class 'artifact_store.ArtifactUnavailable'>"
+            ]
+          },
+          {
+            "test": "test_need_packet_false_miss_and_scope_mismatch_hit (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_need_packet_false_miss_and_scope_mismatch_hit)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 662, in test_need_packet_false_miss_and_scope_mismatch_hit",
+              "    self.assertEqual(self.outcome(owner, key, need_packet=False)[0], storage.ArtifactUnavailable)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 'ok' != <class 'artifact_store.ArtifactUnavailable'>"
+            ]
+          },
+          {
+            "test": "test_current_audit_scope_mismatches_refuse_identically_after_hit (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_current_audit_scope_mismatches_refuse_identically_after_hit) (field='uid')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 529, in test_current_audit_scope_mismatches_refuse_identically_after_hit",
+              "    self.assertEqual(baseline[0], storage.ArtifactUnavailable)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 'ok' != <class 'artifact_store.ArtifactUnavailable'>"
+            ]
+          },
+          {
+            "test": "test_current_audit_scope_mismatches_refuse_identically_after_hit (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_current_audit_scope_mismatches_refuse_identically_after_hit) (field='sha256')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 529, in test_current_audit_scope_mismatches_refuse_identically_after_hit",
+              "    self.assertEqual(baseline[0], storage.ArtifactUnavailable)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 'ok' != <class 'artifact_store.ArtifactUnavailable'>"
+            ]
+          },
+          {
+            "test": "test_current_audit_scope_mismatches_refuse_identically_after_hit (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_current_audit_scope_mismatches_refuse_identically_after_hit) (field='id')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 529, in test_current_audit_scope_mismatches_refuse_identically_after_hit",
+              "    self.assertEqual(baseline[0], storage.ArtifactUnavailable)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 'ok' != <class 'artifact_store.ArtifactUnavailable'>"
+            ]
+          },
+          {
+            "test": "test_current_audit_scope_mismatches_refuse_identically_after_hit (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_current_audit_scope_mismatches_refuse_identically_after_hit) (field='input_revision')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 529, in test_current_audit_scope_mismatches_refuse_identically_after_hit",
+              "    self.assertEqual(baseline[0], storage.ArtifactUnavailable)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 'ok' != <class 'artifact_store.ArtifactUnavailable'>"
+            ]
+          },
+          {
+            "test": "test_current_audit_scope_mismatches_refuse_identically_after_hit (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_current_audit_scope_mismatches_refuse_identically_after_hit) (field='ref_count')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 529, in test_current_audit_scope_mismatches_refuse_identically_after_hit",
+              "    self.assertEqual(baseline[0], storage.ArtifactUnavailable)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 'ok' != <class 'artifact_store.ArtifactUnavailable'>"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "do_not_clear_object_observation",
+        "tests": [
+          "test_successful_hit_clears_real_prior_object_observation"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_successful_hit_clears_real_prior_object_observation (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_successful_hit_clears_real_prior_object_observation)",
+            "tail": [
+              "- [{'code': 'object_unavailable',",
+              "-   'id': 'ca970eed1e78515cb88a7366e7ec7784',",
+              "-   'kind': 'object_error',",
+              "-   'object_kind': 'packet'}]"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "remove_aggregate_raw_bound",
+        "tests": [
+          "test_aggregate_raw_budget_bypasses_registration_independently_of_entry_count"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_aggregate_raw_budget_bypasses_registration_independently_of_entry_count (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_aggregate_raw_budget_bypasses_registration_independently_of_entry_count)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 750, in test_aggregate_raw_budget_bypasses_registration_independently_of_entry_count",
+              "    self.assertEqual(content.call_count, 2)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 1 != 2"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "ignore_owner_and_root",
+        "tests": [
+          "test_different_root_does_not_share_evidence",
+          "test_second_owner_same_root_cannot_reuse_first_owner_evidence"
+        ],
+        "run": 2,
+        "failures": 2,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_different_root_does_not_share_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_different_root_does_not_share_evidence)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 763, in test_different_root_does_not_share_evidence",
+              "    self.assertEqual(content.call_count, 2)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 1 != 2"
+            ]
+          },
+          {
+            "test": "test_second_owner_same_root_cannot_reuse_first_owner_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_second_owner_same_root_cannot_reuse_first_owner_evidence)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 300, in test_second_owner_same_root_cannot_reuse_first_owner_evidence",
+              "    self.assertEqual(content.call_count, 2)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 1 != 2"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "disable_service_invocation",
+        "tests": [
+          "test_admit_reject_and_standalone_brief_selected_entries"
+        ],
+        "run": 1,
+        "failures": 3,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_admit_reject_and_standalone_brief_selected_entries (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_admit_reject_and_standalone_brief_selected_entries) (entry='admit')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 784, in test_admit_reject_and_standalone_brief_selected_entries",
+              "    self.assertEqual(content.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 2 != 1"
+            ]
+          },
+          {
+            "test": "test_admit_reject_and_standalone_brief_selected_entries (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_admit_reject_and_standalone_brief_selected_entries) (entry='reject')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 784, in test_admit_reject_and_standalone_brief_selected_entries",
+              "    self.assertEqual(content.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 2 != 1"
+            ]
+          },
+          {
+            "test": "test_admit_reject_and_standalone_brief_selected_entries (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_admit_reject_and_standalone_brief_selected_entries) (entry='brief')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 784, in test_admit_reject_and_standalone_brief_selected_entries",
+              "    self.assertEqual(content.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 2 != 1"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "disable_all_content_reuse",
+        "tests": [
+          "test_differential_healthy_empty_unicode_crlf_and_max_packets"
+        ],
+        "run": 1,
+        "failures": 3,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_differential_healthy_empty_unicode_crlf_and_max_packets (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_differential_healthy_empty_unicode_crlf_and_max_packets) (shape='empty')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 702, in test_differential_healthy_empty_unicode_crlf_and_max_packets",
+              "    self.assertEqual(content.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 2 != 1"
+            ]
+          },
+          {
+            "test": "test_differential_healthy_empty_unicode_crlf_and_max_packets (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_differential_healthy_empty_unicode_crlf_and_max_packets) (shape='unicode_crlf')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 702, in test_differential_healthy_empty_unicode_crlf_and_max_packets",
+              "    self.assertEqual(content.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 2 != 1"
+            ]
+          },
+          {
+            "test": "test_differential_healthy_empty_unicode_crlf_and_max_packets (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_differential_healthy_empty_unicode_crlf_and_max_packets) (shape='max')",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 702, in test_differential_healthy_empty_unicode_crlf_and_max_packets",
+              "    self.assertEqual(content.call_count, 1)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 2 != 1"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "ignore_exact_raw_equality",
+        "tests": [
+          "test_parent_refusal_and_between_read_packet_damage_keep_service_semantics",
+          "test_between_read_corruption_matches_uncached_errors_and_observations"
+        ],
+        "run": 2,
+        "failures": 1,
+        "errors": 1,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_between_read_corruption_matches_uncached_errors_and_observations (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_between_read_corruption_matches_uncached_errors_and_observations) (variant='same_size_mtime')",
+            "tail": [
+              "'ok'",
+              "<class 'artifact_store.ArtifactUnavailable'>",
+              "",
+              "Diff is 826 characters long. Set self.maxDiff to None to see it."
+            ]
+          },
+          {
+            "test": "test_parent_refusal_and_between_read_packet_damage_keep_service_semantics (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_parent_refusal_and_between_read_packet_damage_keep_service_semantics) (damaged_read=2)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 834, in test_parent_refusal_and_between_read_packet_damage_keep_service_semantics",
+              "    self.assertEqual(result['code'], 'artifact_storage_unavailable')",
+              "                     ~~~~~~^^^^^^^^",
+              "KeyError: 'code'"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "reuse_one_scope_across_recovery_items",
+        "tests": [
+          "test_recovery_public_items_have_fresh_invocation_scopes"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_recovery_public_items_have_fresh_invocation_scopes (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_recovery_public_items_have_fresh_invocation_scopes)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 803, in test_recovery_public_items_have_fresh_invocation_scopes",
+              "    self.assertEqual(content.call_count, 2)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: 0 != 2"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "ignore_raw_length_and_equality",
+        "tests": [
+          "test_differential_bad_message_source_run_and_scope"
+        ],
+        "run": 1,
+        "failures": 3,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_differential_bad_message_source_run_and_scope (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_differential_bad_message_source_run_and_scope) (field='message')",
+            "tail": [
+              "'ok'",
+              "<class 'artifact_store.ArtifactUnavailable'>",
+              "",
+              "Diff is 1211 characters long. Set self.maxDiff to None to see it."
+            ]
+          },
+          {
+            "test": "test_differential_bad_message_source_run_and_scope (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_differential_bad_message_source_run_and_scope) (field='source_run')",
+            "tail": [
+              "'ok'",
+              "<class 'artifact_store.ArtifactUnavailable'>",
+              "",
+              "Diff is 1228 characters long. Set self.maxDiff to None to see it."
+            ]
+          },
+          {
+            "test": "test_differential_bad_message_source_run_and_scope (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_differential_bad_message_source_run_and_scope) (field='scope')",
+            "tail": [
+              "'ok'",
+              "<class 'artifact_store.ArtifactUnavailable'>",
+              "",
+              "Diff is 1197 characters long. Set self.maxDiff to None to see it."
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "materialize_discard_packet",
+        "tests": [
+          "test_need_packet_false_miss_and_scope_mismatch_hit",
+          "test_need_packet_false_does_not_parse_full_packet_on_a_hit"
+        ],
+        "run": 2,
+        "failures": 2,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_need_packet_false_miss_and_scope_mismatch_hit (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_need_packet_false_miss_and_scope_mismatch_hit)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 657, in test_need_packet_false_miss_and_scope_mismatch_hit",
+              "    self.assertIsNone(packet)",
+              "    ~~~~~~~~~~~~~~~~~^^^^^^^^",
+              "AssertionError: {'channel': 'review', 'input': None, 'messages': [{'attachments': [{'name': 'source.py', 'url': '/uploads/source.py'}], 'id': 0, 'provenance': {'literal': 'Exact source only'}, 'sender': 'operator', 'text': 'Exact caf\u00e9 \u65e5\u672c\u8a9e e\u0301\\r\\n@all is source data.', 'timestamp': 10.5, 'type': 'chat', 'uid': 'source-zero'}], 'scope_kind': 'selected_channel_messages', 'source_run': None, 'version': 1} is not None"
+            ]
+          },
+          {
+            "test": "test_need_packet_false_does_not_parse_full_packet_on_a_hit (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_need_packet_false_does_not_parse_full_packet_on_a_hit)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 232, in parse",
+              "    self.assertNotEqual(compared, raw, 'Discard hit parsed the packet instead of audit-view bytes')",
+              "    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: b'{\"channel\":\"review\",\"input\":{\"input_revision\":\"36ecb4f8669133ce744c21982ba4abe2ecd7086e1dc2226ccd6f266f3a5005f8\",\"source_document\":null,\"text\":\"Input\"},\"messages\":[{\"attachments\":[{\"name\":\"source.py\",\"url\":\"/uploads/source.py\"}],\"id\":0,\"provenance\":{\"literal\":\"Exact source only\"},\"sender\":\"operator\",\"text\":\"Exact caf\\xc3\\xa9 \\xe6\\x97\\xa5\\xe6\\x9c\\xac\\xe8\\xaa\\x9e e\\xcc\\x81\\\\r\\\\n@all is source data.\",\"timestamp\":10.5,\"type\":\"chat\",\"uid\":\"source-zero\"}],\"scope_kind\":\"selected_channel_messages\",\"source_run\":{\"input_revision\":\"36ecb4f8669133ce744c21982ba4abe2ecd7086e1dc2226ccd6f266f3a5005f8\",\"run_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"session_id\":1,\"state_at_request\":\"active\"},\"version\":1}' == b'{\"channel\":\"review\",\"input\":{\"input_revision\":\"36ecb4f8669133ce744c21982ba4abe2ecd7086e1dc2226ccd6f266f3a5005f8\",\"source_document\":null,\"text\":\"Input\"},\"messages\":[{\"attachments\":[{\"name\":\"source.py\",\"url\":\"/uploads/source.py\"}],\"id\":0,\"provenance\":{\"literal\":\"Exact source only\"},\"sender\":\"operator\",\"text\":\"Exact caf\\xc3\\xa9 \\xe6\\x97\\xa5\\xe6\\x9c\\xac\\xe8\\xaa\\x9e e\\xcc\\x81\\\\r\\\\n@all is source data.\",\"timestamp\":10.5,\"type\":\"chat\",\"uid\":\"source-zero\"}],\"scope_kind\":\"selected_channel_messages\",\"source_run\":{\"input_revision\":\"36ecb4f8669133ce744c21982ba4abe2ecd7086e1dc2226ccd6f266f3a5005f8\",\"run_id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"session_id\":1,\"state_at_request\":\"active\"},\"version\":1}' : Discard hit parsed the packet instead of audit-view bytes"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "ignore_packet_id_binding",
+        "tests": [
+          "test_registered_evidence_cannot_be_mapped_to_a_different_packet_id"
+        ],
+        "run": 1,
+        "failures": 1,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_registered_evidence_cannot_be_mapped_to_a_different_packet_id (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_registered_evidence_cannot_be_mapped_to_a_different_packet_id)",
+            "tail": [
+              "AssertionError: 'eaa87df0470958b79dfb774c1e4672fa' != '503e75b6e7f65a99abf28a716db6acdf'",
+              "- eaa87df0470958b79dfb774c1e4672fa",
+              "+ 503e75b6e7f65a99abf28a716db6acdf",
+              ""
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "ignore_scope_pair_binding",
+        "tests": [
+          "test_in_place_scope_and_audit_view_forgery_cannot_reuse_issuance"
+        ],
+        "run": 1,
+        "failures": 0,
+        "errors": 1,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_in_place_scope_and_audit_view_forgery_cannot_reuse_issuance (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_in_place_scope_and_audit_view_forgery_cannot_reuse_issuance) (field='scope_bytes')",
+            "tail": [
+              "           ~~~~~~~~~~~~^^^^^^^^^^^",
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\artifact_store.py\", line 644, in _packet",
+              "    raise ArtifactUnavailable('Artifact source packet is unavailable.') from None",
+              "artifact_store.ArtifactUnavailable: Artifact source packet is unavailable."
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "ignore_audit_view_pair_binding",
+        "tests": [
+          "test_in_place_scope_and_audit_view_forgery_cannot_reuse_issuance"
+        ],
+        "run": 1,
+        "failures": 0,
+        "errors": 1,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_in_place_scope_and_audit_view_forgery_cannot_reuse_issuance (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_in_place_scope_and_audit_view_forgery_cannot_reuse_issuance) (field='audit_view_bytes')",
+            "tail": [
+              "           ~~~~~~~~~~~~^^^^^^^^^^^",
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\artifact_store.py\", line 644, in _packet",
+              "    raise ArtifactUnavailable('Artifact source packet is unavailable.') from None",
+              "artifact_store.ArtifactUnavailable: Artifact source packet is unavailable."
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "reverse_parent_and_brief",
+        "tests": [
+          "test_parent_refusal_and_between_read_packet_damage_keep_service_semantics"
+        ],
+        "run": 1,
+        "failures": 2,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_parent_refusal_and_between_read_packet_damage_keep_service_semantics (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_parent_refusal_and_between_read_packet_damage_keep_service_semantics) (damaged_read=1)",
+            "tail": [
+              "AssertionError: 'failed' != 'queued'",
+              "- failed",
+              "+ queued",
+              ""
+            ]
+          },
+          {
+            "test": "test_parent_refusal_and_between_read_packet_damage_keep_service_semantics (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_parent_refusal_and_between_read_packet_damage_keep_service_semantics) (damaged_read=2)",
+            "tail": [
+              "AssertionError: 'queued' != 'failed'",
+              "- queued",
+              "+ failed",
+              ""
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "leave_invocation_active",
+        "tests": [
+          "test_copied_context_after_exit_is_expired_and_releases_evidence"
+        ],
+        "run": 1,
+        "failures": 2,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_copied_context_after_exit_is_expired_and_releases_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_after_exit_is_expired_and_releases_evidence) (exceptional=False)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 322, in test_copied_context_after_exit_is_expired_and_releases_evidence",
+              "    self.assertFalse(state.active)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^",
+              "AssertionError: True is not false"
+            ]
+          },
+          {
+            "test": "test_copied_context_after_exit_is_expired_and_releases_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_after_exit_is_expired_and_releases_evidence) (exceptional=True)",
+            "tail": [
+              "  File \"C:\\Users\\SJG\\.traycer\\worktrees\\sjgold__agentchattr\\codex-ticket-20-a1-isolated\\tests\\test_artifact_packet_reuse.py\", line 322, in test_copied_context_after_exit_is_expired_and_releases_evidence",
+              "    self.assertFalse(state.active)",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^",
+              "AssertionError: True is not false"
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "retain_expired_entries",
+        "tests": [
+          "test_copied_context_after_exit_is_expired_and_releases_evidence"
+        ],
+        "run": 1,
+        "failures": 2,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_copied_context_after_exit_is_expired_and_releases_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_after_exit_is_expired_and_releases_evidence) (exceptional=False)",
+            "tail": [
+              "    self.assertEqual(state.entries, {})",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: {'cbbf90b6c2995342b2ec9a83f94f47a9': _Vali[871 chars]l}')} != {}",
+              "Diff is 10207 characters long. Set self.maxDiff to None to see it."
+            ]
+          },
+          {
+            "test": "test_copied_context_after_exit_is_expired_and_releases_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_after_exit_is_expired_and_releases_evidence) (exceptional=True)",
+            "tail": [
+              "    self.assertEqual(state.entries, {})",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: {'80e9cf7d795559fbac5faba6378d9e01': _Vali[871 chars]l}')} != {}",
+              "Diff is 10207 characters long. Set self.maxDiff to None to see it."
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "retain_expired_issuance",
+        "tests": [
+          "test_copied_context_after_exit_is_expired_and_releases_evidence"
+        ],
+        "run": 1,
+        "failures": 2,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_copied_context_after_exit_is_expired_and_releases_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_after_exit_is_expired_and_releases_evidence) (exceptional=False)",
+            "tail": [
+              "    self.assertEqual(state.issued, {})",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^",
+              "AssertionError: {2223017457968: (_ValidatedPacketBytes(pac[1671 chars]70>)} != {}",
+              "Diff is 3569 characters long. Set self.maxDiff to None to see it."
+            ]
+          },
+          {
+            "test": "test_copied_context_after_exit_is_expired_and_releases_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_after_exit_is_expired_and_releases_evidence) (exceptional=True)",
+            "tail": [
+              "    self.assertEqual(state.issued, {})",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^",
+              "AssertionError: {2223017456848: (_ValidatedPacketBytes(pac[1671 chars]90>)} != {}",
+              "Diff is 3569 characters long. Set self.maxDiff to None to see it."
+            ]
+          }
+        ]
+      },
+      {
+        "mutant": "ignore_closed_invocation_guard",
+        "tests": [
+          "test_copied_context_after_exit_is_expired_and_releases_evidence"
+        ],
+        "run": 1,
+        "failures": 2,
+        "errors": 0,
+        "killed": true,
+        "failure_sites": [
+          {
+            "test": "test_copied_context_after_exit_is_expired_and_releases_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_after_exit_is_expired_and_releases_evidence) (exceptional=False)",
+            "tail": [
+              "    self.assertEqual(state.entries, {})",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: {'4acedf13d791592a94838f028b6be22c': _Vali[871 chars]l}')} != {}",
+              "Diff is 10207 characters long. Set self.maxDiff to None to see it."
+            ]
+          },
+          {
+            "test": "test_copied_context_after_exit_is_expired_and_releases_evidence (tests.test_artifact_packet_reuse.ArtifactPacketReuseTests.test_copied_context_after_exit_is_expired_and_releases_evidence) (exceptional=True)",
+            "tail": [
+              "    self.assertEqual(state.entries, {})",
+              "    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^",
+              "AssertionError: {'533840bf3f9657b0a29dadb29f775a6a': _Vali[871 chars]l}')} != {}",
+              "Diff is 10207 characters long. Set self.maxDiff to None to see it."
+            ]
+          }
+        ]
+      }
+    ],
+    "all_killed": true
+  },
+  "full_rerun": false,
+  "authority_timing_rerun": false,
+  "reason": "reviewer explicitly requested focused+affected once for flag-only expiry correction; prior full/timing remain original-pin evidence",
+  "source_sha256": {
+    "artifact_store.py": "2d3ea01aacb07dc900da9c937be546a3aebbbedab97a88999eee661fde5ac2c8",
+    "artifact_service.py": "ad9ac57c8928454114bc98631666d6111b59a95f8e0957f045a3fce92e2d92dc",
+    "mcp_bridge.py": "b2009a4b24cf8fbdb63c1c140be20162dd17f25e0f87872877f45a0653199ab2",
+    "api_seats.py": "c6d3aa257b1bc6199397863f02ccd321982e419f3baf8ff49dd79725cc2a12c4"
+  }
 }
 ```
