@@ -1,6 +1,6 @@
-# Ticket 20 R1: bounded artifact records, proposed compatibility contract
+# Ticket 20 R1: bounded artifact records, reviewed compatibility contract
 
-Status: CLEARED for first behavioral reds at 21bb198d, with the wording below folded in. Independent basis: analyst static read; reviewer ran nothing and did not personally read the document. Seth selected R1-R3 on 2026-10-25 through the structured question. That approves this work's scope, not an unreviewed implementation. No source changes before independently reviewed reds. R2 diagnostic ownership and R3 compact index still require their own schema contracts. Authoring remains disabled; no replacement quota or R4 implementation is approved.
+Status: R1 independently CLEARED at bd1f3922, product bytes 74f4697. Reviewer personally executed focused18 and artifact301 plus four mutation spot-checks; separate analyst production audit nine points PASS. Historical design/RED receipts below retain their original evidence scope. Seth selected R1-R3 on 2026-10-25 through the structured question. That approves this work's scope, not an unreviewed implementation. No source changes before independently reviewed reds. R2 diagnostic ownership and R3 compact index still require their own schema contracts. Authoring remains disabled; no replacement quota or R4 implementation is approved.
 
 ## Outcome and boundaries
 
@@ -10,7 +10,7 @@ No migration: production capability is empty and there is no released artifact s
 
 ## Exact field policy
 
-| Field / owner | Proposed bound |
+| Field / owner | Reviewed bound |
 | --- | --- |
 | audit.requester | Label, 256 UTF8 bytes |
 | audit.producer.name, requested_model, requested_model_reason | Label, 256 UTF8 bytes each; existing nullable/model-reason relationship unchanged |
@@ -163,3 +163,11 @@ The full's exact4MiB uninstrumented import samples were0.1856745,0.1845565,0.184
 Full log retains existing deprecation warnings and four ResourceWarning occurrences involving HTTPError404/501/409/503; no warning-clean claim. The409 boot-fence and503 starting literals are in unchanged tests/test_restart_cancellation_poll.py doubles;404/501 are the previously recorded MCP-proxy fixture matter. No warning fix or unrelated source change is included.
 
 Root now sends the frozen production diff and these receipts for the reviewer's own focused18/mutation spot-check/affected run. Reviewer static analyst audit reported nine points PASS, but independent production execution/clearance is still pending. Capability remains empty, no R2/R3/operator/capacity/activation, no publication/push.
+
+## Independent R1 closure
+
+Reviewer CLEARED R1 at bd1f3922 (product74f4697), clean tree, .venv-windows Python with PYTHONPATH=.: focused18 tests OK2.2 s; all test_artifact modules301 OK193.5 s including the real4MiB/ten-sample import benchmark max0.2057 s <=0.300 with fsync/parse/whole-index validation. It did not run builder full1681 or the non-artifact portions of affected876; those remain builder evidence.
+
+Four independent in-process mutation spot-checks: label bounds+controls disabled ->280 subtest failures; record integer cap lifted ->26; _index_text disabled ->65; float-token cap alone lifted ->ZERO failures. The survivor is EXPECTED: exact positive finite Python floats have shortest JSON at most23 characters. That token guard is defensive, with no reachable positive24 counterexample; do not count it as a killed mutant or a behaviorally tested rejection. Root's seven earlier killed mutants included lifting timestamp INTEGER width, which is independently reachable, not proof of the float-token branch.
+
+No outstanding R1 finding; S1-S4 scope answers accepted. This is local component clearance, no publication/activation/native/provider claim. Seth's R1-R3 scope approval remains; next is R2 diagnostics-owner DOCS contract before reds/code, then R3 separately. Store original_reason membership question and named HELD operator tests remain future requirements.
