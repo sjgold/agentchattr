@@ -1159,8 +1159,7 @@ def chat_artifact_brief(brief_id: str, ctx: Context | None = None) -> str:
         # Parent first, one shared reentrant boundary: a refused parent must not
         # activate work by reading the brief before the refusal.
         with artifact_authority.channels._boundary():
-            parent = artifact_authority.get_parent(brief_id, instance)
-            context = {**artifact_authority.get_brief(brief_id, instance), **parent}
+            context = artifact_authority.get_brief_context(brief_id, instance)
             encoded = json.dumps(context, ensure_ascii=True, allow_nan=False)
             if len(encoded.encode('utf-8')) > MAX_CONTEXT_BYTES:
                 return json.dumps(error_body('artifact_context_too_large'))

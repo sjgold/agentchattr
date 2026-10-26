@@ -48,8 +48,8 @@ class ArtifactMcpTests(unittest.TestCase):
         audit=case.prepare();case.claim(audit)
         before=case.files()
         with patch.object(mcp_bridge,'artifact_authority',case.authority),patch.object(mcp_bridge,'_authenticated_instance',return_value=case.instance), \
-                patch.object(case.authority,'get_parent',side_effect=case.storage.ArtifactUnavailable('PRIVATE_SEAL')), \
-                patch.object(case.authority,'get_brief',side_effect=AssertionError('Activated after parent failure')):
+                patch.object(case.authority,'_get_parent_locked',side_effect=case.storage.ArtifactUnavailable('PRIVATE_SEAL')), \
+                patch.object(case.authority,'_get_brief_locked',side_effect=AssertionError('Activated after parent failure')):
             response=mcp_bridge.chat_artifact_brief(audit['brief_id'])
         self.assertNotIn('PRIVATE_SEAL',response)
         self.assertEqual(json.loads(response)['code'],'artifact_storage_unavailable')

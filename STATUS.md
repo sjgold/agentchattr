@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 R1 production candidate unit green; affected/full verification next)
+**Updated:** 2026-10-26 (#20 isolated A1 on cleared R1; focused green, broader verification next)
 
 ## At a glance
 
@@ -18,9 +18,15 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Seth APPROVED R1-R3 through the structured decision. W1-W6 independently docs-cleared at bffb442; R1 contract CLEARED at 21bb198d for behavioral reds after executed fixture audit; N1-N6 folded and pre-edit value audit executed; first four reds independently accepted; expanded reds independently reproduced; X1-X4/Y1-Y8 additions now16 methods/398 behavioral FAIL/one infrastructure ERROR, golden unchanged. R1-only production CLEARED by reviewer; added G reds now18 methods/422 FAIL+one infra error -> implementation18 PASS. Affected suites/full/timing and independent production review next. R2 diagnostics/R3 compact-index contracts follow. No operator helper/create/capacity code until updated freeze; no new quota/activation |
+| Next | Root verifies independent A1 on branch codex/ticket-20-a1-isolated, base CLEARED R1 product74f4697. Fresh baseline21PASS2.688s; A1+MCP+R1 bounds54PASS7.225s. Affected/full and corrected90-sample design measurement next, no overlaps. R2/D1/D2 WIP excluded; no D4/R3/operator/capacity/activation/push. |
 
 ## Current handoff
+
+- Independent A1 worktree: C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-a1-isolated, base74f4697efcc6e66f91f228983a3d6a630ec41fff (R1 independently cleared atbd1f3922 with identical product bytes). Original codex/ticket-20-artifacts remains at67e9e05 WIP checkpoint. Mechanical port only:4 affected store methods AST-identical in74f4697/aff51101; added helper block now sits before R1 ArtifactStore, no R2 owner/schema, D1 inventory or D2 atomic_json. Service/MCP bases byte-identical before A1. No merge semantics chosen from R2. Fresh pre-port baseline R1+MCP21PASS2.688s; after port A1+MCP+R1 bounds54PASS7.225s. A1 production authorized but NOT independently accepted. Source freeze/affected/full/mutations/corrected measurement are next. All aff51101 results remain WIP attribution only.
+
+## Historical R1 checkpoint record
+
+The following entries are the cleared-base history, not current instructions to repeat R1 implementation. R1 clearance is recorded above from the reviewer; no R2 fixture migration belongs to this branch.
 
 - R1-only production candidate: five permitted modules changed (store/protocol/codec/service/worker), no R2/R3/operator/capacity/activation. New G tests observed OLD code18/422 behavioral FAIL+one infra ERROR2.641s; implemented all18PASS2.091s, 991296B golden/SHA unchanged. Seven in-memory mutations killed (including direct sequence width and worker early observation check), no persisted mutations. Former unobserved-red no-effect/hold/peer/API cancelling assertions now reached and pass. Static/compile/capability-empty checks pass; affected suites + uninstrumented import benchmark and full discovery are next, NOT yet claimed. Root freezes candidate then runs one non-overlapping affected selection/full, reports timing before independent production review. Named HELD operator tests retained; R2/R3 contracts still precede reds. OPEN future decision: whether stored import_source.original_reason should exclude imported; R1 preserves current STATE_REASONS membership. Any future store tightening needs its own red/review, separate from W4 held DTO projection.
 
