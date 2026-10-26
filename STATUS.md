@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (R2 + D4 FINAL ACCEPTANCE at220f3400; R3 docs-only contract proposed for review)
+**Updated:** 2026-10-26 (Seth approved reduced20-22 first release; multi-file23 next;24-26 later; R3 deferred)
 
 ## At a glance
 
@@ -18,15 +18,16 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Q1 startup error fix: focused161 and artifact437 pass;17 mutants killed. ONE post-Q full1817/four skips OK337.595s. Final frozen product4968/toolsf2 Smoke19+gate190 passed; earlier misses retained. |
-| Next | Independent reviewer: R3 DOCS ONLY contract in TICKET-20-COMPACT-INDEX.md; choose schema/sidecar/compatibility/API/measurement proposal before any reds. Operator implementation/UI/capacity/activation/push held. |
+| Next | Independent review of TICKET-20-22-REDUCED-RELEASE.md defaults/minimum routes/numeric screen, then bounded operator red freeze. R3 deferred;23 precedes24-26. No activation/push. |
 
 ## Current handoff
 
-- Publishable reviewed branch/tip: codex/ticket-20-r2-on-a1 at220f340042056b80c09091807690af74f36dafec, unit base2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca (closed A1). R2 + D4 FINAL ACCEPTANCE granted. Older codex/ticket-20-artifacts product WIP67e9e05 is superseded, preserved in history; later status-pointer commits there do not change product bytes. No remote publication has occurred.
-- Independent final review: clean pin, recover_startup-only Q1 product diff read, focused170 tests OK47.5s. Earlier independent phase44/artifact434/driver mutation/static audit stands. Post-Q builder focused161/artifact437/full1817 (4 skips) pass,17 assertion mutants killed. Complete evidence: TICKET-20-D4-FINAL-FOLLOWUPS.md and TICKET-20-D4-FINAL-GATE.md.
-- Running Seth disclosure list: withdrawn512KiB/128-request quota is not enabled; Seth approved R1-R3, R1/R2+D4/A1 are accepted and R3 pending. Two earlier roughly1.1s stalls remain unattributed; cause unverified. Final max-based190 gate passed with a stall sentinel, all earlier misses/invalid attempts remain listed. Max-source admit/brief A roughly0.16s typical on this machine, no future-tail guarantee. No replacement finite capacity is selected.
-- R3 proposed contract: TICKET-20-COMPACT-INDEX.md/shared r3-compact-index artifact. Recommended schema3 compact scopes, immutable full-scope sidecar shared by request/version, explicit compact internal readers versus unchanged full projections, offline nonempty schema2 conversion, portable schema unchanged. These choices are proposed, not approved or implemented. Only verification is source/diff/contract review plus pure serialized-width arithmetic, no tests or timing run.
-- Next owner: independent reviewer clears or revises R3 design, then exact signatures/error/fixture and measurement freeze before reds. Then operator-routes contract refresh/K6 reassessment. Operator implementation/UI/capacity implementation/activation/push remain held. SUPPORTED_CAPABILITIES stays empty.
+- Scope authority, Seth's exact answer2026-10-26: "20-22 yes 23 separate 24-26 sperate multi file is more impiortant to me than automatic synthisis". Follow-up: "update status and docs please". Approved reduced20-22 first release;23 multi-file is the next separate priority,24-26 automatic review/quote/synthesis later. The preceding proposal explicitly deferred R3/preview/source/producer pickers/revision browser/advanced recovery UI and replaced strict0.270s worst-case acceptance with basic responsiveness. This supersedes the earlier R3-before-operator instruction. It does not relax safety or authorize deletion, provider spend, activation or push.
+- Authoritative scope: TICKET-20-22-REDUCED-RELEASE.md and dated amendment in specificationv1.7. Source/author defaults and numeric typical-case screen are reviewer-facing proposals, not choices falsely attributed to Seth. Current proposal uses the first assigned session role as author because sessions have no stored coordinator field; exact create body/default-source/refusal policy and four-sample screen await review before reds. No reduced route/reader/transcript implementation in this docs update.
+- Accepted publishable backend branch/tip: codex/ticket-20-r2-on-a1 product220f340042056b80c09091807690af74f36dafec, unit from closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca. R2+D4 FINAL ACCEPTANCE: reviewer170 focused OK47.5s; builder focused161/artifact437/full1817 (4 skips) pass;17 assertion mutants killed; previous190 gate retained. Older codex/ticket-20-artifacts WIP67e9e05 is superseded and preserved. No publication performed.
+- R3 proposal196666c and reviewer no-sidecar/compact-default/no-conversion-tool ruling remain historical in TICKET-20-COMPACT-INDEX.md/shared artifact. No further R3 docs cycle/reds/source/timing is active. Full operator contract is historical where it exceeds reduced scope. Backend recovery/version/archive logic remains intact.
+- Running disclosures:128-request/512KiB quota withdrawn, no replacement chosen; full refs remain in the index (~293KB historically per fulfilled max-source request), so larger histories are slower. Earlier roughly1.1s stalls have unknown cause. Final sentinel190 pass and all misses/invalid attempts remain in TICKET-20-D4-FINAL-GATE.md. Measured max-source A roughly0.16-0.18s,4MiB import roughly0.20-0.21s are observations, not an unlimited-capacity guarantee. CHANNELS.md updated.
+- Next owner: independent reviewer checks reduced20-22 contract/defaults/minimal route/error freeze and numeric screening, then root writes only the agreed red set and small end-to-end flow. Ticket23 follows release22, ahead of24-26. UI/route source changes await bounded review; capability remains empty; activation and push remain separate and held.
 
 ## Earlier correction-review pointers (historical)
 

@@ -2,7 +2,13 @@
 
 Version: 1.7 · 12 October 2026 · Author: Haalee
 
-Status: implementation specification for review. This document authorizes no deployment, provider purchase, or upstream submission. No application implementation has begun.
+Status: baseline specification with dated amendments. Current implementation state is in STATUS.md. This document authorizes no deployment, provider purchase, or upstream submission.
+
+## 2026-10-26 reduced-release scope amendment
+
+Seth approved reduced tickets20-22 as the first usable release, multi-file23 as the next separate milestone, and24-26 as a later separate package. Multi-file input is explicitly higher priority to him than automatic synthesis. The authoritative [reduced acceptance contract](../TICKET-20-22-REDUCED-RELEASE.md) records his exact answer, approved cuts, proposed defaults and bounded responsiveness screening for review.
+
+For this release, DA-2 is manual current-session document request, safe reading and exact Markdown download; DA-3 is simple actual ordered transcript download. Preview/source/producer pickers, revision browser, advanced recovery UI, combined synthesis layouts and R3 storage compaction are deferred. The strict0.270s worst-case requirement is replaced by the reduced contract's numeric basic-responsiveness screen once technically reviewed. Safety, auth, provenance, idempotency, Stop/cancellation, durable ordering and hold semantics are unchanged. Existing accepted backend functionality is retained. No quota, activation or push is newly authorized. Later requirements below remain future scope where they exceed this amendment.
 
 ## 1. Outcome and scope
 

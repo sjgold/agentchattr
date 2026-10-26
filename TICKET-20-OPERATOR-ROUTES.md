@@ -1,5 +1,7 @@
 # Ticket 20 operator routes and consistent source snapshots
 
+**Current scope amendment,2026-10-26:** Seth approved reduced20-22 first, multi-file23 next,24-26 later. [Reduced-release contract](TICKET-20-22-REDUCED-RELEASE.md) is authoritative for this release. R3, advanced operator selection/revision/recovery UI and strict0.270s worst-case acceptance are deferred or replaced as specified there. Safety and accepted backend semantics remain. The full operator-route proposal below is retained as historical/future scope; its former next-step directions do not authorize work.
+
 Status: PROPOSED wire contract; R1-R3 STORAGE DIRECTION APPROVED by Seth; detailed schema/compatibility contracts pending. The512KiB/128-request quota has been withdrawn, not enabled. Lifecycle slice4 is independently CLEARED ata38c17b (reviewer632 Python tests171.071s and25 actual-source VM cases). Product9b068af full1659/four skips320.363s is implementation-owner evidence; the later assertions changed tests/docs only. Storage, capability, authority, wrappers and lifecycle/backup contracts remain authoritative. This document authorizes no implementation tests, helper briefing, product code or activation until reviewed and the exact helper payload/signature freeze is cleared. The reviewer-requested design timing spike below exercises existing product code only; it is not a new operator implementation or K6 acceptance. Production SUPPORTED_CAPABILITIES stays ().
 
 ## Scope and current source facts

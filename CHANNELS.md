@@ -59,11 +59,15 @@ After a connection failure or unconfirmed management request, reload the catalog
 
 ## Artifact authoring remains disabled
 
-Ticket 20 authoring remains disabled while the approved store redesign is specified and tested. The proposed store-wide limit of 128 saved requests and 512 KiB of metadata was withdrawn after sizing showed that existing diagnostic records alone exceed it. No such quota is enabled. Seth approved the three storage/compatibility slices recorded in [the storage decision memo](TICKET-20-STORE-DECISION.md).
+Ticket20's storage and recovery backend has independent acceptance at220f3400. The document request, reader and download flow is still unfinished. Authoring stays disabled until a separate reviewed activation change.
 
-Any future finite quota would count failed, cancelled and imported attempts across all channels, and a successful import could consume it. Exporting or deleting a channel would leave that quota unchanged because artifact purge is unsupported. No replacement quota has been selected.
+The first release now covers reduced20-22: request and read a current-session document, download Markdown, export the actual transcript, and verify the everyday workflow. Multi-file input in23 comes next. Automatic review and synthesis in24-26 come later. The [reduced-release contract](TICKET-20-22-REDUCED-RELEASE.md) records the scope.
 
-In the Ticket 20 storage candidate, diagnostic logs use a separate private file. Diagnostic logs and retained diagnostic bodies are excluded from channel backups. Deleting a channel retains those diagnostic files. The candidate remains under review and artifact authoring stays disabled.
+Storage compaction (R3) is deferred. Source refs remain copied into request and version metadata, so larger sources and more saved attempts increase storage and write cost. A historical max-source example used about293KB of index metadata for one fulfilled request. The proposed128-request/512KiB installation quota was withdrawn. No replacement quota is enabled. Deleting a channel or exporting its history retains authored records; artifact purge is unsupported.
+
+The final retained performance run passed190 comparisons with a stall sentinel. On that fixture, max-source service A phases were typically about0.16-0.18s and4MiB import measurements were about0.20-0.21s. Earlier runs include unexplained roughly1.1s stalls and failed measurements, all retained in [the attempt history](TICKET-20-D4-FINAL-GATE.md). These observations describe the tested machine and data; large histories can be slower.
+
+Diagnostic logs use a separate private file. Channel backups exclude diagnostic logs and retained diagnostic bodies. Deleting a channel retains those files. The strict worst-case latency promise is deferred for the reduced release; its smaller responsiveness check will be reviewed before implementation.
 
 ## Verification and limits
 

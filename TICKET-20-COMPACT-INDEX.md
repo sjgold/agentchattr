@@ -1,6 +1,6 @@
 # Ticket 20 R3: compact source provenance in the authoring index
 
-Status: PROPOSED contract for independent review, DOCS ONLY. No R3 reds, source, fixture migration, timing run or new quota is authorized by this draft. Base is FINAL ACCEPTED R2+D4 product220f340042056b80c09091807690af74f36dafec, closed A1 base2c34bbfb. The accepted unit is publishable on codex/ticket-20-r2-on-a1; push and activation remain held. Older codex/ticket-20-artifacts product WIP67e9e05 is superseded and preserved. Seth approved R1-R3 scope in [the storage decision](TICKET-20-STORE-DECISION.md).
+Status: DEFERRED by Seth2026-10-26. Historical proposal196666c and the review below are preserved; no R3 revision, red, code, schema conversion or timing work is active. The reduced20-22 release is governed by [the scope amendment](TICKET-20-22-REDUCED-RELEASE.md).
 
 ## Outcome and review decisions
 
@@ -133,3 +133,9 @@ One new root red file (suggested tests/test_artifact_compact_index.py), infrastr
 - Focused R1/A1/R2/D4/archive/import/worker/recovery/lifecycle suites, artifact affected selection, one builder full discovery and meaningful digest/count/sidecar/evidence/compact-read mutations. Then measured gates and independent reruns/static audit. No claim of activation or whole-ticket completion.
 
 Open for reviewer: confirm the scope sidecar representation, explicit full-versus-compact API split,1MiB sidecar bound and offline schema2 conversion recommendation; then freeze signatures/errors/fixture migration and measurement matrix before reds. Operator-route refresh follows R3 acceptance; operator implementation, UI, activation and push stay held.
+
+## Historical reviewer ruling, received2026-10-26
+
+Direction approved but mechanism changed, with another docs round required before reds. Reviewer relied on an analyst static read against220f3400 and ran no measurements. Ruling: NO sidecar; hydrate full scopes from packet outside store/engine locks; compact by default in request/version/commit APIs; explicit full hydration only for portable export/detail; A1 evidence replaces full scope bytes with compact bytes rather than retaining both; no conversion tool, nonempty schema2 authoring hold distinct from the diagnostic legacy marker; compact imported validation needed; portable codec/goldens unchanged. Quote-heavy unique UIDs can approach the conservative width bound; the duplicate-UID arithmetic was not a proof that no nearby valid fixture exists. Retain1MiB hydration cap, review STORE-SCHEMA/operator scope contradictions, defer removal of other duplicated provenance unless data demands it. R3 targets capacity/create/K6 and is not required for the already passed current gates. Measurements would split validation/deepcopy/dumps/fsync, use valid quote-heavy fixtures, measure hydration outside boundaries, before/after sizes and unchanged4MiB import gates.
+
+The ruling is historical planning evidence. Seth's subsequent reduced-release direction defers R3, so none of those edits/tests are currently required. No sidecar, packet-hydrating API, compact index or conversion code was implemented. Reopening R3 later starts from its accepted no-sidecar direction and a fresh compatibility review, not the superseded recommendation above.
