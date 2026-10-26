@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (Seth approved reduced20-22 first release; multi-file23 next;24-26 later; R3 deferred)
+**Updated:** 2026-10-26 (reduced20-22 scope accepted; E1-E12 bounded technical contract revised for review; R3 deferred;23 next)
 
 ## At a glance
 
@@ -23,11 +23,11 @@
 ## Current handoff
 
 - Scope authority, Seth's exact answer2026-10-26: "20-22 yes 23 separate 24-26 sperate multi file is more impiortant to me than automatic synthisis". Follow-up: "update status and docs please". Approved reduced20-22 first release;23 multi-file is the next separate priority,24-26 automatic review/quote/synthesis later. The preceding proposal explicitly deferred R3/preview/source/producer pickers/revision browser/advanced recovery UI and replaced strict0.270s worst-case acceptance with basic responsiveness. This supersedes the earlier R3-before-operator instruction. It does not relax safety or authorize deletion, provider spend, activation or push.
-- Authoritative scope: TICKET-20-22-REDUCED-RELEASE.md and dated amendment in specificationv1.7. Source/author defaults and numeric typical-case screen are reviewer-facing proposals, not choices falsely attributed to Seth. Current proposal uses the first assigned session role as author because sessions have no stored coordinator field; exact create body/default-source/refusal policy and four-sample screen await review before reds. No reduced route/reader/transcript implementation in this docs update.
+- Authoritative scope: TICKET-20-22-REDUCED-RELEASE.md and dated amendment in specificationv1.7. Source/author defaults and numeric typical-case screen are reviewer-facing proposals, not choices falsely attributed to Seth. E1-E12 revision proposes ordered frozen-role agent identity bindings and current registry eligibility, producer-relaunch-safe replay before prepare_request, NEW strict security/snapshot helpers, completed-session discovery, minimal Cancel, plaintext reader, exact errors/state/polling, thin four-sample screen and separate final activation. Transcript route/cap/security and reduced AT-12/DA-2/DA-3 are explicit. Reviewer must recheck before reds. No reduced route/reader/transcript implementation in this docs update.
 - Accepted publishable backend branch/tip: codex/ticket-20-r2-on-a1 product220f340042056b80c09091807690af74f36dafec, unit from closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca. R2+D4 FINAL ACCEPTANCE: reviewer170 focused OK47.5s; builder focused161/artifact437/full1817 (4 skips) pass;17 assertion mutants killed; previous190 gate retained. Older codex/ticket-20-artifacts WIP67e9e05 is superseded and preserved. No publication performed.
 - R3 proposal196666c and reviewer no-sidecar/compact-default/no-conversion-tool ruling remain historical in TICKET-20-COMPACT-INDEX.md/shared artifact. No further R3 docs cycle/reds/source/timing is active. Full operator contract is historical where it exceeds reduced scope. Backend recovery/version/archive logic remains intact.
 - Running disclosures:128-request/512KiB quota withdrawn, no replacement chosen; full refs remain in the index (~293KB historically per fulfilled max-source request), so larger histories are slower. Earlier roughly1.1s stalls have unknown cause. Final sentinel190 pass and all misses/invalid attempts remain in TICKET-20-D4-FINAL-GATE.md. Measured max-source A roughly0.16-0.18s,4MiB import roughly0.20-0.21s are observations, not an unlimited-capacity guarantee. CHANNELS.md updated.
-- Next owner: independent reviewer checks reduced20-22 contract/defaults/minimal route/error freeze and numeric screening, then root writes only the agreed red set and small end-to-end flow. Ticket23 follows release22, ahead of24-26. UI/route source changes await bounded review; capability remains empty; activation and push remain separate and held.
+- Next owner: independent reviewer checks the one required E1-E12 technical docs revision before minimum Ticket20 backend reds, then UI, thin responsiveness script, Ticket21 transcript, Ticket22 packaging, activation commit last. Ticket23 follows release22, ahead of24-26. UI/route source changes await bounded review; capability remains empty; activation and push remain separate and held.
 
 ## Earlier correction-review pointers (historical)
 

@@ -217,13 +217,13 @@ Let the user ask the coordinator for a document during or after a session: synth
 
 Persist deliverables through an application-owned artifact interface available to both CLI and API adapters. The coordinator supplies authored content; the application owns storage, versions, and downloads. Record producing agent, requested/confirmed model when available, source run, source message IDs, input revision, and creation time.
 
-Read Markdown in-app, request revisions, retain earlier revisions, and download `.md`. Sanitize rendering; source content must not execute scripts. Store stable app-owned copies instead of depending on an agent's Desktop write access.
+Reduced20-22 acceptance: read escaped Markdown text in-app and download exact `.md` bytes; show status and minimal Cancel. Retain existing stored versions, source/attempt provenance and safety behavior. Revision browser, advanced resume and source/producer pickers are deferred. Source content must not execute scripts. Store stable app-owned copies instead of depending on an agent's Desktop write access. Rendered Markdown is a later reader improvement.
 
 ### DA-3 — Actual rounds
 
 When requested, assemble the transcript from stored messages, not model recollection. Include phase boundaries, seat/agent, timestamp, and message ID. Preserve wording and order; mark superseded, cancelled, and incomplete material. Artifact scope must say whether it contains only accepted run turns or also associated human discussion.
 
-Support one combined Markdown file with authored synthesis followed by the actual rounds, or a transcript alone. Exclude abandoned attempts by default and expose explicit inclusion. No 1,000-character limit applies to artifacts: that limit belongs to the separate agent catch-up summary.
+Reduced20-22 acceptance is a separate transcript-alone Markdown download of actual accepted stored messages in message-ID order, with phase/seat/time/identity and incomplete/omission markers. Exclude abandoned attempts by default; explicit inclusion and combined authored-synthesis layout are deferred. No automatic synthesis call is part of this export. No 1,000-character limit applies to artifacts: that limit belongs to the separate agent catch-up summary. The per-export byte cap and refusal are defined in the reduced contract.
 
 Restore the backup ZIP export if absent/broken in the selected baseline, but keep it distinct from document export.
 
@@ -327,7 +327,7 @@ Use deterministic fake adapters for routine tests. They must simulate slow start
 - **AT-09:** With all seats selected, `@claude` triggers only Claude. Multiple explicit recipients, `@all`, no selections, unknown names, and mentions inside documents behave as specified.
 - **AT-10:** A coordinator proposes two different session structures for two tasks; the application validates and executes either without forcing six fixed phases.
 - **AT-11:** Archive/reopen preserves messages and artifacts. Active work blocks channel removal until stopped. Delete confirms consequences and protects general.
-- **AT-12:** A requested document is readable, revisable, and downloadable. Combined export contains actual ordered messages and provenance, not a reconstructed transcript or catch-up summary.
+- **AT-12 (reduced20-22):** A manually requested current/completed-session document is readable as escaped Markdown text and downloadable as exact bytes, with status/Cancel and provenance. Separate transcript download contains actual ordered accepted messages and phase/seat/time/identity/incomplete markers. Revision UI, advanced resume, explicit abandoned-attempt inclusion and combined synthesis layout are deferred; no reconstructed transcript or catch-up summary substitutes for actual text.
 - **AT-13:** A complete live review succeeds with the selected release-supported clients. Record configuration and date; Hermes/OMP are optional until they pass the same end-to-end check.
 - **AT-14:** Capture the API first-pass request payloads with fake adapters. Each contains the approved packet, brief, and lens, with no channel history, peer response, coordinator findings, prior conversation state, or retrieval tools. Publish one response before constructing the next request and verify it is still excluded. Ordinary CLI reviews remain available.
 - **AT-15:** A valid JSON findings block yields extracted findings; absent/multiple blocks, malformed JSON, and invalid fields produce distinct parse flags with raw text retained. Correct quotes match their selected document revision; fabricated, empty, wrong-document, and missing quotes receive visible flags. Supplied invalid line ranges cannot pass. No automatic repair call is made. A matched quote is not labeled a validated claim.
