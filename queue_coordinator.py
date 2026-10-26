@@ -231,8 +231,11 @@ class CoordinatedQueue:
                 if policy is None:
                     return records
                 affected = policy.fence_source_requests(run_id)
+                previous = self._artifact_stop_reports.get(run_id, {'dispatch_ids': [], 'warning': None})
+                retained = [] if previous.get('confirmed') else previous['dispatch_ids']
                 self._remember_artifact_stop(run_id, {
-                    'dispatch_ids': list(affected['dispatch_ids']), 'warning': None})
+                    'dispatch_ids': list(dict.fromkeys(retained + list(affected['dispatch_ids']))),
+                    'warning': previous['warning'] if retained else None})
                 ids = affected['request_ids']
                 for start in range(0, len(ids), 100):
                     policy.repair_cancel_fences(ids[start:start+100])
@@ -274,7 +277,9 @@ class CoordinatedQueue:
                         if row['envelope']['dispatch_id'] in wanted}
                 unconfirmed = sorted(identifier for identifier in wanted
                                      if identifier not in rows or rows[identifier]['state'] not in terminal)
-                report['confirmed'] = not unconfirmed and not report['warning']
+                report['confirmed'] = not unconfirmed
+                if report['confirmed']:
+                    report['warning'] = None
                 warning = report['warning'] or self._artifact_repair_warning or ('transport_unconfirmed' if unconfirmed else None)
             except Exception as error:
                 report['confirmed'] = False

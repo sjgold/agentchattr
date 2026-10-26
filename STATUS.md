@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (corrected backend full1888 green;51 mutation kills; final independent review next; cleanup approved/no moves)
+**Updated:** 2026-10-26 (backend independently accepted40037dbd; D8 focused91 and52 mutants green; UI contract/reds next; no cleanup moves)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Final corrected source146b00a: full1888/four skips OK370.823s;51 mutants killed (50 assertions, one typed ERROR-only). Earlier failed/green attempts retained in production ledger. |
-| Next | Independent reviewer final backend rerun/delta audit. Then reduced UI, screen, transcript21, packaging22; activation separate, cleanup last. No backend acceptance claim yet; no push. |
+| Next | Reduced UI contract and ROOT reds, then reviewer clearance before UI source. Backend independently accepted40037dbd with D8 tested follow-up91/52. Activation/push held; cleanup last. |
 
 ## Current handoff
 
@@ -28,7 +28,7 @@
 - Accepted publishable backend branch/tip: codex/ticket-20-r2-on-a1 product220f340042056b80c09091807690af74f36dafec, unit from closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca. R2+D4 FINAL ACCEPTANCE: reviewer170 focused OK47.5s; builder focused161/artifact437/full1817 (4 skips) pass;17 assertion mutants killed; previous190 gate retained. Older codex/ticket-20-artifacts WIP67e9e05 is superseded and preserved. No publication performed.
 - R3 proposal196666c and reviewer no-sidecar/compact-default/no-conversion-tool ruling remain historical in TICKET-20-COMPACT-INDEX.md/shared artifact. No further R3 docs cycle/reds/source/timing is active. Full operator contract is historical where it exceeds reduced scope. Backend recovery/version/archive logic remains intact.
 - Running disclosures:128-request/512KiB quota withdrawn, no replacement chosen; full refs remain in the index (~293KB historically per fulfilled max-source request), so larger histories are slower. Earlier roughly1.1s stalls have unknown cause. Final sentinel190 pass and all misses/invalid attempts remain in TICKET-20-D4-FINAL-GATE.md. Measured max-source A roughly0.16-0.18s,4MiB import roughly0.20-0.21s are observations, not an unlimited-capacity guarantee. CHANNELS.md updated.
-- Final corrected reduced-backend source146b00a4ba17e191a96a8d662f32dd4ba5eb728f, codex/ticket-20-r2-on-a1. Builder full1888 OK370.823s/four skips,51 mutation kills (50 assertions, one typed-contract ERROR-only), all source hashes unchanged. Reviewer now reruns modules/support/Stop coordination/mutations and audits final delta before backend acceptance. Stop/held-owner isolation, stopped-source claim refusal, prepared explicit retry, warning cache overflow and safe ledger inspection are implemented/tested. Earlier1874 three-error full, preceding1882 green, original1865 green and original import target miss all retained honestly. UI warning/cache-key and100+ retained poll screen are pending; no activation/push or cleanup moves.
+- Backend independently ACCEPTED40037dbd: reviewer90 reduced/Stop/coordination OK20.2s,170 earlier safety OK49.5s,51 mutation kills/direct delta audit. Root full1888/four skips OK370.823s retained. D8 repeated-Stop report merge observed red then fixed, final focused91 OK20.472s and52 mutation kills (51 assertion/one typed ERROR-only), no additional full cycle required by reviewer. D8 delta check sent with source pin. UI contract/reds next using accepted reduced scope; UI artifact warning/render-cache-key and100+ retained poll screen remain release requirements. No activation/push/cleanup moves.
 - Cleanup plan: docs/plans/2026-10-26-delivery-file-cleanup.md, complete110 rename-only map preserving code paths and evidence. Reviewer approved with K1-K9 folded into the plan (pure renames commit then link/additions commit); no moves or deletions executed. Functional backend/UI work precedes its dedicated cleanup commit. UI, transcript, responsiveness screen, packaging, activation and push remain pending; Ticket23 follows22 ahead of24-26.
 
 ## Earlier correction-review pointers (historical)

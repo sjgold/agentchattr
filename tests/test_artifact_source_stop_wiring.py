@@ -316,6 +316,23 @@ class ArtifactSourceStopWiringTests(unittest.TestCase):
         self.assertEqual(result['state'],'stopped')
         self.assertEqual(owner.queue.owned(owner.owner,owner.invocation['dispatch_id'])['state'],'cancelled')
 
+    def test_repeated_stop_preserves_unconfirmed_ids_until_transport_terminal(self):
+        case,audit,instance,consumer,record,box,session=self.fixture()
+        with patch.object(case.authority,'_fence',side_effect=artifact_store.ArtifactUnavailable('held fence')):
+            first=case.engine.stop_session(session['id'])
+        self.assertEqual(first['artifact_cancellation']['warning'],'storage_unavailable')
+        self.assertIn(audit['dispatch_id'],first['artifact_cancellation']['unconfirmed_dispatch_ids'])
+        # A successful incremental fence response must not erase prior uncertainty.
+        with patch.object(case.authority,'fence_source_requests',return_value={'request_ids':[],'dispatch_ids':[]}):
+            second=case.engine.stop_session(session['id'])
+        self.assertEqual(first['stop_id'],second['stop_id'])
+        self.assertIn(audit['dispatch_id'],second['artifact_cancellation']['unconfirmed_dispatch_ids'])
+        self.assertIsNotNone(second['artifact_cancellation']['warning'])
+        case.trigger.queue.cancel_dispatch(audit['dispatch_id'],uuid.uuid4().hex)
+        case.trigger.queue.cancellation_receipt(instance,audit['dispatch_id'],consumer,'local_ended')
+        final=case.trigger.queue.artifact_stop_status(session['run_id'])
+        self.assertEqual(final,{'warning':None,'unconfirmed_dispatch_ids':[]})
+
     def test_run_without_artifact_policy_keeps_ordinary_stop(self):
         from tests import test_channel_import as fixture
         from pathlib import Path

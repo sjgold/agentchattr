@@ -1002,3 +1002,12 @@ All prior unsuccessful runs remain above, including the real safety findings and
 2026-10-26T21:04:24.489Z === exited (code 0)
 
 ```
+
+
+## Backend independent acceptance and D8 follow-up
+
+Reviewer ACCEPTED40037dbd after his90 reduced/Stop/coordination tests OK20.2s,170 earlier safety tests OK49.5s,51 mutation kills and direct delta read. His one D8 follow-up requires preserving uncertainty if a later successful Stop returns no newly affected IDs. Root verified that fence_source_requests already rereads retained cancelled rows; the regression test deliberately supplies an empty incremental affected list to exercise the report owner's merge guarantee. Observed1FAIL0.198s, then fixed: merge previous not-confirmed dispatch IDs with affected IDs, retain the associated warning, and let artifact_stop_status clear it only after every known ID is terminal. Confirmed IDs need not carry into future Stop reports.
+
+D8 test passed0.191s. Final focused91 reduced/Stop/coordination tests OK20.472s, shell06d13a73.52 mutants killed (51 assertion, one original snapshot typed-contract ERROR-only), hashes unchanged. Reviewer explicitly required no additional full cycle for D8; prior final1888/four skips OK370.823s remains the full baseline. _artifact_report_overflow is intentionally sticky until process restart because evicted unconfirmed observations cannot be reconstructed as confirmed merely by later cache size. No wire/enum/capability changes.
+
+Backend is accepted with this tested follow-up; D8 delta is sent for the reviewer's stated check. Next: UI contract/ROOT reds on top of this backend, using the approved reduced scope and incumbent app styling. UI source, screen/transcript/activation/push/cleanup moves remain later.
