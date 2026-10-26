@@ -136,7 +136,8 @@ class ArtifactSourceStopWiringTests(unittest.TestCase):
         from channel_lifecycle import ChannelUnavailable
         case,audit,instance,consumer,record,box,session=self.fixture()
         with patch.object(case.trigger.queue,'_channel_policy',side_effect=ChannelUnavailable('held channel')):
-            case.trigger.queue.repair_artifact_stops()
+            try:case.trigger.queue.repair_artifact_stops()
+            except ChannelUnavailable:self.fail('Optional artifact repair must not abort held-channel startup')
             with self.assertRaises(ChannelUnavailable):case.trigger.queue.claim(instance,'owner')
 
     def test_no_artifact_stop_report_does_not_read_transport(self):
