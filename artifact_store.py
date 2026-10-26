@@ -28,6 +28,11 @@ MAX_QUARANTINE_BODY_BYTES = 8 * 1024 * 1024
 MAX_QUARANTINE_OBJECTS = 1024
 MAX_DIAGNOSTIC_COUNTER = 2**31 - 1
 MAX_OBJECT_ERRORS = 256
+MAX_ARTIFACT_LABEL_BYTES = 256
+MAX_ARTIFACT_RECORD_INTEGER = 2**63 - 1
+MAX_ARTIFACT_NUMBER_TOKEN_BYTES = 23
+_LABEL_CONTROLS = re.compile(r'[\x00-\x1f\x7f]')
+_INDEX_CONTROLS = re.compile(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 LIVE = {'prepared', 'queued', 'active'}
 TERMINAL = {'fulfilled', 'failed', 'cancelled', 'quarantined', 'imported'}
 STATE_REASONS = {None, 'resume_pending', 'queued', 'queued_behind_review', 'source_stopped',
@@ -99,6 +104,9 @@ def _number(value):
         valid = False
     if not valid:
         raise ArtifactValidationError('Artifact timestamps must be finite positive numbers.')
+    if ((type(value) is int and value > MAX_ARTIFACT_RECORD_INTEGER)
+            or (type(value) is float and len(json.dumps(value, allow_nan=False)) > MAX_ARTIFACT_NUMBER_TOKEN_BYTES)):
+        raise ArtifactValidationError('Artifact timestamp exceeds its supported numeric width.')
     return value
 
 
@@ -106,6 +114,25 @@ def _integer(value, minimum=0, maximum=None):
     if type(value) is not int or value < minimum or (maximum is not None and value > maximum):
         raise ArtifactValidationError('Invalid artifact count.')
     return value
+
+
+def _record_integer(value, minimum=0, maximum=None):
+    limit = MAX_ARTIFACT_RECORD_INTEGER if maximum is None else min(maximum, MAX_ARTIFACT_RECORD_INTEGER)
+    return _integer(value, minimum, limit)
+
+
+def _label_text(value, maximum=MAX_ARTIFACT_LABEL_BYTES):
+    raw = _text(value, maximum)
+    if _LABEL_CONTROLS.search(value):
+        raise ArtifactValidationError('Artifact labels cannot contain ASCII controls.')
+    return raw
+
+
+def _index_text(value, maximum):
+    raw = _text(value, maximum)
+    if _INDEX_CONTROLS.search(value):
+        raise ArtifactValidationError('Artifact record text permits only HT, LF and CR controls.')
+    return raw
 
 
 def _channel(value):
@@ -158,10 +185,10 @@ def _source_run(value):
     if value is None:
         return
     _fields(value, ('session_id', 'run_id', 'input_revision', 'state_at_request'))
-    _integer(value['session_id'], 1)
+    _record_integer(value['session_id'], 1)
     _hex(value['run_id'])
     _hex(value['input_revision'], 64)
-    _text(value['state_at_request'])
+    _label_text(value['state_at_request'])
 
 
 def _packet_scope(packet_id, packet):
@@ -189,8 +216,8 @@ def _packet_scope(packet_id, packet):
     ids, uids, refs = set(), set(), []
     for msg in messages:
         _fields(msg, ('id', 'uid', 'sender', 'type', 'timestamp', 'text', 'attachments', 'provenance'))
-        _integer(msg['id'])
-        _text(msg['uid'])
+        _record_integer(msg['id'])
+        _label_text(msg['uid'])
         _text(msg['sender'])
         _text(msg['type'])
         _text(msg['text'], empty=True)
@@ -221,13 +248,13 @@ def _audit(value):
     for name in ('attempt_id', 'dispatch_id', 'brief_id'):
         if value[name] != derived[name]:
             raise ArtifactValidationError('Artifact request identifiers do not match.')
-    _channel(value['original_channel']); _text(value['requester'])
-    _text(value['instruction'], 32 * 1024); _text(value['format'], 512)
+    _channel(value['original_channel']); _label_text(value['requester'])
+    _index_text(value['instruction'], 32 * 1024); _index_text(value['format'], 512)
     _number(value['created_at']); _source_run(value['source_run'])
     producer = value['producer']
     _fields(producer, ('name', 'identity_id', 'adapter', 'launch_attempt', 'launch_nonce',
         'fingerprint', 'requested_model', 'requested_model_reason', 'capabilities'))
-    _text(producer['name']); _hex(producer['identity_id'])
+    _label_text(producer['name']); _hex(producer['identity_id'])
     if producer['adapter'] not in ('cli', 'openai-compatible') or producer['capabilities'] != ['artifact-v1']:
         raise ArtifactValidationError('Artifact producer capability is invalid.')
     present = [producer[key] is not None for key in ('launch_attempt', 'launch_nonce', 'fingerprint')]
@@ -236,16 +263,16 @@ def _audit(value):
     if all(present):
         _hex(producer['launch_attempt']); _hex(producer['launch_nonce']); _hex(producer['fingerprint'], 64)
     if producer['requested_model'] is None:
-        _text(producer['requested_model_reason'])
+        _label_text(producer['requested_model_reason'])
     else:
-        _text(producer['requested_model'])
+        _label_text(producer['requested_model'])
         if producer['requested_model_reason'] is not None:
             raise ArtifactValidationError('Known requested model cannot have an absent-model reason.')
     scope = value['scope']
     _fields(scope, ('kind', 'packet_id', 'sha256', 'byte_length', 'message_refs', 'input_revision'))
     if scope['kind'] not in ('run_accepted_messages', 'selected_channel_messages') or scope['packet_id'] != derived['packet_id']:
         raise ArtifactValidationError('Artifact request packet reference is invalid.')
-    _hex(scope['sha256'], 64); _integer(scope['byte_length'], 1, MAX_PACKET_BYTES)
+    _hex(scope['sha256'], 64); _record_integer(scope['byte_length'], 1, MAX_PACKET_BYTES)
     if scope['input_revision'] is not None:
         _hex(scope['input_revision'], 64)
     if not isinstance(scope['message_refs'], list) or len(scope['message_refs']) > MAX_PACKET_MESSAGES:
@@ -253,14 +280,14 @@ def _audit(value):
     seen_ids, seen_uids = set(), set()
     for ref in scope['message_refs']:
         _fields(ref, ('id', 'uid', 'sha256'))
-        _integer(ref['id']); _text(ref['uid']); _hex(ref['sha256'], 64)
+        _record_integer(ref['id']); _label_text(ref['uid']); _hex(ref['sha256'], 64)
         if ref['id'] in seen_ids or ref['uid'] in seen_uids:
             raise ArtifactValidationError('Artifact source references are duplicated.')
         seen_ids.add(ref['id']); seen_uids.add(ref['uid'])
     parent = value['expected_parent']
     if parent is not None:
         _fields(parent, ('version_id', 'sequence', 'sha256'))
-        _hex(parent['version_id']); _integer(parent['sequence'], 1); _hex(parent['sha256'], 64)
+        _hex(parent['version_id']); _record_integer(parent['sequence'], 1); _hex(parent['sha256'], 64)
     _canonical(value)
     return deepcopy(value)
 
@@ -310,7 +337,7 @@ def _observation(value, adapter):
     elif model is None:
         valid = reason == 'provider_did_not_report_model'
     else:
-        _text(model)
+        _label_text(model)
         valid = reason == 'api_response'
     if not valid:
         raise ArtifactValidationError('Artifact model observation is invalid.')
@@ -581,7 +608,7 @@ class ArtifactStore:
         if kind not in ('version', 'packet'):
             raise ArtifactValidationError('Invalid artifact archive object kind.')
         _hex(object_id); _hex(sha256, 64)
-        _integer(byte_length, 1, MAX_ARTIFACT_BYTES if kind == 'version' else MAX_PACKET_BYTES)
+        _record_integer(byte_length, 1, MAX_ARTIFACT_BYTES if kind == 'version' else MAX_PACKET_BYTES)
         with self._lock:
             self._check_index()
             if kind == 'version':
@@ -1300,7 +1327,7 @@ class ArtifactStore:
         _fields(metadata, ('id', 'lineage_id', 'sequence', 'channel', 'parent_version_id', 'request_id',
             'attempt_id', 'dispatch_id', 'sha256', 'byte_length', 'created_at', 'provenance'))
         _hex(metadata['id']); _hex(metadata['lineage_id']); _hex(metadata['sha256'], 64)
-        _integer(metadata['sequence'], 1); _integer(metadata['byte_length'], 1, MAX_ARTIFACT_BYTES)
+        _record_integer(metadata['sequence'], 1); _record_integer(metadata['byte_length'], 1, MAX_ARTIFACT_BYTES)
         _channel(metadata['channel']); _number(metadata['created_at'])
         request = requests.get(metadata['request_id'])
         if request is None or request['version_id'] != metadata['id'] or request['state'] not in ('fulfilled', 'imported'):
@@ -1337,7 +1364,7 @@ class ArtifactStore:
             _hex(row['attempt_id']); _hex(row['dispatch_id']); _hex(row['sha256'], 64)
             if row['actor_identity_id'] is not None:
                 _hex(row['actor_identity_id'])
-            _integer(row['byte_count']); _number(row['received_at'])
+            _record_integer(row['byte_count']); _number(row['received_at'])
             if row['updated_at'] != row['received_at'] or row['reason'] not in QUARANTINE_REASONS:
                 raise ArtifactValidationError('Invalid artifact diagnostic metadata.')
             key = {name: row[name] for name in ('request_id', 'attempt_id', 'dispatch_id', 'reason',
@@ -1362,8 +1389,8 @@ class ArtifactStore:
         if (summary['id'] != self._summary_id(dispatch_id) or summary['dispatch_id'] != dispatch_id
                 or summary['kind'] != ('dispatch_overflow' if dispatch_id else 'store_overflow')):
             raise ArtifactValidationError('Artifact overflow scope differs.')
-        _integer(summary['counter'], 1, MAX_DIAGNOSTIC_COUNTER)
+        _record_integer(summary['counter'], 1, MAX_DIAGNOSTIC_COUNTER)
         _hex(summary['latest_diagnostic_id']); _hex(summary['latest_sha256'], 64)
-        _integer(summary['latest_byte_count']); _number(summary['updated_at'])
+        _record_integer(summary['latest_byte_count']); _number(summary['updated_at'])
         if summary['latest_reason'] not in QUARANTINE_REASONS:
             raise ArtifactValidationError('Invalid artifact overflow reason.')

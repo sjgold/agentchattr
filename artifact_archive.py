@@ -3,6 +3,7 @@ from copy import deepcopy
 from datetime import datetime
 import hashlib
 import json
+import math
 import re
 import stat
 import unicodedata
@@ -11,7 +12,7 @@ import zlib
 
 from artifact_store import (MAX_ARTIFACT_BYTES, MAX_PACKET_BYTES, MAX_PACKET_MESSAGES,
     LIVE, TERMINAL, STATE_REASONS, ArtifactValidationError, request_ids,
-    _fields, _hex, _integer, _number, _channel, _text, _source_run, _packet_scope)
+    _fields, _hex, _integer, _channel, _text, _packet_scope)
 from sealed_result_io import canonical_utf8
 
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
@@ -158,13 +159,34 @@ def _parent_shape(parent):
         _hex(parent['version_id']); _integer(parent['sequence'], 1); _hex(parent['sha256'], 64)
 
 
+def _shape_number(value):
+    """Legacy structural grammar; record width is a lineage semantic check."""
+    if type(value) not in (int, float):
+        raise ArtifactValidationError('Invalid artifact timestamp shape.')
+    try:
+        valid = math.isfinite(value) and value > 0
+    except OverflowError:
+        valid = False
+    if not valid:
+        raise ArtifactValidationError('Invalid artifact timestamp shape.')
+
+
+def _source_run_shape(value):
+    if value is None:
+        return
+    _fields(value, ('session_id', 'run_id', 'input_revision', 'state_at_request'))
+    _integer(value['session_id'], 1)
+    _hex(value['run_id']); _hex(value['input_revision'], 64)
+    _text(value['state_at_request'])
+
+
 def _request_shape(row):
     _fields(row, ('request_id', 'original_channel', 'requester', 'producer', 'source_run', 'scope',
         'instruction', 'format', 'expected_parent', 'created_at', 'updated_at', 'import_source'))
     _hex(row['request_id']); _channel(row['original_channel']); _text(row['requester'])
-    _source_run(row['source_run']); _scope_shape(row['scope'], row['request_id'])
+    _source_run_shape(row['source_run']); _scope_shape(row['scope'], row['request_id'])
     _text(row['instruction'], 32768); _text(row['format'], 512); _parent_shape(row['expected_parent'])
-    _number(row['created_at']); _number(row['updated_at'])
+    _shape_number(row['created_at']); _shape_number(row['updated_at'])
     producer = row['producer']
     _fields(producer, ('name', 'identity_id', 'adapter', 'requested_model', 'requested_model_reason'))
     _text(producer['name']); _hex(producer['identity_id'])
@@ -191,7 +213,7 @@ def _version_shape(row):
                   'byte_length', 'created_at', 'observation'))
     _hex(row['version_id']); _hex(row['request_id']); _integer(row['sequence'], 1)
     _nullable_hex(row['parent_version_id']); _hex(row['sha256'], 64)
-    _integer(row['byte_length'], 1); _number(row['created_at'])
+    _integer(row['byte_length'], 1); _shape_number(row['created_at'])
     _fields(row['observation'], ('confirmed_model', 'confirmation_reason'))
     if row['observation']['confirmed_model'] is not None:
         _text(row['observation']['confirmed_model'])
@@ -234,7 +256,7 @@ def validate_index(raw, *, member_names=None):
         for ordinal, lineage in enumerate(index['lineages']):
             _fields(lineage, ('lineage_id', 'channel', 'updated_at', 'head_version_id', 'requests', 'versions'))
             own('lineage', _hex(lineage['lineage_id']), ordinal)
-            _channel(lineage['channel']); _number(lineage['updated_at']); _nullable_hex(lineage['head_version_id'])
+            _channel(lineage['channel']); _shape_number(lineage['updated_at']); _nullable_hex(lineage['head_version_id'])
             if not isinstance(lineage['requests'], list) or not lineage['requests'] or not isinstance(lineage['versions'], list):
                 raise ArtifactValidationError('Invalid artifact lineage containers.')
             for request in lineage['requests']:

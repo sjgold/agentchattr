@@ -413,6 +413,9 @@ def complete_api_artifact(record, *, runtime_path, manifest, consumer_id, fetch_
     try:
         _fields(generated, ('content', 'confirmed_model'))
         parsed = parse_response(generated['content'])
+        observation = {'confirmed_model': generated['confirmed_model'],
+            'confirmation_reason': 'api_response' if generated['confirmed_model'] is not None else 'provider_did_not_report_model'}
+        _observation(observation, 'openai-compatible')
     except (ValueError, TypeError, KeyError, UnicodeError, RecursionError):
         try:
             report = _report(generated['content'])
@@ -424,10 +427,7 @@ def complete_api_artifact(record, *, runtime_path, manifest, consumer_id, fetch_
             return _outcome('held', 'artifact_delivery_unconfirmed')
         except (OSError, ValueError, RuntimeError, TypeError, KeyError):
             return _outcome('held', 'artifact_delivery_unconfirmed')
-    observation = {'confirmed_model': generated['confirmed_model'],
-        'confirmation_reason': 'api_response' if generated['confirmed_model'] is not None else 'provider_did_not_report_model'}
     try:
-        _observation(observation, 'openai-compatible')
         owner = validate_owner(delivery['result_owner'])
         payload = {**{key: deepcopy(brief[key]) for key in ('version', 'purpose', 'request_id', 'attempt_id',
                     'brief_id', 'lineage_id', 'dispatch_id', 'expected_parent')},

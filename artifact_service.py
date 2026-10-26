@@ -6,7 +6,7 @@ import time
 import uuid
 
 from artifact_store import (ArtifactConflict, ArtifactUnavailable, ArtifactValidationError,
-    LIVE, _audit, _hex, _path_key, _text, _observation)
+    LIVE, _audit, _hex, _path_key, _text, _observation, _label_text)
 from artifact_protocol import (validate_brief, validate_payload, MAX_RESULT_RECORD_BYTES,
                                MAX_ARTIFACT_BYTES, verify_result)
 from artifact_delivery import ArtifactOutbox
@@ -73,6 +73,12 @@ class ArtifactService:
             raise _ArtifactProducerUnavailable('Artifact producer launch is unverified.')
         model = provenance['effective']['seat'].get('model') or None
         reason = None if model else ('cli_model_unverified' if producer['adapter'] == 'cli' else 'provider_default')
+        try:
+            _label_text(live['name'])
+            if model is not None:
+                _label_text(model)
+        except ArtifactValidationError:
+            raise _ArtifactProducerUnavailable('Artifact producer labels exceed the supported grammar.') from None
         if producer['requested_model'] != model or producer['requested_model_reason'] != reason:
             raise ArtifactConflict('Requested model differs from the immutable producer launch.')
         return live
@@ -104,7 +110,20 @@ class ArtifactService:
                 'transport_settled': transport_settled, 'notice': notice, 'warning': warning}
 
     def prepare_request(self, audit, packet, request_id):
-        audit = _audit(audit)
+        try:
+            audit = _audit(audit)
+        except ArtifactValidationError:
+            # An invalid configured model must have the producer refusal, even
+            # though the common audit validator runs before the live binding.
+            producer = audit.get('producer') if isinstance(audit, dict) else None
+            if isinstance(producer, dict):
+                try:
+                    for key in ('name', 'requested_model', 'requested_model_reason'):
+                        if producer.get(key) is not None:
+                            _label_text(producer[key])
+                except ArtifactValidationError:
+                    raise _ArtifactProducerUnavailable('Artifact producer labels exceed the supported grammar.') from None
+            raise
         if request_id != audit['request_id']:
             raise ArtifactValidationError('Artifact request id differs from its frozen audit.')
         with self.channels._boundary():

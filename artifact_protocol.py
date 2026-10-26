@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 from artifact_store import (ArtifactValidationError, ArtifactUnavailable, MAX_ARTIFACT_BYTES, request_ids,
-    _canonical, _fields, _hex, _integer, _number, _observation, _path_key, _source_run, _text)
+    _canonical, _fields, _hex, _integer, _number, _observation, _path_key, _source_run, _text, _record_integer, _index_text)
 from sealed_result_io import payload_mac
 
 
@@ -42,7 +42,7 @@ def _ids(value):
 def _parent(value):
     if value is not None:
         _fields(value, ('version_id', 'sequence', 'sha256'))
-        _hex(value['version_id']); _integer(value['sequence'], 1); _hex(value['sha256'], 64)
+        _hex(value['version_id']); _record_integer(value['sequence'], 1); _hex(value['sha256'], 64)
 
 
 def _size(value, maximum):
@@ -81,7 +81,7 @@ def validate_brief(body):
     _fields(producer, ('identity_id', 'adapter', 'launch_attempt', 'launch_nonce', 'fingerprint'))
     validate_owner({'dispatch_id': body['dispatch_id'], 'seat_identity_id': producer['identity_id'],
         **{field: producer[field] for field in ('adapter', 'launch_attempt', 'launch_nonce', 'fingerprint')}})
-    _text(body['instruction'], 32768); _text(body['format'], 512)
+    _index_text(body['instruction'], 32768); _index_text(body['format'], 512)
     if body['input_revision'] is not None:
         _hex(body['input_revision'], 64)
     _source_run(body['source_run'])

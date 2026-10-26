@@ -65,7 +65,7 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
         _, healthy_audit, _ = self.source_graph(attempts=False)
         data = self.export()
         fields = ('source_run.state_at_request', 'source_run.session_id', 'requester',
-                  'producer.name', 'producer.requested_model_reason', 'scope.uid')
+                  'producer.name', 'producer.requested_model_reason', 'scope.uid', 'scope.message_id')
         for number, field in enumerate(fields):
             def corrupt_semantic_field(members):
                 index = json.loads(members[codec.INDEX_MEMBER])
@@ -79,6 +79,8 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
                     request['source_run'] = deepcopy(value['source_run'])
                 elif field == 'scope.uid':
                     value['messages'][0]['uid'] = 'x' * 257
+                elif field == 'scope.message_id':
+                    value['messages'][0]['id'] = 2**63
                 elif field == 'requester':
                     request['requester'] = 'x' * 257
                 else:
@@ -262,7 +264,7 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
         self.assertEqual(store._number(stamp), stamp)
         self.assertEqual(store._number(2**63-1), 2**63-1)
         self.assertEqual(len(json.dumps(-stamp)), 24)
-        for value in (-stamp, float('nan'), float('inf'), True):
+        for value in (0, -stamp, float('nan'), float('inf'), True):
             with self.subTest(existing_number_guard=repr(value)):
                 with self.assertRaises(store.ArtifactValidationError):
                     store._number(value)
@@ -339,6 +341,10 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
         with self.subTest(index_field='overflow.latest_byte_count'):
             with self.assertRaises(store.ArtifactValidationError):
                 self.source._validate_summary(summary, None)
+        summary.update(latest_byte_count=0, updated_at=2**63)
+        with self.subTest(index_field='overflow.updated_at'):
+            with self.assertRaises(store.ArtifactValidationError):
+                self.source._validate_summary(summary, None)
         with self.subTest(record_field='timestamp_helper'):
             with self.assertRaises(store.ArtifactValidationError):
                 store._number(2**63)
@@ -354,7 +360,8 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
             self.assertEqual(owner.get_packet(scope['packet_id']), packet)
         for number, field in enumerate(('uid_length', 'uid_control', 'message_id',
                                        'message_timestamp', 'source_run_session_id',
-                                       'uid_del', 'uid_ht', 'uid_cr', 'uid_lf', 'id_bool', 'id_negative')):
+                                       'uid_del', 'uid_ht', 'uid_cr', 'uid_lf', 'id_bool', 'id_negative',
+                                       'source_state_length', 'source_state_control')):
             owner = store.ArtifactStore(self.root / ('packet-check-' + str(number)))
             owner.bind_channel_policy(lambda: self.service)
             packet = self.run_packet()
@@ -371,6 +378,9 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
                 packet['messages'][0]['uid'] = 'bad' + control + 'uid'
             elif field in ('id_bool', 'id_negative'):
                 packet['messages'][0]['id'] = True if field == 'id_bool' else -1
+            elif field.startswith('source_state_'):
+                packet['source_run']['state_at_request'] = ('x' * 257 if field.endswith('length')
+                                                            else 'bad\x01state')
             else:
                 packet['source_run']['session_id'] = 2**63
             before = self.stored_files(owner)
@@ -455,12 +465,27 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
 
     def test_storage_boundary_name_and_reason_refuse_before_reservation(self):
         for number, (field, value) in enumerate((
-                (field, value) for field in ('producer.name', 'producer.requested_model_reason')
+                (field, value) for field in ('producer.name', 'producer.requested_model_reason',
+                    'producer.requested_model', 'source_run.state_at_request', 'requester', 'scope.uid')
                 for value in ('x' * 257, 'bad\x01label'))):
             owner = store.ArtifactStore(self.root / ('storage-defense-' + str(number)))
             owner.bind_channel_policy(lambda: self.service)
-            audit = self.audit(store, owner)
+            packet = self.run_packet()
+            audit = self.audit(store, owner, packet=packet)
             changed = self.changed_label(audit, field, value)
+            if field in ('source_run.state_at_request', 'scope.uid'):
+                # Hostile persisted input fixture: keep audit/body/hash consistent
+                # without invoking the new packet validator to build invalid data.
+                if field == 'scope.uid':
+                    packet['messages'][0]['uid'] = value
+                else:
+                    packet['source_run']['state_at_request'] = value
+                raw = codec.canonical_utf8(packet)
+                changed['scope'].update(sha256=hashlib.sha256(raw).hexdigest(), byte_length=len(raw),
+                    message_refs=[{'id': row['id'], 'uid': row['uid'],
+                        'sha256': hashlib.sha256(codec.canonical_utf8(row)).hexdigest()}
+                        for row in packet['messages']])
+                owner._object_path('packet', changed['scope']['packet_id']).write_bytes(raw)
             before = self.stored_files(owner)
             with self.subTest(field=field, kind='byte_cap' if len(value) == 257 else 'control'):
                 with self.assertRaises(store.ArtifactValidationError):
@@ -472,10 +497,14 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
                 self.assertIsNone(owner.get_request(audit['request_id']))
 
     def test_storage_boundary_out_of_bound_index_holds_on_fresh_load(self):
-        _, audit, _ = self.source_graph(attempts=False)
+        _, audit, _ = self.graph_for_packet(self.run_packet())
         base = json.loads(self.source.path.read_bytes())
+        control = self.root / 'healthy-load-control'
+        atomic_json(control / 'artifacts' / 'index.json', base)
+        self.assertEqual(store.ArtifactStore(control).export_lineage_ids(), (audit['lineage_id'],))
         number = 0
-        for field in ('requester', 'producer.name', 'producer.requested_model_reason', 'scope.uid'):
+        for field in ('requester', 'producer.name', 'producer.requested_model_reason',
+                      'producer.requested_model', 'source_run.state_at_request', 'scope.uid'):
             for value in ('x' * 257, 'bad\x01label'):
                 changed = deepcopy(base)
                 row = changed['requests'][audit['request_id']]
@@ -483,7 +512,7 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
                 # Keep provenance equality valid, so only the new grammar can
                 # refuse: no unrelated existing cross-reference refusal mask.
                 metadata = changed['versions'][row['version_id']]
-                for key in ('requester', 'producer', 'scope'):
+                for key in ('requester', 'producer', 'scope', 'source_run'):
                     metadata['provenance'][key] = deepcopy(row['audit'][key])
                 root = self.root / ('load-defense-' + str(number))
                 number += 1
@@ -524,6 +553,32 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
                 with self.subTest(brief_field=field, control=hex(code)):
                     with self.assertRaises(store.ArtifactValidationError):
                         protocol.validate_brief(changed)
+            for value in ('\u0085', '\u2028', '\u2029', 'bad\ud800text'):
+                changed = deepcopy(brief)
+                changed[field] = value
+                with self.subTest(brief_field=field, existing_blank_surrogate_guard=ascii(value)):
+                    with self.assertRaises(store.ArtifactValidationError):
+                        protocol.validate_brief(changed)
+                changed_audit = deepcopy(audit)
+                changed_audit[field] = value
+                with self.subTest(audit_field=field, existing_blank_surrogate_guard=ascii(value)):
+                    with self.assertRaises(store.ArtifactValidationError):
+                        store._audit(changed_audit)
+        for field, value in (('state_at_request', 'x' * 257),
+                             ('state_at_request', 'bad\x01state'), ('session_id', 2**63)):
+            changed = deepcopy(brief)
+            changed['input_revision'] = 'a' * 64
+            changed['source_run'] = {'session_id': 1, 'run_id': 'b' * 32,
+                'input_revision': 'a' * 64, 'state_at_request': 'active'}
+            changed['source_run'][field] = value
+            with self.subTest(protocol='brief', source_run_field=field, value_type=type(value).__name__):
+                with self.assertRaises(store.ArtifactValidationError):
+                    protocol.validate_brief(changed)
+        changed = deepcopy(payload)
+        changed['observation'] = {'confirmed_model': 'x' * 257, 'confirmation_reason': 'api_response'}
+        with self.subTest(protocol='payload', field='observation.confirmed_model'):
+            with self.assertRaises(store.ArtifactValidationError):
+                protocol.validate_payload(changed)
         for validator, original in ((protocol.validate_brief, brief),
                                     (protocol.validate_payload, payload)):
             changed = deepcopy(original)
@@ -568,6 +623,87 @@ class ArtifactRecordBoundsTests(unittest.TestCase):
                 self.assertEqual(result['request']['state'], 'queued')
                 stored = self.artifacts.get_request(audit['request_id'])['audit']['producer']
                 self.assertEqual((stored['requested_model'], stored['requested_model_reason']), (None, reason))
+
+    def test_observation_load_and_import_bounds_with_healthy_control(self):
+        _, bad, _ = self.graph_for_packet(self.packet(), api=True)
+        _, healthy, _ = self.source_graph(attempts=True)
+        data = self.export()
+        base = json.loads(self.source.path.read_bytes())
+        control = self.root / 'observation-load-control'
+        atomic_json(control / 'artifacts' / 'index.json', base)
+        self.assertEqual(len(store.ArtifactStore(control).export_lineage_ids()), 2)
+        for number, value in enumerate(('x' * 257, 'bad\x01model')):
+            changed = deepcopy(base)
+            changed['versions'][store.request_ids(bad['request_id'])['version_id']]['provenance']['observation'][
+                'confirmed_model'] = value
+            root = self.root / ('observation-load-' + str(number))
+            path = root / 'artifacts' / 'index.json'
+            atomic_json(path, changed)
+            before = path.read_bytes()
+            with self.subTest(boundary='load', kind='cap' if number == 0 else 'control'):
+                with self.assertRaises(store.ArtifactUnavailable):
+                    store.ArtifactStore(root)
+                self.assertEqual(path.read_bytes(), before)  # Unobserved-red, required green.
+            def mutate(members):
+                index = json.loads(members[codec.INDEX_MEMBER])
+                lineage = next(x for x in index['lineages'] if x['lineage_id'] == bad['lineage_id'])
+                lineage['versions'][0]['observation']['confirmed_model'] = value
+                members[codec.INDEX_MEMBER] = codec.canonical_utf8(index)
+            incoming = self.repack(data, mutate)
+            owner = store.ArtifactStore(self.root / ('observation-import-' + str(number)))
+            owner.bind_channel_policy(lambda: self.service)
+            with self.subTest(boundary='import', kind='cap' if number == 0 else 'control'):
+                with zipfile.ZipFile(io.BytesIO(incoming)) as zf:
+                    self.assertEqual(len(codec.preflight(zf, zip_size=len(incoming))['index']['lineages']), 2)
+                result = self.restore(incoming, owner=owner)
+                self.assertTrue(result['ok'])
+                self.assertIsNone(result['sections']['artifacts']['section_error'])
+                self.assertEqual((result['sections']['artifacts']['invalid_lineages'],
+                                  result['sections']['artifacts']['created_lineages']), (1, 1))
+                self.assertEqual(owner.export_lineage_ids(), (healthy['lineage_id'],))
+        # Existing chain guards, NOT new width reds or isolated mutation proof.
+        for number, field in enumerate(('version.sequence', 'expected_parent.sequence')):
+            target_id = bad['lineage_id'] if field == 'version.sequence' else healthy['lineage_id']
+            def mutate_chain(members):
+                index = json.loads(members[codec.INDEX_MEMBER])
+                lineage = next(x for x in index['lineages'] if x['lineage_id'] == target_id)
+                if field == 'version.sequence':
+                    lineage['versions'][0]['sequence'] = 2**63
+                else:
+                    request = next(x for x in lineage['requests'] if x['expected_parent'] is not None)
+                    request['expected_parent']['sequence'] = 2**63
+                members[codec.INDEX_MEMBER] = codec.canonical_utf8(index)
+            incoming = self.repack(data, mutate_chain)
+            owner = store.ArtifactStore(self.root / ('chain-guard-' + str(number)))
+            owner.bind_channel_policy(lambda: self.service)
+            with self.subTest(existing_chain_guard=field):
+                with zipfile.ZipFile(io.BytesIO(incoming)) as zf:
+                    codec.preflight(zf, zip_size=len(incoming))
+                result = self.restore(incoming, owner=owner)
+                self.assertTrue(result['ok'])
+                self.assertEqual((result['sections']['artifacts']['invalid_lineages'],
+                                  result['sections']['artifacts']['created_lineages']), (1, 1))
+
+    def test_maximum_record_numbers_load_through_whole_index_compatibility(self):
+        _, audit, _ = self.source_graph(attempts=False)
+        self.source.quarantine_submission(None, 'a' * 32, 'b' * 32,
+            reason='invalid_response', content=None, now=10)
+        value = deepcopy(self.source._data)
+        value['requests'][audit['request_id']]['updated_at'] = 2**63-1
+        value['lineages'][audit['lineage_id']]['updated_at'] = 2**63-1
+        version_id = store.request_ids(audit['request_id'])['version_id']
+        value['versions'][version_id]['created_at'] = 2**63-1
+        diagnostic = next(iter(value['diagnostics'].values()))
+        diagnostic.update(byte_count=2**63-1, received_at=2**63-1, updated_at=2**63-1)
+        key = {name: diagnostic[name] for name in ('request_id', 'attempt_id', 'dispatch_id',
+            'reason', 'sha256', 'byte_count', 'actor_identity_id')}
+        diagnostic['id'] = self.source._diagnostic_id(key)
+        value['diagnostics'] = {diagnostic['id']: diagnostic}
+        value['store_overflow'] = {'id': self.source._summary_id(None), 'kind': 'store_overflow',
+            'dispatch_id': None, 'counter': 1, 'latest_diagnostic_id': diagnostic['id'],
+            'latest_sha256': diagnostic['sha256'], 'latest_byte_count': 2**63-1,
+            'latest_reason': 'invalid_response', 'updated_at': 2**63-1}
+        self.source._validate_index(value)
 
     def maximum_row(self):
         """Build real persisted data, then validate a detached widest row.
