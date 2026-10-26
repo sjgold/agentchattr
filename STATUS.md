@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (browser harness B1/B2+C fixes:42 controls including real bootstrap children green; executable re-review pending)
+**Updated:** 2026-10-26 (first browser run cleared after R fixes:44 controls/compile pass; baseline and detached run next)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer checks corrected browser harness pin (42 controls/compile green, including actual bootstrap-only children). No acceptance app/listener/managed seat/browser has started. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
+| Next | Reviewer CLEARED first run after R fixes, now44 controls/compile green. Root records baseline and starts approved detached fixture; no acceptance app/managed seat/browser started yet. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
 
 ## Current handoff
 
@@ -42,7 +42,7 @@ Next concrete action, owner reviewer: check the executable browser harness/tools
 
 Executable dfecc78 was NOT cleared: review found the fatal Windows socketpair exception and nonexistent worktree venv assumptions before any acceptance attempt. Corrected harness now resolves the original interpreter through Git common-dir, permits only the exact internal socketpair port, watches parent birth/lease, signs owned spawn journals and offers standalone cleanup, bounds JSON replacement/read races, rejects pre-planted/forbidden targets, and refuses finish with missing cases.42 controls OK0.902s and compile-only pass; actual bootstrap children exited0/91/92 as expected, no app/MCP/provider/managed-seat/browser acceptance resources started. Raw control roots and private ownership registry stay local. Current source hashes and detailed coverage/limitations are in the browser design; no product or capability source change.
 
-Next owner reviewer: audit correction delta and give the exact detached --run command. Root starts real guarded rendered acceptance only after clearance. UI remains independently accepted7d962b07; screen/transcript21/packaging22/activation/cleanup remain later. No push or cleanup moves.
+Reviewer CLEARED first --run after R1/R2/R3, no new round. Root implemented guaranteed watchdog exit and non-ASCII auth refusal, refreshed source hashes;44 controls pass. Next owner root: record baseline then run exact approved detached command and drive isolated rendered acceptance. UI remains independently accepted7d962b07; screen/transcript21/packaging22/activation/cleanup remain later. No push or cleanup moves.
 
 ## Earlier correction-review pointers (historical)
 

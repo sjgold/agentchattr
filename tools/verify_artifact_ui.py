@@ -213,14 +213,23 @@ def start_watchdog(root, manifest):
             try: expired=watchdog_expired(manifest['parent_birth'],manifest['expires_at'])
             except Exception: expired=True
             if expired:
-                write_json(root/'audit'/('watchdog-'+str(os.getpid())+'.json'),{'triggered':True})
-                callback=getattr(sys,'_artifact_fixture_shutdown',None)
-                if callback:
-                    threading.Thread(target=callback,daemon=True).start()
-                    time.sleep(5)
-                os._exit(92)
+                watchdog_shutdown(root)
             time.sleep(.5)
     threading.Thread(target=watch,daemon=True).start()
+
+
+def watchdog_shutdown(root):
+    try:
+        try: write_json(root/'audit'/('watchdog-'+str(os.getpid())+'.json'),{'triggered':True})
+        except Exception: pass  # Evidence failure cannot disable the safety exit.
+        try:
+            callback=getattr(sys,'_artifact_fixture_shutdown',None)
+            if callback:
+                threading.Thread(target=callback,daemon=True).start()
+                time.sleep(5)
+        except Exception: pass
+    finally:
+        os._exit(92)
 
 
 def capture_spawn(root, process):
@@ -246,10 +255,13 @@ def install_spawn_capture(root):
 
 
 def authorized(headers, token, nonce):
-    return (len(headers.getlist('x-session-token')) == 1
-            and len(headers.getlist('x-fixture-nonce')) == 1
-            and hmac.compare_digest(headers.get('x-session-token', ''), token)
-            and hmac.compare_digest(headers.get('x-fixture-nonce', ''), nonce))
+    try:
+        return (len(headers.getlist('x-session-token')) == 1
+                and len(headers.getlist('x-fixture-nonce')) == 1
+                and hmac.compare_digest(headers.get('x-session-token', '').encode('utf-8'), token.encode('utf-8'))
+                and hmac.compare_digest(headers.get('x-fixture-nonce', '').encode('utf-8'), nonce.encode('utf-8')))
+    except (TypeError,AttributeError,UnicodeError):
+        return False
 
 
 def safe_env(original, root, ports, nonce, policy):

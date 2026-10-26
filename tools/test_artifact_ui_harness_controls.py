@@ -18,6 +18,21 @@ from tools import fake_artifact_client as client
 
 
 class ArtifactHarnessControls(unittest.TestCase):
+    def test_watchdog_exits_even_when_record_and_callback_fail(self):
+        with patch.object(harness,'write_json',side_effect=OSError('held evidence')), \
+             patch.object(sys,'_artifact_fixture_shutdown',Mock(side_effect=RuntimeError('callback')),create=True), \
+             patch('threading.Thread.start',side_effect=RuntimeError('cannot start')), \
+             patch('os._exit',side_effect=SystemExit(92)):
+            with self.assertRaises(SystemExit) as caught: harness.watchdog_shutdown(harness.ROOT)
+        self.assertEqual(caught.exception.code,92)
+
+    def test_non_ascii_control_auth_refuses_without_typeerror(self):
+        from starlette.datastructures import Headers
+        for field in (b'x-session-token',b'x-fixture-nonce'):
+            raw=[(b'x-session-token',b'token'),(b'x-fixture-nonce',b'nonce')]
+            raw=[(key,b'caf\xe9' if key==field else value) for key,value in raw]
+            self.assertFalse(harness.authorized(Headers(raw=raw),'token','nonce'))
+
     def test_real_guard_child_allows_only_internal_socketpair_and_patches_after_guard(self):
         result=harness.run_bootstrap_control(guard_ok=True)
         self.assertEqual(result['returncode'],0,result)

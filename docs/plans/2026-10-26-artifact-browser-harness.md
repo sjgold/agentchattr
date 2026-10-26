@@ -118,9 +118,9 @@ Frozen executable source SHA256s:
 
 |File|SHA256|
 |---|---|
-|tools/verify_artifact_ui.py|bd753d1577504d1b26172a829dd6316c81c256777976ecf197c2c361632b7f10|
+|tools/verify_artifact_ui.py|5f0db8d3104f79d171c464d1f0b56a452d753c6453b59b590e6dff3e311d3f71|
 |tools/fake_artifact_client.py|57f8232969d0456827b1f19577bb2a780bda0a6435786917d8c6b100b82f6895|
-|tools/test_artifact_ui_harness_controls.py|00f5787b8b3e1c54178e2d00b5c702ae4215e26fe1687ecfbdce9641cafada4b|
+|tools/test_artifact_ui_harness_controls.py|f3b5c3854e568c7ede161682420ce9c39027d5d348d5dfd6b113e71d3ff257b4|
 |tools/channel_guard.py|76fde78539634a7f1c4ef687f59afcddc82bd12de0aeb4c5e01f73649b23a927|
 |runtime_protocol.py|b770452455bcd48b1f50c5f306469aca328e9946292e58b83cd3e9e5cde69b01|
 
@@ -140,3 +140,11 @@ The reviewer ran28 controls and withheld execution. Read-only probes confirmed P
 - C-8: finish refuses409 until all12 EVIDENCE_CASES have an observed report, recording missing names as not_observed. It still does not assert acceptance. After closing the owned browser/forwards, the controller can write its scanned cleanup observation into records/controller-observation.json and submit it via --control report --fixture-root ROOT; this fixed report action validates the same bounded schema and sends it through the authenticated evidence endpoint without secrets in args. Then --control finish. --control cleanup is a separate recovery action, not proof that the browser/controller cleaned itself.
 
 Run invocation after review clearance: change directory to this active worktree, set PYTHONPATH to its absolute path, invoke the ORIGINAL checkout Python with tools/verify_artifact_ui.py --run in a tracked detached shell with output redirected/retained. No tool timeout around the live parent. No acceptance resource starts before the reviewer's exact command clearance. Cleanup remains last; no push.
+
+## First-run clearance and final R fixes
+
+Reviewer cleared30fc9bf for the FIRST --run after R-1/R-2/R-3, no further review round. Two controls first errored (missing shutdown helper and actual non-ASCII compare_digest TypeError); final44 controls OK0.912s and compile-only pass. Watchdog evidence/callback failures now always reach the own-process exit92 in finally. Control auth compares encoded bytes and refuses malformed/non-ASCII values rather than raising500. The frozen SHA table below is refreshed from final working bytes and checked after commit.
+
+Known accepted limitations: native _overlapped connects may lack audit events, so fixed literal destinations supplement guard evidence; base interpreter/stdlib/native DLLs remain a trusted un-hashed boundary except the recorded executable/site pins. Already-exited launcher probes can falsely leave unresolved; the expired-lease control can race slow fsync. Creator/HMAC trust is NOT defended against code running inside the fixture (guarded children can read the key), nor the OS user or registry/environment tampering. Inline token/nonce require DOM-only controller observations and scanned exports. No page/script/function source dumps, outbound-link clicks or retained-root archive/export. Each real control root intentionally records one unowned-port refusal; those control files do not belong to the acceptance root.
+
+Before first start: retain known-live-port listener baseline, name/size/mtime manifests of the original data/uploads/.agentchattr roots and Python PIDs/start times; verify no other owned acceptance fixture is running. Control sanity check found14 ended control results (codes0/91/92), no live owned control births; PIDs19936/28248 were absent from control records and were not touched. After the run compare baseline, signed births, per-process guards, no run-root violation/watchdog/missing-case files, all12 observed cases, browser/forward closure and secret scan. Keep acceptance_claim=false for review. Exact approved invocation uses original checkout Python, absolute worktree PYTHONPATH, hidden detached process with stdout/stderr redirected, no tool timeout. No push.
