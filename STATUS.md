@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 R1 cleared; R2 expanded Z1-Z8 observed reds)
+**Updated:** 2026-10-26 (#20 R1 cleared; R2 owner candidate40 green, timing pending)
 
 ## At a glance
 
@@ -21,6 +21,8 @@
 | Next | Reviewer evaluates expanded R2 Z1-Z8 root reds/test bodies (two authorized root files); exact payload freeze86dad152 CLEARED. Production stays held until red review; no helper assigned. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
 
 ## Current handoff
+
+- R2 production CLEARED to implement by reviewer atbf89702 (own40/35FAIL+21ERROR3.47s; analyst audited all40). Additional N1-N10/missing-item tests with red/mutation evidence remain preconditions of acceptance. Root initial candidate changes artifact_store.py only: independent diagnostics owner/shared filesystem base, authoringv2/legacy markers/facade;40 current tests PASS4.892s. No service/worker/transport edits needed so far (existing exception paths/projectors follow facade). NOT independently reviewed/accepted; old fixture adaptations, N additions, R1/affected/full and all timing gates still pending. Root freezes WIP candidate for early PRODUCTION heavy/summary measurement, no overlapping suites/source edits during run; a miss returns to design. R3/operator/capacity/activation/push held.
 
 - R2 Z1-Z8 expanded reds: TWO authorized ROOT files,30 owner +10 integration methods. Unchanged product74f4697; final40 tests35FAIL+21ERROR3.374s,19 infrastructure errors (18 missing API/1 owners-key),2 genuine held-authoring behavioral errors,35 behavioral assertion failures,3 existing guards PASS. Cold/stale parser separation; isolated count/group/body caps; typed errors; tie ordering; real-file authoring guards; sticky legacy/recovery/report/snapshot/concurrency; all5 worker paths +real transport/MCP/factory/archive/imported cases; structural810186B/SHAca2cea...34c1 profile serialization guarded, R2 validator still infra-gated. Earlier replay tests passed insufficient held-outcome guard, now actual submit1 +index-byte preservation exposes old write. Per-test unobserved-red conditions in contract, all must run green. All temp roots cleaned; compile/AST/diff checks pass, deprecation warnings retained. No helper/source/timing/full suite changes. Next reviewer reruns/audits additions BEFORE any R2 production; measurement gates and R3/operator/capacity/activation/push held.
 
