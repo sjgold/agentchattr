@@ -1,6 +1,6 @@
 # Reduced release: tickets 20-22, then multi-file 23
 
-Status: reduced20-22 PRODUCT SCOPE APPROVED by Seth2026-10-26. Backend and D8 independently accepted. UI component ae4ab08f independently accepted pending Y-1..Y-7; those follow-ups now pass 39 component/restart tests and 61 assertion-only mutation checks, awaiting reviewer delta check. Rendered acceptance remains pending. Browser harness DESIGN: docs/plans/2026-10-26-artifact-browser-harness.md; tools and execution are not yet cleared. Activation, push and whole-ticket acceptance remain held.
+Status: reduced20-22 PRODUCT SCOPE APPROVED by Seth2026-10-26. Backend and D8 independently accepted. UI follow-ups7d962b07 independently ACCEPTED after reviewer39 tests/61 mutation checks. Rendered acceptance remains pending. Browser harness DESIGN: docs/plans/2026-10-26-artifact-browser-harness.md; tools and28 synthetic controls/compile are implemented, executable review and real execution remain pending. Activation, push and whole-ticket acceptance remain held.
 
 ## Authority and priority
 

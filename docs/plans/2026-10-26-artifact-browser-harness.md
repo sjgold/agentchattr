@@ -1,6 +1,6 @@
 # Reduced20 guarded browser acceptance design
 
-Status: PROPOSED, reviewer clearance required before implementing/running the new acceptance fixture. No executable artifact browser harness exists yet and no acceptance run is claimed. The accepted Ticket19 tools are patterns, not evidence for these new paths.
+Status: DESIGN APPROVED for tools and synthetic controls only at7d962b07 review; H-1..H-6 and bounded download ruling folded below. Executable-pin review is required before any acceptance process/listener/profile starts. Executable tools are now implemented and compile/synthetic-tested only; no acceptance run is claimed. The accepted Ticket19 tools are patterns, not evidence for these new paths.
 
 ## Scope and deliverables
 
@@ -25,7 +25,7 @@ The actual tools are chat_artifact_brief(brief_id), chat_artifact_submit(brief_i
 1. Freeze clean product/tool HEAD and SHA256s, including runtime_protocol.py, wrapper entry/worker files, UI sources, guard and new tools. Validate the trusted local .venv-windows interpreter/site-bootstrap manifest before any fixture process. Preserve the known post-site/native/DirEntry/ctypes guard limitations; this is not a Python/OS integrity attestation.
 2. Create a unique retained root below .audit-tmp with data, uploads, profiles, records, audit, downloads and generated-code subdirectories. No deletion of existing fixtures/data. Parent owns a nonce and lease deadline (browser at most1200s, cleanup90s, not an ETA). Stop on first harness defect; retain every attempt.
 3. Reserve distinct ephemeral127.0.0.1 ports for app, MCP transports and fake API, excluding known live ports8300/8200/8201/8301/8302 and configured repository ports. Config/data roots discovered only from the bounded repository config hash/read exception; never read user provider profiles. Retain config hashes, never config credentials. Close every reservation socket even on failure; before actions confirm the expected nonce/birth/port/source manifest, not just an open port.
-4. Child env is an owned dictionary. Redirect HOME/USERPROFILE/APPDATA/LOCALAPPDATA/TEMP/TMP/XDG profile paths into the fixture, remove Python startup/user-site overrides, ambient provider credentials and HTTP_PROXY/HTTPS_PROXY/ALL_PROXY; set controlled NO_PROXY;, use only fixed fake provider config/dummy key, and set PYTHONNOUSERSITE. Never modify parent/user environment or installed settings. Guard policy lists forbidden real data/profile roots and live ports plus allowed Python roots, with the exact guard hash.
+4. Child env is an owned dictionary. Redirect HOME/USERPROFILE/APPDATA/LOCALAPPDATA/TEMP/TMP/XDG profile paths into the fixture, remove Python startup/user-site overrides, ambient provider credentials and HTTP_PROXY/HTTPS_PROXY/ALL_PROXY; set controlled NO_PROXY, use only fixed fake provider config/dummy key, and set PYTHONNOUSERSITE. Never modify parent/user environment or installed settings. Guard policy lists forbidden real data/profile roots and live ports plus allowed Python roots, with the exact guard hash.
 A fixture-only socket audit hook additionally restricts connects to the reserved owned-port allowlist. Install it after channel_guard and before product imports in every owned Python process; log readiness and a negative self-test. channel_guard itself remains unchanged. A forbidden connection invalidates the attempt. This covers audited Python connects, with the native-code limitations above.
 
 5. Generated sitecustomize installs the same fail-closed guard before product/resource imports, exits91 on failure, and THEN patches runtime_protocol.SUPPORTED_CAPABILITIES=('artifact-v1',) only inside explicitly owned fixture Python processes. This includes the served app AND owned wrapper/worker children before manifest validation. Record pid/role/nonce/capability tuple and unchanged source hashes; the repository flag remains empty. A controlled capability-off phase changes only the fixture server gate, then restores it.
@@ -58,11 +58,9 @@ The browser controller drives completed-session selection, instruction, Submit/d
 
 Capture one batched desktop1280x850 and mobile390x844 round, including real form/status/warning/reader content, bounding-box/overflow/focus/label checks. One bounded correction/confirmation round if defects arise; retain failed screenshots/source pins. Retain screenshot references and metadata from the browser tool transcript, plus hashes when image bytes are available; no undocumented screenshot save-path API is assumed. DOM live-region write observation may count unchanged poll writes; this is not a screen-reader/assistive-technology claim.
 
-## Download capability boundary requiring review
+## Approved bounded download proof
 
-The exposed Traycer page API documents no download-directory/event control. Do not invent Playwright download APIs or allow an uncontrolled write to Seth's Downloads directory.
-
-Proposed bounded proof: install an explicitly recorded browser observer for createObjectURL and document.md activation, preserve the product's actual authenticated response.blob, hash its bytes in the browser, and intercept only the native save default to prevent an uncontrolled OS write. Transfer those exact observed Blob bytes to an owned nonce endpoint and save a comparison copy under fixture/downloads; verify BOM/CRLF/hash/filename and delayed URL revoke. This proves the rendered click/Blob path, not the OS save dialog/native download destination. Unit byte tests plus actual browser Blob observation are the proposed reduced acceptance evidence, consistent with Ticket19's native-dialog exclusions. If the reviewer requires an actual browser-native saved file, the run stays held until a supported isolated download-directory capability is supplied. This is an open review decision, not a claimed completed test.
+The exposed Traycer page API has no isolated download-directory/event control. The reviewer approved this bounded claim: the rendered click performs authenticated fetch -> response.blob() -> object URL, anchor.download=document.md; browser-observed Blob bytes match the expected hash/BOM/CRLF and the URL is revoked after the delay. Hash the Blob inside the browser BEFORE transfer, then hash again at the nonce endpoint and compare both with expected bytes. Intercept only the native anchor save default, log the patch and disclose this observer effect. Filename evidence is product intent, not an OS result. No claim that a file was saved or that a save dialog/destination/other browser works. A guarded browser-native save is a separate optional proposal, unnecessary for reduced acceptance.
 
 ## Fixed acceptance cases
 
@@ -84,3 +82,46 @@ Design approval authorizes writing the new tools and running compile-only/synthe
 Expected commands once implemented and reviewed: python -m unittest tools.test_artifact_ui_harness_controls; python tools/verify_artifact_ui.py --compile-only; then the separately cleared browser-case command. Names are proposed interfaces, not existing executables.
 
 Final receipt retains every attempt, pins/hashes, guard coverage/selftests/limitations, fixture-only capability records, actual CLI/API counts, UI assertions/screenshots, browser Blob versus native-save attribution, timing/retry observations and cleanup inventory. Cleanup visits every owned server/wrapper/client/fake endpoint/browser/forward, releases only verified owned resources and writes unresolved=[]. Any missing coverage/failure remains a failure; no silent retries/exclusions or source edits during the run.
+
+## H-1 through H-6 executable requirements
+
+- Child propagation: remove inherited Python overrides first, then set an explicit owned PYTHONPATH containing generated bootstrap and this frozen repository. PYTHONNOUSERSITE does not disable sitecustomize. Product wrapper/fake-client launch must inherit that exact path plus CHANNEL_FIXTURE_ROOT, CHANNEL_GUARD_POLICY, CHANNEL_FIXTURE_NONCE and the artifact guard marker. sitecustomize installs guard and owned-port audit hook before first runtime_protocol import, then applies capability. Every entry validates its current process guard record; a child lacking it exits91 before product/resource work. Synthetic control exercises the missing-marker refusal. Wrapper environment construction will be checked against the actual launcher, not assumed.
+- Step budgets: startup90s; ordinary UI calls30s; lost-create observation20s product timeout plus10s margin; status windows permit observed2/4/8/16/30s backoff (a bounded100s observation, reset at2s after success); Blob revocation window1-5s; Cancel/Stop30s each; transport completion90s. Wide windows plus counts, no exact scheduler claims. All stages share the1200s lease; cleanup90s is separate.
+- Secrets: never serialize SESSION_TOKEN or nonce into browser evaluations/snapshots/page source. Sanitized DOM-only observations exclude script source. Before accepting any exported transcript/screenshot metadata/evidence/receipt, scan for exact token and nonce; refuse/redact token-bearing strings with a synthetic control. Raw private fixture manifests remain local. Screenshot pixels are checked visually for visible secrets; absent image bytes are recorded as observed in transcript only, with no hash claim.
+- Fixed fixture endpoints outside /api/artifacts: GET /__artifact_fixture/state; POST /__artifact_fixture/control; POST /__artifact_fixture/blob; POST /__artifact_fixture/evidence (bounded fixed-case observations, secret-scanned). Every endpoint requires operator token plus fixture nonce, no query authorization, strict bounded payload. Control actions are fixed enums only. Frozen owned ports include app/control/blob listener, MCP HTTP/SSE and local fake API. Generated CSP connect-src names the exact frozen/forwarded app origin and fake API as needed; changing the forwarded port requires refreeze. Controls reject a loopback-but-unowned port, prove capability remains absent if guard fails, scan receipt secrets and reject an unowned CSP origin.
+- Scenario allocation: rendered cases additionally cover backoff/reset counts; document-hidden/closed polling pause; RENAME/DELETE metadata migration/disposal; reload retaining id/digest and no POST before re-entry; stale download failure; Refresh versus Cancel; unchanged live-region writes. Existing component tests remain the detailed fault matrix; rendered receipts identify any case that is not reached rather than borrowing a unit pass. A no-author fixture session binds a fixed absent identity instead of an arbitrary live seat. CLI completion gate pauses BEFORE chat_artifact_submit, after the genuine brief read; transport release follows real submit ACK.
+- Screenshots: retain returned references/metadata, hash bytes only when supplied. No undocumented save API and no hash-verification claim for transcript-only images.
+
+## Executable review package, 2026-10-26
+
+Implemented tools/verify_artifact_ui.py, tools/fake_artifact_client.py and tools/test_artifact_ui_harness_controls.py. Synthetic28 tests pass; compile-only passes with no fixture/listener/process/profile construction. No real server, managed child, local fake API listener or browser has been started for this package. Native guard reach, source seeding and actual flows remain unobserved until the separately approved run. Controls include structural checks alongside behavioral synthetic checks; they do not prove native timing/transport behavior.
+
+Parent start creates the fixed fixture then launches genuine managed seats and waits for readiness before emitting READY.json. Gate operations use --control ACTION --fixture-root OWNED_ROOT; the tool reads local private credentials itself and prints scanned output, keeping them out of tool arguments. Browser observations go through the injected closure helper __artifactFixtureReport with a fixed case and bounded observations. It scans secrets server-side. Raw token/nonce never appear in public READY/receipt. The WebSocket URL carries the normal product token, so the fixture suppresses server access/INFO logs and browser exports exclude script/network-URL dumps.
+
+The original checkout's data/uploads roots and current worktree data are forbidden. Each generated bootstrap enables capability only after guard success; managed launch inherits the explicit environment, fake CLI strip_env=[] preserves it. A protocol-level JSON refusal with MCP isError=false is still refused: exact assigned brief, admitted ACK/event/hash and released dispatch are checked before proceeding. CLI records only hashes/ids and observed console visibility.
+
+Execution commands proposed for review (the last two remain HELD):
+
+```powershell
+$env:PYTHONPATH='.'
+& 'C:/Users/SJG/Documents/CodePlayground/agentchattr/.venv-windows/Scripts/python.exe' -m unittest tools.test_artifact_ui_harness_controls
+& 'C:/Users/SJG/Documents/CodePlayground/agentchattr/.venv-windows/Scripts/python.exe' tools/verify_artifact_ui.py --compile-only
+# HELD until executable review clears the pin:
+& 'C:/Users/SJG/Documents/CodePlayground/agentchattr/.venv-windows/Scripts/python.exe' tools/verify_artifact_ui.py --run
+# Fixed gate/state operation while that owned run is alive, using emitted root:
+& 'C:/Users/SJG/Documents/CodePlayground/agentchattr/.venv-windows/Scripts/python.exe' tools/verify_artifact_ui.py --control state --fixture-root '<READY root>'
+```
+
+The isolated browser controller supplies the actual cases/screenshots and closes its owned browser/forwards. A finish marker stops the parent lease but is never an acceptance pass; receipt acceptance_claim stays false for reviewer assessment. Parent cleanup visits child/server births even after a mismatch, records unresolved resources, and retains the root. No native-save claim. The screenshot/secret scan and explicit controller cleanup evidence are required before acceptance, not inferred from parent completion.
+
+Frozen executable source SHA256s:
+
+|File|SHA256|
+|---|---|
+|tools/verify_artifact_ui.py|6439491878092df0033dcc4d13c7c54e4f430c7fc2c3f53cc6e94d43b1f2b3a1|
+|tools/fake_artifact_client.py|57f8232969d0456827b1f19577bb2a780bda0a6435786917d8c6b100b82f6895|
+|tools/test_artifact_ui_harness_controls.py|8a6b79b3fa9eb620006a7090a7827ff5901b4adabbd4aaabd085e923d56e672d|
+|tools/channel_guard.py|76fde78539634a7f1c4ef687f59afcddc82bd12de0aeb4c5e01f73649b23a927|
+|runtime_protocol.py|b770452455bcd48b1f50c5f306469aca328e9946292e58b83cd3e9e5cde69b01|
+
+Final synthetic check:28 tests OK0.184s; compile-only OK. Parent/control HTTP explicitly bypasses ambient proxies without editing the host environment. No acceptance resources started.

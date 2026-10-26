@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (UI Y follow-ups:39 tests/61 assertion mutants green; browser harness DESIGN ready for review)
+**Updated:** 2026-10-26 (UI follow-ups independently accepted; browser harness28 controls/compile pass, executable review next)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer checks Y follow-up delta and browser harness DESIGN; root then builds the cleared harness, with executable-pin review before any rendered acceptance run. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
+| Next | Reviewer checks executable browser harness pin (28 synthetic controls/compile green); no acceptance listener/process/profile has started. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
 
 ## Current handoff
 
@@ -29,14 +29,14 @@
 - R3 proposal196666c and reviewer no-sidecar/compact-default/no-conversion-tool ruling remain historical in TICKET-20-COMPACT-INDEX.md/shared artifact. No further R3 docs cycle/reds/source/timing is active. Full operator contract is historical where it exceeds reduced scope. Backend recovery/version/archive logic remains intact.
 - Running disclosures:128-request/512KiB quota withdrawn, no replacement chosen; full refs remain in the index (~293KB historically per fulfilled max-source request), so larger histories are slower. Earlier roughly1.1s stalls have unknown cause. Final sentinel190 pass and all misses/invalid attempts remain in TICKET-20-D4-FINAL-GATE.md. Measured max-source A roughly0.16-0.18s,4MiB import roughly0.20-0.21s are observations, not an unlimited-capacity guarantee. CHANNELS.md updated.
 - Backend independently ACCEPTED40037dbd: reviewer90 reduced/Stop/coordination OK20.2s,170 earlier safety OK49.5s,51 mutation kills/direct delta audit. Root full1888/four skips OK370.823s retained. D8 repeated-Stop report merge observed red then fixed, final focused91 OK20.472s and52 mutation kills (51 assertion/one typed ERROR-only), no additional full cycle required by reviewer. D8 delta check sent with source pin. UI contract/reds next using accepted reduced scope; UI artifact warning/render-cache-key and100+ retained poll screen remain release requirements. No activation/push/cleanup moves.
-- UI production CLEARED atc685f9a6, U1-U9 strengthened and corrected unknown-effect policy implemented. Unit component:22 UI+1 existing restart test OK1.249s;20 in-vm source mutants killed by assertions, source unchanged, JS syntax/diff clean. Product additions static/artifacts.js/artifacts.css and narrow index/session hooks; no Python backend change. Received server/proxy errors never render HTML; exact blob bytes/BOM/CRLF, cancellation warning/cache key, timeout/replay/rename/reload/disposal/permissions covered in component tests. No rendered acceptance yet. Reviewer executes/audits this component next, then NEW tools/verify_artifact_ui.py/fake_artifact_client.py/controls package must be built/reviewed before guarded browser run. UI technical contract/receipts: docs/plans/2026-10-26-reduced-artifact-ui.md. Screen/transcript/packaging/activation/push/cleanup moves remain later.
+- UI follow-ups7d962b07 independently ACCEPTED: reviewer39 UI/restart tests OK2.5s and61/61 mutation kills. Browser harness design approved for tools/synthetic controls only, H-1..H-6 and bounded Blob ruling folded. New verifier/fake CLI/controls implemented;28 synthetic controls and compile-only pass. Executable review next before any real acceptance resources. No backend/capability source change, activation, push or cleanup moves. Full details: docs/plans/2026-10-26-artifact-browser-harness.md.
 - Cleanup plan: docs/plans/2026-10-26-delivery-file-cleanup.md, complete110 rename-only map preserving code paths and evidence. Reviewer approved with K1-K9 folded into the plan (pure renames commit then link/additions commit); no moves or deletions executed. Functional backend/UI work precedes its dedicated cleanup commit. UI, transcript, responsiveness screen, packaging, activation and push remain pending; Ticket23 follows22 ahead of24-26.
 
 ## Current UI follow-up handoff
 
-UI component ae4ab08f independently accepted pending Y-1..Y-7. Follow-ups implemented and tested: definitive refusal recovery, validation, encoded ids, salted digest, stable live text/focus, delayed Blob revocation, hidden-page polling and cancellation/list/stale-response fixes.39 UI/restart tests OK2.453s;61/61 assertion mutants killed with zero errors and unchanged source. Conditional serial-defense tests and explicit Node completion markers documented in the UI plan. No backend change or rendered acceptance claim.
+UI follow-ups7d962b07 independently ACCEPTED. Follow-ups implemented and tested: definitive refusal recovery, validation, encoded ids, salted digest, stable live text/focus, delayed Blob revocation, hidden-page polling and cancellation/list/stale-response fixes.39 UI/restart tests OK2.453s;61/61 assertion mutants killed with zero errors and unchanged source. Conditional serial-defense tests and explicit Node completion markers documented in the UI plan. No backend change or rendered acceptance claim.
 
-Next concrete action, owner root: submit follow-up pin and browser harness DESIGN for reviewer delta/design check, then implement the approved harness. Completion requires separately reviewed executable controls/pin before a real guarded browser run. Native save interception versus exact browser Blob proof remains an explicit review decision. No acceptance harness listeners/profiles/processes started. Cleanup approved plan stays last; no moves, deletion, activation or push.
+Next concrete action, owner reviewer: check the executable browser harness/tools/control pin and commands. Root runs only after that clearance, using the isolated browser and the actual CLI MCP/local fake API flows. Completion requires rendered evidence, bounded Blob proof and verified cleanup, never synthetic controls alone. Native-save interception is accepted for the bounded Blob claim. Screen,21 transcript,22 packaging, activation and cleanup remain later. No acceptance resources started; no push.
 
 ## Earlier correction-review pointers (historical)
 
