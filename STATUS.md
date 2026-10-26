@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 builder regression green, frozen timing MISS; sentinel/coverage freeze cleared after H1-H6; DESIGN10 complete; service run stopped for confirmed fixture errors)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 builder regression green, frozen timing MISS; sentinel/coverage freeze cleared after H1-H6; DESIGN10 complete; corrected smoke19 passed; sentinel service110 MISS, return to design)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 first production timing gate MISSED; design review resumes. No whole-ticket acceptance or activation. |
 | Latest checks | Builder full1814 tests OK/four skips342.250s (221modules, includes434artifact tests); phase/recovery49 OK28.848s;15 D4 mutations killed by assertions with source unchanged;4 harness controls OK0.758s. |
-| Next | Recovery cleared with mandatory real SMOKE:1 sample for each19 harness selections, stop first harness error, retain rows, timing not counted.22 controls pass; product unchanged4968e47. If smoke passes, run NEW190 production observations sequentially (110 service,60 read/import,20 summary), then H2-verified eligible repeats only. Old31-row instrument-invalid attempt and valid DESIGN10 retained. No R3/operator/capacity/activation/push. |
+| Next | Reviewer DESIGN ruling after corrected d43b6e6 SMOKE19 passed and service110 completed with two admit_saved misses: A0.218279/0.271496s, peers0.216788/0.270375s. Sentinel healthy/max0.133917s, no qualifying overlap or repeat eligibility. All rows retained in TICKET-20-D4-SENTINEL-GATE.md. Later60+20 acceptance groups and all repeats held; product unchanged4968e47. No R3/operator/capacity/activation/push. |
 
 ## Current handoff
 
@@ -34,6 +34,8 @@
 - Reviewer ruled on the next DESIGN step: independent5ms real-IO sentinel; forward-only temporal classification with strict>0.5s overlap (no exclusion or automatic retry; complete fresh affected-class repeat before clearance); harness-only admit_saved A attribution; timed mutating peers/service summaries/startup engine aliases/whole-call fields. Tools/docs implement that revision,13 controls OK1.427s; product matches all four frozen4968e47 measurement hashes. No new profile or gate run before delta review. Old1.166s/1.103s causes stay unverified and cannot be retroactively classified.
 
 - e4acae6 DESIGN10 complete, sentinel valid/no gaps, instrumented A median0.163925/max0.257384, fsync/replace sub-millisecond; one-second stall not reproduced/attributed. Service gate attempt stopped after31 observations when the source hook reached peer setup and independent-request peer reused an occupied seat. All31 rows,31 phases,79 explicit not-run entries retained; zero observed comparator exceedances, no acceptance. Both bugs observed in new controls then fixed (candidate-id hook, different-seat independent peer);21 controls OK2.004s, product unchanged. Reviewer recovery ruling is next, no further timing or source work.
+
+- Corrected freeze d43b6e6: real SMOKE19 completed without harness errors (timing not counted). New service110/300 phases then completed, instrument_valid=true, zero fixture/instrument/functional errors or counted retries. Admit_saved7 A0.2182787s and8 A0.2714964s missed margin;8 also hard cap. Peers0.2167876/0.2703748s. Sentinel3 gaps>100ms/max0.1339168s, none>0.5s; classifier unattributed-real-miss, no repeat eligible.108 other rows pass; all raw rows plus smoke receipts in TICKET-20-D4-SENTINEL-GATE.md/shared artifact. Remaining60 read/import+20 summary acceptance observations and all repeats not run after MISS. Next is reviewer design ruling, no product change or threshold/budget adjustment.
 
 ## Earlier correction-review pointers (historical)
 

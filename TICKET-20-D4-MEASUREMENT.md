@@ -155,3 +155,7 @@ The corrected candidate-only hook and separate managed peer seat remain permanen
   "tools/verify_artifact_machine_repeats.py": "742fe377da6b837da021e5695b8c7b99bb5a8b09f55a5a3485423fc7c9d9269e"
 }
 ```
+
+## Corrected run outcome
+
+At frozen d43b6e6, mandatory SMOKE19 passed (no timing evidence). New service110 completed with a healthy sentinel but two unattributed admit_saved A/peer misses, including a0.2714964s HARD miss. No eligible class repeat exists. All receipts and per-class results are in [TICKET-20-D4-SENTINEL-GATE.md](TICKET-20-D4-SENTINEL-GATE.md). Return to reviewer design ruling; later acceptance groups not run, product unchanged.
