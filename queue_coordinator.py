@@ -63,6 +63,7 @@ class CoordinatedQueue:
         self._artifact_stop_reports = {}
         self._artifact_repair_cursor = 0
         self._artifact_repair_warning = None
+        self._artifact_report_overflow = False
 
     def bind_artifact_policy(self, getter):
         if not callable(getter):
@@ -118,7 +119,10 @@ class CoordinatedQueue:
                 if envelope['purpose'] != 'artifact-v1' or self._artifact_policy is None:
                     raise QueueConflict('Artifact dispatch authority is unavailable.')
                 # Engine/catalog held; no ledger transaction has begun.
-                self._artifact_policy().validate_enqueue(instance, envelope)
+                authority = self._artifact_policy()
+                if authority is None:
+                    raise QueueConflict('Artifact dispatch authority is unavailable.')
+                authority.validate_enqueue(instance, envelope)
                 return self._queue._enqueue_artifact_validated(instance, envelope)
             return self._queue.enqueue(instance, envelope)
 
@@ -187,29 +191,29 @@ class CoordinatedQueue:
 
     def _repair_retained_artifact_stops(self):
         # One bounded retained-record pass, independent of historical run count.
-        from artifact_store import ArtifactUnavailable
         if self._artifact_policy is None:
-            return
-        ids = [row['envelope']['artifact_request_id'] for row in self._queue.records()
-               if row['envelope'].get('purpose') == 'artifact-v1'
-               and row['state'] in ACTIVE | {'queued'}
-               and not (row.get('cancellation_id') or row.get('stop_id'))]
-        if ids:
-            start = self._artifact_repair_cursor % len(ids)
-            ordered = ids[start:] + ids[:start]
-            self._artifact_repair_cursor = (start + min(100, len(ids))) % len(ids)
-            ids = ordered[:100]
-        if not ids:
             return
         try:
             policy = self._artifact_policy()
             if policy is None:
                 return
+            ids = [row['envelope']['artifact_request_id'] for row in self._queue.records()
+                   if row['envelope'].get('purpose') == 'artifact-v1'
+                   and row['state'] in ACTIVE | {'queued'}
+                   and not (row.get('cancellation_id') or row.get('stop_id'))]
+            if ids:
+                start = self._artifact_repair_cursor % len(ids)
+                ordered = ids[start:] + ids[:start]
+                self._artifact_repair_cursor = (start + min(100, len(ids))) % len(ids)
+                ids = ordered[:100]
+            if not ids:
+                return
             for effect in policy.fence_retained_source_requests(ids):
                 report = self._artifact_stop_reports.get(effect['run_id'], {'dispatch_ids': [], 'warning': None})
-                self._remember_artifact_stop(effect['run_id'], report)
                 if effect['dispatch_id'] not in report['dispatch_ids']:
                     report['dispatch_ids'].append(effect['dispatch_id'])
+                    report['confirmed'] = False
+                self._remember_artifact_stop(effect['run_id'], report)
             policy.repair_cancel_fences(ids)
             self._artifact_repair_warning = None
         except Exception as error:
@@ -249,21 +253,35 @@ class CoordinatedQueue:
         self._artifact_stop_reports.pop(run_id, None)
         self._artifact_stop_reports[run_id] = report
         while len(self._artifact_stop_reports) > 128:
-            self._artifact_stop_reports.pop(next(iter(self._artifact_stop_reports)))
+            clean = next((key for key, value in self._artifact_stop_reports.items()
+                          if (value.get('confirmed') and not value['warning']) or (not value['dispatch_ids'] and not value['warning'])), None)
+            if clean is None:
+                self._artifact_report_overflow = True
+                clean = next(iter(self._artifact_stop_reports))
+            self._artifact_stop_reports.pop(clean)
 
     def artifact_stop_status(self, run_id):
         with self._lock:
             report = self._artifact_stop_reports.get(run_id, {'dispatch_ids': [], 'warning': None})
             wanted = set(report['dispatch_ids'])
+            overflow = 'unconfirmed_overflow' if self._artifact_report_overflow else None
             if not wanted:
-                return {'warning': report['warning'] or self._artifact_repair_warning, 'unconfirmed_dispatch_ids': []}
-            terminal = {'cancelled', 'released', 'failed', 'settled_recovered'}
-            rows = {row['envelope']['dispatch_id']: row for row in self._queue.records()
-                    if row['envelope']['dispatch_id'] in wanted}
-            unconfirmed = sorted(identifier for identifier in wanted
-                                 if identifier not in rows or rows[identifier]['state'] not in terminal)
-            return {'warning': report['warning'] or self._artifact_repair_warning or ('transport_unconfirmed' if unconfirmed else None),
-                    'unconfirmed_dispatch_ids': unconfirmed}
+                return {'warning': overflow or report['warning'] or self._artifact_repair_warning,
+                        'unconfirmed_dispatch_ids': []}
+            try:
+                terminal = {'cancelled', 'released', 'failed', 'settled_recovered'}
+                rows = {row['envelope']['dispatch_id']: row for row in self._queue.records()
+                        if row['envelope']['dispatch_id'] in wanted}
+                unconfirmed = sorted(identifier for identifier in wanted
+                                     if identifier not in rows or rows[identifier]['state'] not in terminal)
+                report['confirmed'] = not unconfirmed and not report['warning']
+                warning = report['warning'] or self._artifact_repair_warning or ('transport_unconfirmed' if unconfirmed else None)
+            except Exception as error:
+                report['confirmed'] = False
+                warning = self._artifact_failure_warning(error)
+                unconfirmed = sorted(wanted)
+                log.warning('Artifact Stop status inspection held (%s)', type(error).__name__)
+            return {'warning': overflow or warning, 'unconfirmed_dispatch_ids': unconfirmed}
 
     def __getattr__(self, name):
         attribute = getattr(self._queue, name)

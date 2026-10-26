@@ -205,6 +205,13 @@ class ArtifactSourceStopWiringTests(unittest.TestCase):
         self.assertEqual(case.artifacts.get_request(intent['request_id'])['state'],'prepared')
         self.assertEqual(case.authority.eligible_dispatch_ids(case.instance),set())
         self.assertIsNone(case.trigger.queue.claim(case.instance,'late-worker'))
+        from queue_coordinator import CoordinatedQueue
+        restored=CoordinatedQueue(case.trigger.queue._queue,case.sessions,case.engine._lock)
+        restored.bind_channel_policy(lambda:case.service);restored.bind_artifact_policy(lambda:case.authority)
+        case.trigger.queue=restored
+        case.engine.stop_session(session['id'])
+        self.assertEqual(case.artifacts.get_request(intent['request_id'])['reason'],'source_stopped')
+        self.assertEqual(case.artifacts.get_request(intent['request_id'])['state'],'cancelled')
 
     def test_restart_retained_repair_uses_real_source_fences_and_shrinking_candidates(self):
         from queue_coordinator import CoordinatedQueue
@@ -225,6 +232,89 @@ class ArtifactSourceStopWiringTests(unittest.TestCase):
         self.assertEqual(status['state'],'stopped')
         from turn_events import EventConflict
         with self.assertRaises(EventConflict):case.engine.terminate_seat(session['id'],audit['dispatch_id'],'not-a-review-launch',case.manager)
+
+    def test_none_policy_enqueue_uses_typed_conflict(self):
+        from dispatch_queue import QueueConflict
+        case,audit,instance,consumer,record,box,session=self.fixture()
+        envelope=case.trigger.queue.owned(instance,audit['dispatch_id'])['envelope']
+        case.trigger.queue.bind_artifact_policy(lambda:None)
+        try:case.trigger.queue.enqueue(instance,envelope)
+        except QueueConflict:pass
+        except Exception as error:self.fail('Missing policy must refuse with QueueConflict: '+type(error).__name__)
+        else:self.fail('Missing artifact policy must refuse enqueue')
+
+    def test_stop_report_eviction_keeps_pending_warnings_or_reports_overflow(self):
+        for all_pending in (False,True):
+            with self.subTest(all_pending=all_pending):
+                case,audit,instance,consumer,record,box,session=self.fixture();queue=case.trigger.queue
+                ids=[uuid.uuid4().hex for _ in range(129)]
+                for index,run in enumerate(ids[:128]):
+                    queue._remember_artifact_stop(run,{'dispatch_ids':[] if index==1 and not all_pending else [uuid.uuid4().hex],
+                        'warning':None if index==1 and not all_pending else 'transport_unconfirmed', 'confirmed':index==0})
+                queue._remember_artifact_stop(ids[-1],{'dispatch_ids':[uuid.uuid4().hex],'warning':'transport_unconfirmed'})
+                self.assertEqual(len(queue._artifact_stop_reports),128)
+                self.assertIn(ids[-1],queue._artifact_stop_reports)
+                if all_pending:self.assertEqual(queue.artifact_stop_status(ids[0])['warning'],'unconfirmed_overflow')
+                else:self.assertIn(ids[0],queue._artifact_stop_reports);self.assertNotIn(ids[1],queue._artifact_stop_reports)
+
+    def test_optional_artifact_inspection_failure_does_not_abort_review_work(self):
+        case,audit,instance,consumer,record,box,session=self.fixture()
+        case.engine.stop_session(session['id']);other,_,_=case.launch_binding('api')
+        with patch.object(case.trigger.queue._queue,'records',side_effect=OSError('inspection unavailable')):
+            try:
+                self.assertIsNone(case.trigger.queue.claim(other,'ordinary-worker'))
+                status=case.engine.stop_status(session['id'])
+            except OSError:self.fail('Optional artifact inspection must not abort review work')
+        self.assertEqual(status['artifact_cancellation']['warning'],'storage_unavailable')
+        self.assertEqual(status['state'],'stopped')
+
+    def test_nested_artifact_fault_sites_are_contained(self):
+        for site in ('getter','repair_cancel_fences','eligible_dispatch_ids','session_get'):
+            with self.subTest(site=site):
+                case,audit,instance,consumer,record,box,session=self.fixture();other,_,_=case.launch_binding('api')
+                case.sessions.stop_run(session['id'],'durable source Stop')
+                target,name=(case.sessions,'get') if site=='session_get' else (case.authority,site)
+                if site=='getter':target,name=case.trigger.queue,'_artifact_policy'
+                with patch.object(target,name,side_effect=RuntimeError('controlled '+site)) as fault:
+                    try:self.assertIsNone(case.trigger.queue.claim(other,'ordinary-worker'))
+                    except Exception as error:self.fail('Artifact fault escaped '+site+': '+type(error).__name__)
+                fault.assert_called()
+
+    def test_retained_real_rotation_over_one_hundred_rows_and_restart(self):
+        from queue_coordinator import CoordinatedQueue
+        case,audit,instance,consumer,record,box,session=self.fixture()
+        packet=case.artifacts.get_packet(audit['scope']['packet_id'])
+        requests=[audit['request_id']]
+        for _ in range(101):
+            request=uuid.uuid4().hex;ids=case.storage.request_ids(request);item=deepcopy(audit)
+            item.update(request_id=request,**{key:ids[key] for key in ('lineage_id','attempt_id','dispatch_id','brief_id')})
+            item['scope']=case.artifacts.put_packet(request,packet)
+            case.authority.prepare_request(item,packet,request);requests.append(request)
+        case.sessions.stop_run(session['id'],'durable Stop before artifact fence')
+        def coordinator():
+            value=CoordinatedQueue(case.trigger.queue._queue,case.sessions,case.engine._lock)
+            value.bind_channel_policy(lambda:case.service);value.bind_artifact_policy(lambda:case.authority);return value
+        restored=coordinator()
+        with patch.object(case.authority,'fence_retained_source_requests',wraps=case.authority.fence_retained_source_requests) as real:
+            restored.repair_artifact_stops()
+            self.assertEqual(len(real.call_args.args[0]),100)
+            self.assertEqual(sum(case.artifacts.get_request(r)['state']=='cancelled' for r in requests),100)
+            restarted=coordinator();self.assertEqual(restarted._artifact_repair_cursor,0)
+            restarted.repair_artifact_stops()
+            self.assertEqual(len(real.call_args.args[0]),2)
+        self.assertTrue(all(case.artifacts.get_request(r)['reason']=='source_stopped' for r in requests))
+
+    def test_held_artifact_owner_does_not_block_owned_review_termination(self):
+        from tests.test_session_stop import SessionStopTests
+        from types import SimpleNamespace
+        owner=SessionStopTests();owner.setUp();self.addCleanup(owner.doCleanups)
+        owner.claim();owner.queue.bind_artifact_policy(lambda:None)
+        owner.engine.stop_session(owner.session_id)
+        with patch.object(owner.queue,'_artifact_policy',side_effect=artifact_store.ArtifactUnavailable('held owner')):
+            result=owner.engine.terminate_seat(owner.session_id,owner.invocation['dispatch_id'],'fixture-launch',
+                SimpleNamespace(terminate_owned=lambda identity,attempt:{'local_ended':True}))
+        self.assertEqual(result['state'],'stopped')
+        self.assertEqual(owner.queue.owned(owner.owner,owner.invocation['dispatch_id'])['state'],'cancelled')
 
     def test_run_without_artifact_policy_keeps_ordinary_stop(self):
         from tests import test_channel_import as fixture
