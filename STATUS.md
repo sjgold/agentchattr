@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 isolated A1 verification complete; independent reviewer next)
+**Updated:** 2026-10-26 (#20 A1 required expiry correction verified on isolated branch)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer runs/audits isolated A1 pinf769e40f2b4a60c737ce079ecc093fc2a2ceb433 (product/tool8443e1c, CLEARED R1 base74f4697), worktree codex-ticket-20-a1-isolated. Builder full1714/four skips PASS325.416s; affected416PASS224.439s; final focused56PASS6.963s;20 mutants killed; corrected90 A samples all<=0.216, combined max0.179806s. This original checkout stays R2 WIP, NOT the A1 acceptance base. No D4/R3/operator/capacity/activation/push. |
+| Next | Reviewer checks isolated A1 expiry-fix pinca47a8bfcc9cbcd95b8cba284489f85797c07ab3 (producta8862f3, R1 base74f4697). New focused57PASS7.354s,affected419PASS220.412s/no skips,24 mutants killed. Prior f769 was cleared with this required fix; corrected pin awaits own focused/mutation confirmation. Main source stays R2 WIP. No push/activation/D4/R3/operator/capacity work. |
 
 ## Current handoff
+
+- Latest A1 correction handoff: isolated branch codex/ticket-20-a1-isolated atca47a8bfcc9cbcd95b8cba284489f85797c07ab3, producta8862f38e0618491e5eb987a75ccbaf30bbab712. Path C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-a1-isolated. Reviewer independently cleared priorf769 conditional on closing copied-context lifetime; root observed2 reds then fixed active flag/finally maps,57 focused and419 affected pass,24 mutants killed. Only flag/cleanup product changes, no optional optimizations. Prior full1714/timing90 keep8443/f769 attribution; no full/timing rerun requested. Read isolated STATUS and verification doc for current receipts. Main source unchanged at67e9e05 WIP; no merge/acceptance/publication implied.
 
 - Independent A1 review handoff: branch codex/ticket-20-a1-isolated atf769e40f2b4a60c737ce079ecc093fc2a2ceb433, path C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-a1-isolated. Read THAT worktree STATUS.md and TICKET-20-A1-VERIFICATION.md for acceptance evidence. Product/tool bytes8443e1c, base74f4697 (R1 cleared atbd1f3922). Original branch source remains67e9e05 WIP, no history rewritten/source overwritten. No R2/D1/D2 copied into isolated unit, no diagnostic fixture migration. Full1714 was taken before2 final test-only key/pair guards; final35A1+3MCP+18R1=56PASS, source/tool hashes unchanged. Reviewer must execute from isolated path, not this checkout. A1 not independently accepted yet.
 
