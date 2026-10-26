@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; D4 contract refresh next)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; D4 refreshed contract awaiting reviewer)
 
 ## At a glance
 
@@ -18,13 +18,13 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
 | Latest checks | Merged candidate: A1 global/helper and six method ASTs match closed A1; R2 hierarchy/persist/schema retained; service/MCP/A1 tests byte-match. 329 Python files compile. Focused 99 tests in 13.267 s: 97 pass, 2 known R2 diagnostic-fixture KeyErrors, no assertion failures/skips. No timing/full run. |
-| Next | Working candidate is codex/ticket-20-r2-on-a1 in its NEW Traycer worktree, merge parents closed A1 2c34bbfb and preserved R2 be6fd652. Root sends merge proofs then refreshes D4 contract for reviewer review. R2 remains unaccepted; fixture migration is separate. No timing/full, D4 source/reds, R3/operator/capacity/activation or push. |
+| Next | Working candidate is codex/ticket-20-r2-on-a1 in its NEW Traycer worktree, merge parents closed A1 2c34bbfb and preserved R2 be6fd652. Merge 356a26d complete; root sends proofs and refreshed D4 contract for reviewer review. R2 remains unaccepted; fixture migration is separate. No timing/full, D4 source/reds, R3/operator/capacity/activation or push. |
 
 ## Current handoff
 
 - Approved merge executed in C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-r2-on-a1, branch codex/ticket-20-r2-on-a1, starting closed A1 2c34bbfb and merging preserved R2 be6fd652. Both original histories remain intact. Exactly one closed A1 evidence/expiry block, R2 hierarchy/schema 2 and D1/D2 retained. No semantic conflict required a new algorithm. See [conflict resolution and proofs](TICKET-20-R2-ON-A1-MERGE.md).
 - Focused builder selection 99 tests / 13.267 s: 97 pass, two expected R1 fixture KeyErrors at test_artifact_record_bounds.py:322/696 because R2 diagnostics moved out of the authoring index. A1 36, MCP 3 and R2 owner/integration 42 all pass; R1 16 pass, 2 error. No tests migrated in this merge, no R2 acceptance inferred. All 329 tracked Python files compile. Capability remains empty. No timing or full discovery run.
-- Next owner root: send mechanical proofs and D4 refresh contract to reviewer. D4 still needs diagnostic IO outside the authority boundary by unchanged call-path inference. A1 accepted healthy authority baseline is reviewer max 0.1832 s, other A maxima <=0.169 s; those numbers belong to the isolated cleared R1/A1 base. Require one merged-base DESIGN measurement before committing to the split, not a gate or implicit acceptance. R2 fixture migration, N additions and final gates remain separate work. R3 before operator; no push authorized.
+- Next owner reviewer: review merge proofs and refreshed D4 contract; root performs the single merged-base DESIGN checkpoint after that review, before D4 reds/source. D4 still needs diagnostic IO outside the authority boundary by unchanged call-path inference. A1 accepted healthy authority baseline is reviewer max 0.1832 s, other A maxima <=0.169 s; those numbers belong to the isolated cleared R1/A1 base. Require one merged-base DESIGN measurement before committing to the split, not a gate or implicit acceptance. R2 fixture migration, N additions and final gates remain separate work. R3 before operator; no push authorized.
 
 ## Earlier correction-review pointers (historical)
 
