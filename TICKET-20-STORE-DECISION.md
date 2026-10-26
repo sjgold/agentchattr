@@ -1,8 +1,8 @@
 # Ticket 20: choose the storage work before authoring
 
-Status: OPEN for Seth. Production artifact authoring remains disabled. No store redesign, new quota or compatibility correction is approved by this memo.
+Status: SCOPE APPROVED by Seth on2026-10-25 through the structured question: "Approve R1-R3 (recommended)". This authorizes the three additional implementation/review slices. Their detailed schemas and compatibility contracts still need review; no quota, activation or R4 implementation is approved. Production artifact authoring remains disabled.
 
-**Recommendation:** authorize three additional storage/compatibility implementation tickets, then return to operator routes. The independent reviewer recommends R1-R3 below. They reopen the accepted unpublished store schema, so this is a scope decision rather than a routine implementation choice.
+**Selected direction:** three additional storage/compatibility implementation tickets, then return to operator routes. The independent reviewer recommends R1-R3 below. They reopen the accepted unpublished store schema, so the scope was presented to Seth and explicitly approved.
 
 The index is the JSON metadata catalog of artifact requests, versions and diagnostics. The current implementation validates and rewrites it as one unit.
 
@@ -33,7 +33,7 @@ These are planning slices, not new GitHub issues or time estimates.
 
 There is no released artifact schema to migrate: Ticket 20 is unpublished and production capability is empty. Tests, goldens and the approved component contracts still need careful updates and independent review. No existing helper assertions will be silently weakened.
 
-## Choices
+## Choices considered
 
 | Choice | Cost and consequence |
 | --- | --- |
@@ -45,6 +45,6 @@ With no storage change, creation remains suitable only for small early stores an
 
 **Product consequence to keep visible:** a finite per-installation quota would apply across all channels, count failed, cancelled and imported attempts, and a successful import could consume it. Exporting or deleting a channel would not free it because Ticket 20 has no purge. That 512 KiB/128-request proposal has been withdrawn; no replacement quota is selected.
 
-The wire work can be reviewed independently in [the operator contract](TICKET-20-OPERATOR-ROUTES.md). Earlier measurements remain in [the experiment log](TICKET-20-OPERATOR-CAPACITY-EXPERIMENTS.md). The next implementation direction waits for Seth's choice.
+The wire work can be reviewed independently in [the operator contract](TICKET-20-OPERATOR-ROUTES.md). Earlier measurements remain in [the experiment log](TICKET-20-OPERATOR-CAPACITY-EXPERIMENTS.md). Next: review the concrete R1 field/numeric/observation contract, capture its behavioral reds and obtain review of that separate compatibility pin. R2/R3 schema contracts follow before their implementation; no repeat scope question is needed.
 
 [Visual decision memo](http://127.0.0.1:4387/session/c99a426ed6cd4630), local review surface using the existing agentchattr theme. The durable decision and numbers are in this file; the HTML adds no product behavior.

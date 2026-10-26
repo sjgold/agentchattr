@@ -59,7 +59,7 @@ After a connection failure or unconfirmed management request, reload the catalog
 
 ## Artifact authoring remains disabled
 
-Ticket 20 authoring is waiting on a store-layout decision. The proposed store-wide limit of 128 saved requests and 512 KiB of metadata was withdrawn after sizing showed that existing diagnostic records alone exceed it. No such quota is enabled. The options and proposed extra work are in [the storage decision memo](TICKET-20-STORE-DECISION.md).
+Ticket 20 authoring remains disabled while the approved store redesign is specified and tested. The proposed store-wide limit of 128 saved requests and 512 KiB of metadata was withdrawn after sizing showed that existing diagnostic records alone exceed it. No such quota is enabled. Seth approved the three storage/compatibility slices recorded in [the storage decision memo](TICKET-20-STORE-DECISION.md).
 
 Any future finite quota would count failed, cancelled and imported attempts across all channels, and a successful import could consume it. Exporting or deleting a channel would leave that quota unchanged because artifact purge is unsupported. No replacement quota has been selected.
 
