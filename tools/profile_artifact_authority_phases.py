@@ -349,7 +349,10 @@ def prepare_measurement_peer(case, instance, ordinal):
     mode=('cancel','stop','independent_request')[ordinal%3]
     if mode=='independent_request':
         if instance['identity_id']==case.instance['identity_id']:
-            instance,_,_=case.launch_binding('api')
+            instance=getattr(case,'_measurement_api_peer_instance',None)
+            if instance is None:
+                instance,_,_=case.launch_binding('api')
+                case._measurement_api_peer_instance=instance  # Fixture lifecycle only, never product-owner state.
         else:instance=case.instance
     audit,packet=case.new_request(instance=instance,channel='peer')
     source=None
@@ -366,7 +369,7 @@ def prepare_measurement_peer(case, instance, ordinal):
         audit.update(request_id=request,**{key:ids[key] for key in ('lineage_id','attempt_id','dispatch_id','brief_id')})
         audit.update(source_run=deepcopy(run),scope=case.artifacts.put_packet(request,packet))
     case.authority.prepare_request(audit,packet,audit['request_id'])
-    if mode=='independent_request':case.claim(audit,instance)
+    consumer=case.claim(audit,instance) if mode=='independent_request' else None
     def mutate():
         if mode=='cancel':case.authority.cancel_request(audit['request_id'])
         elif mode=='stop':
@@ -374,7 +377,9 @@ def prepare_measurement_peer(case, instance, ordinal):
                 fenced=case.authority.fence_source_requests(source['run_id'])
                 case.engine.stop_session(source['id'])
             case.authority.repair_cancel_fences(fenced['request_ids'])
-        else:case.authority.get_brief(audit['brief_id'],instance)
+        else:
+            case.authority.get_brief(audit['brief_id'],instance)
+            case.trigger.queue.release(instance,audit['dispatch_id'],consumer)
         return {'kind':mode,'request_state':case.artifacts.get_request(audit['request_id'])['state']}
     return mode,mutate
 

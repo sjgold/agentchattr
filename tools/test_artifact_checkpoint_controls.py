@@ -417,6 +417,18 @@ class CheckpointControlTests(unittest.TestCase):
         finally:
             for path in created:path.unlink()
 
+    def test_two_independent_peers_can_run_sequentially_with_candidate_claimed(self):
+        from tests.test_artifact_admission import ArtifactAdmissionTests
+        case=ArtifactAdmissionTests();case.setUp()
+        try:
+            case.setup_authority();audit=case.prepare();consumer=case.claim(audit)
+            for _ in range(2):
+                kind,mutate=a.prepare_measurement_peer(case,case.instance,2)
+                self.assertEqual(kind,'independent_request')
+                self.assertEqual(mutate()['request_state'],'active')
+            self.assertEqual(case.trigger.queue.owned(case.instance,audit['dispatch_id'])['consumer_id'],consumer)
+        finally:case.doCleanups()
+
 
 if __name__ == '__main__':
     unittest.main()
