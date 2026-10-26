@@ -29,6 +29,7 @@ def main():
     checks=[
       ('author mappings',operator,'resolve_default_artifact_author',"cause = reasons.get(current['reason'], 'not_supported')","cause = 'no_live_instance'",Core,'test_reason_mapping_order_family_skip_and_inactive_duplicate'),
       ('global capability first',operator,'resolve_default_artifact_author',"if 'artifact-v1' not in runtime_protocol.SUPPORTED_CAPABILITIES:",'if False:',Core,'test_capability_off_refuses_before_any_manager_lookup'),
+      ('concurrent packet winner replay',operator.ArtifactOperator,'create','if isinstance(error, storage.ArtifactConflict):','if False:',Core,'test_concurrent_saved_same_intent_wins_before_packet_staging'),
       ('replay before relaunch lookup',operator.ArtifactOperator,'create','if saved is not None:','if False:',Core,'test_replay_uses_stored_intent_before_prepare_or_resolver'),
       ('create caller boundary',operator.ArtifactOperator,'create','authority._assert_independent_boundary()','pass',Core,'test_status_and_cancel_reads_are_serialized_and_create_guard_is_no_effect'),
       ('public status serialized',service.ArtifactService,'request_status','with self.channels._boundary():',"with __import__('contextlib').nullcontext():",Core,'test_status_and_cancel_reads_are_serialized_and_create_guard_is_no_effect'),

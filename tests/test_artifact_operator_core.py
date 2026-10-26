@@ -239,3 +239,52 @@ class ArtifactOperatorCoreTests(unittest.TestCase):
         with patch.object(case.artifacts,'get_request',observed):
             operator.request_status(audit['request_id']);operator.cancel(audit['request_id'])
         self.assertTrue(seen);self.assertTrue(all(pair==(True,True) for pair in seen))
+
+    def test_concurrent_saved_same_intent_wins_before_packet_staging(self):
+        case=self.context();session,row,event=accepted_source(case)
+        module=importlib.import_module('artifact_operator')
+        operator=module.ArtifactOperator(authority=case.authority,sessions=case.sessions,messages=case.messages)
+        intent={'request_id':uuid.uuid4().hex,'channel':'review','session_id':session['id'],
+            'run_id':session['run_id'],'instruction':'same intent'}
+        original=case.artifacts.put_packet;entered=[];winner=[]
+        def concurrent(request,packet):
+            if not entered:
+                entered.append(True)
+                extra=deepcopy(event);extra.update(event_id=uuid.uuid4().hex,content='Later accepted contribution')
+                slots=[(phase,turn) for phase,data in enumerate(session['design_snapshot']['phases']) for turn,_ in enumerate(data['participants'])]
+                phase,turn=slots[1];extra['turn_id']=session['run_id']+':'+str(phase)+':'+str(turn)
+                meta={key:extra[key] for key in ('brief_id','run_id','turn_id','attempt_id','input_revision','event_id','kind')}
+                meta.update(session_id=session['id'],routing_suppressed=True,session_output=False)
+                added=case.messages.add_once('session-event:'+extra['event_id'],extra['sender'],extra['content'],
+                    msg_type='session_result',channel='review',metadata=meta)
+                extra['projected_message_id']=added['id']
+                case.sessions._event_update(session['id'],lambda value:value['admitted_events'].append(extra))
+                winner.append(operator.create(intent))
+            return original(request,packet)
+        with patch.object(case.artifacts,'put_packet',concurrent):
+            try:result=operator.create(intent)
+            except module.ArtifactOperatorError as error:self.fail('Stored identical winner must replay: '+error.code)
+        self.assertEqual(len(winner),1);self.assertTrue(winner[0].created);self.assertFalse(result.created)
+        self.assertEqual(result['request']['source']['message_count'],2)
+        self.assertEqual(case.artifacts.get_request(intent['request_id'])['state'],'queued')
+
+    def test_imported_matching_intent_replays_without_live_source_or_capability(self):
+        from artifact_archive import portable_lineage
+        case=self.context();session,_,_=accepted_source(case)
+        module=importlib.import_module('artifact_operator')
+        operator=module.ArtifactOperator(authority=case.authority,sessions=case.sessions,messages=case.messages)
+        intent={'request_id':uuid.uuid4().hex,'channel':'review','session_id':session['id'],
+            'run_id':session['run_id'],'instruction':'retained intent'}
+        result=operator.create(intent);row=case.artifacts.get_request(intent['request_id'])
+        snapshot=case.artifacts.export_metadata(row['audit']['lineage_id'])
+        portable=portable_lineage(snapshot,archive_id='reduced-replay-fixture')
+        packet_id=row['audit']['scope']['packet_id']
+        objects={('packet',packet_id):case.artifacts._object_path('packet',packet_id).read_bytes()}
+        target=self.context();prepared=target.artifacts.prepare_import_lineage(portable,objects)
+        with target.service._boundary():target.artifacts.import_lineage(prepared,channel='review')
+        reader=module.ArtifactOperator(authority=target.authority,sessions=target.sessions,messages=target.messages)
+        self.assertIsNone(target.sessions.get(session['id']))
+        with patch('runtime_protocol.SUPPORTED_CAPABILITIES',()),patch.object(module,'resolve_default_artifact_author',side_effect=AssertionError('read-only replay')):
+            replay=reader.create(intent)
+        self.assertFalse(replay.created);self.assertEqual(replay['request']['state'],'imported')
+        self.assertFalse(replay['request']['needs_resume']);self.assertEqual(target.trigger.queue.records(),[])

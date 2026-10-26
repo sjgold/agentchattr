@@ -30,3 +30,39 @@ F1-F8 coverage is in the same four root areas, including valid create202/replay2
 Product checkpointccf266223cb6d0581978ae647a07ea2a13d70e09. An initial serialized verification command stopped in the mutation step before any artifact/full suite ran: one mutation now matched the newly added404 guard rather than the intended503 guard, so the selected503-only test correctly did not kill it. The failed receipt is retained as reduced20-mutations-wrong-branch.json, shellb6c05ae0. Corrected to two explicit404/503 mutations with their respective existing tests. Final26 mutants all killed,25 assertion-based and one typed-refusal ERROR-only; two assertion-based checks also produce follow-on errors. Product hashes unchanged by these in-process checks. No product fix followed this harness-target correction.
 
 Artifact affected and ONE full builder discovery now follow sequentially, without timing work or overlapping suites. Results pending; no green or acceptance claim yet.
+
+## Verification and real import-target miss
+
+Affected54 artifact modules/483 tests on frozen163b542:482 passed, ONE old import benchmark miss0.3100635 against0.300,252.643s, tracked8a9a1447. No functional failures. The miss remains a miss; no sentinel existed in that unit run and no cause is claimed. Standalone source import/_persist/atomic_json AST equality against220f340 verified. ONE full builder discovery on that source:225 modules,1863 tests OK348.456s,4 skips, tracked454326ff. Its own import max0.188733s is retained separately and does not erase the earlier miss.
+
+Reviewer requested ONE standalone ten-sample diagnostic under the stall sentinel, then a dated basic release ceiling1.0s while retaining/reporting0.300s target. Diagnostic981953fb collected10 fresh fixtures, all below0.300; no performance source change. Detailed JSON below. The benchmark/test-policy edit follows that ruling and changes no import code. Full discovery's stricter old assertion already passed; the exact new assertion is checked independently at its1.0 boundary without repeating another ten imports.
+
+A final deterministic concurrent-create test then exposed a genuine race before packet staging (observed1FAIL0.232s): when a second identical creator had already saved newer source bytes, immutable conflict returned409. Added shared stored-result validation at the exception path under the boundary; metadata lookup failure is contained and changed intent still409. Also verified a matching imported intent replays with no live session/capability and does not enqueue. Final root48 tests OK4.539s. Because actual source changed, one final full run will include all affected artifact tests; no redundant standalone affected rerun. Prior1863 full is labeled pre-fix, not final-source green.
+
+```json
+{
+  "kind": "diagnostic analysis, prior0.3100635 retained, no attribution/exclusion",
+  "git_head_at_analysis": "163b5424c7cd395cb72bd75187471970e2a178b5",
+  "raw_receipt_sha256": "a03a04c4126edde470896ccdca9a24fd78152e45f480606a9bdb8082545d1463",
+  "source_hashes_match_before_test_policy_edit": true,
+  "samples": [
+    0.1700319000519812,
+    0.16082990006543696,
+    0.16460530005861074,
+    0.1762738999677822,
+    0.16412109998054802,
+    0.17300650000106543,
+    0.16458909993525594,
+    0.16419220005627722,
+    0.1680347000947222,
+    0.159989699954167
+  ],
+  "median": 0.16459719999693334,
+  "max": 0.1762738999677822,
+  "sentinel_max_gap": 0.1077206,
+  "gaps_over_100ms": 4,
+  "gaps_over_500ms": 0,
+  "counted_replace_retries": {},
+  "target_exceedances": 0
+}
+```

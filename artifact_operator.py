@@ -121,6 +121,15 @@ class ArtifactOperator:
                 'session_id': source.get('session_id'), 'run_id': source.get('run_id'),
                 'instruction': audit['instruction']}
 
+    def _stored_result(self, saved, intent):
+        if (self._stored_intent(saved) != intent or saved['audit']['format'] != 'Markdown'
+                or saved['audit']['requester'] != 'operator'):
+            raise ArtifactOperatorError('request_conflict', request_id=intent['request_id'],
+                                        durability='recorded', request=summary(saved))
+        status = self.authority.request_status(intent['request_id'])
+        return _Creation({'request': summary(status['request'], needs_resume=status['needs_resume']),
+                          'durability': 'recorded', 'transport_settled': None}, created=False)
+
     def create(self, intent):
         self._intent(intent)
         authority, identifier = self.authority, intent['request_id']
@@ -129,13 +138,7 @@ class ArtifactOperator:
             with authority.channels._boundary():
                 saved = authority.store.get_request(identifier)
                 if saved is not None:
-                    if (self._stored_intent(saved) != intent or saved['audit']['format'] != 'Markdown'
-                            or saved['audit']['requester'] != 'operator'):
-                        raise ArtifactOperatorError('request_conflict', request_id=identifier,
-                                                    durability='recorded', request=summary(saved))
-                    status = authority.request_status(identifier)
-                    return _Creation({'request': summary(saved, needs_resume=status['needs_resume']),
-                            'durability': 'recorded', 'transport_settled': None}, created=False)
+                    return self._stored_result(saved, intent)
             if 'artifact-v1' not in runtime_protocol.SUPPORTED_CAPABILITIES:
                 raise ArtifactOperatorError('no_author_available', cause='capability_off', examined_roles=0)
             session = self.sessions.get(intent['session_id'])
@@ -163,13 +166,7 @@ class ArtifactOperator:
             with authority.channels._boundary():
                 winner = authority.store.get_request(identifier)
                 if winner is not None:
-                    if (self._stored_intent(winner) != intent or winner['audit']['format'] != 'Markdown'
-                            or winner['audit']['requester'] != 'operator'):
-                        raise ArtifactOperatorError('request_conflict', request_id=identifier,
-                                                    durability='recorded', request=summary(winner))
-                    state = authority.request_status(identifier)
-                    return _Creation({'request': summary(winner, needs_resume=state['needs_resume']),
-                        'durability': 'recorded', 'transport_settled': None}, created=False)
+                    return self._stored_result(winner, intent)
                 current = self.sessions.get(intent['session_id'])
                 if (current is None or current['run_id'] != captured['run_id'] or current.get('stop_id')
                         or current.get('replaced_by_run_id') or current['channel'] != captured['channel']
@@ -189,6 +186,18 @@ class ArtifactOperator:
             self._describe_effects(refusal, identifier)
             raise refusal from None
         except Exception as error:
+            if isinstance(error, storage.ArtifactConflict):
+                # Another identical creator may have won between our first read
+                # and immutable packet staging. Its saved intent is authoritative.
+                try:
+                    with authority.channels._boundary():
+                        winner = authority.store.get_request(identifier)
+                        if winner is not None:
+                            return self._stored_result(winner, intent)
+                except ArtifactOperatorError:
+                    raise
+                except Exception as lookup_error:
+                    error = lookup_error
             raise self._failure(error, identifier) from None
 
     def _describe_effects(self, error, request_id):
