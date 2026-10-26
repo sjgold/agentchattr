@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (backend review G1 Stop isolation fix in progress; prior1865 green retained; no acceptance)
+**Updated:** 2026-10-26 (corrected backend full1888 green;51 mutation kills; final independent review next; cleanup approved/no moves)
 
 ## At a glance
 
@@ -17,8 +17,8 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
-| Latest checks | Reduced backend root48 PASS4.539s;27 mutation kills (one ERROR-only); final full1865/four skips PASS362.026s. Import max0.2136556s. Accepted D4 gate190 and all earlier misses retained. |
-| Next | 264b6c3 full1882 green; D1-D5 follow-ups now implemented with109 targeted green and51 mutation checks. Final freeze/full verification next. Reviewer audits delta after full. Backend not accepted; cleanup/UI/transcript/activation/push held. |
+| Latest checks | Final corrected source146b00a: full1888/four skips OK370.823s;51 mutants killed (50 assertions, one typed ERROR-only). Earlier failed/green attempts retained in production ledger. |
+| Next | Independent reviewer final backend rerun/delta audit. Then reduced UI, screen, transcript21, packaging22; activation separate, cleanup last. No backend acceptance claim yet; no push. |
 
 ## Current handoff
 
@@ -28,7 +28,7 @@
 - Accepted publishable backend branch/tip: codex/ticket-20-r2-on-a1 product220f340042056b80c09091807690af74f36dafec, unit from closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca. R2+D4 FINAL ACCEPTANCE: reviewer170 focused OK47.5s; builder focused161/artifact437/full1817 (4 skips) pass;17 assertion mutants killed; previous190 gate retained. Older codex/ticket-20-artifacts WIP67e9e05 is superseded and preserved. No publication performed.
 - R3 proposal196666c and reviewer no-sidecar/compact-default/no-conversion-tool ruling remain historical in TICKET-20-COMPACT-INDEX.md/shared artifact. No further R3 docs cycle/reds/source/timing is active. Full operator contract is historical where it exceeds reduced scope. Backend recovery/version/archive logic remains intact.
 - Running disclosures:128-request/512KiB quota withdrawn, no replacement chosen; full refs remain in the index (~293KB historically per fulfilled max-source request), so larger histories are slower. Earlier roughly1.1s stalls have unknown cause. Final sentinel190 pass and all misses/invalid attempts remain in TICKET-20-D4-FINAL-GATE.md. Measured max-source A roughly0.16-0.18s,4MiB import roughly0.20-0.21s are observations, not an unlimited-capacity guarantee. CHANNELS.md updated.
-- Current reduced-backend review correction: reviewer found G1 Stop/held-owner regression at92d4df60 despite prior48/170 tests passing. G1-G4/R1-R3 fixed with observed reds: Stop no longer propagates artifact owner failure or mixes artifact records into review outcomes; historical reconciliation uses a bounded rotating retained-record pass. ASCII length/duplicate queries/HEAD errors, typed orphan packet and producer drift handled.37 mutants killed (36 assertion, one typed-contract ERROR-only).224 real root/support cases passed54.862s with one command loader error for a nonexistent MCP module; correct MCP module then full discovery next. Prior1865 green and import target miss remain in ledger. Backend not accepted; no UI/transcript/activation/push.
+- Final corrected reduced-backend source146b00a4ba17e191a96a8d662f32dd4ba5eb728f, codex/ticket-20-r2-on-a1. Builder full1888 OK370.823s/four skips,51 mutation kills (50 assertions, one typed-contract ERROR-only), all source hashes unchanged. Reviewer now reruns modules/support/Stop coordination/mutations and audits final delta before backend acceptance. Stop/held-owner isolation, stopped-source claim refusal, prepared explicit retry, warning cache overflow and safe ledger inspection are implemented/tested. Earlier1874 three-error full, preceding1882 green, original1865 green and original import target miss all retained honestly. UI warning/cache-key and100+ retained poll screen are pending; no activation/push or cleanup moves.
 - Cleanup plan: docs/plans/2026-10-26-delivery-file-cleanup.md, complete110 rename-only map preserving code paths and evidence. Reviewer approved with K1-K9 folded into the plan (pure renames commit then link/additions commit); no moves or deletions executed. Functional backend/UI work precedes its dedicated cleanup commit. UI, transcript, responsiveness screen, packaging, activation and push remain pending; Ticket23 follows22 ahead of24-26.
 
 ## Earlier correction-review pointers (historical)
