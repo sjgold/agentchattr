@@ -1,6 +1,6 @@
 # Ticket 20 R2: independent diagnostic ownership, frozen contract and first reds
 
-Status: EXACT PAYLOAD FREEZE CLEARED at86dad152, with K1-K9 folded below beside the first observed reds. R2 production is NOT cleared. Seth approved R1-R3 scope; R1 is independently CLEARED at bd1f3922 (product 74f4697). First root behavioral/infrastructure reds are now authorized; production and helper work still wait for their review. R3 source-reference compaction remains a separate contract. Production capability stays empty; no authoring quota, public route, activation, deployment or purge is added.
+Status: R2 exact owner payload freeze cleared at86dad152 and production authorized atbf89702, subject to additional tests and hard gates. Initial implementation plus D1/D2 is local and NOT accepted: the fresh full gate at7fe71f7 FAILED heavy and structural NORMAL samples. The reviewer selected [D4 service diagnostic phase-split DESIGN](TICKET-20-DIAGNOSTIC-PHASES.md), proposed now for review before any D4 reds/source/gates. [All 50 fresh samples](TICKET-20-DIAGNOSTICS-D1-D2-GATE.md) and the earlier misses/profile are retained. R1 is independently cleared; R3/operator/capacity/activation/push remain held; capability is empty.
 
 ## Outcome and governing choices
 
@@ -13,7 +13,7 @@ Authoring validation must stop paying for quarantine details, overflow summaries
 | Explicit request_diagnostics read | No state-machine decision or public transport DTO consumes quarantine_ids/overflow_count. ArtifactService._projection DOES deep-copy the whole row into every private MutationResult, so its private RequestProjection changes with the store row. Keeping them in every request read would reintroduce a diagnostic read/lock into authoring. Their debug projection moves to this separate method; internal row shape changes are explicit below. |
 | No implicit multi-file migration of nonempty development v1 data | There is no released artifact data. Hold and preserve a nonempty legacy index rather than risk partially moving diagnostics across two commits. Empty v1 is recognized without data loss. No live installation is inspected or converted by this package. |
 
-The governing request-row compatibility change and development-v1 hold policy are accepted design. Exact payload freeze remains under review before reds; no mechanism here is claimed implemented.
+The governing request-row compatibility change, development-v1 hold policy and exact owner payload were reviewed before their reds. Historical proposals and receipts below remain dated evidence; current implementation/verification and the D4 review requirement are stated above. No R2 acceptance is claimed.
 
 ## Source trace
 
@@ -591,3 +591,8 @@ Initial WIP producta931275 passes current40 tests but its real reachable heavy g
 D1 commit9376688 retains all owned-path guards and inventory semantics while using DirEntry.stat. D2 commit9aa7158 changes shared api_seats.atomic_json only from json.dump to one json.dumps+write; all settings, atomic replacement/fsync/retry/cleanup and fault seam remain. Nine real-payload one-write reds observed0.815s after all old-stream byte comparisons/R1 golden passed, then1PASS0.764s after change. Broader selected173 modules/1422tests PASS117.703s/four skips (all non-artifact modules plus current42 R2 tests), builder-run, NOT full discovery. No assertion/fixture weakening, no N additions claimed yet.
 
 Extended measurement harness --full-gate requires10 heavy,10 summary,10 strict structural reads and10 imports EACH with full/held diagnostics (50 total samples); real persistence, parse/inventory/validation and peer waits. Heavy hard limit0.270 plus reviewer20percent margin maxhold/peer<=0.216 for clearance; summary/structural<=0.270, imports<=0.300. Structural reads force a real equivalent metadata rewrite before measurement to exercise strict parsing, not a warmed cache; all source/tool bytes frozen during run. Import fixture has exactly100 prior lineages/versions,128 incoming versions/requests, exact4194304B portable envelope and full1024-detail/8MiB standalone diagnostic quota (no extra authoring requests); guards forbid diagnostic reads/validation during import. Original failed20 +profile10 samples remain recorded, no resampling. One fresh full gate runs after D1/D2; any hard or margin miss returns to review. No activation/push.
+
+
+## D4 amendment under review
+
+The original in-boundary diagnostic hold/read gate is not satisfied. D1/D2 remain, but both the heavy write and structural read miss in the retained fresh gate. The proposed D4 contract moves diagnostic IO/structural reads outside the authority boundary, freezes capture/receipt/settlement and changed-state outcomes, and measures real short service phases with the same hard limit plus margin. It supersedes in-boundary diagnostic IO requirements only after review. Budgets, owner schema, privacy, deterministic detail ids, latest-key-only overflow semantics and pending N coverage remain. No further optimization, red or source work until that contract clears.

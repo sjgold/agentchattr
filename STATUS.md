@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 R2 D2 byte-identical single-write candidate)
+**Updated:** 2026-10-26 (#20 R2 D4 phase-split contract proposed after retained gate miss)
 
 ## At a glance
 
@@ -16,13 +16,21 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
+| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Root implements reviewed D1 then D2 cheap wins with separate commits/equivalence proofs, then ONE fresh full gate. D1 equivalent and41 tests green; D2 pending. Heavy max hold/peer must also meet20 percent margin (<=0.216s). N/missing coverage and broader acceptance remain pending; no R3/operator/capacity/activation/push. |
+| Next | Reviewer reviews the DOCS-ONLY D4 diagnostic phase-split contract, then root writes observed reds only after clearance. D1/D2 remain; the fresh50-sample gate FAILED (heavy and structural NORMAL misses). No new source optimization/gate now. N/missing coverage and broader acceptance remain pending; no R3/operator/capacity/activation/push. |
 
 ## Current handoff
 
-- D2 shared-writer selection COMPLETE:173 modules/1422tests PASS117.703s/four skips, trackedc2b75973 exit0; all non-artifact modules plus current42 R2 tests, builder-only NOT full discovery. R1 maximum991296B golden included in real serializer differential; full R1 module/old diagnostic fixture moves still pending. Extended tool compiles/check-plan +pure structural/import-plan validation PASS, no timing claim. Root freezes D1/D2 product+full-gate harness then runs ONE fresh50-sample set (10 heavy/summary/structural and10 imports each full/held), with heavy clearance max<=0.216s. Old misses/profile retained. Independent N/test additions allowed but not run during gate; no source/tool edits or heavy overlap.
+- D4 DOCS proposal: [phase-split contract](TICKET-20-DIAGNOSTIC-PHASES.md) captures immutable diagnostic intent under authority, writes outside engine/catalog/authoring locks, then revalidates before settlement. Explicit MCP outer-boundary removal and per-item startup recovery; current-state races refuse stale effects. No source/reds/gates authorized until reviewer contract clearance. Owner: root drafts, reviewer reviews; completion requires reviewed contract then observed reds, implementation and fresh production gates, never documentation alone.
+
+- Fresh D1/D2 full gate at7fe71f7, trackedbe4f6153 exit1:50 samples, heavy median0.228606800/maxhold0.386682400/peer0.386908700, NORMAL misses8/9, only1/10 margin pass. Structural maxhold0.270486300/peer0.271032500 NORMAL miss8. Summary max0.081246000/0.081832900, import full0.206514900/0.206980000 and held0.197504900/0.197991700 pass their selections. All retries0/errorsnone; no resampling. [Complete raw receipt](TICKET-20-DIAGNOSTICS-D1-D2-GATE.md), earlier misses/profile retained. Reviewer chose D4 design, not D3; no budget/limit change. D1/D2 retained, shared-writer selection1422PASS117.703s/four skips is builder evidence, NOT full discovery.
+
+- Informational for Seth: lowering detail/body budgets would retain less rejected output and could reduce cost, but no smaller-budget experiment was run. D4 preserves the agreed budgets and moves diagnostic IO outside shared authority; reducing retention remains a separate Seth decision.
+
+## Earlier checkpoint evidence (superseded next-step instructions)
+
+The current action is the D4 contract review above. The following entries preserve prior decisions and receipts; their next-step wording is historical.
 
 - D2 shared atomic_json candidate: one json.dumps+one output.write, same ensure_ascii/allow_nan/default separators/order/newline/fsync/replace/retry/cleanup seam. New actual artifact/diagnostic/dispatch/session/seat/launch/brief/encoding-edge payloads byte-match prior json.dump stream; R1 maximum991296B/SHA8451bbe3...aeeeef4 unchanged. Before1test/9 one-write assertion FAIL0.815s (all byte comparisons passed); after1PASS0.764s including invalid/cyclic no-clobber/temp cleanup. Shared caller search completed; broad NON-artifact+R2 selection starts on frozen candidate (not full discovery; old R2 diagnostic fixture adaptations still pending). D1 per-path guards retained due ancestor-junction swap non-equivalence; no cheap leaf-only shortcut. Then extend/run ONE fresh full production gate, heavy maxhold/peer<=0.216s margin, original misses retained. No activation/push.
 
