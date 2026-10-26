@@ -896,6 +896,29 @@ class ArtifactService:
                     requests.append(row['audit']['request_id']); dispatches.append(envelope['dispatch_id'])
         return {'request_ids': requests, 'dispatch_ids': dispatches}
 
+    def fence_retained_source_requests(self, request_ids):
+        # Recovery from a durable Stop without scanning the complete authoring index.
+        if len(request_ids) > 100:
+            raise ArtifactValidationError('Artifact retained repair is limited to 100 requests.')
+        affected = []
+        with self.channels._boundary():
+            for identifier in request_ids:
+                row = self.store.get_request(_hex(identifier))
+                if row is None:
+                    continue
+                source = row['audit']['source_run'] or {}
+                if not source or source['state_at_request'] in ('complete', 'stopping', 'stopped', 'unresolved'):
+                    continue
+                run = self.channels.engine._store.get(source['session_id'])
+                if run is None or run['run_id'] != source['run_id'] or not run.get('stop_id'):
+                    continue
+                if row['state'] in LIVE:
+                    row = self.store.set_attempt_state(identifier, row['audit']['attempt_id'], row['state'],
+                        {'state': 'cancelled', 'reason': 'source_stopped'})
+                if row['state'] == 'cancelled' and row['reason'] == 'source_stopped':
+                    affected.append({'run_id': source['run_id'], 'dispatch_id': row['audit']['dispatch_id']})
+        return affected
+
     def repair_cancel_fences(self, request_ids=None, *, limit=100):
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ArtifactValidationError('Artifact repair limit must be between 1 and 100.')

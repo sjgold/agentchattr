@@ -56,6 +56,8 @@ class CoordinatedQueue:
         self._queue, self._sessions, self._lock = queue, sessions, lock
         self._channel_policy = None
         self._artifact_policy = None
+        self._artifact_stop_reports = {}
+        self._artifact_repair_cursor = 0
 
     def bind_artifact_policy(self, getter):
         if not callable(getter):
@@ -82,7 +84,7 @@ class CoordinatedQueue:
         unpublished_holds = set()
         for run in self._sessions.list_all():
             if run.get('stop_id'):
-                self.cancel_run(run['run_id'], run['stop_id'])
+                self._queue.cancel_run(run['run_id'], run['stop_id'])
             for attempt in run.get('superseded_attempts', []):
                 if (attempt.get('reason') in ('participant_replacement', 'participant_skipped')
                         and (attempt.get('old_transport') or {}).get('resolved') is not True):
@@ -93,6 +95,7 @@ class CoordinatedQueue:
                     if record is None and (attempt.get('selected_transport') or {}).get('resolved') is not True:
                         unpublished_holds.add(attempt['expected_identity_id'])
                 self._queue.cancel_dispatch(attempt['dispatch_id'], attempt['request_id'])
+        self._repair_retained_artifact_stops()
         return unpublished_holds
 
     def enqueue(self, instance, envelope):
@@ -168,29 +171,67 @@ class CoordinatedQueue:
                                      blocked_channel_names=blocked_channels, active_channel_names=active_channels,
                                      artifact_eligible=artifact_eligible)
 
-    def cancel_run(self, run_id, stop_id):
+    def repair_artifact_stops(self):
+        with self._channel_boundary():
+            self._repair_retained_artifact_stops()
+
+    def _repair_retained_artifact_stops(self):
+        # One bounded retained-record pass, independent of historical run count.
+        from artifact_store import ArtifactUnavailable
+        if self._artifact_policy is None:
+            return
+        ids = [row['envelope']['artifact_request_id'] for row in self._queue.records()
+               if row['envelope'].get('purpose') == 'artifact-v1'
+               and row['state'] in ACTIVE
+               and not (row.get('cancellation_id') or row.get('stop_id'))]
+        if ids:
+            start = self._artifact_repair_cursor % len(ids)
+            ordered = ids[start:] + ids[:start]
+            self._artifact_repair_cursor = (start + min(100, len(ids))) % len(ids)
+            ids = ordered[:100]
+        if not ids:
+            return
+        try:
+            policy = self._artifact_policy()
+            for effect in policy.fence_retained_source_requests(ids):
+                report = self._artifact_stop_reports.setdefault(effect['run_id'], {'dispatch_ids': [], 'warning': None})
+                if effect['dispatch_id'] not in report['dispatch_ids']:
+                    report['dispatch_ids'].append(effect['dispatch_id'])
+            policy.repair_cancel_fences(ids)
+        except (ArtifactUnavailable, OSError):
+            pass  # A held artifact owner never blocks ordinary review transport.
+
+    def cancel_run(self, run_id, stop_id, *, fence_artifacts=False):
+        from artifact_store import ArtifactUnavailable
         with self._channel_boundary():
             records = self._queue.cancel_run(run_id, stop_id)
-            policy = self._artifact_policy() if self._artifact_policy is not None else None
-            if policy is None:
+            if not fence_artifacts or self._artifact_policy is None:
                 return records
-            affected = policy.fence_source_requests(run_id)
-            ids = affected['request_ids']
-            for start in range(0, len(ids), 100):
-                result = policy.repair_cancel_fences(ids[start:start+100])
-                if result['unconfirmed']:
-                    retained = {row['envelope']['dispatch_id']: row for row in self._queue.records()}
-                    if any(identifier not in retained or retained[identifier]['state'] != 'cancelling'
-                            or not (retained[identifier].get('cancellation_id') or retained[identifier].get('stop_id'))
-                            for identifier in result['unconfirmed']):
-                        from artifact_store import ArtifactUnavailable
-                        raise ArtifactUnavailable('Artifact cancellation transport is unconfirmed.')
-            wanted = set(affected['dispatch_ids'])
-            combined = {row['envelope']['dispatch_id']: row for row in records}
-            for row in self._queue.records():
-                if row['envelope']['dispatch_id'] in wanted:
-                    combined[row['envelope']['dispatch_id']] = row
-            return list(combined.values())
+            try:
+                policy = self._artifact_policy()
+                affected = policy.fence_source_requests(run_id)
+                self._artifact_stop_reports[run_id] = {
+                    'dispatch_ids': list(affected['dispatch_ids']), 'warning': None}
+                ids = affected['request_ids']
+                for start in range(0, len(ids), 100):
+                    policy.repair_cancel_fences(ids[start:start+100])
+            except (ArtifactUnavailable, OSError):
+                previous = self._artifact_stop_reports.get(run_id, {'dispatch_ids': []})
+                self._artifact_stop_reports[run_id] = dict(previous, warning='storage_unavailable')
+            # Artifact transport has its own status, never review stop receipts.
+            return records
+
+    def artifact_stop_status(self, run_id):
+        with self._lock:
+            report = self._artifact_stop_reports.get(run_id, {'dispatch_ids': [], 'warning': None})
+            wanted = set(report['dispatch_ids'])
+            terminal = {'cancelled', 'released', 'failed', 'settled_recovered'}
+            rows = {row['envelope']['dispatch_id']: row for row in self._queue.records()
+                    if row['envelope']['dispatch_id'] in wanted}
+            unconfirmed = sorted(identifier for identifier in wanted
+                                 if identifier not in rows or rows[identifier]['state'] not in terminal)
+            return {'warning': report['warning'] or ('transport_unconfirmed' if unconfirmed else None),
+                    'unconfirmed_dispatch_ids': unconfirmed}
 
     def __getattr__(self, name):
         attribute = getattr(self._queue, name)

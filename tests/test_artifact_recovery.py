@@ -336,7 +336,7 @@ class ArtifactRecoveryTests(unittest.TestCase):
         self.assertEqual(case.artifacts.get_request(peer['request_id'])['state'], 'queued')
         case.authority.repair_cancel_fences(fenced['request_ids'])
         later = source_request('stopped')
-        case.trigger.queue.cancel_run(source_id, uuid.uuid4().hex)
+        case.trigger.queue.cancel_run(source_id, uuid.uuid4().hex, fence_artifacts=True)
         self.assertEqual(case.artifacts.get_request(later['request_id'])['state'], 'queued')
         self.assertEqual(case.trigger.queue.owned(case.instance, later['dispatch_id'])['state'], 'queued')
 

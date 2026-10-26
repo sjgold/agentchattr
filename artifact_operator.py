@@ -3,7 +3,7 @@ from copy import deepcopy
 import time
 
 import artifact_store as storage
-from artifact_service import active_artifact_instance, ArtifactAccessError
+from artifact_service import active_artifact_instance, ArtifactAccessError, _ArtifactProducerUnavailable
 from artifact_sources import capture_artifact_session_source, ArtifactSourceError
 import runtime_protocol
 
@@ -33,7 +33,9 @@ class ArtifactOperatorError(ValueError):
         self.code, self.http_status = code, STATUS.get(code, 409)
         self.cause, self.author_name, self.examined_roles = cause, author_name, examined_roles
         self.request_id, self.durability, self.request = request_id, durability, request
-        text = 'Artifact authoring is not enabled.' if cause == 'capability_off' else MESSAGES[code]
+        text = ('Artifact authoring is not enabled.' if cause == 'capability_off' else
+                'A packet already exists for this unsaved request. Submit with a new request_id.'
+                if cause == 'packet_exists' else MESSAGES[code])
         super().__init__(text)
 
     def body(self):
@@ -155,7 +157,11 @@ class ArtifactOperator:
             if captured.get('participant_bindings') != session.get('participant_bindings'):
                 raise ArtifactOperatorError('source_unavailable')
             producer_audit = authority.request_producer(identity)
-            scope = authority.store.put_packet(identifier, packet)
+            try:
+                scope = authority.store.put_packet(identifier, packet)
+            except storage.ArtifactConflict as error:
+                error.packet_exists = True
+                raise
             ids = storage.request_ids(identifier)
             audit = {'version': 1, 'purpose': 'artifact-v1', 'request_id': identifier,
                 **{key: ids[key] for key in ('lineage_id', 'attempt_id', 'dispatch_id', 'brief_id')},
@@ -214,6 +220,8 @@ class ArtifactOperator:
         if getattr(error, 'code', None) == 'artifact_boundary_held':
             return ArtifactOperatorError('boundary_held', request_id=request_id,
                                          durability='unknown' if request_id is not None else None)
+        elif isinstance(error, (_ArtifactProducerUnavailable, ArtifactAccessError)):
+            code = 'no_author_available'
         elif isinstance(error, storage.ArtifactUnavailable) or isinstance(error, OSError):
             code = 'storage_unavailable'
         elif isinstance(error, storage.ArtifactValidationError):
@@ -232,7 +240,9 @@ class ArtifactOperator:
                 durability = 'recorded' if row is not None else 'not_recorded'
             except (OSError, ValueError, RuntimeError):
                 durability = 'unknown'
-        return ArtifactOperatorError(code, request_id=request_id, durability=durability,
+        cause = ('producer_unavailable' if code == 'no_author_available' else
+                 'packet_exists' if code == 'request_conflict' and getattr(error, 'packet_exists', False) and row is None else None)
+        return ArtifactOperatorError(code, cause=cause, request_id=request_id, durability=durability,
                                      request=summary(row) if row else None)
 
     def request_status(self, request_id):

@@ -64,6 +64,34 @@ class ArtifactOperatorRouteTests(unittest.TestCase):
                 self.assertEqual(response.status_code,code)
         self.assertEqual(self.calls,[])
 
+    def test_content_length_requires_ascii_decimal_and_head_errors_are_empty(self):
+        for value in ('²','-1','1.5'):
+            with self.subTest(length=value):
+                response=self.client.post('/api/artifacts/requests',headers={**self.headers,
+                    'content-type':'application/json','content-length':value.encode('latin-1')},content=b'{}')
+                self.assertEqual(response.status_code,400)
+        from starlette.requests import Request
+        import asyncio,artifact_routes
+        async def no_endpoint(request):raise AssertionError('refused request must not route')
+        scope={'type':'http','method':'POST','path':'/api/artifacts/requests','query_string':b'',
+            'headers':[(b'host',b'127.0.0.1:18300'),(b'x-session-token',b'OPERATOR_ONLY'),
+                (b'origin',b'http://127.0.0.1:18300'),(b'content-type',b'application/json'),(b'content-length',b'\xb2')],
+            'scheme':'http','server':('127.0.0.1',18300)}
+        response=asyncio.run(artifact_routes.operator_prefix(Request(scope),no_endpoint,token='OPERATOR_ONLY',port=18300))
+        self.assertEqual(response.status_code,400)
+
+        response=asyncio.run(artifact_routes.operator_prefix(Request({'type':'http','method':'HEAD',
+            'path':self.read,'query_string':b'','headers':[(b'host',b'127.0.0.1:18300')],
+            'scheme':'http','server':('127.0.0.1',18300)}),no_endpoint,token='OPERATOR_ONLY',port=18300))
+        self.assertEqual(response.status_code,403);self.assertEqual(response.body,b'')
+
+    def test_duplicate_session_query_fields_refuse_before_listing(self):
+        case,client=self.real_routes()
+        for query in ('channel=review&channel=review','channel=review&offset=0&offset=1'):
+            response=client.get('/api/artifacts/sessions?'+query,headers=self.headers)
+            self.assertEqual(response.status_code,400)
+            self.assertEqual(response.json()['code'],'invalid_request')
+
     def test_new_router_has_only_reduced_routes_and_fixed_download_policy(self):
         module=importlib.import_module('artifact_routes')
         router=module.create_router(lambda:None)

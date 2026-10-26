@@ -268,6 +268,34 @@ class ArtifactOperatorCoreTests(unittest.TestCase):
         self.assertEqual(result['request']['source']['message_count'],2)
         self.assertEqual(case.artifacts.get_request(intent['request_id'])['state'],'queued')
 
+    def test_orphan_packet_conflict_has_distinct_recoverable_cause(self):
+        case=self.context();session,_,_=accepted_source(case)
+        module=importlib.import_module('artifact_operator');operator=module.ArtifactOperator(authority=case.authority,sessions=case.sessions,messages=case.messages)
+        intent={'request_id':uuid.uuid4().hex,'channel':'review','session_id':session['id'],
+            'run_id':session['run_id'],'instruction':'report'}
+        with patch.object(case.authority,'prepare_request',side_effect=OSError('after packet staging')):
+            with self.assertRaises(module.ArtifactOperatorError):operator.create(intent)
+        self.assertIsNone(case.artifacts.get_request(intent['request_id']))
+        original=module.capture_artifact_session_source
+        def changed(*args,**kwargs):
+            captured,packet=original(*args,**kwargs);packet['messages'][0]['text']+=' later';return captured,packet
+        with patch.object(module,'capture_artifact_session_source',changed):
+            with self.assertRaises(module.ArtifactOperatorError) as caught:operator.create(intent)
+        self.assertEqual((caught.exception.code,caught.exception.cause),('request_conflict','packet_exists'))
+        self.assertEqual(caught.exception.durability,'not_recorded')
+        self.assertIn('new request_id',str(caught.exception))
+
+    def test_producer_drift_and_access_loss_are_author_refusals(self):
+        case=self.context();session,_,_=accepted_source(case)
+        module=importlib.import_module('artifact_operator');operator=module.ArtifactOperator(authority=case.authority,sessions=case.sessions,messages=case.messages)
+        intent={'request_id':uuid.uuid4().hex,'channel':'review','session_id':session['id'],
+            'run_id':session['run_id'],'instruction':'report'}
+        from artifact_service import _ArtifactProducerUnavailable,ArtifactAccessError
+        for error in (_ArtifactProducerUnavailable('drift'),ArtifactAccessError('ended')):
+            with patch.object(case.authority,'request_producer',side_effect=error):
+                with self.assertRaises(module.ArtifactOperatorError) as caught:operator.create(intent)
+            self.assertEqual((caught.exception.code,caught.exception.cause),('no_author_available','producer_unavailable'))
+
     def test_imported_matching_intent_replays_without_live_source_or_capability(self):
         from artifact_archive import portable_lineage
         case=self.context();session,_,_=accepted_source(case)

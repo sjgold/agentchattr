@@ -428,3 +428,15 @@ Independent backend acceptance remains pending. Next owner: reviewer, rerun the 
 2026-10-26T20:13:51.577Z === exited (code 0)
 
 ```
+
+
+## Independent review correction in progress
+
+Reviewer92d4df60 reran48 root tests,170 support tests and27 mutants successfully, then identified G1 held-owner Stop/claim regression. Backend NOT accepted. Eight new review tests first ran1.272s:6 failures plus2 genuine held-owner propagation errors, and1 subtest fixture error (HTTPX string header could not encode superscript Content-Length). Corrected that fixture to raw latin1 bytes; ASCII refusal is separately mutation-checked. Prior full1865 remains pre-review-fix evidence.
+
+G1/G2: explicit engine Stop fences artifact sources, while historical reconciliation has one bounded retained-record pass instead of per-run full-index scans. Artifact owner failure is contained and separate artifact_cancellation warning/status does not affect review stopping/unresolved receipts or termination offers. Runtime repair rotates100 retained requests to avoid starvation, and skips already fenced transport. Existing partial-fence tests now assert warning and successful later repair rather than propagated session failure. G3/G4/R1-R3: ASCII Content-Length, duplicate query refusal, empty HEAD errors, typed orphan packet conflict and producer drift mapping. R4/R5 contract records actual screen hold path and snapshot/paging behavior. Root56 initially passed5.529s before final bounded rotation and expanded mutations; final verification follows.
+
+
+Correction verification checkpoint:37 mutants killed (36 assertion kills, one snapshot typed-contract ERROR-only), source hashes unchanged. Earlier correction harness attempts retained: ASCII-header test initially exercised HTTPX validation rather than raw ASGI; added direct latin1 scope and killed the ASCII mutant. Separate-report mutant initially only changed an unused return path; moved it to the actual returned record assignment and killed it. Post-run independence test now explicitly requests source fencing, preserving its original safety intent under the new ordinary cancel_run default.
+
+Trackedee9df094 ran224 real root/support tests successfully in54.862s, plus ONE loader error from my wrong module name tests.test_artifact_mcp_reuse. This is not labeled a green suite. Correct module tests.test_artifact_mcp runs next, then ONE full builder discovery covers the frozen delta. No need to repeat the224 successful cases separately. Root review areas now57 tests (nine added methods); prior56 green before rotation is historical.

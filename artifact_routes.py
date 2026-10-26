@@ -67,7 +67,7 @@ async def operator_prefix(request, call_next, *, token, port):
             if len(media) != 1 or not re.fullmatch(r'application/json(?:;\s*charset=utf-8)?', media[0].lower()):
                 raise ArtifactOperatorError('invalid_request')
             lengths = values(b'content-length')
-            if len(lengths) > 1 or (lengths and not lengths[0].isdigit()):
+            if len(lengths) > 1 or (lengths and not re.fullmatch(r'[0-9]{1,20}', lengths[0])):
                 raise ArtifactOperatorError('invalid_request')
             if lengths and int(lengths[0]) > MAX_BODY:
                 raise ArtifactOperatorError('request_too_large')
@@ -96,6 +96,8 @@ async def operator_prefix(request, call_next, *, token, port):
         response = error_response(error)
     except Exception:
         response = error_response(ArtifactOperatorError('unexpected_failure'))
+    if request.method == 'HEAD':
+        response = Response(status_code=response.status_code, headers=dict(response.headers))
     for key, value in HEADERS.items():
         response.headers[key] = value
     return response
@@ -160,7 +162,8 @@ def create_router(operator_getter):
     @router.api_route('/api/artifacts/sessions', methods=['GET', 'HEAD'])
     async def sessions(request: Request):
         try:
-            if set(request.query_params) - {'channel', 'offset'}:
+            if (set(request.query_params) - {'channel', 'offset'}
+                    or any(len(request.query_params.getlist(key)) != 1 for key in request.query_params)):
                 raise ValueError()
             offset = request.query_params.get('offset', '0')
             if not re.fullmatch(r'[0-9]{1,19}', offset):

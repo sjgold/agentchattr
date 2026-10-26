@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (reduced20 backend root48,27 mutations and full1865 green; independent review next; cleanup plan submitted)
+**Updated:** 2026-10-26 (backend review G1 Stop isolation fix in progress; prior1865 green retained; no acceptance)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Reduced backend root48 PASS4.539s;27 mutation kills (one ERROR-only); final full1865/four skips PASS362.026s. Import max0.2136556s. Accepted D4 gate190 and all earlier misses retained. |
-| Next | Backend candidate97c7196: root48,27 mutations/full1865 green. Independent reviewer audits backend next. Cleanup PLAN docs/plans/2026-10-26-delivery-file-cleanup.md ready (110 rename-only moves, no deletions); no moves executed. UI/transcript/activation/push held. |
+| Next | Reviewer found G1 held-artifact owner regression in Stop/claims; backend NOT accepted. Root fixing G1-G4/R1-R3 with observed reds, then expanded mutations/support/full rerun. Cleanup approved, no moves; UI/transcript/activation/push held. |
 
 ## Current handoff
 
@@ -28,7 +28,7 @@
 - Accepted publishable backend branch/tip: codex/ticket-20-r2-on-a1 product220f340042056b80c09091807690af74f36dafec, unit from closed A1 tip2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca. R2+D4 FINAL ACCEPTANCE: reviewer170 focused OK47.5s; builder focused161/artifact437/full1817 (4 skips) pass;17 assertion mutants killed; previous190 gate retained. Older codex/ticket-20-artifacts WIP67e9e05 is superseded and preserved. No publication performed.
 - R3 proposal196666c and reviewer no-sidecar/compact-default/no-conversion-tool ruling remain historical in TICKET-20-COMPACT-INDEX.md/shared artifact. No further R3 docs cycle/reds/source/timing is active. Full operator contract is historical where it exceeds reduced scope. Backend recovery/version/archive logic remains intact.
 - Running disclosures:128-request/512KiB quota withdrawn, no replacement chosen; full refs remain in the index (~293KB historically per fulfilled max-source request), so larger histories are slower. Earlier roughly1.1s stalls have unknown cause. Final sentinel190 pass and all misses/invalid attempts remain in TICKET-20-D4-FINAL-GATE.md. Measured max-source A roughly0.16-0.18s,4MiB import roughly0.20-0.21s are observations, not an unlimited-capacity guarantee. CHANNELS.md updated.
-- Current backend candidate: codex/ticket-20-r2-on-a1 at97c7196022f6f8a20be4a397ecbded38757ce66e (product0725f699). Root48 pass4.539s after a genuine concurrent-create replay fix, observed red first. Final27 in-process mutations killed; one ERROR-only typed-contract check is weaker evidence. Final builder full discovery1865 OK362.026s,4 skips in shella953e7b9; it includes all affected artifact modules. Final import max0.2136556 meets target0.300 and ceiling1.0. Prior full1863 passed on pre-fix source; affected483 retained one real0.3100635 import-target miss. Standalone sentinel diagnostic10 max0.1762739, no >0.5s stalls. Dated reviewed first-release import unit ceiling1.0s retains0.300 target and all earlier samples. Independent reviewer audits final pin after builder completion. No reduced-backend acceptance yet.
+- Current reduced-backend review correction: reviewer found G1 Stop/held-owner regression at92d4df60 despite prior48/170 tests passing. G1-G4/R1-R3 fixed with observed reds: Stop no longer propagates artifact owner failure or mixes artifact records into review outcomes; historical reconciliation uses a bounded rotating retained-record pass. ASCII length/duplicate queries/HEAD errors, typed orphan packet and producer drift handled.37 mutants killed (36 assertion, one typed-contract ERROR-only).224 real root/support cases passed54.862s with one command loader error for a nonexistent MCP module; correct MCP module then full discovery next. Prior1865 green and import target miss remain in ledger. Backend not accepted; no UI/transcript/activation/push.
 - Cleanup plan: docs/plans/2026-10-26-delivery-file-cleanup.md, complete110 rename-only map preserving code paths and evidence. Reviewer approved with K1-K9 folded into the plan (pure renames commit then link/additions commit); no moves or deletions executed. Functional backend/UI work precedes its dedicated cleanup commit. UI, transcript, responsiveness screen, packaging, activation and push remain pending; Ticket23 follows22 ahead of24-26.
 
 ## Earlier correction-review pointers (historical)

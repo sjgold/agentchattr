@@ -162,7 +162,8 @@ class SessionEngine:
             if self._store.get(session_id) is None:
                 return None
             session = self._store.stop_run(session_id, reason)
-            self._trigger.queue.cancel_run(session['run_id'], session['stop_id'])
+            self._trigger.queue.cancel_run(session['run_id'], session['stop_id'], fence_artifacts=True)
+            session['artifact_cancellation'] = self._trigger.queue.artifact_stop_status(session['run_id'])
             return session
 
     def _restart_bindings(self, record, replacements):
@@ -753,6 +754,7 @@ class SessionEngine:
     def reconcile_stops(self, now=None):
         now = time.time() if now is None else now
         with self._lock:
+            self._trigger.queue.repair_artifact_stops()
             for session in self._store.list_all():
                 if not session.get('stop_id'):
                     continue
@@ -814,6 +816,7 @@ class SessionEngine:
                     if offer:
                         offers.append(dict(offer, dispatch_id=record['envelope']['dispatch_id']))
             session['termination_offers'] = offers
+            session['artifact_cancellation'] = self._trigger.queue.artifact_stop_status(session['run_id'])
             return self._enrich(session)
 
     def terminate_seat(self, session_id, dispatch_id, launch_attempt, manager):
