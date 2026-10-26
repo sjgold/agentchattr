@@ -270,13 +270,14 @@ def main():
         error = {'type': type(exc).__name__, 'message': str(exc)}
         raise
     finally:
-        result = {'kind': 'A1 on cleared R1 authority-phase DESIGN, no D4 acceptance', 'samples': rows,
+        result = {'kind': 'R2-on-closed-A1 authority-phase DESIGN, no D4 acceptance', 'samples': rows,
                   'error': error, 'fsync_mocked': False, 'harness_edits_product': False,
                   'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
                   'source_sha256': {name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('artifact_store.py','artifact_service.py','mcp_bridge.py','api_seats.py')},
                   'peer_measured': False, 'margin_seconds': .216, 'hard_seconds': .270,
-                  'base_product': '74f4697efcc6e66f91f228983a3d6a630ec41fff',
-                  'authoring_schema': 1, 'r2_d1_d2_present': False}
+                  'closed_a1_base': '2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca',
+                  'preserved_r2_parent': 'be6fd6522474fe2fab0e6f0573ec6e9ccb9eab4a',
+                  'authoring_schema': 2, 'r2_d1_d2_present': True}
         destination = ROOT / '.audit-tmp' / ('r2-authority-phase-design-' + uuid.uuid4().hex + '.json')
         destination.write_text(json.dumps(result, indent=2), encoding='utf-8')
         print(json.dumps({'receipt': str(destination), 'samples': len(rows), 'error': error}), flush=True)

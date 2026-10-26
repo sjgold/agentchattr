@@ -570,3 +570,11 @@ Focused edge10/review17/metadata17 PASS44 tests12.010s, log .audit-tmp/ticket20-
 Reviewer personally executed every test_artifact*.py except benchmark plus every test_channel*.py and test_archive_feature at a38c17b:632 tests PASS171.071s. Node verify_channel_ui.cjs25/0fail, actual-source VM only. It verified product diff9b068af..a38c17b contains only tests/docs/tool assertions and accepted T1-T4 coverage without reading each new body line by line. It did not run the benchmark or verify_channel_policy. Slice4 COMPONENT CLEARED, with no native/provider/browser/layout or activation claim. Product9b full1659/four skips320.363s remains builder-only. Next is the operator-routes/K6 contract, before tests/code, then reader and isolated acceptance.
 
 Budget clarification2026-10-25: the accepted exact4MiB whole-lineage import gate remains<=0.300s for that SEPARATE import-path profile. The later operator/interactive target<=0.270s does not silently supersede the import budget. Approved R1-R3 storage changes must re-run the import gate and separately report the operator/commit/cancel/Stop/recovery measurements; any revised import budget needs its own ruling.
+
+
+## Proposed R2 document amendment, not implemented
+
+R2 replaces the imported exact-key statements (140/156): imported rows retain audit/channel/state/reason/updated_at/version_id/import_source ONLY, without quarantine_ids. Empty imported attachment projection is through request_diagnostics, not a stored empty key. Portable archive and version provenance remain unchanged. See [R2 diagnostic ownership](TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
+
+
+R2 also supersedes historical :316 location wording: standalone diagnostic writes change diagnostics.json rather than index.json; request/lineage/version state invariants remain. Proposed R2 location, not a rewrite of the recorded slice2 execution.

@@ -29,6 +29,7 @@ MAX_DIAGNOSTIC_RECORDS = 1024
 MAX_QUARANTINE_BODY_BYTES = 8 * 1024 * 1024
 MAX_QUARANTINE_OBJECTS = 1024
 MAX_DIAGNOSTIC_COUNTER = 2**31 - 1
+MAX_DIAGNOSTIC_METADATA_BYTES = 1024 * 1024
 MAX_OBJECT_ERRORS = 256
 MAX_ARTIFACT_LABEL_BYTES = 256
 MAX_ARTIFACT_RECORD_INTEGER = 2**63 - 1
@@ -55,6 +56,25 @@ class ArtifactConflict(ChannelConflict):
 
 class ArtifactUnavailable(ChannelUnavailable):
     pass
+
+
+_LEGACY_GUIDANCE = 'Saved development artifacts use schema 1. Conversion is required; no files were reset.'
+_AUTHORING_GUIDANCE = 'Saved artifact index is held; repair storage and restart.'
+_DIAGNOSTIC_GUIDANCE = 'Artifact diagnostics are unavailable. Repair the diagnostic metadata before retrying.'
+
+
+class ArtifactDiagnosticsUnavailable(ArtifactUnavailable):
+    code = 'artifact_diagnostics_unavailable'
+
+    def __init__(self):
+        super().__init__(_DIAGNOSTIC_GUIDANCE)
+
+
+def _owner_error(owner, legacy):
+    if legacy:
+        return {'code': 'artifact_legacy_schema_unavailable', 'error': _LEGACY_GUIDANCE}
+    return {'code': 'artifact_diagnostics_unavailable' if owner == 'diagnostics' else 'artifact_storage_unavailable',
+            'error': _DIAGNOSTIC_GUIDANCE if owner == 'diagnostics' else _AUTHORING_GUIDANCE}
 
 
 class ArtifactImportCollision(ArtifactConflict):
@@ -314,8 +334,8 @@ def _audit_imported(value):
 
 def _validate_imported(row):
     _fields(row, ('audit', 'channel', 'state', 'reason', 'updated_at', 'version_id',
-                  'quarantine_ids', 'import_source'))
-    if row['state'] != 'imported' or row['reason'] != 'imported' or row['quarantine_ids'] != []:
+                  'import_source'))
+    if row['state'] != 'imported' or row['reason'] != 'imported':
         raise ArtifactValidationError('Imported artifact requests are terminal and read-only.')
     origin = row['import_source']
     _fields(origin, ('archive_id', 'original_state', 'original_reason'))
@@ -347,8 +367,24 @@ def _observation(value, adapter):
 
 
 def _empty():
+    return {'version': 2, 'lineages': {}, 'requests': {}, 'versions': {}}
+
+
+def _empty_legacy_v1():
     return {'version': 1, 'lineages': {}, 'requests': {}, 'versions': {}, 'diagnostics': {},
             'dispatch_overflow': {}, 'store_overflow': None}
+
+
+def _empty_diagnostics():
+    return {'version': 1, 'diagnostics': {}, 'dispatch_overflow': {}, 'store_overflow': None}
+
+
+def _diagnostic_id(key):
+    return _uuid(_canonical(key).decode('utf-8'))
+
+
+def _summary_id(dispatch_id):
+    return _uuid('agentchattr:artifact-v1:overflow:' + (dispatch_id or 'store'))
 
 
 def _path_key(path):
@@ -429,44 +465,13 @@ def _packet_evidence(state, packet_id, raw):
     return entry
 
 
-class ArtifactStore:
-    def __init__(self, data_dir, *, hold_unreadable=False):
-        if type(hold_unreadable) is not bool:
-            raise ArtifactValidationError('Invalid artifact startup mode.')
-        self.root = Path(data_dir).absolute()
-        self.path = self.root / 'artifacts' / 'index.json'
-        self._lock = threading.RLock()
-        self._data = _empty()
-        self._stamp = None
-        self._invalid_stamp = object()
-        self._held = None
-        self._known = False
-        self._object_errors = {}
-        self._channel_policy_getter = self._closed_policy
-        try:
-            self._data = self._load_index()
-            self._stamp = self._fingerprint()
-            self._known = True
-        except ArtifactUnavailable:
-            self._held = 'Saved artifact index is held; repair storage and restart.'
-            self._invalid_stamp = self._fingerprint_quiet()
-            if not hold_unreadable:
-                raise
-
-    @staticmethod
-    def _closed_policy():
-        raise ArtifactUnavailable('Artifact publication policy is not bound.')
-
-    def bind_channel_policy(self, getter):
-        if not callable(getter):
-            raise ArtifactValidationError('Artifact policy getter must be callable.')
-        with self._lock:
-            self._channel_policy_getter = getter
-
+class _ArtifactOwnedFiles:
+    """Owned filesystem primitives; no metadata or policy state."""
     def _safe(self, path):
         if _path_key(path.resolve()) != _path_key(path.absolute()):
             raise ArtifactUnavailable('Artifact storage path is unavailable.')
         return path
+
 
     def _fingerprint(self):
         self._safe(self.path)
@@ -476,61 +481,13 @@ class ArtifactStore:
         except FileNotFoundError:
             return None
 
+
     def _fingerprint_quiet(self):
         try:
             return self._fingerprint()
         except (OSError, ArtifactUnavailable):
             return ('unreadable',)
 
-    def _load_index(self):
-        try:
-            self._safe(self.path)
-            before = self._fingerprint()
-            if before is None:
-                return _empty()
-            def unique(pairs):
-                value = {}
-                for key, item in pairs:
-                    if key in value:
-                        raise ArtifactValidationError('Duplicate artifact fields.')
-                    value[key] = item
-                return value
-            with self.path.open('rb') as stream:
-                value = json.loads(stream.read().decode('utf-8'), object_pairs_hook=unique)
-            if before != self._fingerprint():
-                raise ArtifactValidationError('Artifact index changed during its read.')
-            self._validate_index(value)
-            return value
-        except (OSError, ValueError, TypeError, KeyError, UnicodeError, RecursionError):
-            raise ArtifactUnavailable('Saved artifact index is unavailable or malformed; nothing was reset.') from None
-
-    def _check_index(self):
-        stamp = self._fingerprint_quiet()
-        if self._held is None and stamp == self._stamp:
-            return
-        if self._held is not None and stamp == self._invalid_stamp:
-            raise ArtifactUnavailable(self._held)
-        try:
-            value = self._load_index()
-            if not self._known or value != self._data:
-                raise ArtifactUnavailable('Saved artifacts changed; repair storage and restart.')
-        except ArtifactUnavailable:
-            self._held = 'Saved artifact index is held; repair storage and restart.'
-            self._invalid_stamp = stamp
-            raise ArtifactUnavailable(self._held) from None
-        self._stamp, self._held = stamp, None
-
-    def _persist(self, value):
-        self._validate_index(value)
-        try:
-            with startup_lock(self._safe(self.path.with_suffix('.json.lock')), time.monotonic() + 10):
-                self._check_index()
-                self._safe(self.path)
-                atomic_json(self.path, value)
-                stamp = self._fingerprint()
-        except (OSError, LaunchError, ArtifactUnavailable):
-            raise ArtifactUnavailable('Artifact index write did not complete.') from None
-        self._data, self._stamp = value, stamp
 
     def _object_path(self, kind, identifier):
         _hex(identifier)
@@ -541,6 +498,7 @@ class ArtifactStore:
         else:
             path = self.root / 'artifacts' / 'quarantine' / (identifier + '.txt')
         return self._safe(path)
+
 
     def _put_bytes(self, path, raw):
         temporary = None
@@ -570,6 +528,433 @@ class ArtifactStore:
                     temporary.unlink(missing_ok=True)
                 except OSError:
                     raise ArtifactUnavailable('Artifact temporary cleanup did not complete.') from None
+
+
+
+class ArtifactDiagnosticStore(_ArtifactOwnedFiles):
+    """Independent diagnostic ledger; never reads authoring or channel policy."""
+    _diagnostic_id = staticmethod(_diagnostic_id)
+    _summary_id = staticmethod(_summary_id)
+
+    def __init__(self, data_dir, *, hold_unreadable=False, legacy_held=False):
+        if type(hold_unreadable) is not bool or type(legacy_held) is not bool:
+            raise ArtifactValidationError('Invalid diagnostic startup mode.')
+        self.root = Path(data_dir).absolute()
+        self.path = self.root / 'artifacts' / 'diagnostics.json'
+        self._lock = threading.RLock()
+        self._data = _empty_diagnostics()
+        self._stamp = None
+        self._invalid_stamp = object()
+        self._held = None
+        self._known = False
+        self._legacy_held = legacy_held
+        self._transaction_active = False
+        if legacy_held:
+            self._held = _LEGACY_GUIDANCE
+            return
+        try:
+            self._data = self._load_diagnostics()
+            self._stamp = self._fingerprint()
+            self._known = True
+        except (OSError, ArtifactUnavailable):
+            self._held = _DIAGNOSTIC_GUIDANCE
+            self._invalid_stamp = self._fingerprint_quiet()
+            if not hold_unreadable:
+                raise ArtifactDiagnosticsUnavailable() from None
+
+    def _set_legacy_hold(self):
+        with self._lock:
+            self._legacy_held = True
+            self._held = _LEGACY_GUIDANCE
+
+    def _load_diagnostics(self):
+        try:
+            self._safe(self.path)
+            before = self._fingerprint()
+            if before is None:
+                return _empty_diagnostics()
+            def unique(pairs):
+                value = {}
+                for key, item in pairs:
+                    if key in value:
+                        raise ArtifactValidationError('Duplicate diagnostic fields.')
+                    value[key] = item
+                return value
+            def nonfinite(_):
+                raise ArtifactValidationError('Nonfinite diagnostic value.')
+            with self.path.open('rb') as stream:
+                raw = stream.read(MAX_DIAGNOSTIC_METADATA_BYTES + 1)
+            if len(raw) > MAX_DIAGNOSTIC_METADATA_BYTES or raw.startswith(b'\xef\xbb\xbf'):
+                raise ArtifactValidationError('Unsupported diagnostic encoding or size.')
+            value = json.loads(raw.decode('utf-8'), object_pairs_hook=unique, parse_constant=nonfinite)
+            pending = [(value, 1)]
+            while pending:
+                item, depth = pending.pop()
+                if isinstance(item, list) or (isinstance(item, dict) and depth > 3):
+                    raise ArtifactValidationError('Diagnostic nesting exceeds its schema.')
+                if isinstance(item, dict):
+                    pending.extend((child, depth + 1) for child in item.values())
+            self._validate_diagnostics(value)
+            if before != self._fingerprint():
+                raise ArtifactValidationError('Diagnostic metadata changed while reading.')
+            return value
+        except (OSError, ValueError, TypeError, KeyError, UnicodeError, RecursionError, ArtifactUnavailable):
+            raise ArtifactDiagnosticsUnavailable() from None
+
+    def _check_diagnostics(self):
+        if self._legacy_held:
+            raise ArtifactDiagnosticsUnavailable()
+        stamp = self._fingerprint_quiet()
+        if self._held is None and stamp == self._stamp:
+            return
+        if self._held is not None and stamp == self._invalid_stamp:
+            raise ArtifactDiagnosticsUnavailable()
+        try:
+            if stamp is None and self._stamp is not None:
+                raise ArtifactDiagnosticsUnavailable()
+            value = self._load_diagnostics()
+            if not self._known or value != self._data:
+                raise ArtifactDiagnosticsUnavailable()
+        except (OSError, ArtifactUnavailable):
+            self._held = _DIAGNOSTIC_GUIDANCE
+            self._invalid_stamp = stamp
+            raise ArtifactDiagnosticsUnavailable() from None
+        self._stamp, self._held = stamp, None
+
+    @contextmanager
+    def _transaction(self):
+        with self._lock:
+            if self._legacy_held:
+                raise ArtifactDiagnosticsUnavailable()
+            if self._transaction_active:
+                yield
+                return
+            try:
+                with startup_lock(self._safe(self.path.with_suffix('.json.lock')), time.monotonic() + 10):
+                    self._transaction_active = True
+                    try:
+                        yield
+                    finally:
+                        self._transaction_active = False
+            except (OSError, LaunchError):
+                raise ArtifactDiagnosticsUnavailable() from None
+
+    @staticmethod
+    def _encoded(value):
+        raw = json.dumps(value, ensure_ascii=True, allow_nan=False).encode('utf-8')
+        if len(raw) > MAX_DIAGNOSTIC_METADATA_BYTES:
+            raise ArtifactDiagnosticsUnavailable()
+        return raw
+
+    def _persist_diagnostics(self, value):
+        with self._transaction():
+            self._check_diagnostics()
+            self._validate_diagnostics(value)
+            self._encoded(value)
+            self._safe(self.path)
+            try:
+                atomic_json(self.path, value)
+                stamp = self._fingerprint()
+            except Exception:
+                # Replacement may have landed, even if its final stat failed.
+                self._held = _DIAGNOSTIC_GUIDANCE
+                self._invalid_stamp = object()
+                raise ArtifactDiagnosticsUnavailable() from None
+            self._data, self._stamp = value, stamp
+            self._known = True
+
+    def record(self, request_id, attempt_id, dispatch_id, *, reason, content=None,
+               actor_identity_id=None, attached_request_id=None, now=None):
+        if request_id is not None:
+            _hex(request_id)
+        _hex(attempt_id); _hex(dispatch_id)
+        if actor_identity_id is not None:
+            _hex(actor_identity_id)
+        if attached_request_id is not None:
+            if (_hex(attached_request_id) != request_id
+                    or request_ids(attached_request_id)['dispatch_id'] != dispatch_id):
+                raise ArtifactValidationError('Diagnostic attachment differs from its dispatch.')
+        if not isinstance(reason, str) or reason not in QUARANTINE_REASONS:
+            raise ArtifactValidationError('Invalid artifact diagnostic reason.')
+        if content is not None and not isinstance(content, str):
+            raise ArtifactValidationError('Artifact diagnostic content must be text or null.')
+        raw = b'' if content is None else content.encode('utf-8', errors='surrogatepass')
+        retainable = content is not None and '\0' not in content
+        try:
+            raw.decode('utf-8')
+        except UnicodeError:
+            retainable = False
+        key = {'request_id': request_id, 'attempt_id': attempt_id, 'dispatch_id': dispatch_id,
+               'reason': reason, 'sha256': hashlib.sha256(raw).hexdigest(), 'byte_count': len(raw),
+               'actor_identity_id': actor_identity_id}
+        identifier = self._diagnostic_id(key)
+        try:
+            with self._transaction():
+                self._check_diagnostics()
+                prior = self._data['diagnostics'].get(identifier)
+                if prior is not None:
+                    return deepcopy(prior)
+                rows = self._data['diagnostics'].values()
+                groups = {row['dispatch_id'] for row in rows}
+                group_count = sum(row['dispatch_id'] == dispatch_id for row in rows)
+                global_overflow = (group_count < MAX_DIAGNOSTICS_PER_DISPATCH and
+                    (len(self._data['diagnostics']) >= MAX_DIAGNOSTIC_RECORDS
+                     or (dispatch_id not in groups and len(groups) >= MAX_DIAGNOSTIC_DISPATCH_GROUPS)))
+                value = deepcopy(self._data)
+                if global_overflow or group_count >= MAX_DIAGNOSTICS_PER_DISPATCH:
+                    prior = value['store_overflow'] if global_overflow else value['dispatch_overflow'].get(dispatch_id)
+                    if prior is not None and prior['latest_diagnostic_id'] == identifier:
+                        return deepcopy(prior)
+                    summary = deepcopy(prior) if prior is not None else {
+                        'id': self._summary_id(None if global_overflow else dispatch_id),
+                        'kind': 'store_overflow' if global_overflow else 'dispatch_overflow',
+                        'dispatch_id': None if global_overflow else dispatch_id, 'counter': 0}
+                    summary.update(counter=min(summary['counter'] + 1, MAX_DIAGNOSTIC_COUNTER),
+                        latest_diagnostic_id=identifier, latest_sha256=key['sha256'], latest_byte_count=len(raw),
+                        latest_reason=reason, updated_at=_number(time.time() if now is None else now))
+                    if global_overflow:
+                        value['store_overflow'] = summary
+                    else:
+                        value['dispatch_overflow'][dispatch_id] = summary
+                    self._persist_diagnostics(value)
+                    return deepcopy(summary)
+                files, total = self._body_inventory()
+                retained = (retainable and len(raw) <= MAX_ARTIFACT_BYTES
+                    and len(files) < MAX_QUARANTINE_OBJECTS and total + len(raw) <= MAX_QUARANTINE_BODY_BYTES)
+                stamp = _number(time.time() if now is None else now)
+                row = {'id': identifier, 'kind': 'quarantine', **key,
+                       'received_at': stamp, 'updated_at': stamp, 'not_retained': not retained,
+                       'body_object_id': identifier if retained else None, 'attached_request_id': attached_request_id}
+                value['diagnostics'][identifier] = row
+                # A refused candidate must not create even an orphan body.
+                self._validate_diagnostics(value)
+                self._encoded(value)
+                if retained:
+                    self._put_bytes(self._object_path('quarantine', identifier), raw)
+                self._persist_diagnostics(value)
+                return deepcopy(row)
+        except (OSError, LaunchError, ArtifactUnavailable):
+            # Body/lock failures do not imply a metadata replacement happened.
+            # Only _persist_diagnostics marks commit uncertainty.
+            raise ArtifactDiagnosticsUnavailable() from None
+
+    def _attached_rows(self, request_id):
+        rows = [deepcopy(row) for row in self._data['diagnostics'].values()
+                if row['attached_request_id'] == request_id]
+        return sorted(rows, key=lambda row: (row['received_at'], row['id']))
+
+    def request_diagnostics(self, request_id):
+        _hex(request_id)
+        with self._lock:
+            self._check_diagnostics()
+            rows = self._attached_rows(request_id)
+            summary = self._data['dispatch_overflow'].get(request_ids(request_id)['dispatch_id']) if rows else None
+            return {'available': True, 'quarantine_ids': [row['id'] for row in rows],
+                    'overflow_count': summary['counter'] if summary else 0, 'error': None}
+
+    def report(self):
+        try:
+            with self._lock:
+                self._check_diagnostics()
+                rows = deepcopy(list(self._data['diagnostics'].values()))
+                rows.extend(deepcopy(list(self._data['dispatch_overflow'].values())))
+                if self._data['store_overflow'] is not None:
+                    rows.append(deepcopy(self._data['store_overflow']))
+                files, total = self._body_inventory()
+                referenced = {row['body_object_id'] for row in self._data['diagnostics'].values() if row['body_object_id']}
+                for path in files:
+                    if path.stem not in referenced:
+                        rows.append({'id': path.stem, 'kind': 'orphan_quarantine', 'updated_at': path.stat().st_mtime})
+                return {'rows': rows, 'dispatch_group_count': len({row['dispatch_id'] for row in self._data['diagnostics'].values()}),
+                        'detailed_count': len(self._data['diagnostics']), 'retained_body_bytes': total}
+        except (OSError, ArtifactUnavailable):
+            raise ArtifactDiagnosticsUnavailable() from None
+
+    def _body_inventory(self):
+        folder = self.root / 'artifacts' / 'quarantine'
+        self._safe(folder)
+        if not folder.exists():
+            return [], 0
+        try:
+            with os.scandir(folder) as directory:
+                entries = list(directory)
+        except OSError:
+            # Match Path.glob's enumeration-error behavior. Entry stat errors
+            # below still propagate, and every matching path keeps its guard.
+            return [], 0
+        files = []
+        total = 0
+        suffix = os.path.normcase('.txt')
+        for entry in entries:
+            if not os.path.normcase(entry.name).endswith(suffix):
+                continue
+            path = Path(entry.path)
+            self._safe(path)
+            # Do not filter is_file: the previous scan also counted matching
+            # directories. DirEntry.stat reuses enumeration metadata on Windows.
+            total += entry.stat().st_size
+            files.append(path)
+        return files, total
+
+
+    def _validate_diagnostics(self, value):
+        _fields(value, _empty_diagnostics())
+        if type(value['version']) is not int or value['version'] != 1:
+            raise ArtifactValidationError('Unsupported diagnostic version.')
+        if not isinstance(value['diagnostics'], dict) or not isinstance(value['dispatch_overflow'], dict):
+            raise ArtifactValidationError('Diagnostic containers must be objects.')
+        if len(value['diagnostics']) > MAX_DIAGNOSTIC_RECORDS:
+            raise ArtifactValidationError('Artifact diagnostic count exceeds its bound.')
+        groups = {}
+        for identifier, row in value['diagnostics'].items():
+            _fields(row, ('id', 'kind', 'request_id', 'attempt_id', 'dispatch_id', 'reason', 'sha256',
+                'byte_count', 'actor_identity_id', 'received_at', 'updated_at', 'not_retained', 'body_object_id', 'attached_request_id'))
+            if row['kind'] != 'quarantine' or _hex(identifier) != row['id']:
+                raise ArtifactValidationError('Invalid artifact diagnostic identity.')
+            if row['request_id'] is not None:
+                _hex(row['request_id'])
+            _hex(row['attempt_id']); _hex(row['dispatch_id']); _hex(row['sha256'], 64)
+            if row['actor_identity_id'] is not None:
+                _hex(row['actor_identity_id'])
+            _record_integer(row['byte_count']); _number(row['received_at'])
+            if row['updated_at'] != row['received_at'] or row['reason'] not in QUARANTINE_REASONS:
+                raise ArtifactValidationError('Invalid artifact diagnostic metadata.')
+            key = {name: row[name] for name in ('request_id', 'attempt_id', 'dispatch_id', 'reason',
+                                               'sha256', 'byte_count', 'actor_identity_id')}
+            if self._diagnostic_id(key) != identifier or type(row['not_retained']) is not bool:
+                raise ArtifactValidationError('Artifact diagnostic key differs.')
+            if row['body_object_id'] != (None if row['not_retained'] else identifier):
+                raise ArtifactValidationError('Artifact diagnostic body reference differs.')
+            attached = row['attached_request_id']
+            if attached is not None and (_hex(attached) != row['request_id']
+                    or request_ids(attached)['dispatch_id'] != row['dispatch_id']):
+                raise ArtifactValidationError('Invalid diagnostic attachment.')
+            groups[row['dispatch_id']] = groups.get(row['dispatch_id'], 0) + 1
+        if len(groups) > MAX_DIAGNOSTIC_DISPATCH_GROUPS or any(n > MAX_DIAGNOSTICS_PER_DISPATCH for n in groups.values()):
+            raise ArtifactValidationError('Artifact diagnostic group bound exceeded.')
+        for dispatch_id, summary in value['dispatch_overflow'].items():
+            if dispatch_id not in groups:
+                raise ArtifactValidationError('Artifact overflow group is unknown.')
+            self._validate_summary(summary, _hex(dispatch_id))
+        if value['store_overflow'] is not None:
+            self._validate_summary(value['store_overflow'], None)
+
+
+    def _validate_summary(self, summary, dispatch_id):
+        _fields(summary, ('id', 'kind', 'dispatch_id', 'counter', 'latest_diagnostic_id', 'latest_sha256',
+                         'latest_byte_count', 'latest_reason', 'updated_at'))
+        if (summary['id'] != self._summary_id(dispatch_id) or summary['dispatch_id'] != dispatch_id
+                or summary['kind'] != ('dispatch_overflow' if dispatch_id else 'store_overflow')):
+            raise ArtifactValidationError('Artifact overflow scope differs.')
+        _record_integer(summary['counter'], 1, MAX_DIAGNOSTIC_COUNTER)
+        _hex(summary['latest_diagnostic_id']); _hex(summary['latest_sha256'], 64)
+        _record_integer(summary['latest_byte_count']); _number(summary['updated_at'])
+        if summary['latest_reason'] not in QUARANTINE_REASONS:
+            raise ArtifactValidationError('Invalid artifact overflow reason.')
+
+
+
+
+class ArtifactStore(_ArtifactOwnedFiles):
+    def __init__(self, data_dir, *, hold_unreadable=False):
+        if type(hold_unreadable) is not bool:
+            raise ArtifactValidationError('Invalid artifact startup mode.')
+        self.root = Path(data_dir).absolute()
+        self.path = self.root / 'artifacts' / 'index.json'
+        self._lock = threading.RLock()
+        self._data = _empty()
+        self._stamp = None
+        self._invalid_stamp = object()
+        self._held = None
+        self._known = False
+        self._legacy_held = False
+        self._object_errors = {}
+        self._channel_policy_getter = self._closed_policy
+        try:
+            self._data = self._load_index()
+            self._stamp = self._fingerprint()
+            self._known = True
+        except ArtifactUnavailable:
+            self._held = _LEGACY_GUIDANCE if self._legacy_held else _AUTHORING_GUIDANCE
+            self._invalid_stamp = self._fingerprint_quiet()
+            if not hold_unreadable:
+                raise
+        self.diagnostic_store = ArtifactDiagnosticStore(self.root, hold_unreadable=True, legacy_held=self._legacy_held)
+
+    @staticmethod
+    def _closed_policy():
+        raise ArtifactUnavailable('Artifact publication policy is not bound.')
+
+    def bind_channel_policy(self, getter):
+        if not callable(getter):
+            raise ArtifactValidationError('Artifact policy getter must be callable.')
+        with self._lock:
+            self._channel_policy_getter = getter
+
+
+
+
+    def _load_index(self):
+        try:
+            self._safe(self.path)
+            before = self._fingerprint()
+            if before is None:
+                return _empty()
+            def unique(pairs):
+                value = {}
+                for key, item in pairs:
+                    if key in value:
+                        raise ArtifactValidationError('Duplicate artifact fields.')
+                    value[key] = item
+                return value
+            with self.path.open('rb') as stream:
+                value = json.loads(stream.read().decode('utf-8'), object_pairs_hook=unique)
+            if before != self._fingerprint():
+                raise ArtifactValidationError('Artifact index changed during its read.')
+            if (isinstance(value, dict) and type(value.get('version')) is int and value['version'] == 1
+                    and set(value) == set(_empty_legacy_v1())):
+                if value == _empty_legacy_v1():
+                    return _empty()
+                self._legacy_held = True
+                raise ArtifactUnavailable(_LEGACY_GUIDANCE)
+            self._validate_index(value)
+            return value
+        except (OSError, ValueError, TypeError, KeyError, UnicodeError, RecursionError):
+            raise ArtifactUnavailable('Saved artifact index is unavailable or malformed; nothing was reset.') from None
+
+    def _check_index(self):
+        if self._legacy_held:
+            raise ArtifactUnavailable(_LEGACY_GUIDANCE)
+        stamp = self._fingerprint_quiet()
+        if self._held is None and stamp == self._stamp:
+            return
+        if self._held is not None and stamp == self._invalid_stamp:
+            raise ArtifactUnavailable(self._held)
+        try:
+            value = self._load_index()
+            if not self._known or value != self._data:
+                raise ArtifactUnavailable('Saved artifacts changed; repair storage and restart.')
+        except ArtifactUnavailable:
+            self._held = _LEGACY_GUIDANCE if self._legacy_held else _AUTHORING_GUIDANCE
+            self._invalid_stamp = stamp
+            raise ArtifactUnavailable(self._held) from None
+        self._stamp, self._held = stamp, None
+
+    def _persist(self, value):
+        if self._legacy_held:
+            raise ArtifactUnavailable(_LEGACY_GUIDANCE)
+        self._validate_index(value)
+        try:
+            with startup_lock(self._safe(self.path.with_suffix('.json.lock')), time.monotonic() + 10):
+                self._check_index()
+                self._safe(self.path)
+                atomic_json(self.path, value)
+                stamp = self._fingerprint()
+        except (OSError, LaunchError, ArtifactUnavailable):
+            raise ArtifactUnavailable(_LEGACY_GUIDANCE if self._legacy_held else 'Artifact index write did not complete.') from None
+        self._data, self._stamp = value, stamp
+
+
 
     def _record_object_error(self, kind, identifier):
         referenced = (identifier in self._data['versions'] if kind == 'version' else
@@ -607,7 +992,6 @@ class ArtifactStore:
         view = {'channel': packet['channel'], 'source_run': packet['source_run']}
         return packet if need_packet else None, scope, view
 
-
     def _remember_validated_packet(self, packet_id, raw, scope, view):
         state = _packet_invocation_for(self)
         if state is None or _packet_evidence(state, packet_id, raw) is not None:
@@ -627,7 +1011,6 @@ class ArtifactStore:
         live = {id(value) for value in state.entries.values()}
         state.issued = {key: value for key, value in state.issued.items() if key in live}
         state.issued[id(entry)] = (entry, entry.raw, entry.scope_bytes, entry.audit_view_bytes, state.token)
-
 
     def _packet(self, packet_id, *, _need_packet=True):
         try:
@@ -654,11 +1037,7 @@ class ArtifactStore:
         return row
 
     def _row(self, row):
-        value = deepcopy(row)
-        summary = (self._data['dispatch_overflow'].get(row['audit']['dispatch_id'])
-                   if row['state'] != 'imported' else None)
-        value['overflow_count'] = summary['counter'] if summary else 0
-        return value
+        return deepcopy(row)
 
     def _parent(self, lineage):
         head = lineage['head_version_id']
@@ -765,7 +1144,7 @@ class ArtifactStore:
                     'fingerprint': None, 'capabilities': []}}
             value['requests'][request_id] = {'audit': audit, 'channel': channel, 'state': 'imported',
                 'reason': 'imported', 'updated_at': row['updated_at'], 'version_id': None,
-                'quarantine_ids': [], 'import_source': deepcopy(row['import_source'])}
+                'import_source': deepcopy(row['import_source'])}
         version_ids = []
         for row in portable['versions']:
             _fields(row, ('version_id', 'request_id', 'sequence', 'parent_version_id', 'sha256',
@@ -991,7 +1370,7 @@ class ArtifactStore:
             value['lineages'][lineage_id]['pending_request_id'] = request_id
             value['lineages'][lineage_id]['updated_at'] = audit['created_at']
             row = {'audit': deepcopy(audit), 'channel': audit['original_channel'], 'state': 'prepared',
-                'reason': None, 'updated_at': audit['created_at'], 'version_id': None, 'quarantine_ids': []}
+                'reason': None, 'updated_at': audit['created_at'], 'version_id': None}
             value['requests'][request_id] = row
             self._persist(value)
             return self._row(row)
@@ -1220,128 +1599,21 @@ class ArtifactStore:
 
     @staticmethod
     def _diagnostic_id(key):
-        return _uuid(_canonical(key).decode('utf-8'))
+        return _diagnostic_id(key)
 
     @staticmethod
     def _summary_id(dispatch_id):
-        return _uuid('agentchattr:artifact-v1:overflow:' + (dispatch_id or 'store'))
+        return _summary_id(dispatch_id)
 
-    def _body_inventory(self):
-        folder = self.root / 'artifacts' / 'quarantine'
-        self._safe(folder)
-        files = list(folder.glob('*.txt')) if folder.exists() else []
-        total = 0
-        for path in files:
-            self._safe(path)
-            total += path.stat().st_size
-        return files, total
 
-    def quarantine_submission(self, request_id, attempt_id, dispatch_id, *, reason, content=None,
-                              actor_identity_id=None, now=None):
-        if request_id is not None:
-            _hex(request_id)
-        _hex(attempt_id); _hex(dispatch_id)
-        if actor_identity_id is not None:
-            _hex(actor_identity_id)
-        if not isinstance(reason, str) or reason not in QUARANTINE_REASONS:
-            raise ArtifactValidationError('Invalid artifact diagnostic reason.')
-        if content is not None and not isinstance(content, str):
-            raise ArtifactValidationError('Artifact diagnostic content must be text or null.')
-        raw = b'' if content is None else content.encode('utf-8', errors='surrogatepass')
-        retainable = content is not None and '\0' not in content
-        try:
-            raw.decode('utf-8')
-        except UnicodeError:
-            retainable = False
-        key = {'request_id': request_id, 'attempt_id': attempt_id, 'dispatch_id': dispatch_id,
-               'reason': reason, 'sha256': hashlib.sha256(raw).hexdigest(), 'byte_count': len(raw),
-               'actor_identity_id': actor_identity_id}
-        identifier = self._diagnostic_id(key)
-        with self._lock:
-            self._check_index()
-            prior = self._data['diagnostics'].get(identifier)
-            if prior is not None:
-                return deepcopy(prior)
-            request = self._data['requests'].get(request_id)
-            attach = (request is not None and request['state'] != 'imported'
-                      and request['audit']['dispatch_id'] == dispatch_id)
-            rows = list(self._data['diagnostics'].values())
-            groups = {row['dispatch_id'] for row in rows}
-            group_count = sum(row['dispatch_id'] == dispatch_id for row in rows)
-            global_overflow = (group_count < MAX_DIAGNOSTICS_PER_DISPATCH and
-                (len(rows) >= MAX_DIAGNOSTIC_RECORDS
-                 or (dispatch_id not in groups and len(groups) >= MAX_DIAGNOSTIC_DISPATCH_GROUPS)))
-            value = deepcopy(self._data)
-            if global_overflow or group_count >= MAX_DIAGNOSTICS_PER_DISPATCH:
-                prior = (value['store_overflow'] if global_overflow else value['dispatch_overflow'].get(dispatch_id))
-                if prior is not None and prior['latest_diagnostic_id'] == identifier:
-                    return deepcopy(prior)
-                stamp = _number(time.time() if now is None else now)
-                summary = deepcopy(prior) if prior is not None else {
-                    'id': self._summary_id(None if global_overflow else dispatch_id),
-                    'kind': 'store_overflow' if global_overflow else 'dispatch_overflow',
-                    'dispatch_id': None if global_overflow else dispatch_id, 'counter': 0}
-                summary.update(counter=min(summary['counter'] + 1, MAX_DIAGNOSTIC_COUNTER),
-                    latest_diagnostic_id=identifier, latest_sha256=key['sha256'], latest_byte_count=len(raw),
-                    latest_reason=reason, updated_at=stamp)
-                if global_overflow:
-                    value['store_overflow'] = summary
-                else:
-                    value['dispatch_overflow'][dispatch_id] = summary
-                self._persist(value)
-                return deepcopy(summary)
-            stamp = _number(time.time() if now is None else now)
-            try:
-                files, total = self._body_inventory()
-                retained = (retainable and len(raw) <= MAX_ARTIFACT_BYTES
-                    and len(files) < MAX_QUARANTINE_OBJECTS and total + len(raw) <= MAX_QUARANTINE_BODY_BYTES)
-                if retained:
-                    self._put_bytes(self._object_path('quarantine', identifier), raw)
-            except OSError:
-                raise ArtifactUnavailable('Artifact diagnostic storage is unavailable.') from None
-            row = {'id': identifier, 'kind': 'quarantine', **key, 'received_at': stamp, 'updated_at': stamp,
-                   'not_retained': not retained, 'body_object_id': identifier if retained else None}
-            value['diagnostics'][identifier] = row
-            if attach:
-                value['requests'][request_id]['quarantine_ids'].append(identifier)
-            self._persist(value)
-            return deepcopy(row)
 
-    def diagnostics(self, *, limit=100):
-        with self._lock:
-            self._check_index()
-            rows = [deepcopy(row) for row in self._data['diagnostics'].values()]
-            rows.extend(deepcopy(list(self._data['dispatch_overflow'].values())))
-            if self._data['store_overflow'] is not None:
-                rows.append(deepcopy(self._data['store_overflow']))
-            rows.extend(deepcopy(list(self._object_errors.values())))
-            referenced = {'packet': {row['audit']['scope']['packet_id'] for row in self._data['requests'].values()},
-                'version': set(self._data['versions']),
-                'quarantine': {row['body_object_id'] for row in self._data['diagnostics'].values() if row['body_object_id']}}
-            for kind, folder, suffix in (('packet', self.root / 'artifact_briefs' / 'packets', '.json'),
-                    ('version', self.root / 'artifacts' / 'objects', '.md'),
-                    ('quarantine', self.root / 'artifacts' / 'quarantine', '.txt')):
-                self._safe(folder)
-                for path in folder.glob('*' + suffix):
-                    if path.stem not in referenced[kind]:
-                        self._safe(path)
-                        rows.append({'id': path.stem, 'kind': 'orphan_' + kind, 'updated_at': path.stat().st_mtime})
-            try:
-                _, total = self._body_inventory()
-            except OSError:
-                raise ArtifactUnavailable('Artifact diagnostic inventory is unavailable.') from None
-            rows.sort(key=lambda row: (-row['updated_at'], row['id']))
-            report = self._page(rows, limit)
-            report.update(dispatch_group_count=len({row['dispatch_id'] for row in self._data['diagnostics'].values()}),
-                          detailed_count=len(self._data['diagnostics']), retained_body_bytes=total)
-            return report
 
     def _validate_index(self, value):
         _fields(value, _empty())
-        if type(value['version']) is not int or value['version'] != 1:
+        if type(value['version']) is not int or value['version'] != 2:
             raise ArtifactValidationError('Unsupported artifact index version.')
         _canonical(value)
-        for group in ('lineages', 'requests', 'versions', 'diagnostics', 'dispatch_overflow'):
+        for group in ('lineages', 'requests', 'versions'):
             if not isinstance(value[group], dict):
                 raise ArtifactValidationError('Artifact index containers must be objects.')
         dispatches = set()
@@ -1350,7 +1622,7 @@ class ArtifactStore:
             if isinstance(row, dict) and row.get('state') == 'imported':
                 audit = _validate_imported(row)
             else:
-                _fields(row, ('audit', 'channel', 'state', 'reason', 'updated_at', 'version_id', 'quarantine_ids'))
+                _fields(row, ('audit', 'channel', 'state', 'reason', 'updated_at', 'version_id'))
                 audit = _audit(row['audit'])
             if _hex(identifier) != audit['request_id'] or audit['dispatch_id'] in dispatches:
                 raise ArtifactValidationError('Artifact request identity is duplicated or inconsistent.')
@@ -1367,14 +1639,6 @@ class ArtifactStore:
                 raise ArtifactValidationError('Completed artifact has no version.')
             if row['state'] not in ('fulfilled', 'imported') and row['version_id'] is not None:
                 raise ArtifactValidationError('Unfulfilled artifact names a version.')
-            ids = row['quarantine_ids']
-            if not isinstance(ids, list) or len(ids) > MAX_DIAGNOSTICS_PER_DISPATCH or len(set(ids)) != len(ids):
-                raise ArtifactValidationError('Invalid artifact diagnostic references.')
-            for diagnostic_id in ids:
-                _hex(diagnostic_id)
-                diagnostic = value['diagnostics'].get(diagnostic_id, {})
-                if diagnostic.get('request_id') != identifier or diagnostic.get('dispatch_id') != audit['dispatch_id']:
-                    raise ArtifactValidationError('Artifact diagnostic reference differs.')
             if row['state'] in LIVE:
                 if audit['lineage_id'] in live:
                     raise ArtifactValidationError('Multiple live requests occupy an artifact lineage.')
@@ -1423,7 +1687,6 @@ class ArtifactStore:
                 raise ArtifactValidationError('Artifact pending parent differs from the current head.')
         if used_versions != set(value['versions']):
             raise ArtifactValidationError('Unindexed artifact version metadata exists.')
-        self._validate_diagnostics(value)
 
     def _validate_version(self, metadata, requests):
         _fields(metadata, ('id', 'lineage_id', 'sequence', 'channel', 'parent_version_id', 'request_id',
@@ -1452,47 +1715,89 @@ class ArtifactStore:
             raise ArtifactValidationError('Artifact provenance input differs.')
         _observation(provenance['observation'], audit['producer']['adapter'])
 
-    def _validate_diagnostics(self, value):
-        if len(value['diagnostics']) > MAX_DIAGNOSTIC_RECORDS:
-            raise ArtifactValidationError('Artifact diagnostic count exceeds its bound.')
-        groups = {}
-        for identifier, row in value['diagnostics'].items():
-            _fields(row, ('id', 'kind', 'request_id', 'attempt_id', 'dispatch_id', 'reason', 'sha256',
-                'byte_count', 'actor_identity_id', 'received_at', 'updated_at', 'not_retained', 'body_object_id'))
-            if row['kind'] != 'quarantine' or _hex(identifier) != row['id']:
-                raise ArtifactValidationError('Invalid artifact diagnostic identity.')
-            if row['request_id'] is not None:
-                _hex(row['request_id'])
-            _hex(row['attempt_id']); _hex(row['dispatch_id']); _hex(row['sha256'], 64)
-            if row['actor_identity_id'] is not None:
-                _hex(row['actor_identity_id'])
-            _record_integer(row['byte_count']); _number(row['received_at'])
-            if row['updated_at'] != row['received_at'] or row['reason'] not in QUARANTINE_REASONS:
-                raise ArtifactValidationError('Invalid artifact diagnostic metadata.')
-            key = {name: row[name] for name in ('request_id', 'attempt_id', 'dispatch_id', 'reason',
-                                               'sha256', 'byte_count', 'actor_identity_id')}
-            if self._diagnostic_id(key) != identifier or type(row['not_retained']) is not bool:
-                raise ArtifactValidationError('Artifact diagnostic key differs.')
-            if row['body_object_id'] != (None if row['not_retained'] else identifier):
-                raise ArtifactValidationError('Artifact diagnostic body reference differs.')
-            groups[row['dispatch_id']] = groups.get(row['dispatch_id'], 0) + 1
-        if len(groups) > MAX_DIAGNOSTIC_DISPATCH_GROUPS or any(n > MAX_DIAGNOSTICS_PER_DISPATCH for n in groups.values()):
-            raise ArtifactValidationError('Artifact diagnostic group bound exceeded.')
-        for dispatch_id, summary in value['dispatch_overflow'].items():
-            if dispatch_id not in groups:
-                raise ArtifactValidationError('Artifact overflow group is unknown.')
-            self._validate_summary(summary, _hex(dispatch_id))
-        if value['store_overflow'] is not None:
-            self._validate_summary(value['store_overflow'], None)
 
-    def _validate_summary(self, summary, dispatch_id):
-        _fields(summary, ('id', 'kind', 'dispatch_id', 'counter', 'latest_diagnostic_id', 'latest_sha256',
-                         'latest_byte_count', 'latest_reason', 'updated_at'))
-        if (summary['id'] != self._summary_id(dispatch_id) or summary['dispatch_id'] != dispatch_id
-                or summary['kind'] != ('dispatch_overflow' if dispatch_id else 'store_overflow')):
-            raise ArtifactValidationError('Artifact overflow scope differs.')
-        _record_integer(summary['counter'], 1, MAX_DIAGNOSTIC_COUNTER)
-        _hex(summary['latest_diagnostic_id']); _hex(summary['latest_sha256'], 64)
-        _record_integer(summary['latest_byte_count']); _number(summary['updated_at'])
-        if summary['latest_reason'] not in QUARANTINE_REASONS:
-            raise ArtifactValidationError('Invalid artifact overflow reason.')
+
+    def _check_diagnostic_legacy(self):
+        with self._lock:
+            legacy = self._legacy_held
+        if legacy:
+            self.diagnostic_store._set_legacy_hold()
+
+    def _snapshot_diagnostic_attachment(self, request_id, dispatch_id):
+        _hex(request_id); _hex(dispatch_id)
+        with self._lock:
+            legacy = self._legacy_held
+            held = self._held is not None or not self._known
+            row = self._data['requests'].get(request_id)
+            attached = (request_id if row is not None and row['state'] != 'imported'
+                        and row['audit']['dispatch_id'] == dispatch_id else None)
+        if legacy:
+            self.diagnostic_store._set_legacy_hold()
+            raise ArtifactUnavailable(_LEGACY_GUIDANCE)
+        if held:
+            raise ArtifactUnavailable(_AUTHORING_GUIDANCE)
+        return attached
+
+    def quarantine_submission(self, request_id, attempt_id, dispatch_id, *, reason, content=None,
+                              actor_identity_id=None, now=None):
+        if request_id is not None:
+            _hex(request_id)
+        _hex(attempt_id); _hex(dispatch_id)
+        if actor_identity_id is not None:
+            _hex(actor_identity_id)
+        if not isinstance(reason, str) or reason not in QUARANTINE_REASONS:
+            raise ArtifactValidationError('Invalid artifact diagnostic reason.')
+        if content is not None and not isinstance(content, str):
+            raise ArtifactValidationError('Artifact diagnostic content must be text or null.')
+        attached = self._snapshot_diagnostic_attachment(request_id, dispatch_id) if request_id is not None else None
+        self._check_diagnostic_legacy()
+        return self.diagnostic_store.record(request_id, attempt_id, dispatch_id, reason=reason, content=content,
+            actor_identity_id=actor_identity_id, attached_request_id=attached, now=now)
+
+    def request_diagnostics(self, request_id):
+        _hex(request_id)
+        self._check_diagnostic_legacy()
+        try:
+            return self.diagnostic_store.request_diagnostics(request_id)
+        except ArtifactDiagnosticsUnavailable:
+            return {'available': False, 'quarantine_ids': None, 'overflow_count': None,
+                    'error': _owner_error('diagnostics', self.diagnostic_store._legacy_held)}
+
+    def diagnostics(self, *, limit=100):
+        _integer(limit, 1, 100)
+        rows = []
+        owners = {'authoring': {'available': True, 'reason': None},
+                  'diagnostics': {'available': True, 'reason': None}}
+        errors = {'authoring': None, 'diagnostics': None}
+        try:
+            with self._lock:
+                self._check_index()
+                observations = deepcopy(list(self._object_errors.values()))
+                referenced = {'packet': {row['audit']['scope']['packet_id'] for row in self._data['requests'].values()},
+                              'version': set(self._data['versions'])}
+                for kind, folder, suffix in (('packet', self.root / 'artifact_briefs' / 'packets', '.json'),
+                                            ('version', self.root / 'artifacts' / 'objects', '.md')):
+                    self._safe(folder)
+                    for path in folder.glob('*' + suffix):
+                        if path.stem not in referenced[kind]:
+                            self._safe(path)
+                            observations.append({'id': path.stem, 'kind': 'orphan_' + kind, 'updated_at': path.stat().st_mtime})
+                rows.extend(observations)
+        except (OSError, ArtifactUnavailable):
+            owners['authoring'] = {'available': False, 'reason': 'legacy_schema' if self._legacy_held else 'authoring_unavailable'}
+            errors['authoring'] = _owner_error('authoring', self._legacy_held)
+        self._check_diagnostic_legacy()
+        detail = {'dispatch_group_count': None, 'detailed_count': None, 'retained_body_bytes': None}
+        try:
+            report = self.diagnostic_store.report()
+            rows.extend(report['rows'])
+            detail = {key: report[key] for key in detail}
+        except ArtifactDiagnosticsUnavailable:
+            legacy = self.diagnostic_store._legacy_held
+            owners['diagnostics'] = {'available': False, 'reason': 'legacy_schema' if legacy else 'diagnostics_unavailable'}
+            errors['diagnostics'] = _owner_error('diagnostics', legacy)
+        rows.sort(key=lambda row: (-row['updated_at'], row['id']))
+        partial = not all(owner['available'] for owner in owners.values())
+        return {'rows': deepcopy(rows[:limit]), 'count': None if partial else len(rows),
+                'truncated': partial or len(rows) > limit, **detail,
+                'owners': owners, 'partial': partial, 'errors': errors}

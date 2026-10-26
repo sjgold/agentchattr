@@ -114,7 +114,7 @@ def atomic_json(path, value):
     temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
     try:
         with temporary.open('x', encoding='utf-8') as output:
-            json.dump(value, output, ensure_ascii=True, allow_nan=False)
+            output.write(json.dumps(value, ensure_ascii=True, allow_nan=False))
             output.flush()
             os.fsync(output.fileno())
         # Windows readers may briefly hold the destination without delete-share.

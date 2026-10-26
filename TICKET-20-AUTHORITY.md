@@ -297,3 +297,14 @@ Implementation validates retained envelope/claim and owned outbox absence before
 Wrapper contract conditions, 2026-10-25 06:15 UTC: Sonnet independently closed A-1 at7ba8ade, probe46 now failed/delivery_unconfirmed with free pending slot and idempotent terminal resume, combined234 focused29.952s and seven earlier probes PASS. It read the source diff, not every new test body; no full-discovery/native/app claim. New full tracked552dcdbc is still running on frozen7ba8ade. Source unchanged during that run.
 
 TICKET-20-WRAPPERS.md D1-D3/W1-W6 are amended docs-only: reject-report accepts exactly string/false or null/true; CLI403/no effects and bearer-holder trust boundary explicit. Parent read is strictly read-only, checks actual bytes/stored hash+length and frozen expected-parent id/sequence/hash, with untrusted-data treatment and bounded combined context15,974,400 serialized bytes. Client limits cannot be guessed or silently truncated. Generated isolated server-only capability seam records fixture-controlled activation without editing product/child constants; managed snapshots/birth/hashes and server gates remain real. Operator-cookie/token versus seat-bearer route refusals, delivery no-store and log/error redaction are required; source manifests grow to actual AST closure. CLI same-watcher duplicate and new-consumer QueueBusy tests gate no-journal continuation; tool-list addition gets a named explicit test preserving legacy tools; API seats stay sequential, observation isolation spans sequential calls/two independent seats. Premature CLI release refuses later submission immediately; terminal request settlement occurs only at resume/startup. No wrapper tests, helper briefing or implementation before contract skim and exact payload freeze.
+
+
+## Proposed R2 document amendment, not implemented
+
+Private RequestProjection currently deep-copies the request row (117/183). On R2 implementation it loses quarantine_ids/overflow_count; no state path scans them, and explicit request_diagnostics owns those debug reads. ACK/QuarantineResult and mutation outer shape stay unchanged. See [R2 diagnostic ownership](TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
+
+
+Additional R2 normative sites :82/:84/:126: retryable400 and failed-state promises require durable diagnostic success. Diagnostic-held invalid content yields503 artifact_storage_unavailable and no fabricated diagnostic receipt; bad-packet request remains live when its preceding diagnostic cannot persist. Recovery general diagnostic failure is held/storage_unavailable, fulfilled ACK-repair catch remains operator_recovery_required. Proposed only.
+
+
+Complete proposed R2 map includes :82/83/84/117/126/183. Diagnostic-first-then-quarantined at83 requires saved diagnostic success; worker unavailable catches remain mapped to existing held outcomes. See R2 J6.

@@ -1,6 +1,6 @@
-# Ticket 20 R1: bounded artifact records, proposed compatibility contract
+# Ticket 20 R1: bounded artifact records, reviewed compatibility contract
 
-Status: CLEARED for first behavioral reds at 21bb198d, with the wording below folded in. Independent basis: analyst static read; reviewer ran nothing and did not personally read the document. Seth selected R1-R3 on 2026-10-25 through the structured question. That approves this work's scope, not an unreviewed implementation. No source changes before independently reviewed reds. R2 diagnostic ownership and R3 compact index still require their own schema contracts. Authoring remains disabled; no replacement quota or R4 implementation is approved.
+Status: R1 independently CLEARED at bd1f3922, product bytes 74f4697. Reviewer personally executed focused18 and artifact301 plus four mutation spot-checks; separate analyst production audit nine points PASS. Historical design/RED receipts below retain their original evidence scope. Seth selected R1-R3 on 2026-10-25 through the structured question. That approves this work's scope, not an unreviewed implementation. No source changes before independently reviewed reds. R2 diagnostic ownership and R3 compact index still require their own schema contracts. Authoring remains disabled; no replacement quota or R4 implementation is approved.
 
 ## Outcome and boundaries
 
@@ -10,7 +10,7 @@ No migration: production capability is empty and there is no released artifact s
 
 ## Exact field policy
 
-| Field / owner | Proposed bound |
+| Field / owner | Reviewed bound |
 | --- | --- |
 | audit.requester | Label, 256 UTF8 bytes |
 | audit.producer.name, requested_model, requested_model_reason | Label, 256 UTF8 bytes each; existing nullable/model-reason relationship unchanged |
@@ -22,7 +22,7 @@ No migration: production capability is empty and there is no released artifact s
 | UUID/hash/channel/enum fields | Existing fixed grammars: 32/64 lowercase hex, channel<=20 ASCII, closed states/reasons/adapter/capability literals. No wider text fallback. |
 | Version Markdown and raw packet bodies | Existing 524288-byte Markdown and 2097152-byte/1000-message packet caps unchanged. Generic source/provenance/document text is not relabeled as an index Label. |
 | Record integer fields | Exact int (not bool), existing minimum and narrower maximum, plus <= 2**63-1. Includes persisted sequence/ref ids/session ids/counts/diagnostic byte counts, protocol parent sequences, packet.messages[].id and packet.source_run.session_id. |
-| Record timestamp fields, including nullable packet.messages[].timestamp when non-null | Exact int/float, positive and finite as before; int<=2**63-1; float JSON token length <= 23 ASCII bytes using the actual json serializer. Do not coerce int to float or change seal bytes. |
+| Artifact timestamp fields, including nullable packet.messages[].timestamp when non-null, optional artifact queue-entry created_at, outbox ACK acknowledged_at and quarantine recorded_at | Exact int/float, positive and finite as before; int<=2**63-1; float JSON token length <= 23 ASCII bytes using the actual json serializer. Do not coerce int to float or change seal bytes. |
 
 Label: existing _text validation plus byte cap, reject U+0000..U+001F and U+007F. No trimming/NFC/case conversion. Free text: same byte/nonblank checks, reject those controls EXCEPT HT(U+0009), LF(U+000A), CR(U+000D). CR is ACCEPTED by the reviewer: instruction/format preserve HT/LF/CR, including existing Windows CRLF fixtures. Raw packet message text, input text and Markdown retain their existing control policy (including current NUL refusal), not this index free-text filter.
 
@@ -143,3 +143,31 @@ First green: all 18 methods PASS in 2.091 s, max-row literal 991296 B/SHA8451bbe
 Seven in-memory negative-control mutations were tested without editing product bytes: label cap (3 fails), label controls (224 fails), index free-text controls (116 fails), record integer width (6 fails), timestamp integer width (8 fails), worker pre-save observation check (1 fail), service label-refusal classification (1 typed-exception mismatch error). All killed. Direct row/audit tests isolate version.sequence and expected_parent.sequence width, independent of impossible full-chain imports. Invalid observation on load/import is covered by the label-cap mutation. Negative controls are separate evidence, not suite failures or persisted mutations.
 
 G items classification: G1 observed-red -> green; G2 observed-red -> green (also mutation-checked-green for label cap); G3 observed-red -> green; G4 message ref/summary time observed-red -> green, direct sequence width mutation-checked-green, impossible chain imports existing-guards; G5 existing-guard -> green; G6 existing-guard -> green. Required affected suites and uninstrumented import timing/full discovery are NEXT and not yet claimed. The earlier0.185877 s uninstrumented baseline and1.028046 s observer-distorted non-pass remain separate.
+
+## Frozen affected run and S1-S4 clarifications
+
+Product frozen at 74f4697efcc6e66f91f228983a3d6a630ec41fff. Uninstrumented affected selection: 109 modules / 876 tests, PASS with zero failures/errors/skips in 246.414 s. Includes every test_artifact/test_channel/test_archive/test_runtime/test_dispatch/test_queue/test_result/API-seat/CLI-worker/launch-owner module and restart/session/cold-retry selections, with the real import benchmark. Ten exact-4MiB import samples0.252326,0.202342,0.193091,0.178103,0.182358,0.178058,0.176994,0.179595,0.178932,0.182139 s; maximum0.2523261000169441 <=0.300 s. Default atomic_json/fsync, metadata parse and whole-index validation included. Earlier uninstrumented baseline max0.185877 s and instrumented1.028046 s non-pass stay attributed; no timing line is weakened. Operator maximum-shape0.270 s acceptance remains later work.
+
+S1 is INTENDED: shared _number bounds apply to artifact_worker validation of optional queue-entry.created_at and artifact_delivery ACK acknowledged_at / quarantine recorded_at as well as index/protocol records. These artifact control timestamps use the same finite-positive, <=63-bit-int / <=23-character-float profile, preserve their int/float representation and accept ordinary time.time() values. Generic chat/review ledger validation is unchanged. Current affected run executes these existing real guards: tests.test_artifact_delivery.ArtifactDeliveryTests.test_owned_outbox_exact_bytes_repeat_ack_and_no_poison_after_admission creates/re-reads its normal ACK; .test_terminal_quarantine_is_not_ack_and_index_write_fault_preserves_result creates/re-reads its disposition; tests.test_artifact_workers.ArtifactWorkerTests.test_api_saves_exact_unicode_crlf_and_trusted_per_call_model_before_real_submission validates a real queue record and admits it. All pass NOW; prior helpers are unchanged.
+
+S2 is INTENDED: _producer checks actual live name/model grammar before normal requested-model equality. An out-of-bound live model is producer-label-unavailable with fixed X4 text, rather than a normal requested-model mismatch; no invalid label is echoed. A within-bound mismatched model retains the old mismatch branch. S3 _integer was already imported in artifact_protocol before R1; the existing alias is retained, no new import of it was introduced. S4 real-path tests test_generated_name_and_default_reason_service_compatibility_guards and test_seat_config_model_label_refuses_typed_before_any_reservation pass in both new18-unit and affected876 selections. This verifies real fixture-managed CLI/API generated registry names and producer checks, not native/provider acceptance. Overlong-state import has real store/codec/driver peer-isolation proof in the same green selections.
+
+Reviewer static analyst audit of 74f4697 reported all nine production contract points PASS, with no execution/personal source read claimed. Full discovery is next, then reviewer focused execution/mutation spot-check/affected selection. No whole-ticket closure, activation or push.
+
+## Frozen full-discovery receipt, independent execution next
+
+Implementation-owner full discovery ran ONCE after the affected selection finished, with no overlapping heavy reviewer suite: .venv-windows\Scripts\python.exe -m unittest discover -s tests (PYTHONPATH=.). Product bytes are exactly 74f4697; docs-only HEAD731a6e8. Tracked shell6f008c5e exited0. Result: 1681 tests, OK with four skips, 315.065 s. No source/test changes during either run; this is BUILDER-RUN evidence, not independent execution or native/provider acceptance.
+
+The full's exact4MiB uninstrumented import samples were0.1856745,0.1845565,0.1840970,0.1804883,0.1811628,0.1814408,0.1827004,0.1798681,0.1816243,0.1903794 s; maximum0.1903794000390917 <=0.300 s, real fsync and metadata parse/whole-index validation included. The affected-run max0.2523261 s and earlier receipts remain visible, not replaced by the faster full sample. No operator K6 performance claim is added.
+
+Full log retains existing deprecation warnings and four ResourceWarning occurrences involving HTTPError404/501/409/503; no warning-clean claim. The409 boot-fence and503 starting literals are in unchanged tests/test_restart_cancellation_poll.py doubles;404/501 are the previously recorded MCP-proxy fixture matter. No warning fix or unrelated source change is included.
+
+Root now sends the frozen production diff and these receipts for the reviewer's own focused18/mutation spot-check/affected run. Reviewer static analyst audit reported nine points PASS, but independent production execution/clearance is still pending. Capability remains empty, no R2/R3/operator/capacity/activation, no publication/push.
+
+## Independent R1 closure
+
+Reviewer CLEARED R1 at bd1f3922 (product74f4697), clean tree, .venv-windows Python with PYTHONPATH=.: focused18 tests OK2.2 s; all test_artifact modules301 OK193.5 s including the real4MiB/ten-sample import benchmark max0.2057 s <=0.300 with fsync/parse/whole-index validation. It did not run builder full1681 or the non-artifact portions of affected876; those remain builder evidence.
+
+Four independent in-process mutation spot-checks: label bounds+controls disabled ->280 subtest failures; record integer cap lifted ->26; _index_text disabled ->65; float-token cap alone lifted ->ZERO failures. The survivor is EXPECTED: exact positive finite Python floats have shortest JSON at most23 characters. That token guard is defensive, with no reachable positive24 counterexample; do not count it as a killed mutant or a behaviorally tested rejection. Root's seven earlier killed mutants included lifting timestamp INTEGER width, which is independently reachable, not proof of the float-token branch.
+
+No outstanding R1 finding; S1-S4 scope answers accepted. This is local component clearance, no publication/activation/native/provider claim. Seth's R1-R3 scope approval remains; next is R2 diagnostics-owner DOCS contract before reds/code, then R3 separately. Store original_reason membership question and named HELD operator tests remain future requirements.
