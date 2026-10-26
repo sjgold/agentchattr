@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 R2 D1 inventory equivalent; D2 serializer next)
+**Updated:** 2026-10-26 (#20 R2 D2 byte-identical single-write candidate)
 
 ## At a glance
 
@@ -21,6 +21,8 @@
 | Next | Root implements reviewed D1 then D2 cheap wins with separate commits/equivalence proofs, then ONE fresh full gate. D1 equivalent and41 tests green; D2 pending. Heavy max hold/peer must also meet20 percent margin (<=0.216s). N/missing coverage and broader acceptance remain pending; no R3/operator/capacity/activation/push. |
 
 ## Current handoff
+
+- D2 shared atomic_json candidate: one json.dumps+one output.write, same ensure_ascii/allow_nan/default separators/order/newline/fsync/replace/retry/cleanup seam. New actual artifact/diagnostic/dispatch/session/seat/launch/brief/encoding-edge payloads byte-match prior json.dump stream; R1 maximum991296B/SHA8451bbe3...aeeeef4 unchanged. Before1test/9 one-write assertion FAIL0.815s (all byte comparisons passed); after1PASS0.764s including invalid/cyclic no-clobber/temp cleanup. Shared caller search completed; broad NON-artifact+R2 selection starts on frozen candidate (not full discovery; old R2 diagnostic fixture adaptations still pending). D1 per-path guards retained due ancestor-junction swap non-equivalence; no cheap leaf-only shortcut. Then extend/run ONE fresh full production gate, heavy maxhold/peer<=0.216s margin, original misses retained. No activation/push.
 
 - D1 inventory candidate: scandir/DirEntry.stat preserves full per-path guards and old nonfile/case/glob-error semantics. Differential old/new1PASS1.111s/1.039s; current R2 focused41PASS5.807s. Same1024-object/8MiB inventory-only DESIGN comparison10 pairs: old median144.402/new122.058ms, both1025 safety checks, guard cost still dominant~114ms. No fresh gate yet; old MISS retained. Reviewer D1/D2 separate commits, shared-writer equivalence next, then ONE fresh full gate with heavy maxhold/peer<=0.216s for20percent margin. D3 evidence only if needed, D4 phase split later; quotas require Seth. No N/fixture/other gate changes yet.
 

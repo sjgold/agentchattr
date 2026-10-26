@@ -4,6 +4,8 @@ Only process observations and provider/HTTP callbacks use the existing controlle
 fixtures. No native process, listener, provider call or production capability.
 """
 from copy import deepcopy
+import hashlib
+import io
 import json
 from pathlib import Path
 import unittest
@@ -187,3 +189,59 @@ class ArtifactDiagnosticIntegrationTests(unittest.TestCase):
         self.assertEqual(case.target.get_request(audit['request_id']),row)
         self.assertEqual(case.target.request_diagnostics(audit['request_id'])['quarantine_ids'],[])
         self.assertIsNone(result['attached_request_id'])
+
+    def test_shared_atomic_json_single_write_is_byte_identical_for_real_payloads_and_r1_golden(self):
+        import api_seats
+        from tests.test_artifact_record_bounds import ArtifactRecordBoundsTests
+        case=self.managed();audit=case.prepare()
+        case.sessions._load_templates(Path(__file__).resolve().parents[1]/'session_templates')
+        session=case.sessions.create('planning','peer',
+            {'planner':'planner','challenger':'challenger','synthesiser':'synthesiser'},
+            'operator',goal='Exact caf\u00e9\r\nplan',input_text='\u65e5\u672c\u8a9e source')
+        self.assertIsNotNone(session)
+        case.artifacts.quarantine_submission(None,'a'*32,'b'*32,reason='invalid_content',content='diagnostic')
+        maximum=ArtifactRecordBoundsTests();self.addCleanup(maximum.doCleanups);maximum.setUp()
+        metadata,golden=maximum.maximum_row()
+        self.assertEqual(len(golden),991296)
+        self.assertEqual(hashlib.sha256(golden).hexdigest(),'8451bbe3371bd3f472e5531e78c2529b702bdf4759dd043c995f702b3aeeeef4')
+        payloads={
+            'artifact_index':json.loads(case.artifacts.path.read_text(encoding='utf-8')),
+            'diagnostic':json.loads(case.artifacts.diagnostic_store.path.read_text(encoding='utf-8')),
+            'dispatch':json.loads(case.trigger.queue.path.read_text(encoding='utf-8')),
+            'session':json.loads(case.sessions._path.read_text(encoding='utf-8')),
+            'seats':json.loads(case.manager.store.path.read_text(encoding='utf-8')),
+            'launch':json.loads(case.attempt['snapshot'].read_text(encoding='utf-8')),
+            'brief':case.briefs.get_private(audit['brief_id']),
+            'r1_maximum_version':metadata,
+            'encoding_edges':{'z':'\x00\n\t\r\u00e9\u754c\U0001f600\ud800',
+                'a':[0,-0.0,1.2345678901234567e-100,2**63-1,1e308,True,None]}}
+        counts={};original_open=Path.open
+        class Stream:
+            def __init__(self,stream,label):self.stream,self.label=stream,label
+            def __getattr__(self,key):return getattr(self.stream,key)
+            def __enter__(self):self.stream.__enter__();return self
+            def __exit__(self,*args):return self.stream.__exit__(*args)
+            def write(self,value):
+                counts[self.label]+=1
+                return self.stream.write(value)
+        for label,value in payloads.items():
+            reference=io.StringIO()
+            json.dump(value,reference,ensure_ascii=True,allow_nan=False)  # Prior algorithm, not dumps-derived.
+            expected=reference.getvalue().encode('utf-8');counts[label]=0
+            target=case.root/(label+'.json')
+            def opened(path,*args,**kwargs):
+                stream=original_open(path,*args,**kwargs)
+                return Stream(stream,label) if path.name.startswith(target.name+'.') and args and args[0]=='x' else stream
+            with patch.object(Path,'open',opened):api_seats.atomic_json(target,value)
+            self.assertEqual(target.read_bytes(),expected,label)
+            self.assertEqual(json.loads(expected),json.loads(target.read_bytes()))
+        # Byte comparisons above all run before the optimization-specific red.
+        for label,count in counts.items():
+            with self.subTest(one_write=label):self.assertEqual(count,1)
+        target=case.root/'error-preserves.json';target.write_bytes(b'previous')
+        cyclic=[];cyclic.append(cyclic)
+        for value,error in ((float('nan'),ValueError),(float('inf'),ValueError),({'set':{1}},TypeError),(cyclic,ValueError)):
+            with self.subTest(refusal=error.__name__):
+                with self.assertRaises(error):api_seats.atomic_json(target,value)
+                self.assertEqual(target.read_bytes(),b'previous')
+                self.assertEqual(list(case.root.glob('error-preserves.json.*.tmp')),[])
