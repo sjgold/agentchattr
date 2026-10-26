@@ -1,6 +1,6 @@
 # Delivery file-structure cleanup plan
 
-Status: PROPOSED MOVE MAP, no moves executed. Seth authorized cleanup before delivery on2026-10-26. Technical review precedes execution; any deletion or additional functional restructuring needs explicit discussion. Current plan contains NO deletions. Execute in its own commit after backend/UI functional work settles and before delivery.
+Status: REVIEWER APPROVED at97c71960 with K1-K9 requirements below, no moves executed. Seth authorized cleanup before delivery on2026-10-26. Technical review precedes execution; any deletion or additional functional restructuring needs explicit discussion. Current plan contains NO deletions. Execute in its own commit after backend/UI functional work settles and before delivery.
 
 ## Inventory (frozen163b542 tree)
 
@@ -175,3 +175,18 @@ The current .gitignore ignores docs/* except named files. The cleanup commit mus
 |TICKET-8-REVIEW.md|docs/tickets/08/TICKET-8-REVIEW.md|
 |TICKET-9-PLAN.md|docs/tickets/09/TICKET-9-PLAN.md|
 |TICKET-9-REVIEW.md|docs/tickets/09/TICKET-9-REVIEW.md|
+
+
+## Review requirements K1-K9, accepted 2026-10-26
+
+These requirements supersede any earlier single-commit wording. Execution remains after backend/UI/screen work and integration of accepted units on the integration branch. Publication and push remain subject to Seth's standing push gate; cleanup approval grants no deployment permission.
+
+1. Use TWO commits: pure renames first, exactly110 R100 entries in git diff -M; link edits, additions and STATUS rewrite second. Capture before/after tracked manifests. Nothing vanishes; final tracked count equals baseline plus explicitly listed additions.
+2. Additions are docs/README.md, docs/history/STATUS-2026-10-26.md and a small relative-link/anchor checker in tools/. They are additions, not extra moves. Preserve the full STATUS snapshot before rewriting current guidance.
+3. Record baseline broken links and compare after moves, including anchors. Include README, CHANNELS, specification, launcher audit, STATUS historical anchors and cross-links among moved docs. Historical commands remain historical. Annotate META-REVIEW-HANDOFF's launcher-audit hash as pinned to the pre-cleanup commit when its live link changes. Hash fenced receipts before/after and preserve them exactly; moved documents with link rewrites become modified in commit two.
+4. Keep STATUS.md casing unchanged. AGENTS.md spells status.md; Windows resolves it today. Record this case mismatch for Seth without editing AGENTS.md or attempting a case-only rename.
+5. Before execution read .gitattributes again. Current rules force LF only for *.sh and wrapper_unix.py, with no Markdown-specific rule. Inspect ignored files before adding narrow exceptions. Allow docs/README.md and docs/history/STATUS-*.md explicitly. For every concrete target folder in the map, use an unignore-directory entry followed by docs/<folder>/* and !docs/<folder>/*.md; enumerate nested folders individually. Do not expose arbitrary contents through a broad folder exception. The checker addition stays in already tracked tools/.
+6. Verify no case-colliding tracked names before/after; longest absolute target stays below260 characters; AGENTS.md and unmoved tools/tests preserve their bytes except the explicitly new checker. Verify CHANNELS integration tests and build_release.py packaging still includes README. Run full discovery and artifact selection after the final cleanup changes, with link/anchor comparison. Record exact results and next owner/action in STATUS.
+7. Other worktrees are preserved. codex/ticket-20-artifacts is superseded for Ticket20 product work; any branch still editing moved root docs must rebase/resolve against the integration layout. Record accepted publication/review pins with their historical root paths before moving. No branch deletion or history rewrite.
+8. Update external Traycer entry artifacts separately: reduced-release-20-22/index.md, backend-production/index.md, backend-reds/index.md and delivery-cleanup/index.md under artifacts/autobuild/agentchattr. Preserve their comment threads and historical review pins.
+9. No further user decision is needed for this authorized reversible cleanup. Any proposed deletion requires a separate discussion; default remains no deletions.
