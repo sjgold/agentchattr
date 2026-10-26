@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | Slice4 independently PASSa38c17b:632 Python tests171.071s and Node UI25. Product9b068af full1659/four skips320.363s is implementation-owner evidence; reviewer did not run the benchmark or policy VM |
-| Next | Seth APPROVED R1-R3 through the structured decision. W1-W6 independently docs-cleared at bffb442; root amends R1 B1-B8 before independent contract clearance, then separate red-first compatibility pin. R2 diagnostics/R3 compact-index contracts follow. No operator helper/create/capacity code until updated freeze; no new quota/activation |
+| Next | Seth APPROVED R1-R3 through the structured decision. W1-W6 independently docs-cleared at bffb442; R1 contract CLEARED at 21bb198d for behavioral reds after executed fixture audit; root folds N1-N6 wording, audits generated values, then freezes reds for review before production. R2 diagnostics/R3 compact-index contracts follow. No operator helper/create/capacity code until updated freeze; no new quota/activation |
 
 ## Current handoff
+
+- R1 contract CLEARED at 21bb198d for first behavioral reds (analyst static read, no reviewer execution/personal read). N1-N6 folded: all three codec timestamp source lines, max 768-byte escaped label golden, producer-label typed refusal, exact Unicode blank edges/source-run fields, spacing. Pre-edit instrumented unchanged test_artifact modules including benchmark running in tracked shell d3cecd62; captures actual accepted generated values, no validator behavior changes. No new R1 test or product source written yet. Next root records audit and creates four requested behavioral tests, sends reds pin for independent review. R2/R3 need own contracts; operator create/capacity/helper held; capability empty.
 
 - Reviewer W-only bffb442 CLEARED by analyst static read, no execution or personal source read claimed. Three polish nits folded in. R1 NOT YET CLEARED: B1-B8 now explicitly specify codec-local source-run/number shapes, packet semantic bounds and typed operator mapping, Unicode/blank grammar, built-row escaping golden, current API held/admitted behavior vs intended rejection, and dynamic fixture audit. HT/LF/CR accepted. Docs-only content/diff verification; no new tests/source. R2/R3 need contracts before reds; operator create/capacity/helper remain held. Root sends corrected docs pin next.
 
@@ -109,7 +111,7 @@
 - Use explicit `--repo sjgold/agentchattr` with gh-axi; implicit lookup selected upstream during a read-only check and was corrected before mutation.
 - Maintain this file with meaningful work, verification and ownership changes. Root status plus [specification](docs/agentchattr-fork-spec.md), current versionv1.7 RC-2/DA-2, is the resume entry point. Documentation maintenance alone is not implementation authorization; the standing autonomous backlog instruction supplies the current authorization.
 
-## Autonomous execution policy (latest direction2026-10-23 evening)
+## Autonomous execution policy (latest direction 2026-10-23 evening)
 
 - Seth first limited this run to finishing15 and stopping, then explicitly reauthorized continuation: "your clear to go past 15". The latest instruction wins; older stop-after15 statements below are dated history.
 - Codex builds and coordinates the approved backlog. Seth installed Sonnet5.5 agent3b53a0e1 as independent reviewer, replacing the stopped/archived Gemini reviewer. Existing test helper may write assigned tests; a builder does not self-approve final acceptance.
