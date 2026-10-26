@@ -8545,3 +8545,7 @@ Recommended next step for reviewer ruling: harness-only phase-A attribution on t
   "pass": false
 }
 ```
+
+## Next measurement freeze
+
+Reviewer authorized harness-only attribution, a stall sentinel and coverage repairs after this retained MISS. The implemented/tested revision and forward-only policy are in [TICKET-20-D4-MEASUREMENT.md](TICKET-20-D4-MEASUREMENT.md). Product remains4968e47. No new measurement has run; tool/doc delta review is next.

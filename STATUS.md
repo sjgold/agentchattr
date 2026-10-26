@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 builder regression green, frozen service timing gate MISS; return to DESIGN)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 builder regression green, frozen timing MISS; sentinel/coverage tool freeze ready for delta review)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 first production timing gate MISSED; design review resumes. No whole-ticket acceptance or activation. |
 | Latest checks | Builder full1814 tests OK/four skips342.250s (221modules, includes434artifact tests); phase/recovery49 OK28.848s;15 D4 mutations killed by assertions with source unchanged;4 harness controls OK0.758s. |
-| Next | Reviewer rules on D4 phase-A design attribution after frozen4968e47 gate MISS: admit_saved sample6 A1.166355s, cap0.270, zero counted retries. All110 samples retained. Remaining read/import and mutating-peer/summary gates not started. No acceptance, optimization or rerun; R3/operator/capacity/activation/push held. |
+| Next | Reviewer checks TICKET-20-D4-MEASUREMENT.md and the sentinel/attribution/coverage tool freeze before any new run. Product stays4968e47; old110-sample miss retained. Thirteen harness controls pass; no new attribution/gate samples. After clearance:10 DESIGN A attribution samples, then one fresh190-observation gate in declared order. R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 
@@ -30,6 +30,8 @@
 - Reviewer independently confirmed945ea482 reds and CLEARED D4 PRODUCTION with P1-P6 coverage preconditions. Root executing frozen contract in TICKET-20-D4-PRODUCTION.md. P1-P4 fixes observed30/45FAIL+28ERROR27.851s before source. Store Event/capture/report stage56PASS8.663s preceded the service/startup/MCP implementation. D4 now has44 green phase tests including fourteen P5 additions. Two new observed reds fixed sticky external-marker recognition and a captured-terminal proof mismatch incorrectly projected as a new terminal winner. Builder full regression and15 mutation checks now pass; production timing and independent reviewer acceptance remain pending. No D4 acceptance or activation, no R3/operator/capacity/push.
 
 - D4 service timing run at clean4968e47059e2c744d0611f4d96293afe705fa9d7 completed110 samples/290 phase observations, exactly one NORMAL hard/margin miss: admit_saved sample6 A1.1663549999939278s, C0.0355062s, B0.2116205s, B peer0.0270920s, no counted replacement retries anywhere. Cause unknown, no exclusion or selective rerun. Full raw receipt and call summaries in TICKET-20-D4-PRODUCTION.md. No facade/read/import or supplemental gate started after the miss. Review also needs harness coverage for mutating peers, service summary settlement and incidental startup engine holds. Root recommends harness-only A attribution before any remedy; independent reviewer ruling is next.
+
+- Reviewer ruled on the next DESIGN step: independent5ms real-IO sentinel; forward-only temporal classification with strict>0.5s overlap (no exclusion or automatic retry; complete fresh affected-class repeat before clearance); harness-only admit_saved A attribution; timed mutating peers/service summaries/startup engine aliases/whole-call fields. Tools/docs implement that revision,13 controls OK1.427s; product matches all four frozen4968e47 measurement hashes. No new profile or gate run before delta review. Old1.166s/1.103s causes stay unverified and cannot be retroactively classified.
 
 ## Earlier correction-review pointers (historical)
 
