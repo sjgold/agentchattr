@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 R1 cleared; R2 freeze cleared and first observed reds)
+**Updated:** 2026-10-26 (#20 R1 cleared; R2 expanded Z1-Z8 observed reds)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer evaluates first R2 root reds/test bodies and folded K1-K9; exact payload freeze86dad152 CLEARED. Production stays held until red review; no helper assigned. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
+| Next | Reviewer evaluates expanded R2 Z1-Z8 root reds/test bodies (two authorized root files); exact payload freeze86dad152 CLEARED. Production stays held until red review; no helper assigned. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
 
 ## Current handoff
+
+- R2 Z1-Z8 expanded reds: TWO authorized ROOT files,30 owner +10 integration methods. Unchanged product74f4697; final40 tests35FAIL+21ERROR3.374s,19 infrastructure errors (18 missing API/1 owners-key),2 genuine held-authoring behavioral errors,35 behavioral assertion failures,3 existing guards PASS. Cold/stale parser separation; isolated count/group/body caps; typed errors; tie ordering; real-file authoring guards; sticky legacy/recovery/report/snapshot/concurrency; all5 worker paths +real transport/MCP/factory/archive/imported cases; structural810186B/SHAca2cea...34c1 profile serialization guarded, R2 validator still infra-gated. Earlier replay tests passed insufficient held-outcome guard, now actual submit1 +index-byte preservation exposes old write. Per-test unobserved-red conditions in contract, all must run green. All temp roots cleaned; compile/AST/diff checks pass, deprecation warnings retained. No helper/source/timing/full suite changes. Next reviewer reruns/audits additions BEFORE any R2 production; measurement gates and R3/operator/capacity/activation/push held.
 
 - R2 exact payload freeze86dad152 CLEARED by analyst static review, no reviewer execution/personal read. K1-K9 folded with first root file tests/test_artifact_diagnostic_owner.py:15 methods, observed23FAIL+8ERROR0.388s on unchanged74f4697 product;23 behavioral assertion failures +1 behavioral standalone-authoring refusal error,7 missing-API infrastructure errors,1 passing encoding/float guard. Initial14/22FAIL+9ERROR0.383s retained; secondary missing-file error replaced with explicit assertion. Unobserved-red follow-on effects/infrastructure bodies labeled, no concurrency/uncertainty/budget proof claimed yet. All test roots cleaned, py_compile/diff checks pass. Separate tools/measure_artifact_diagnostics.py heavy/summary harness check-plan arithmetic only; NO timing acceptance, no actual measure run. Named pending coverage/worker/factory adaptations retained in contract. Next reviewer executes/audits this red pin BEFORE R2 production or further named expansion. R3/operator/capacity/activation/push held.
 
