@@ -67,3 +67,22 @@ After source changes: compile/strict UTF8/diff check, focused new bounds tests, 
 ## Escape accounting required by the built golden
 
 atomic_json uses ASCII-escaped JSON. A 256-UTF8-byte label made of 85 three-byte characters plus one ASCII character occupies 511 JSON content bytes (510 for the 85 escapes plus one); 64 four-byte characters occupy 768 content bytes as surrogate-pair escapes. A 32768-byte instruction of 8192 four-byte characters occupies 98304 JSON content bytes, before quotes. These are retained amplification factors even after C0 refusal, not evidence that R1 alone makes the index small. The golden builds these strings, confirms UTF8 lengths and measures json serialization independently. R2/R3 layout and later timing remain required.
+
+## First R1 behavioral-red checkpoint
+
+Production unchanged from 9b068af; capability remains empty. Root owns exactly four methods in NEW tests/test_artifact_record_bounds.py; prior helper files untouched. No managed/native/provider/network/browser acceptance is claimed: real temporary store/catalog/codec and real API worker/service/queue are used with the earlier scoped supported-runtime/process/provider callback doubles.
+
+Pre-edit audit evidence:
+
+- First unchanged artifact run: 283 PASS in 192.804 s. The observer patched its own loop variable, so it collected no values. Preserved as baseline only; its uninstrumented import benchmark max was 0.185877 s.
+- Corrected instrumented run: 283 reached in 210.782 s, 282 pass and one benchmark timing failure. Active-wrapper and observer-smoke assertions passed. The observer runs on successful _audit, _packet_scope, _observation and validate_brief calls, including generated fixtures. It observed 71,845 accepted audit rows, 9,514 packet UIDs, 22,483 reference UIDs and 230 confirmed-model values (one is the explicit observer smoke). No observed byte/control/numeric-width outliers. Maxima: producer name 25 B, requested/confirmed model 23 B, model-reason 20 B, UID 11 B, state 7 B, instruction 32,768 B, format 512 B. This is scoped successful-validation observation, not proof about arbitrary nested raw metadata or unseen future fixtures.
+- Instrumented benchmark max 1.028046 s FAIL is retained. Observer work runs inside measured validation holds; the immediately preceding unchanged uninstrumented benchmark passed. The instrumented run is valid value-audit evidence, never a performance pass. No capacity/timing bound is changed.
+- Supplemental decoded artifact JSON fixture scan: 62 named label/content leaves, zero byte outliers. Static scanning supplements actual execution; it does not prove generated values. No fixture assertion changed.
+
+First new module run: four tests, two behavioral FAIL plus one fixture ERROR and one PASS, 0.666 s. The codec fixture changed packet length without refreshing manifest source_bytes, so preflight correctly refused before the intended assertion. Corrected only that fixture's manifest via actual artifact_counts(index); no production change.
+
+Corrected run: four tests, THREE behavioral FAIL / one PASS, zero errors, 0.712 s. Label 257 B is accepted instead of refused. API actual tuple is admitted/fulfilled, zero rejection calls, one saved result, one version instead of quarantined/invalid_response with no saved result/version. Codec pure preflight passes, then the real importer creates two lineages instead of one invalid-lineage skip plus one healthy import. All four temporary roots are absent after cleanup.
+
+The maximum-row PASS is a pre-change real-writer capture: 991,296 bytes, SHA256 8451bbe3371bd3f472e5531e78c2529b702bdf4759dd043c995f702b3aeeeef4. It builds 1,000 distinct 256-UTF8-byte UIDs (768 escaped content bytes EACH), 32 KiB instruction, 512 B format, max labels/observation and a real 23-character float token. A detached row uses actual int 2**63-1 sequence/parent scalars and passes _audit/_validate_version component validators; it intentionally does not claim a full physical index with 2**63 versions. Literal length/hash are captured through existing atomic_json. No computed escrow or quota is inferred.
+
+Strict UTF8/AST/compile, exactly four methods, no BOM/trailing whitespace, final newline and scoped diff check pass. Await independent test-body/RED review BEFORE source changes or expansion. R2/R3 reds require their own contracts; operator create/capacity/helper remain held.
