@@ -1,6 +1,6 @@
-# Ticket 20 R2: independent diagnostic ownership, proposed contract
+# Ticket 20 R2: independent diagnostic ownership, frozen contract and first reds
 
-Status: PROPOSED, docs only. Seth approved R1-R3 scope; R1 is independently CLEARED at bd1f3922 (product 74f4697). This proposal needs review before R2 tests, helper work or code. R3 source-reference compaction remains a separate contract. Production capability stays empty; no authoring quota, public route, activation, deployment or purge is added.
+Status: EXACT PAYLOAD FREEZE CLEARED at86dad152, with K1-K9 folded below beside the first observed reds. R2 production is NOT cleared. Seth approved R1-R3 scope; R1 is independently CLEARED at bd1f3922 (product 74f4697). First root behavioral/infrastructure reds are now authorized; production and helper work still wait for their review. R3 source-reference compaction remains a separate contract. Production capability stays empty; no authoring quota, public route, activation, deployment or purge is added.
 
 ## Outcome and governing choices
 
@@ -359,7 +359,7 @@ The prototype above measures the conservative full metadata frame rewrite, not t
 
 A miss is a miss: retain it in the receipt and return mechanism/cap to design review. Only a sample whose harness counted an actual PermissionError replace retry may have a separately attributed fault rerun, retaining the original sample. All other misses return to review; no general environment/load excuse or best-of/cherry-picked pass. atomic_json's eight PermissionError attempts can sleep 0.315s total (0.005+0.010+0.020+0.040+0.080+0.080+0.080); these sleeps are FAULT, not a NORMAL sample to claim passing. No latency guarantee is made for fault IO/scheduling, and neither timeout nor accepted diagnostic budgets are lowered.
 
-R2 exact freeze still awaits review of H1-H7. No new design spike, tests, helper or source edits are claimed in this docs-only amendment. R3/operator/capacity/activation/push remain held.
+Historical H-round status atbc089d1: exact freeze then awaited review; that docs-only pin had no new design spike, tests, helper or source edits. R3/operator/capacity/activation/push remain held.
 
 
 ## J1-J9 final precision pass
@@ -428,4 +428,86 @@ Separate authoring import gate: exact4MiB/100-prior-lineage/128-request-version 
 
 The 810186B figure is VERIFIED ONLY for the stated rebuilt structural profile and its measured serialization. It is NOT yet verified as the escape/encoding maximum over every accepted diagnostic graph. The future maximum-row/file golden must independently enumerate closed reason/field/token widths and real accepted values, including ensure_ascii escaping effects, before claiming an upper bound. If that proof or actual timing fails, return to design, never silently change budgets/cap/normal gate.
 
-Next: reviewer J1-J9 exact freeze, then one NEW root behavioral test file, no helper yet. No R3/operator/capacity/activation/push.
+J1-J9 exact freeze is now CLEARED at86dad152. Root owns one NEW behavioral test file, no helper yet. No R3/operator/capacity/activation/push.
+
+
+## K1-K9 folded with first root reds
+
+Reviewer exact payload freeze86dad152 is CLEARED at design scope. This section names the final mechanics and observed test evidence; it authorizes no production before independent red-body review. Existing production remains74f4697.
+
+### K1/K2/K8: exact private interfaces and marker locking
+
+| Method / attribute | Frozen responsibility |
+| --- | --- |
+| ArtifactStore.diagnostic_store | Independent owner on the same root. ArtifactStore still inherits _put_bytes, with per-instance patches preserved. |
+| ArtifactStore._legacy_held; ArtifactDiagnosticStore._legacy_held | Sticky bool markers set at construction/recognized legacy authoring access; never cleared in-place. Ordinary corruption holds are distinct. |
+| ArtifactStore._check_diagnostic_legacy() | Under AUTHORING RLock copy ONLY _legacy_held, release it, then call diagnostic_store._set_legacy_hold() if true. No file IO, no diagnostic lock while authoring lock held. record(None), request_diagnostics and combined report use this check before diagnostic entry. It does not call authoring _check_index. |
+| ArtifactStore._snapshot_diagnostic_attachment(request_id,dispatch_id) | Under authoring RLock check cached known/held/legacy flags and copy eligible immutable request/dispatch only, no IO. After releasing, propagate any legacy marker. Known held/uninitialized AUTHORING raises existing ArtifactUnavailable with fixed authoring guidance, NOT ArtifactDiagnosticsUnavailable; legacy uses fixed legacy guidance. Healthy unknown/mismatched/imported request returns null attachment. |
+| ArtifactDiagnosticStore._set_legacy_hold() | Under diagnostic RLock set sticky marker/held guidance only, no IO. Every record/request_diagnostics/report/_check_diagnostics checks that marker first. |
+| ArtifactDiagnosticStore._attached_rows(request_id) | Under its own lock select detached rows by exact attached_request_id, order received_at/id ascending. No authoring lookup. |
+| ArtifactDiagnosticStore.request_diagnostics(request_id) | Validate Hex32, own lock/check, use _attached_rows and matching dispatch summary only if at least one attached row. Return healthy four-field RequestDiagnostic projection; a held diagnostic owner RAISES ArtifactDiagnosticsUnavailable. |
+| ArtifactDiagnosticStore.report() | Own lock/check, detached full diagnostic rows/summaries plus own orphan observations/inventory. Private unpaged snapshot EXACT {rows,dispatch_group_count,detailed_count,retained_body_bytes}. No authoring callback. Unavailable raises typed diagnostic error; facade projects per-owner status. |
+| ArtifactDiagnosticStore._body_inventory() | Existing safe-path physical file count/byte inventory moved unchanged here; includes orphans. |
+| ArtifactStore.request_diagnostics(request_id) | Validate Hex32 first; _check_diagnostic_legacy then delegate diagnostic owner and map a diagnostic hold to exact available:false/null fields/fixed Error. Invalid ID raises ArtifactValidationError, never unknown/empty or503. |
+| ArtifactStore.diagnostics(*,limit=100) | Read authoring observations under its existing lock, release; propagate any discovered legacy marker before calling independent report. Merge detached known rows, sort/page/project owner errors as below. |
+
+Only DIAGNOSTIC-owner or diagnostic IO failure raises ArtifactDiagnosticsUnavailable. A non-null request with known held/uninitialized authoring fails at the attachment snapshot with ArtifactUnavailable and authoring text. record(None) ALWAYS acquires the authoring RLock for the marker read only, even when ordinary authoring corruption is bypassed. It never takes that lock across diagnostic IO. No facade can reinterpret a known legacy marker as healthy-empty.
+
+J8 isolation harness exact patch targets, active ONLY during the measured authoring path after fixture construction: Path.open read access for that root's diagnostics.json; ArtifactDiagnosticStore._load_diagnostics, _check_diagnostics, _validate_diagnostics, request_diagnostics, report and record all raise on call. Patch _persist_diagnostics too to catch an accidental write. Do not patch shared _put_bytes or clocks/fsync; restore all guards afterward. Owner construction/full or held fixture setup occurs BEFORE these guards. The public full/held4MiB authoring import gate remains mandatory.
+
+### K3/K4/K5/K9: failure, paging, encoding and recovery
+
+A body _put_bytes OSError/ArtifactUnavailable BEFORE entering atomic_json/post-write-stat is NOT a metadata uncertainty and does NOT hold the diagnostic owner. Return ArtifactDiagnosticsUnavailable without a receipt, leave the last known diagnostic metadata/stamp healthy, count any body left behind against physical quota, and report it as an orphan only when known metadata proves it unreferenced. Body lock timeout has the same no-metadata-uncertainty rule. An immutable body ArtifactConflict stays a conflict. A later valid diagnostic may succeed on the same owner. Only ANY atomic_json or immediate post-write fingerprint/stat exception invokes conservative commit uncertainty and its hold rule.
+
+Combined diagnostics merges known owner rows by (-updated_at,id), the existing deterministic ordering. limit is a plain int1..100, validated even when held; no offset parameter is introduced. rows is ALWAYS a detached list of at most limit known rows. Healthy count is the full merged total BEFORE slicing; truncated reflects omitted known rows. If any owner makes the aggregate total unknown, count:null and partial:true/truncated:true even if known rows fit or rows=[]; known rows are still paged normally. Diagnostic-unavailable contributes no diagnostic rows and retained_body_bytes:null, while healthy authoring observations may remain. Invalid request_diagnostics id raises ArtifactValidationError before owner-health projection.
+
+Metadata atomic_json encoding is EXACT json.dump(...,ensure_ascii=True,allow_nan=False), default separators (', ', ': '), sort_keys=False (insertion order), indent=None, UTF8 file, no added trailing newline. Canonical UUID input remains separately compact/sorted UTF8 as specified in J9. The23-char finite float token is asserted by test_r1_numeric_token_guard_and_atomic_json_encoding_match, not inferred from prose; that compatibility guard also pins insertion order, escaped Unicode and actual metadata bytes.
+
+One recovery rule: sticky LEGACY holds never clear on the same instance. An ordinary uncertain diagnostic hold may clear on that instance ONLY after a stable strict reread equals its previously known snapshot (the sentinel forces a verification attempt). If a different ledger actually landed, that stale instance remains held; only application restart constructs the fresh owner that may adopt it. Thus 'fresh restart only' refers to adoption of a DIFFERENT landed snapshot, not recovery to the SAME known snapshot. No runtime reconstruction/auto retry is added.
+
+### K6: single enumerated root test inventory and observed labels
+
+All names below belong to tests.test_artifact_diagnostic_owner.ArtifactDiagnosticOwnerTests. B = behavioral red against the existing facade/schema; I = missing owner/read API infrastructure, not proof the later assertions fail behaviorally; G = existing compatibility guard, not a new red. PENDING bodies remain required before green acceptance; they are not counted as executed evidence.
+
+| # | Test name | First-pin status |
+| --- | --- | --- |
+|1|test_diagnostic_only_write_does_not_create_authoring_index|B: actual old writer creates index.|
+|2|test_diagnostic_detail_and_overflow_do_not_change_authoring_index_bytes|B: nine actual detail/summary index rewrites, plus missing independent file assertion.|
+|3|test_diagnostic_corruption_does_not_block_authoring_or_version_admission|B: corrupt diagnostic file ignored, submission does not refuse. Post-refusal valid admission is UNOBSERVED-RED until green.|
+|4|test_cap_depth_bom_duplicate_and_invalid_ledgers_refuse_before_body_put|B: seven malformed-file cases ignored. Does not isolate each parser mechanism yet; early directory ignorance is the behavioral failure. Cap uses otherwise valid JSON with leading whitespace.|
+|5|test_request_diagnostics_is_detached_ordered_and_independent_of_authoring_health|I: missing request_diagnostics after real source/diagnostics setup.|
+|6|test_standalone_diagnostic_bypasses_ordinary_held_authoring|B ERROR: actual old ArtifactUnavailable from authoring blocks legitimate standalone persistence, not a fixture/import error.|
+|7|test_legacy_nonempty_holds_both_owners_without_creating_diagnostics|B: old reader accepts v1 and records more diagnostics; two missing refusals and changed legacy bytes.|
+|8|test_body_put_error_does_not_hold_diagnostic_owner_or_invent_commit_uncertainty|I: missing diagnostic_store; no fault semantics claimed yet.|
+|9|test_uncertain_metadata_commit_holds_stale_instance_and_restart_recognizes_landed_row|I: missing owner; later real atomic_json-after-replace fault unobserved until green.|
+|10|test_stale_diagnostic_owner_cannot_overwrite_another_owner|I: missing owner, no stale-diagnostic proof yet.|
+|11|test_existing_8_256_1024_budgets_move_without_lowering_or_widening|I: missing owner; seeded legal graph + real overflow checks must run green.|
+|12|test_event_blocked_diagnostic_io_does_not_block_low_level_authoring_settlement|I: missing owner; no Event concurrency claim yet.|
+|13|test_request_diagnostics_invalid_id_is_validation_error_not_unknown_request|I: missing API; invalid-ID subtests unobserved until green.|
+|14|test_authoring_validation_and_persistence_never_read_diagnostics|B: authoring index still includes three diagnostic keys; subsequent guarded authoring mutation unobserved until green.|
+|15|test_r1_numeric_token_guard_and_atomic_json_encoding_match|G: actual writer encoding and23-char positive Number pass unchanged.|
+|16|test_authoring_put_bytes_override_still_controls_import_staging|PENDING G/behavioral companion to named existing patch-survival tests.|
+|17|test_owner_fingerprints_use_separate_paths|PENDING I then independent-path behavior.|
+|18|test_unattached_details_and_summary_are_not_retroactively_attributed|PENDING I then first-attachment/overflow semantics.|
+|19|test_global_overflow_is_never_attributed_to_a_request|PENDING I plus existing summary compatibility guard.|
+|20|test_legacy_markers_preserve_guidance_across_constructor_check_and_persist|PENDING B/I, sticky restore-original-bytes and no diagnostic file.|
+|21|test_same_instance_uncertainty_recovers_only_the_previous_known_snapshot|PENDING I, complement different-landed-ledger restart test.|
+|22|test_combined_report_partial_rows_limits_and_owner_errors_are_exact|PENDING I, include ordinary held authoring plus healthy diagnostic read, invalid limit and null counts.|
+|23|test_snapshot_and_none_marker_read_do_no_authoring_io_or_nested_owner_lock|PENDING B/I; cached snapshot flag behavior and no-overlap guard.|
+|24|test_worker_cli_saved_redelivery_diag_failure_holds|PENDING real-worker229 path.|
+|25|test_worker_api_saved_redelivery_diag_failure_holds|PENDING real-worker229 API replay path.|
+|26|test_worker_delivery_with_held_diagnostics_is_context_unavailable|PENDING real-worker408 path.|
+|27|test_worker_invalid_response_with_held_diagnostics_returns_hold_without_fake_receipt|PENDING real-worker428 path.|
+|28|test_worker_postsave_redelivery_diag_failure_holds_without_disposition|PENDING held outcome through229 after save; no fake terminal disposition.|
+
+The six catch sites are not six independent natural diagnostic-failure sites. Real submit_saved diagnostic failures are caught INSIDE _redeliver at229. They cannot escape that helper to248 or390;387-389 already handles its returned decision. The post-save helper at445 likewise normally receives a hold decision after229, rather than a raw new diagnostic exception. No artificial rethrow is counted as real coverage of those outer catches. Existing replay guards keep them unchanged; named CLI/API/post-save tests exercise their observable held outcomes. Delivery408 and reject-response428 have distinct real diagnostic failure seams. Any additional source-trace discovery is reported rather than invented coverage.
+
+Executed first root run (unchanged source):14 tests22FAIL+9ERROR0.383s. One diagnostic-file FileNotFoundError was a secondary missing-file observation after subtest failures, not fixture corruption. It was replaced with an explicit missing-file assertion for a clearer receipt. Final observed run:15 tests23FAIL+8ERROR0.388s, ONE existing guard passes. Failures are23 behavioral assertions; errors are7 missing-API infrastructure and1 genuine standalone-authoring behavioral refusal. No errors are import/setup/cleanup failures. All owned fixture roots cleaned. New expected-refusal follow-on body/index/admission invariants and infrastructure-gated bodies remain UNOBSERVED-RED, required green checks, not counted as proven behavior.
+
+### K6/K7: measurement and fixture scope
+
+tools/measure_artifact_diagnostics.py is a separate root-owned MEASUREMENT harness, never a unittest red. It seeds ALL128 groups with actual reserved authoring requests and derived attempt/dispatch IDs. Bodies for all1023 prior records match their declared hashes/counts; fixture seeding is explicit, not a natural transaction-history claim. Its heavy and summary profiles follow J8 exactly. Actual timing requires R2 owner implementation and is NOT RUN on this pin. Only --check-plan arithmetic and py_compile ran; those are not performance evidence. The structural-profile read and guarded4MiB full/held import gates remain separately required; this initial tool implements reachable heavy/summary profiles only. No pass based on the earlier narrow prototype can replace them.
+
+Fixture label resolution: export_store36-48/132 contains the imported construction/attachment cases already named for rewriting at40/142; these EXACT fixture/debug-key adaptations are REWRITE, their other authority/immutability assertions UNCHANGED BY DESIGN. export_store85/99/105/188-194 stay unchanged. No claim that removed request keys load unchanged. Factory test_artifact_factory.py20/64/67 gains checks that an absent diagnostics.json is not created during healthy/broken-index construction/recovery, and that a pre-existing diagnostic file is never reset when authoring is broken; existing root/authority/order assertions remain. Factory binding uses independent ordinary-corruption semantics, not a fabricated legacy marker.
+
+Production stays behind independent first-red-body review. No helper has been assigned; no R3/operator/capacity/activation/push. Hard timing gate remains unchanged and unmeasured heavy profile is not called passing.

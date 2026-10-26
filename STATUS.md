@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-25 (#20 R1 cleared; R2 J1-J9 exact docs amended)
+**Updated:** 2026-10-25 (#20 R1 cleared; R2 freeze cleared and first observed reds)
 
 ## At a glance
 
@@ -18,9 +18,11 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; operator-routes/K6 contract proposed next, no whole-ticket acceptance or activation |
 | Latest checks | R1 CLEAREDbd1f3922/product74f4697: reviewer18OK2.2s/artifact301OK193.5s/import max0.2057s, static9PASS and mutation spot-checks (float-token-only survivor expected). Builder full1681/four skips315.065s and affected876PASS246.414s remain separately attributed. |
-| Next | Reviewer evaluates amended R2 J1-J9 exact contract and retained design-only timing receipt before any R2 reds/code; root freezes exact payload only after clearance. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
+| Next | Reviewer evaluates first R2 root reds/test bodies and folded K1-K9; exact payload freeze86dad152 CLEARED. Production stays held until red review; no helper assigned. Then R3 compact-index contract separately. Seth approved R1-R3 scope; no repeat question. Operator create/capacity/helper and activation stay held; no new quota/push. |
 
 ## Current handoff
+
+- R2 exact payload freeze86dad152 CLEARED by analyst static review, no reviewer execution/personal read. K1-K9 folded with first root file tests/test_artifact_diagnostic_owner.py:15 methods, observed23FAIL+8ERROR0.388s on unchanged74f4697 product;23 behavioral assertion failures +1 behavioral standalone-authoring refusal error,7 missing-API infrastructure errors,1 passing encoding/float guard. Initial14/22FAIL+9ERROR0.383s retained; secondary missing-file error replaced with explicit assertion. Unobserved-red follow-on effects/infrastructure bodies labeled, no concurrency/uncertainty/budget proof claimed yet. All test roots cleaned, py_compile/diff checks pass. Separate tools/measure_artifact_diagnostics.py heavy/summary harness check-plan arithmetic only; NO timing acceptance, no actual measure run. Named pending coverage/worker/factory adaptations retained in contract. Next reviewer executes/audits this red pin BEFORE R2 production or further named expansion. R3/operator/capacity/activation/push held.
 
 - R2 J1-J9 DOCS amended: exact freeze still pending. Corrected _prepared_import trace/literal version check; named existing/new owner-isolation tests and facade UUID delegates. Structural-only legacy detection, sticky constructor/check/write marker guidance; record(None) observes cached marker only. Diagnostic attachment snapshot now explicitly cached-memory-only, no authoring IO/refresh; no state/authority use. Exact partial rows/null bytes, uncertainty sentinel/restart-only fresh owner, parser/BOM/numeric rules, full normative/fixture/worker mapping and closed validator rules recorded. Heavy profile128groups/1023details/7.5MiB+512KiB matching body, summary and structural samples separately frozen; counted replace-retry-only rerun, no erased misses; guarded full/held4MiB import<=.300.810186B is stated-profile size, NOT all-encoding upper-bound proof. No new tests/spike/source/helper. Next reviewer J1-J9 before reds; R3/operator/capacity/activation/push held.
 
