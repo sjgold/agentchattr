@@ -272,3 +272,7 @@ Harness control checks (synthetic mocked rows, NO real measurement):90 authority
 
 - `tools/measure_artifact_diagnostics.py` SHA256 `e9e3cbb13eb035ab858e474f3909fcce51ea42db51636a771b13077edaabbfde`.
 - `tools/profile_artifact_authority_phases.py` SHA256 `81a4fc1987eaa0b80d66f1c7285a6b63663df02a7b8243b27b35eb1b72f90c81`.
+
+## G1-G5 final pre-run correction
+
+Reviewer cleared ONE design run after these harness-only corrections, no re-review required before execution. [Final delta, hashes and retained checkpoint receipts](TICKET-20-MERGED-DESIGN-CHECKPOINT.md). The G1-G5 protocol there supersedes the earlier three-phase facade list: attached/unattached request_diagnostics is measured before structural replacement; provenance is detected, body retries counted and the synthetic test is retained. No source/fixture migration or D4 gate is authorized.

@@ -88,7 +88,7 @@ def measure(case, store, audit, phase, checkpoint=None):
         try:
             return original(source, target)
         except PermissionError:
-            if Path(target) == store.diagnostic_store.path:
+            if Path(target) == store.diagnostic_store.path or Path(target).parent == store.diagnostic_store._object_path('quarantine', '0'*32).parent:
                 retries[0] += 1
             raise
     thread = threading.Thread(target=peer, daemon=True)
@@ -239,7 +239,7 @@ def import_gates(number,existing,large,mode):
 
 def design_checkpoint(count):
     # Use the SAME real authoring builder as the authority probe, not 128 tiny reservations.
-    from profile_artifact_authority_phases import setup as authority_setup
+    from profile_artifact_authority_phases import setup as authority_setup, checkpoint_provenance
     destination = ROOT / '.audit-tmp' / ('r2-diagnostic-design-' + uuid.uuid4().hex + '.json')
     destination.parent.mkdir(exist_ok=True)
     report = {'kind': 'DESIGN checkpoint: facade heavy, summary and structural; NO imports',
@@ -250,9 +250,14 @@ def design_checkpoint(count):
               'tool_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               'authoring_builder_tool_sha256': hashlib.sha256((ROOT/'tools/profile_artifact_authority_phases.py').read_bytes()).hexdigest(),
               'authoring_schema': 2, 'r2_d1_d2_present': True, 'samples_per_phase': count,
-              'fixed_order': ['heavy','summary','structural_read'], 'warmup_discarded': 0,
+              'fixed_order': ['heavy','summary','request_diagnostics','structural_read'], 'warmup_discarded': 0,
               'comparators_only': True, 'reference_seconds': .270,
               'resampling': 'None; retain errors and original retry samples; continue remaining fixtures.'}
+    report.update(checkpoint_provenance(__file__))
+    report['cache_disclosure'] = 'Owner caches warm after setup; only structural_read forces metadata reread; cold-restart tails not measured.'
+    report['untimed_summary_prerecord'] = 'distinct summary key one is recorded before summary measurement.'
+    report['timed_body_decode'] = 'body(1023,524288).decode(ascii) executes inside heavy hold; cost retained (historical estimate ~0.1ms, not separately measured).'
+    report['peer_lock_reference'] = 'channel_service.py:105-113 _boundary takes engine and catalog RLocks; require_active:149-153 enters that same boundary; channel_lifecycle.py:182 checks active under catalog RLock.'
     def retain():
         destination.write_text(json.dumps(report, indent=2), encoding='utf-8')
     retain()
@@ -280,18 +285,29 @@ def design_checkpoint(count):
             priors = [row['audit'] for row in store._data['requests'].values() if row['state']=='imported']
             assert len(priors)==128 and len(store._data['requests'])==129
             store, audit = setup(case, store=store, audits=priors[:127]+[candidate])
-            for phase in ('heavy','summary','structural_read'):
+            for phase in ('heavy','summary','request_diagnostics','structural_read'):
                 if phase == 'heavy':
                     row = measure(case,store,audit,phase,checkpoint=checkpoint)
                 elif phase == 'summary':
                     first = record(store,audit,'distinct summary key one')
                     assert first['counter']==1
                     row = measure(case,store,audit,phase,checkpoint=checkpoint)
-                else:
+                elif phase == 'structural_read':
                     row = structural_read(case,store,checkpoint=checkpoint)
+                else:
+                    # Same full cached ledger: one attached local id and one unattached imported id.
+                    def read_requests():
+                        attached = store.request_diagnostics(candidate['request_id'])
+                        unattached = store.request_diagnostics(priors[0]['request_id'])
+                        return attached, unattached
+                    row, projections = measure_action(case,store.diagnostic_store,read_requests,phase,.270,checkpoint=checkpoint)
+                    if row['exception_type'] is None:
+                        assert len(projections[0]['quarantine_ids'])==8 and projections[0]['overflow_count']==2
+                        assert projections[1]['quarantine_ids']==[] and projections[1]['overflow_count']==0
+                    row['request_ids_kind'] = ['attached_local','unattached_imported']
                 completed(row)
                 if row['exception_type'] is not None:
-                    remaining = ('heavy','summary','structural_read')[('heavy','summary','structural_read').index(phase)+1:]
+                    remaining = ('heavy','summary','request_diagnostics','structural_read')[('heavy','summary','request_diagnostics','structural_read').index(phase)+1:]
                     for skipped in remaining:
                         report['samples'].append({'sample': number, 'phase': skipped,
                             'not_run': 'Earlier phase failed; dependent physical state unavailable.'})
@@ -300,8 +316,8 @@ def design_checkpoint(count):
         except Exception as exc:
             report['samples'].append({'sample': number, 'phase': phase,
                 'error': {'type': type(exc).__name__, 'message': str(exc)},
-                'remaining_phases_not_run': (['heavy','summary','structural_read'] if phase=='setup' else
-                    list(('heavy','summary','structural_read')[('heavy','summary','structural_read').index(phase)+1:]))})
+                'remaining_phases_not_run': (['heavy','summary','request_diagnostics','structural_read'] if phase=='setup' else
+                    list(('heavy','summary','request_diagnostics','structural_read')[('heavy','summary','request_diagnostics','structural_read').index(phase)+1:]))})
             retain()
         finally:
             if case is not None:

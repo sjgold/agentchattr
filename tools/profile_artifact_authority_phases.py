@@ -9,6 +9,8 @@ from contextlib import ExitStack
 from copy import deepcopy
 import hashlib
 import json
+import inspect
+import os
 from pathlib import Path
 import statistics
 import subprocess
@@ -27,6 +29,53 @@ from artifact_worker import MAX_CONTEXT_BYTES
 from tests.test_artifact_admission import ArtifactAdmissionTests
 from tests.test_artifact_import_benchmark import graph
 import runtime_ownership
+
+
+def checkpoint_provenance(tool):
+    """Untimed real-writer/implementation checks, never a latency result."""
+    import api_seats
+    import artifact_store
+    assert inspect.isbuiltin(os.fsync) and os.fsync.__module__ in ('nt', 'posix')
+    assert Path.replace.__module__ == 'pathlib' and Path.replace.__name__ == 'replace'
+    writes = []
+    original_open = Path.open
+    target = ROOT / '.audit-tmp' / ('writer-provenance-' + uuid.uuid4().hex + '.json')
+    target.parent.mkdir(exist_ok=True)
+    class CountWrites:
+        def __init__(self, stream): self.stream = stream
+        def __enter__(self): return self
+        def __exit__(self, *args): return self.stream.__exit__(*args)
+        def __getattr__(self, name): return getattr(self.stream, name)
+        def write(self, value):
+            writes.append(value)
+            return self.stream.write(value)
+    def opened(path, *args, **kwargs):
+        stream = original_open(path, *args, **kwargs)
+        return CountWrites(stream) if path.name.startswith(target.name + '.') else stream
+    payload = {'unicode': '\u00e9', 'values': [1, 2.5, None]}
+    try:
+        with patch.object(Path, 'open', opened):
+            api_seats.atomic_json(target, payload)
+        d2 = len(writes) == 1 and target.read_bytes() == json.dumps(payload, ensure_ascii=True, allow_nan=False).encode('utf-8')
+    finally:
+        target.unlink(missing_ok=True)
+    r2 = hasattr(artifact_store, 'ArtifactDiagnosticStore')
+    d1 = r2 and 'scandir' in artifact_store.ArtifactDiagnosticStore._body_inventory.__code__.co_names
+    assert r2 and d1 and d2, (r2, d1, d2)
+    fixtures = sorted({Path(module.__file__).resolve().relative_to(ROOT).as_posix()
+        for name, module in list(sys.modules.items()) if name.startswith('tests.test_')
+        and getattr(module, '__file__', None) and Path(module.__file__).resolve().is_relative_to(ROOT)})
+    extra = ['sealed_result_io.py', 'artifact_worker.py', *fixtures]
+    dirty = subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True)
+    return {'fsync_mocked': not inspect.isbuiltin(os.fsync),
+            'filesystem_primitives_verified_unpatched_before_counters': True,
+            'detected_implementations': {'r2_diagnostic_owner': r2, 'd1_scandir': d1, 'd2_single_write_byte_identity': d2},
+            'r2_d1_d2_present': r2 and d1 and d2, 'authoring_schema': artifact_store._empty()['version'],
+            'dirty_tree': bool(dirty), 'git_status_porcelain': dirty,
+            'fixture_and_support_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in extra},
+            'tool_sha256': hashlib.sha256(Path(tool).read_bytes()).hexdigest(),
+            'closed_a1_base': '2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca',
+            'preserved_r2_parent': 'be6fd6522474fe2fab0e6f0573ec6e9ccb9eab4a'}
 
 
 class DiagnosticStop(Exception):
@@ -264,8 +313,18 @@ def probe(kind, checkpoint=None):
                 'authoring_index_bytes': case.artifacts.path.stat().st_size,
                 'limitations': 'Merged R2-on-A1 DESIGN checkpoint. A raw includes MCP encode/size and guard_copy; only A_comparator subtracts measured guard_copy. No acceptance booleans or margin gate for unchanged code. C runs outside A1 scope (cold content validation), unlike a future same-scope D4 C. No B/peer gate. Fixed caller order, no warmup discard; sizes derived.'}
     finally:
+        cleanup_probe(case, fixture_root, kind, checkpoint)
+
+
+def cleanup_probe(case, fixture_root, kind, checkpoint):
+    try:
         case.doCleanups()
         assert not fixture_root.exists()
+    except Exception as exc:
+        if checkpoint is None:
+            raise
+        checkpoint({'caller': kind, 'phase': 'cleanup',
+                    'error': {'type': type(exc).__name__, 'message': str(exc)}})
 
 
 def main():
@@ -290,7 +349,9 @@ def main():
               'preserved_r2_parent': 'be6fd6522474fe2fab0e6f0573ec6e9ccb9eab4a',
               'authoring_schema': 2, 'r2_d1_d2_present': True,
               'fixed_order': list(kinds), 'samples_per_caller': args.samples,
+              'cache_disclosure': 'Owner caches warm after setup; no cold-restart tail measurement.',
               'warmup_discarded': 0, 'resampling': 'None; error rows retained, continue remaining samples/callers.'}
+    result.update(checkpoint_provenance(__file__))
     def retain(row=None):
         if row is not None:
             rows.append(row)
@@ -303,7 +364,10 @@ def main():
             try:
                 def checkpoint(observation):
                     result['phase_observations'].append({**observation, 'sample': sample + 1})
-                    retain()
+                    if observation.get('phase') == 'cleanup' and 'error' in observation:
+                        retain({**observation, 'sample': sample + 1})
+                    else:
+                        retain()
                 row = {**probe(kind, checkpoint=checkpoint), 'sample': sample + 1}
             except Exception as exc:
                 row = {'caller': kind, 'sample': sample + 1,
