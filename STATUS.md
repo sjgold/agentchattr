@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 first production timing gate MISSED; design review resumes. No whole-ticket acceptance or activation. |
 | Latest checks | Builder full1814 tests OK/four skips342.250s (221modules, includes434artifact tests); phase/recovery49 OK28.848s;15 D4 mutations killed by assertions with source unchanged;4 harness controls OK0.758s. |
-| Next | Reviewer recovery ruling for corrected harness after e4acae6 attempt: DESIGN10 complete/healthy sentinel, service31 observations retained with79 not run after confirmed hook-scope/QueueBusy fixture errors. Two added red-to-green controls,21 controls OK2.004s; product unchanged4968e47. No new timing run, later groups or class repeats until ruling. See TICKET-20-D4-MEASUREMENT-RESULTS.md. R3/operator/capacity/activation/push held. |
+| Next | Recovery cleared with mandatory real SMOKE:1 sample for each19 harness selections, stop first harness error, retain rows, timing not counted.22 controls pass; product unchanged4968e47. If smoke passes, run NEW190 production observations sequentially (110 service,60 read/import,20 summary), then H2-verified eligible repeats only. Old31-row instrument-invalid attempt and valid DESIGN10 retained. No R3/operator/capacity/activation/push. |
 
 ## Current handoff
 

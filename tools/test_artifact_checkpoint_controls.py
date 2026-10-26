@@ -403,6 +403,20 @@ class CheckpointControlTests(unittest.TestCase):
             self.assertEqual(len(case.artifacts.diagnostic_store._data['diagnostics']),1)
         finally:case.doCleanups()
 
+    def test_real_smoke_stops_first_setup_error_and_does_not_count_timing(self):
+        before=set((ROOT/'.audit-tmp').glob('d4-smoke-*'))
+        with patch.object(a,'setup',side_effect=RuntimeError('synthetic setup fault')) as setup,contextlib.redirect_stdout(io.StringIO()):
+            result=a.production_gate(1,smoke=True)
+        self.assertEqual(result,1);self.assertEqual(setup.call_count,1)
+        created=set((ROOT/'.audit-tmp').glob('d4-smoke-*'))-before
+        try:
+            report=json.loads(next(path for path in created if path.suffix=='.json').read_text(encoding='utf-8'))
+            self.assertTrue(report['smoke_not_counted']);self.assertFalse(report['timing_is_evidence'])
+            self.assertTrue(report['smoke_aborted_on_first_harness_error']);self.assertEqual(len(report['samples']),1)
+            self.assertNotIn('pass',report['samples'][0]);self.assertFalse(report['machine_sentinel']['running'])
+        finally:
+            for path in created:path.unlink()
+
 
 if __name__ == '__main__':
     unittest.main()

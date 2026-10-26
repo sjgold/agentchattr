@@ -136,3 +136,22 @@ Two added controls observed both errors before fixing them;21 controls then pass
   "tools/verify_artifact_machine_repeats.py": "742fe377da6b837da021e5695b8c7b99bb5a8b09f55a5a3485423fc7c9d9269e"
 }
 ```
+
+## Reviewer recovery clearance with mandatory real smoke
+
+Reviewer independently confirmed004000cf product unchanged and21 controls green, retained DESIGN10 as valid, and permanently classified the stopped31-row attempt as INSTRUMENT-INVALID. Before the new190-observation sequence, run one real sample for each of the19 service/facade/import/summary selections. --smoke explicitly labels every row SMOKE/not counted/timing_is_evidence=false, removes pass comparators, and aborts on the first setup/instrument/functional failure. Timings in smoke are not evidence. This uses the actual corrected harness paths and sentinel, not synthetic stand-ins. A smoke defect requires a reproducing control, repair/refreeze and another smoke before acceptance samples.
+
+The corrected candidate-only hook and separate managed peer seat remain permanent controls. Added a control proving a real smoke invocation stops after one injected setup failure, closes its sentinel, retains the failure row and makes no timing claim:22 controls OK2.469s. Product remains frozen4968e47. After a successful complete19-selection smoke, run the cleared190 production observations in service110, facade/read/import60, summary20 order; eligible class repeats only after the full sequence.
+
+### Smoke-capable frozen tool hashes
+
+```json
+{
+  "tools/artifact_measurement_support.py": "729a8ab083201fef1a017431287c1c1d3b9bb915be81a4fe6c03d7cae0cb6177",
+  "tools/profile_artifact_authority_phases.py": "a815ff0a4fd34879a341169c92a585faade402593d97d67860a2e112371f388b",
+  "tools/measure_artifact_diagnostics.py": "b5ce580b283ebc8fdabdce00ad123926173c64df84376a71ff772f8886ce4ba6",
+  "tools/profile_artifact_diagnostics.py": "2f4f3a47ff9cfbd41fd21aecdd07ed1f10cb7aa3780c1deb9f3ab4e7e34d0ce2",
+  "tools/test_artifact_checkpoint_controls.py": "b2bbccc6c18913227e80da9a7c60b22c4a9efff5209eb1676a618a19a2ed7b3e",
+  "tools/verify_artifact_machine_repeats.py": "742fe377da6b837da021e5695b8c7b99bb5a8b09f55a5a3485423fc7c9d9269e"
+}
+```

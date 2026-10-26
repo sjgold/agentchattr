@@ -341,6 +341,7 @@ def main():
     parser.add_argument('--check-plan', action='store_true')
     parser.add_argument('--samples', type=int, default=10)
     parser.add_argument('--class',dest='class_name')
+    parser.add_argument('--smoke',action='store_true')
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--full-gate', action='store_true')
     modes.add_argument('--production-gate', action='store_true')
@@ -363,13 +364,13 @@ def main():
             storage.ArtifactStore.__new__(storage.ArtifactStore)._import_metadata(large)
             print('Pure structural-ledger/import-plan validation passed; no measured holds or file writes.')
         return 0
-    if args.samples < 10:
-        parser.error('At least10 independent samples per phase are required')
+    if args.samples < (1 if args.smoke else 10):
+        parser.error('At least10 independent samples required, or explicit --smoke with1+')
     if not hasattr(storage, 'ArtifactDiagnosticStore'):
         parser.error('R2 owner is not implemented; measurement unavailable, not a red test')
     if args.production_gate:
         from profile_artifact_authority_phases import production_gate
-        return production_gate(args.samples, facade=True,class_name=args.class_name)
+        return production_gate(args.samples, facade=True,class_name=args.class_name,smoke=args.smoke)
     parser.error('Historical in-boundary R2 modes are archived under D4; select --production-gate (or --check-plan for arithmetic only)')
     if args.design_checkpoint:
         return design_checkpoint(args.samples)

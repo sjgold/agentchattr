@@ -529,7 +529,11 @@ def verify_frozen_product(hashes):
     if hashes!=expected:raise RuntimeError('Product hash differs from frozen4968 receipt; measurement refused')
 
 
-def production_gate(count, *, facade=False, supplemental=False, attribution=False, class_name=None):
+class _SmokeAbort(BaseException):
+    pass
+
+
+def production_gate(count, *, facade=False, supplemental=False, attribution=False, class_name=None, smoke=False):
     """Separate acceptance mode. Historical DESIGN receipts are never relabeled."""
     from measure_artifact_diagnostics import setup as diagnostic_setup, body, record as diagnostic_record, import_gates
     from tests.test_artifact_diagnostic_owner import ArtifactDiagnosticOwnerTests
@@ -541,8 +545,8 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
     if class_name and facade and class_name not in ('heavy','summary','request_diagnostics','structural_read','import_full','import_held'):
         raise ValueError('Unknown facade/import class')
     if facade and class_name in ('import_full','import_held'):kinds=()
-    destination = ROOT / '.audit-tmp' / (('d4-design-attribution-' if attribution else 'd4-production-') + ('reads-imports-' if facade else 'summary-' if supplemental else 'service-') + uuid.uuid4().hex + '.json')
-    result = {'kind': 'D4 DESIGN admit_saved A attribution' if attribution else 'D4 PRODUCTION acceptance gate', 'samples': [], 'phase_observations': [],
+    destination = ROOT / '.audit-tmp' / (('d4-smoke-' if smoke else 'd4-design-attribution-' if attribution else 'd4-production-') + ('reads-imports-' if facade else 'summary-' if supplemental else 'service-') + uuid.uuid4().hex + '.json')
+    result = {'kind': 'SMOKE, not counted; timing is not evidence' if smoke else 'D4 DESIGN admit_saved A attribution' if attribution else 'D4 PRODUCTION acceptance gate', 'samples': [], 'phase_observations': [],
         'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
         'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
             for name in ('artifact_store.py','artifact_service.py','mcp_bridge.py','api_seats.py')},
@@ -569,8 +573,13 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
     receipt=MeasurementReceipt(destination,result)
     def retain(row=None):
         if row is not None:
+            if smoke:
+                row={**row,'smoke_not_counted':True,'timing_is_evidence':False}
+                row['smoke_harness_ok']=not (row.get('error') or row.get('instrument_errors') or row.get('functional_failure') or row.get('exception_unexpected') or row.get('peer_errors') or any(any(x) for x in row.get('B_authority_owned',[])))
+                row={key:value for key,value in row.items() if key not in ('pass','hard_pass','margin_pass','normal_pass')}
             if attribution:row={key:value for key,value in row.items() if key not in ('pass','hard_pass','margin_pass')}
             receipt.append('samples',row);print(json.dumps(row),flush=True)
+            if smoke and not row['smoke_harness_ok']:raise _SmokeAbort()
         else:receipt.save()
     retain()
     try:
@@ -691,10 +700,17 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
                         row=import_gates(number,existing,large,mode,checkpoint=lambda observation:receipt.append('phase_observations',{**observation,'sample':number}))
                         row['pass']=row['normal_pass'];retain(row)
                     except Exception as error: retain({'phase':'import_'+mode,'sample':number,'error':type(error).__name__,'pass':False})
+    except _SmokeAbort:
+        result['smoke_aborted_on_first_harness_error']=True
     finally:
         receipt.close()
     result['instrument_valid']=instrument_valid(result['machine_sentinel'])
     expected=(1 if class_name or attribution else 2 if supplemental else 6 if facade else 11)*count
+    if smoke:
+        result['smoke_not_counted']=True;result['timing_is_evidence']=False;result['acceptance_claim']=False
+        result['smoke_harness_ok']=(len(result['samples'])==expected and all(row.get('smoke_harness_ok') for row in result['samples']) and result['instrument_valid'])
+        retain();print(json.dumps({'receipt':str(destination),'smoke_harness_ok':result['smoke_harness_ok'],'rows':len(result['samples'])}),flush=True)
+        return 0 if result['smoke_harness_ok'] else 1
     if attribution:
         result['comparators_only']=True;result['acceptance_claim']=False
         result['measurement_complete']=len(result['samples'])==expected and not any('error' in row for row in result['samples'])
@@ -713,15 +729,16 @@ def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=10)
     parser.add_argument('--class',dest='class_name')
+    parser.add_argument('--smoke',action='store_true')
     modes=parser.add_mutually_exclusive_group()
     modes.add_argument('--production-gate', action='store_true')
     modes.add_argument('--summary-gate', action='store_true')
     modes.add_argument('--design-attribution', action='store_true')
     args = parser.parse_args()
-    if args.samples < 10:
-        parser.error('At least 10 fresh samples per caller are required')
+    if args.samples < (1 if args.smoke else 10):
+        parser.error('At least10 fresh samples required, or explicit --smoke with1+')
     if args.production_gate or args.summary_gate or args.design_attribution:
-        return production_gate(args.samples,supplemental=args.summary_gate,attribution=args.design_attribution,class_name=args.class_name)
+        return production_gate(args.samples,supplemental=args.summary_gate,attribution=args.design_attribution,class_name=args.class_name,smoke=args.smoke)
     parser.error('Historical C-probe mode is archived; select --production-gate, --summary-gate or --design-attribution')
 
 
