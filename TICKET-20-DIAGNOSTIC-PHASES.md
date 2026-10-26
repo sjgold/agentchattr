@@ -276,3 +276,7 @@ Harness control checks (synthetic mocked rows, NO real measurement):90 authority
 ## G1-G5 final pre-run correction
 
 Reviewer cleared ONE design run after these harness-only corrections, no re-review required before execution. [Final delta, hashes and retained checkpoint receipts](TICKET-20-MERGED-DESIGN-CHECKPOINT.md). The G1-G5 protocol there supersedes the earlier three-phase facade list: attached/unattached request_diagnostics is measured before structural replacement; provenance is detected, body retries counted and the synthetic test is retained. No source/fixture migration or D4 gate is authorized.
+
+## Merged checkpoint result, awaiting D4 decision
+
+The authorized builder DESIGN collection at dd271d1 is complete: [all130 rows, provenance, G1-G5 delta and comparisons](TICKET-20-MERGED-DESIGN-CHECKPOINT.md). Authority raw A maxima <=0.165248; combined brief/parent median0.159700/max0.165012. Heavy diagnostic hold median0.208047/max1.103438 and peer1.103584 (sample10, no retry/error, retained NORMAL comparator exceedance). Structural hold max0.255557. These are design observations, not a passing gate. Root recommends retaining D4 direction; reviewer contract decision before reds/source. No new experiment, optimization, quota or retention-budget change follows.

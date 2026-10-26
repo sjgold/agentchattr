@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; checkpoint G1-G5 freeze, one DESIGN run authorized)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; merged DESIGN checkpoint complete, reviewer D4 decision next)
 
 ## At a glance
 
@@ -17,18 +17,15 @@
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 cleared, R2 phase-split design under review after a failed gate. No whole-ticket acceptance or activation. |
-| Latest checks | Merged candidate: A1 global/helper and six method ASTs match closed A1; R2 hierarchy/persist/schema retained; service/MCP/A1 tests byte-match. 329 Python files compile. Focused 99 tests in 13.267 s: 97 pass, 2 known R2 diagnostic-fixture KeyErrors, no assertion failures/skips. No timing/full run. |
-| Next | Working candidate is codex/ticket-20-r2-on-a1 in its NEW Traycer worktree, merge parents closed A1 2c34bbfb and preserved R2 be6fd652. Reviewer accepted merge356a26d; C1-C8 checkpoint tools/docs revised, reviewer cleared ONE DESIGN run after final G1-G5 corrections. R2 remains unaccepted; fixture migration is separate. No timing/full, D4 source/reds, R3/operator/capacity/activation or push. |
+| Latest checks | Builder DESIGN pin dd271d1:90authority/40facade rows, clean source hashes/detected real writer, zero retries/errors. Combined A median0.159700/max0.165012; heavy hold max1.103438/peer1.103584 sample10 retained NORMAL comparator exceedance. No acceptance or new suite/full run. |
+| Next | Reviewer D4 contract decision from complete merged DESIGN receipt. Active branch codex/ticket-20-r2-on-a1, worktree of same name; source unchanged. No D4 reds/source or R2 migration/N work until next ruling. R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 
 - Approved merge executed in C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-r2-on-a1, branch codex/ticket-20-r2-on-a1, starting closed A1 2c34bbfb and merging preserved R2 be6fd652. Both original histories remain intact. Exactly one closed A1 evidence/expiry block, R2 hierarchy/schema 2 and D1/D2 retained. No semantic conflict required a new algorithm. See [conflict resolution and proofs](TICKET-20-R2-ON-A1-MERGE.md).
 - Focused builder selection 99 tests / 13.267 s: 97 pass, two expected R1 fixture KeyErrors at test_artifact_record_bounds.py:322/696 because R2 diagnostics moved out of the authoring index. A1 36, MCP 3 and R2 owner/integration 42 all pass; R1 16 pass, 2 error. No tests migrated in this merge, no R2 acceptance inferred. All 329 tracked Python files compile. Capability remains empty. No timing or full discovery run.
-- Next owner reviewer: receive final G1-G5 diff/hashes with results; root performs the single merged-base DESIGN checkpoint now authorized, before D4 reds/source. D4 still needs diagnostic IO outside the authority boundary by unchanged call-path inference. A1 accepted healthy authority baseline is reviewer max 0.1832 s, other A maxima <=0.169 s; those numbers belong to the isolated cleared R1/A1 base. Require one merged-base DESIGN measurement before committing to the split, not a gate or implicit acceptance. R2 fixture migration, N additions and final gates remain separate work. R3 before operator; no push authorized.
-
-- Checkpoint correction C1-C8: DESIGN-only facade mode excludes imports and acceptance fields; same authority population for reports; both tools incrementally retain phase/error rows, retry counts and hashes, continue remaining fixtures/callers. No checkpoint run. Four requested fixture modules37/49.463s:34pass/3 existing store-projection KeyErrors (quarantine_ids403/505, overflow_count444), separate R2 migration. Admission/channel/import benchmark passed; benchmark max0.211167200 is in-suite only. Synthetic orchestration checks and compile passed, no real latency run. No product/test fixture changed. See final protocol section of TICKET-20-DIAGNOSTIC-PHASES.md.
-
-- G1-G5 final harness freeze: attached/unattached request read, detected provenance/fixture hashes/dirty status, body retry counting, separate cleanup errors and retained synthetic controls3PASS0.639s. [Checkpoint tracker](TICKET-20-MERGED-DESIGN-CHECKPOINT.md). Next root runs authority10percaller then facade10perphase sequentially, same pin, no suites/production edits/fixture migrations. All raw results retained, reviewer D4 decision afterward.
+- Next owner reviewer: decide D4 contract from [merged DESIGN checkpoint](TICKET-20-MERGED-DESIGN-CHECKPOINT.md). ONE sequential authority90 then facade40 run at dd271d158ea6a70506aa24ecbbcec8fdffed7202, both tree-clean/provenance verified, zero errors/retries/peer errors, all original rows retained. Raw A max0.165247 overall; combined0.165012. Facade heavy median0.208047/max1.103438 and peer1.103584 sample10, confirmed independently against log, retained NORMAL exceedance of0.270 comparator with cause unknown. Summary max0.046193, request read0.000880, structural0.255557. No resample, suite/full or import gate. Not R2/D4 acceptance.
+- G1-G5 harness-only diff and new hashes plus both raw JSON receipts are embedded in the checkpoint tracker and mirrored artifact. Warm caches/no cold-restart disclosure, untimed summary prerequisite and timed body decode, larger authoring shape/imported-unattached diagnostic metadata context all retained. Recommendation to reviewer: diagnostic split remains necessary; healthy A1 authority is no longer the capacity blocker in this fixture. D4 reds/source await ruling. Separate R2 fixture migration/N additions stay pending; R3/operator/capacity/activation/push held.
 
 ## Earlier correction-review pointers (historical)
 
