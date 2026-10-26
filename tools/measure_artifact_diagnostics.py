@@ -232,7 +232,7 @@ def import_gates(number,existing,large,mode,checkpoint=None):
                                       'import_'+mode,.300,checkpoint=checkpoint)
         if row['exception_type'] is None:
             assert result['created_requests']==128 and result['created_versions']==128
-        row.update(sample=number,portable_envelope_bytes=4194304,existing_lineages=100,existing_versions=100,
+        row.update(sample=number,fixture_identity=case.root.name,portable_envelope_bytes=4194304,existing_lineages=100,existing_versions=100,
             requests=128,versions=128,diagnostic_mode=mode,diagnostic_objects=1024,diagnostic_body_bytes=8388608,
             diagnostic_read_guard=True,includes_parse=True,includes_full_validation=True)
         return row
@@ -340,6 +340,7 @@ def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--check-plan', action='store_true')
     parser.add_argument('--samples', type=int, default=10)
+    parser.add_argument('--class',dest='class_name')
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--full-gate', action='store_true')
     modes.add_argument('--production-gate', action='store_true')
@@ -368,7 +369,7 @@ def main():
         parser.error('R2 owner is not implemented; measurement unavailable, not a red test')
     if args.production_gate:
         from profile_artifact_authority_phases import production_gate
-        return production_gate(args.samples, facade=True)
+        return production_gate(args.samples, facade=True,class_name=args.class_name)
     parser.error('Historical in-boundary R2 modes are archived under D4; select --production-gate (or --check-plan for arithmetic only)')
     if args.design_checkpoint:
         return design_checkpoint(args.samples)

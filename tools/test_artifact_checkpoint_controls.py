@@ -278,6 +278,104 @@ class CheckpointControlTests(unittest.TestCase):
             state=sentinel.snapshot();self.assertEqual(state['errors'],[]);self.assertGreaterEqual(state['cycles'],1)
             self.assertFalse(sentinel.scratch.exists())
 
+    def test_h1_aggregate_keeps_all_slow_rows_and_bounds_fast_detail(self):
+        from artifact_measurement_support import IntervalAggregate
+        values=IntervalAggregate()
+        for n in range(1000):values.append({'seconds':.3 if n in (111,555) else .001,'mutation':n==333})
+        details=values.details();indices={row['sequence'] for row in details}
+        self.assertTrue({111,555,333,0,1,2,997,998,999}<=indices)
+        self.assertLessEqual(len(details),10);self.assertEqual(values.summary()['count'],1000)
+        self.assertEqual(values.summary()['max_seconds'],.3)
+
+    def test_h3_strict_threshold_every_veto_and_instrument_health(self):
+        from copy import deepcopy
+        from artifact_measurement_support import classify_misses,instrument_valid
+        base={'caller':'x','pass':False,'gate_intervals':[{'start_monotonic_ns':1,'end_monotonic_ns':300000001,'seconds':.3,'limit_seconds':.216}]}
+        stall={'start_monotonic_ns':0,'end_monotonic_ns':500000001,'seconds':.500000001}
+        state={'gaps_over_100ms':[stall],'errors':[],'cycles':1,'running':False}
+        self.assertEqual(classify_misses([deepcopy(base)],state),['x'])
+        for label,change in [('error',{'error':'failure'}),('peer',{'peer_errors':['x']}),('instrument',{'instrument_errors':['x']}),
+            ('coverage',{'instrument_errors':['Missing B overlap']}),('functional',{'functional_failure':True}),
+            ('retry',{'replace_retries':{'A':1}}),('ownership',{'B_authority_owned':[[True,False,False]]})]:
+            with self.subTest(veto=label):
+                row={**deepcopy(base),**change};self.assertEqual(classify_misses([row],state),[])
+                self.assertIs(row['pass'],False)
+        self.assertTrue(instrument_valid(state))
+        for change in ({'errors':['x']},{'cycles':0},{'running':True}):self.assertFalse(instrument_valid({**state,**change}))
+        edge={**deepcopy(base),'gate_intervals':[{'start_monotonic_ns':500000000,'end_monotonic_ns':800000000,'seconds':.3,'limit_seconds':.216}]}
+        classify_misses([edge],state)
+        self.assertEqual(edge['miss_classifications'][0]['overlapping_sentinel_stalls'][0]['overlap_nanoseconds'],1)
+
+    def test_h2_complete_repeat_verifier_refuses_each_invalid_repeat(self):
+        from copy import deepcopy
+        from artifact_measurement_support import verify_machine_repeats
+        health={'errors':[],'cycles':1,'running':False,'gaps_over_100ms':[]}
+        original={'product_pin':'pin','source_sha256':{'source':'a'},'tool_sha256':'b','fixture_and_support_sha256':{'fixture':'c'},
+            'machine_sentinel':health,'samples':[{'caller':'x','pass':False,'repeat_eligible_under_policy':True,'whole_call':{'end_monotonic_ns':100}}]}
+        repeat={**deepcopy(original),'samples':[{'caller':'x','pass':True,'fixture_identity':str(i),
+            'whole_call':{'start_monotonic_ns':200+i,'end_monotonic_ns':300+i}} for i in range(10)]}
+        self.assertTrue(verify_machine_repeats(original,{'x':repeat})['machine_attributed_repeat_policy_satisfied'])
+        for change in ('count','miss','stall','pin','hash','fixture','old','health'):
+            with self.subTest(change=change):
+                bad=deepcopy(repeat)
+                if change=='count':bad['samples'].pop()
+                elif change=='miss':bad['samples'][0]['pass']=False
+                elif change=='stall':bad['machine_sentinel']['gaps_over_100ms']=[{'start_monotonic_ns':0,'end_monotonic_ns':600000000,'seconds':.6}]
+                elif change=='pin':bad['product_pin']='different'
+                elif change=='hash':bad['source_sha256']={'source':'different'}
+                elif change=='fixture':bad['samples'][0]['fixture_identity']=bad['samples'][1]['fixture_identity']
+                elif change=='old':bad['samples'][0]['whole_call']['start_monotonic_ns']=99
+                else:bad['machine_sentinel']['running']=True
+                self.assertFalse(verify_machine_repeats(original,{'x':bad})['machine_attributed_repeat_policy_satisfied'])
+        self.assertIs(original['samples'][0]['pass'],False)
+
+    def test_h3_proxy_restores_aliases_on_error_and_queue_absence_fails_closed(self):
+        import threading
+        def fixture(queue_mode):
+            lock=threading.RLock();case=SimpleNamespace(engine=SimpleNamespace(_lock=lock),catalog=SimpleNamespace(_lock=threading.RLock()),artifacts=SimpleNamespace(_lock=threading.RLock()))
+            @contextlib.contextmanager
+            def boundary():
+                with case.engine._lock,case.catalog._lock:yield
+            case.service=SimpleNamespace(_boundary=boundary,require_active=lambda channel:channel)
+            queue=None if queue_mode=='none' else SimpleNamespace(_lock=threading.RLock() if queue_mode=='different' else lock)
+            case.authority=SimpleNamespace(agents=SimpleNamespace(queue=queue),_persist_diagnostic_intent=lambda x:x,_settle_diagnostic_intent=lambda *args:None)
+            return case,lock,queue
+        for mode in ('none','different'):
+            case,lock,queue=fixture(mode);queue_lock=queue._lock if queue else None
+            with self.assertRaises(RuntimeError):a.production_observe(case,lambda:None)
+            self.assertIs(case.engine._lock,lock)
+            if queue:self.assertIs(queue._lock,queue_lock)
+        case,lock,queue=fixture('same')
+        row,_=a.production_observe(case,lambda:(_ for _ in ()).throw(ValueError('synthetic action failure')))
+        self.assertEqual(row['exception_type'],'ValueError');self.assertIs(case.engine._lock,lock);self.assertIs(queue._lock,lock)
+
+    def test_h5_final_classification_merge_preserves_false_and_progress_is_atomic(self):
+        import tempfile
+        from artifact_measurement_support import MeasurementReceipt,classify_misses
+        class FakeSentinel:
+            def __init__(self,parent,notify):self.data={'errors':[],'cycles':1,'running':False,'gaps_over_100ms':[]}
+            def snapshot(self):return json.loads(json.dumps(self.data))
+            def start(self):pass
+            def close(self):pass
+        with tempfile.TemporaryDirectory(dir=ROOT/'.audit-tmp') as directory:
+            path=Path(directory)/'receipt.json';report={'samples':[],'phase_observations':[]}
+            receipt=MeasurementReceipt(path,report,sentinel_factory=FakeSentinel)
+            original=path.read_bytes();replace=receipt.native_replace
+            receipt.native_replace=lambda *args:(_ for _ in ()).throw(OSError('synthetic failed replace'))
+            with self.assertRaises(OSError):receipt.append('samples',{'caller':'x','pass':False,'gate_intervals':[]})
+            self.assertEqual(path.read_bytes(),original)
+            receipt.native_replace=replace;receipt.close()
+            classify_misses(report['samples'],report['machine_sentinel']);receipt.save()
+            self.assertIs(json.loads(path.read_text(encoding='utf-8'))['samples'][0]['pass'],False)
+            self.assertFalse(path.with_suffix('.progress.tmp').exists())
+
+    def test_h6_frozen_product_mismatch_refuses(self):
+        from hashlib import sha256
+        hashes={name:sha256((ROOT/name).read_bytes()).hexdigest() for name in ('artifact_store.py','artifact_service.py','api_seats.py','mcp_bridge.py')}
+        a.verify_frozen_product(hashes)
+        hashes['artifact_store.py']='wrong'
+        with self.assertRaises(RuntimeError):a.verify_frozen_product(hashes)
+
 
 if __name__ == '__main__':
     unittest.main()

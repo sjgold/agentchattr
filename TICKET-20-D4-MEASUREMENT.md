@@ -1,6 +1,6 @@
 # D4 measurement revision after the first production MISS
 
-Status: reviewer authorized harness-only revisions; product bytes remain4968e47. The next run is HELD until the tool/doc freeze is reviewed. Original110 samples, the1.166355s A miss, and the earlier1.103s facade miss remain unchanged and unattributed.
+Status: reviewer authorized harness-only revisions; product bytes remain4968e47. Reviewer CLEARED the freeze after H1-H6 harness edits; those edits and controls are now complete. The fixed-order run is authorized. Original110 samples, the1.166355s A miss, and the earlier1.103s facade miss remain unchanged and unattributed.
 
 ## Ordered work
 
@@ -74,6 +74,43 @@ That is10 DESIGN attribution samples followed by190 fresh production observation
   "tools/measure_artifact_diagnostics.py": "8e1955ef993380d4cd78dc148a648ea446c858660de85adade4f52e91418d4ab",
   "tools/profile_artifact_diagnostics.py": "2f4f3a47ff9cfbd41fd21aecdd07ed1f10cb7aa3780c1deb9f3ab4e7e34d0ce2",
   "tools/test_artifact_checkpoint_controls.py": "7f5baac4a5a56d44208a4a149c36247e054212dff5b3620776a51a871ab66301",
+  "artifact_store.py": "6c92e79837400e79444353d1a10c6679ac6761db07bb8a2f48062fd75a212f1d",
+  "artifact_service.py": "2a13f084071e6e12db61fcb6fdbeccfde030d5ffe1bd9add33422b297fd6e6d7",
+  "api_seats.py": "a638aa9711b3b25e522654cee68fb91000e1349040cc2bd62fef034ed665c13d",
+  "mcp_bridge.py": "265dd38d36be915b8df6040222cac4de878ef9f8d498127cf99c1b0c253141b8"
+}
+```
+
+## H1–H6 final edits under reviewer clearance
+
+Reviewer cleared48b8b086 for the fixed-order run after these edits, with no new review round. Product remains4968e47. All previously failed samples remain unchanged; the new policy is forward-only.
+
+- H1: peer checks now sleep1ms. Peer and engine-hold collectors retain count/max, first/last3 details, every mutation and EVERY interval>100ms. Gate comparators use the retained maxima/all slow intervals, so none beyond0.216/0.270 is omitted. The receipt states this aggregation. B-only mutation for diagnostic classes and first-iteration mutation for healthy classes are exact; repeated boundary users span A/B/C. No B rendezvous.
+- H2: --class selects one service kind, facade phase or import mode for a complete fresh10+ sample repeat. Facade repeat fixtures rebuild prerequisite phase/peer state without measuring or emitting other classes. tools/verify_artifact_machine_repeats.py checks original eligibility, same pin/source/tool/fixture hashes,10+ unique new fixtures with later timestamps, zero repeat misses and zero overlapping sentinel gaps>0.5s. It prints original/repeat counts and maxima side by side, retains original pass=false and never claims D4 acceptance. No manual waiver or automatic exclusion.
+- H3: coordinated queue absence now fails closed, as does a mismatched cached lock. Controls cover19 cases including strict0.500000001 vs0.5s,1ns edge overlap, every veto, mixed attribution, sentinel error/zero cycles/still running, final classified merge retainingfalse, alias restoration on error and atomic-header failure. Run: PYTHONPATH=.;tools with the main interpreter, python tools/test_artifact_checkpoint_controls.py. Latest result19 OK1.771s; product/full tests not repeated.
+- H4: diagnostic-class mutation occurs in B ONLY; healthy-class mutation begins with the first peer iteration. Repeated require_active users cover A/B/C. No claim of mutation in all three phases is made.
+- H5: sentinel shares both the GIL and the volume with product IO. A genuinely slow product fsync/replace can therefore also receive the policy's temporal machine-attributed label. The complete clean repeat requirement is the protection, not a causal diagnosis. Even1ns edge overlap and margin-only misses0.216–0.270 can be attributed; rows now record overlap nanoseconds and miss-start/end offsets relative to the stall. Facade persist=False wall latency is report-only, gated through peers (including their engine holds). Journal updates flush; close fsyncs the journal. Progress/final JSON now use native temp-write+replace under the receipt lock, so a failed replace preserves the previous header. No claim of per-row fsync durability.
+- H6: every run prints the full refreshed hash table below, plus stores it and the H1–H6 diff summary in the receipt. It aborts before sample/fixture work if any of the four product hashes differs from the frozen4968 receipt. Provenance tests still check native fsync/replace and D1/D2 before wrappers.
+
+Repeat example, only after an eligible machine-attributed class appears:
+
+```powershell
+python tools/profile_artifact_authority_phases.py --production-gate --class admit_saved --samples 10
+python tools/verify_artifact_machine_repeats.py --original original.json --repeat admit_saved=repeat.json
+```
+
+For heavy/summary/request_diagnostics/structural_read/import_full/import_held, use the facade tool's --production-gate --class. For summary_cli/summary_reject, use --summary-gate --class. A repeat receipt contains exactly that class, preserving fresh fixtures and frozen hashes. Every original miss stays in its original receipt. If a fresh gate has an unattributed miss, it returns to design; no class repeat can clear that miss.
+
+### Refreshed startup table after H1–H6
+
+```json
+{
+  "tools/artifact_measurement_support.py": "729a8ab083201fef1a017431287c1c1d3b9bb915be81a4fe6c03d7cae0cb6177",
+  "tools/profile_artifact_authority_phases.py": "2644417b36c28a8fb5b6fd7d0cdfee0565d6edcb8315d3401fdaa707ce9f517c",
+  "tools/measure_artifact_diagnostics.py": "538ba1be4c07159caddef96c0e6c37f636925672be6afaf945f0cb174206767b",
+  "tools/profile_artifact_diagnostics.py": "2f4f3a47ff9cfbd41fd21aecdd07ed1f10cb7aa3780c1deb9f3ab4e7e34d0ce2",
+  "tools/test_artifact_checkpoint_controls.py": "10baf26ecc62eadf8cc099b69955a60840e3e49759ea5d87ab90983f4beda4a0",
+  "tools/verify_artifact_machine_repeats.py": "742fe377da6b837da021e5695b8c7b99bb5a8b09f55a5a3485423fc7c9d9269e",
   "artifact_store.py": "6c92e79837400e79444353d1a10c6679ac6761db07bb8a2f48062fd75a212f1d",
   "artifact_service.py": "2a13f084071e6e12db61fcb6fdbeccfde030d5ffe1bd9add33422b297fd6e6d7",
   "api_seats.py": "a638aa9711b3b25e522654cee68fb91000e1349040cc2bd62fef034ed665c13d",

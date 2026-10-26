@@ -70,7 +70,7 @@ def checkpoint_provenance(tool):
         and getattr(module, '__file__', None) and Path(module.__file__).resolve().is_relative_to(ROOT)})
     extra = ['sealed_result_io.py', 'artifact_worker.py', *fixtures,
         'tools/artifact_measurement_support.py','tools/profile_artifact_authority_phases.py',
-        'tools/measure_artifact_diagnostics.py']
+        'tools/measure_artifact_diagnostics.py','tools/verify_artifact_machine_repeats.py']
     dirty = subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True)
     return {'fsync_mocked': not inspect.isbuiltin(os.fsync),
             'filesystem_primitives_verified_unpatched_before_counters': True,
@@ -370,10 +370,10 @@ def production_observe(case, action, *, persist=True, healthy=False, checkpoint=
     from contextlib import contextmanager
     import artifact_store as storage_module
     import artifact_service as service_module
-    from artifact_measurement_support import interval,ObservedRLock,PhaseAttribution,overlaps
+    from artifact_measurement_support import interval,ObservedRLock,PhaseAttribution,overlaps,IntervalAggregate
     boundary=case.service._boundary;writer=case.authority._persist_diagnostic_intent
     settle=case.authority._settle_diagnostic_intent;local=threading.local()
-    main_thread=threading.get_ident();phase=['A'];holds=[];B=[];peers=[];errors=[];ownership=[];engine_holds=[]
+    main_thread=threading.get_ident();phase=['A'];holds=[];B=[];peers=IntervalAggregate();errors=[];ownership=[];engine_holds=IntervalAggregate()
     retries={'A':0,'B':0,'C':0,'between':0};entered=threading.Event();finished=threading.Event();ready=threading.Event()
     profile=PhaseAttribution(phase);instrument_errors=[]
     def peer():
@@ -390,7 +390,7 @@ def production_observe(case, action, *, persist=True, healthy=False, checkpoint=
             peers.append({**interval(start,end),'phase_at_start':current_phase,'mutation':mutation,
                 'outcome':outcome if mutation else None})
             # Scheduler yield only; no rendezvous or condition on the measured phase.
-            time.sleep(0)
+            time.sleep(.001)
     @contextmanager
     def observed_boundary():
         depth=getattr(local,'depth',0);local.depth=depth+1;completed=None
@@ -438,9 +438,9 @@ def production_observe(case, action, *, persist=True, healthy=False, checkpoint=
             observed_engine_lock=ObservedRLock(original_engine_lock,engine_observed)
             stack.enter_context(patch.object(case.engine,'_lock',observed_engine_lock))
             queue=getattr(getattr(case.authority,'agents',None),'queue',None)
-            if queue is not None:
-                if queue._lock is not original_engine_lock:raise RuntimeError('Queue/engine lock alias differs before instrumentation')
-                stack.enter_context(patch.object(queue,'_lock',observed_engine_lock))
+            if queue is None:raise RuntimeError('Instrument error: coordinated queue is absent')
+            if queue._lock is not original_engine_lock:raise RuntimeError('Instrument error: queue/engine lock alias differs')
+            stack.enter_context(patch.object(queue,'_lock',observed_engine_lock))
             stack.enter_context(patch.object(case.service,'_boundary',observed_boundary))
             stack.enter_context(patch.object(case.authority,'_persist_diagnostic_intent',persisted))
             stack.enter_context(patch.object(case.authority,'_settle_diagnostic_intent',settled))
@@ -469,7 +469,10 @@ def production_observe(case, action, *, persist=True, healthy=False, checkpoint=
         end_call=time.perf_counter_ns();finished.set();entered.set();thread.join(timeout=30)
     if thread.is_alive():raise RuntimeError('Boundary peer did not finish')
     whole=interval(start_call,end_call)
-    peers=[row for row in peers if overlaps(row,whole)]
+    peer_aggregation=peers.summary();engine_aggregation=engine_holds.summary()
+    peer_retained_all=peers.details()
+    peers=[row for row in peer_retained_all if overlaps(row,whole)]
+    engine_holds=engine_holds.details()
     if not peers:instrument_errors.append('No peer interval overlaps this operation')
     mutations=[row for row in peers if row['mutation']]
     if peer_action is not None and not mutations:instrument_errors.append('Mutating peer was not observed')
@@ -492,7 +495,8 @@ def production_observe(case, action, *, persist=True, healthy=False, checkpoint=
     return {'holds':holds,'B_intervals':B,'B_seconds':[row['seconds'] for row in B],
         'B_authority_owned':ownership,'peer_intervals':peers,'peer_waits':[row['seconds'] for row in peers],
         'peer_max_seconds':max((row['seconds'] for row in peers),default=None),'peer_errors':errors,
-        'peer_mutations':mutations,'engine_holds':engine_holds,'gate_intervals':gate_intervals,
+        'peer_mutations':mutations,'peer_retained_detail_all':peer_retained_all,'peer_aggregation':peer_aggregation,'engine_aggregation':engine_aggregation,
+        'engine_holds':engine_holds,'gate_intervals':gate_intervals,
         'A_plus_C_seconds':sum(row['seconds'] for row in holds if row['phase'] in ('A','C')),
         'whole_call':whole,'attribution_spans':profile.rows,'attribution_inclusive_summary':profile_summary,
         'A_attributed_top_level_seconds':top_level,'A_residual_including_wrapper_overhead_seconds':A_total-top_level,
@@ -501,12 +505,26 @@ def production_observe(case, action, *, persist=True, healthy=False, checkpoint=
         'hard_pass':hard,'margin_pass':margin,'pass':margin and not any(retries.values())},value
 
 
-def production_gate(count, *, facade=False, supplemental=False, attribution=False):
+def verify_frozen_product(hashes):
+    expected={'artifact_store.py':'6c92e79837400e79444353d1a10c6679ac6761db07bb8a2f48062fd75a212f1d',
+        'artifact_service.py':'2a13f084071e6e12db61fcb6fdbeccfde030d5ffe1bd9add33422b297fd6e6d7',
+        'api_seats.py':'a638aa9711b3b25e522654cee68fb91000e1349040cc2bd62fef034ed665c13d',
+        'mcp_bridge.py':'265dd38d36be915b8df6040222cac4de878ef9f8d498127cf99c1b0c253141b8'}
+    if hashes!=expected:raise RuntimeError('Product hash differs from frozen4968 receipt; measurement refused')
+
+
+def production_gate(count, *, facade=False, supplemental=False, attribution=False, class_name=None):
     """Separate acceptance mode. Historical DESIGN receipts are never relabeled."""
     from measure_artifact_diagnostics import setup as diagnostic_setup, body, record as diagnostic_record, import_gates
     from tests.test_artifact_diagnostic_owner import ArtifactDiagnosticOwnerTests
     kinds = (('admit_saved',) if attribution else ('summary_cli','summary_reject') if supplemental else ('facade_reads',) if facade else ('brief_context', 'delivery', 'submit_cli', 'admit_saved',
         'reject_response', 'resume', 'retained_recovery', 'ack_repair', 'startup_terminal', 'healthy_brief_context', 'healthy_delivery'))
+    if class_name and not facade:
+        if class_name not in kinds:raise ValueError('Class does not belong to this mode: '+class_name)
+        kinds=(class_name,)
+    if class_name and facade and class_name not in ('heavy','summary','request_diagnostics','structural_read','import_full','import_held'):
+        raise ValueError('Unknown facade/import class')
+    if facade and class_name in ('import_full','import_held'):kinds=()
     destination = ROOT / '.audit-tmp' / (('d4-design-attribution-' if attribution else 'd4-production-') + ('reads-imports-' if facade else 'summary-' if supplemental else 'service-') + uuid.uuid4().hex + '.json')
     result = {'kind': 'D4 DESIGN admit_saved A attribution' if attribution else 'D4 PRODUCTION acceptance gate', 'samples': [], 'phase_observations': [],
         'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
@@ -518,8 +536,20 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
         'phase_definition': 'Outermost acquired main-thread boundary holds; B and C identified by private production hooks. No guard-copy or hypothetical C probe.',
         'peer_definition': 'Real independent cancel/Stop/brief mutation once, repeated require_active across A/B/C. No B handshake; interval overlap verified. DESIGN attribution uses passive peer only.',
         'limits': {'hard': .270, 'changed_hold_and_peer': .216, 'import': .300}}
+    verify_frozen_product(result['source_sha256'])
     result.update(checkpoint_provenance(__file__))
-    from artifact_measurement_support import MeasurementReceipt,classify_misses
+    result['class_selector']=class_name
+    result['aggregation']='Peer throttle1ms; count/max, first/last3, every>100ms and every mutation retained'
+    result['h1_h6_diff_summary']=['H1 throttle1ms and bounded details retaining all>100ms','H2 --class and checked paired repeats','H3 fail-closed queue alias and controls','H4 B-only mutation for diagnostic classes, first iteration for healthy','H5 overlap positions, atomic header and close-time journal fsync','H6 frozen-product guard and startup hash table']
+    result['limitations']=['Sentinel shares GIL and volume; genuine slow product fsync/replace may coincide. Complete clean class repeat is the protection.',
+        'Strict temporal overlap includes1ns edges and margin-only misses. No causal proof or exclusion.',
+        'Facade persist=False wall latency is report-only; peers and incidental engine holds are gated.',
+        'Journal flushes per update and fsyncs at close; progress JSON uses native temp+replace.']
+    freeze_files=[*result['source_sha256'],'tools/artifact_measurement_support.py','tools/profile_artifact_authority_phases.py',
+        'tools/measure_artifact_diagnostics.py','tools/profile_artifact_diagnostics.py','tools/test_artifact_checkpoint_controls.py','tools/verify_artifact_machine_repeats.py']
+    result['freeze_sha256_table']={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in freeze_files}
+    print(json.dumps({'frozen_hashes':result['freeze_sha256_table'],'tool_sha256':result['tool_sha256']}),flush=True)
+    from artifact_measurement_support import MeasurementReceipt,classify_misses,instrument_valid
     receipt=MeasurementReceipt(destination,result)
     def retain(row=None):
         if row is not None:
@@ -544,40 +574,41 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
                             prepare_measurement_peer(case,instance,(number-1+ordinal)%3))
                         row,value=production_observe(case,action,persist=persist,healthy=healthy,
                             checkpoint=checkpoint,peer_action=mutator,attribution=attribution)
-                        row.update(peer_kind=peer_kind,authoring_requests=len(store._data['requests']))
+                        row.update(peer_kind=peer_kind,authoring_requests=len(store._data['requests']),fixture_identity=case.root.name)
                         return row,value
                     if supplemental:
                         filled=diagnostic_record(store,audit,body(1023,524288).decode('ascii'))
                         first=diagnostic_record(store,audit,'distinct summary key one')
                         assert filled['kind']=='quarantine' and first['counter']==1
                     if facade:
-                        actions = [('heavy', lambda: diagnostic_record(store, audit, body(1023,524288).decode('ascii')))]
-                        for label, action in actions:
-                            row, value = observed(action,persist=False,ordinal=0)
-                            if value is None or value['kind'] != 'quarantine': row['pass']=False;row['functional_failure']=True
-                            row.update(caller=kind, phase=label, sample=number)
+                        def facade_phase(label,action,ordinal,check):
+                            if class_name is not None and class_name!=label:
+                                # Rebuild the same dependent state, without measuring another class.
+                                _,mutator=prepare_measurement_peer(case,instance,(number-1+ordinal)%3)
+                                mutator();value=action()
+                                if not check(value):raise AssertionError('Dependent fixture setup failed: '+label)
+                                return
+                            row,value=observed(action,persist=False,ordinal=ordinal)
+                            if not check(value):row['pass']=False;row['functional_failure']=True
+                            row.update(caller=kind,phase=label,sample=number)
                             retain(row)
+                        facade_phase('heavy',lambda:diagnostic_record(store,audit,body(1023,524288).decode('ascii')),0,
+                            lambda value:isinstance(value,dict) and value.get('kind')=='quarantine')
                         diagnostic_record(store,audit,'distinct summary key one')
-                        row,value = observed(lambda:diagnostic_record(store,audit,'distinct summary key two'),persist=False,ordinal=1)
-                        if value is None or value['kind'] != 'dispatch_overflow': row['pass']=False;row['functional_failure']=True
-                        row.update(caller=kind,phase='summary',sample=number);retain(row)
+                        facade_phase('summary',lambda:diagnostic_record(store,audit,'distinct summary key two'),1,
+                            lambda value:isinstance(value,dict) and value.get('kind')=='dispatch_overflow')
                         def attached_reads():
                             attached=store.request_diagnostics(audit['request_id'])
                             unattached=store.request_diagnostics(audits[0]['request_id'])
                             assert attached['available'] and unattached['available']
                             return attached
-                        row,_=observed(attached_reads,persist=False,ordinal=2)
-                        row.update(caller=kind,phase='request_diagnostics',sample=number);retain(row)
-                        ledger=ArtifactDiagnosticOwnerTests.maximum_ledger()
-                        store.diagnostic_store._persist_diagnostics(ledger)
-                        previous=store.diagnostic_store._stamp
-                        atomic_json(store.diagnostic_store.path,ledger)
+                        facade_phase('request_diagnostics',attached_reads,2,lambda value:isinstance(value,dict))
+                        ledger=ArtifactDiagnosticOwnerTests.maximum_ledger();store.diagnostic_store._persist_diagnostics(ledger)
+                        previous=store.diagnostic_store._stamp;atomic_json(store.diagnostic_store.path,ledger)
                         if store.diagnostic_store._fingerprint()==previous:
-                            info=store.diagnostic_store.path.stat()
-                            os.utime(store.diagnostic_store.path,ns=(info.st_atime_ns,info.st_mtime_ns+1000000))
-                        row,value=observed(lambda:store.diagnostics(limit=100),persist=False,ordinal=3)
-                        if value is None or value['detailed_count'] != 1024: row['pass']=False;row['functional_failure']=True
-                        row.update(caller=kind,phase='structural_read',sample=number,metadata_bytes=810186);retain(row)
+                            info=store.diagnostic_store.path.stat();os.utime(store.diagnostic_store.path,ns=(info.st_atime_ns,info.st_mtime_ns+1000000))
+                        facade_phase('structural_read',lambda:store.diagnostics(limit=100),3,
+                            lambda value:isinstance(value,dict) and value.get('detailed_count')==1024)
                         continue
                     original_packet=store.get_packet;packet_reads=[0]
                     def packet(*args,**kwargs):
@@ -642,6 +673,7 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
         if facade:
             existing=[graph(1) for _ in range(100)];large=graph(128,exact_bytes=4194304)
             for mode in ('full','held'):
+                if class_name and class_name!='import_'+mode:continue
                 for number in range(1,count+1):
                     try:
                         row=import_gates(number,existing,large,mode,checkpoint=lambda observation:receipt.append('phase_observations',{**observation,'sample':number}))
@@ -649,9 +681,8 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
                     except Exception as error: retain({'phase':'import_'+mode,'sample':number,'error':type(error).__name__,'pass':False})
     finally:
         receipt.close()
-    result['instrument_valid']=(not result['machine_sentinel']['errors'] and not result['machine_sentinel']['running']
-        and result['machine_sentinel']['cycles']>0)
-    expected=(1 if attribution else 2 if supplemental else 6 if facade else 11)*count
+    result['instrument_valid']=instrument_valid(result['machine_sentinel'])
+    expected=(1 if class_name or attribution else 2 if supplemental else 6 if facade else 11)*count
     if attribution:
         result['comparators_only']=True;result['acceptance_claim']=False
         result['measurement_complete']=len(result['samples'])==expected and not any('error' in row for row in result['samples'])
@@ -669,6 +700,7 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
 def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--samples', type=int, default=10)
+    parser.add_argument('--class',dest='class_name')
     modes=parser.add_mutually_exclusive_group()
     modes.add_argument('--production-gate', action='store_true')
     modes.add_argument('--summary-gate', action='store_true')
@@ -677,7 +709,7 @@ def main():
     if args.samples < 10:
         parser.error('At least 10 fresh samples per caller are required')
     if args.production_gate or args.summary_gate or args.design_attribution:
-        return production_gate(args.samples,supplemental=args.summary_gate,attribution=args.design_attribution)
+        return production_gate(args.samples,supplemental=args.summary_gate,attribution=args.design_attribution,class_name=args.class_name)
     parser.error('Historical C-probe mode is archived; select --production-gate, --summary-gate or --design-attribution')
 
 

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 builder regression green, frozen timing MISS; sentinel/coverage tool freeze ready for delta review)
+**Updated:** 2026-10-26 (#20 approved R2-on-A1 merge verified locally; merge independently accepted; D4 direction confirmed, D4 builder regression green, frozen timing MISS; sentinel/coverage freeze cleared after H1-H6; fixed-order measurement next)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. D4 first production timing gate MISSED; design review resumes. No whole-ticket acceptance or activation. |
 | Latest checks | Builder full1814 tests OK/four skips342.250s (221modules, includes434artifact tests); phase/recovery49 OK28.848s;15 D4 mutations killed by assertions with source unchanged;4 harness controls OK0.758s. |
-| Next | Reviewer checks TICKET-20-D4-MEASUREMENT.md and the sentinel/attribution/coverage tool freeze before any new run. Product stays4968e47; old110-sample miss retained. Thirteen harness controls pass; no new attribution/gate samples. After clearance:10 DESIGN A attribution samples, then one fresh190-observation gate in declared order. R3/operator/capacity/activation/push held. |
+| Next | Reviewer cleared48b8b086 after H1-H6. Final tool edits now complete,19 controls pass, product4968e47 unchanged. Run10 DESIGN attribution,110 service,60 facade/read/import,20 summary observations sequentially with sentinel and no suites. Eligible machine-attributed misses require complete --class repeats and the paired verifier; real misses return to design. R3/operator/capacity/activation/push held. |
 
 ## Current handoff
 

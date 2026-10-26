@@ -1,6 +1,6 @@
 """Harness-only clocks, machine-stall sentinel, receipt and lock observations."""
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from collections import deque
 import json
 import os
 from pathlib import Path
@@ -83,6 +83,25 @@ class MachineSentinel:
         self.scratch.rmdir()
 
 
+class IntervalAggregate:
+    """Bounded fast-path detail; every >100ms row and every mutation survives."""
+    def __init__(self,edge=3):
+        self.edge=edge;self.count=0;self.maximum=None;self.first=[];self.last=deque(maxlen=edge);self.slow=[]
+    def append(self,row):
+        row={**row,'sequence':self.count};self.count+=1
+        if len(self.first)<self.edge:self.first.append(row)
+        self.last.append(row)
+        if self.maximum is None or row['seconds']>self.maximum['seconds']:self.maximum=row
+        if row['seconds']>.100 or row.get('mutation'):self.slow.append(row)
+    def details(self):
+        values=self.first+list(self.last)+self.slow+([self.maximum] if self.maximum else [])
+        return sorted({row['sequence']:row for row in values}.values(),key=lambda row:row['sequence'])
+    def summary(self):
+        return {'count':self.count,'max_seconds':self.maximum['seconds'] if self.maximum else None,
+            'retained_detail_count':len(self.details()),'edge_count':self.edge,
+            'policy':'first/last3, maximum, every >100ms and every mutation; no comparator exceedance omitted'}
+
+
 class MeasurementReceipt:
     """Incremental journal plus progress header; final JSON embeds every row.
 
@@ -93,6 +112,7 @@ class MeasurementReceipt:
         self.path=Path(path);self.path.parent.mkdir(parents=True,exist_ok=True)
         self.journal=self.path.with_suffix('.events.jsonl');self.report=report
         self.lock=threading.RLock();self.sentinel=None;self.closed=False
+        self.native_open=Path.open;self.native_replace=Path.replace;self.native_fsync=os.fsync
         self.written={'samples':0,'phase_observations':0,'gaps_over_100ms':0,'errors':0}
         self.sentinel=sentinel_factory(self.path.parent,self.save)
         self.save();self.sentinel.start();self.save()
@@ -114,13 +134,18 @@ class MeasurementReceipt:
                 payload['samples']=[];payload['phase_observations']=[]
                 payload['receipt_in_progress']=True;payload['journal_counts']=dict(self.written)
                 payload['machine_sentinel']={key:value for key,value in snapshot.items() if key not in ('gaps_over_100ms','errors')}
-            self.path.write_text(json.dumps(payload,indent=2),encoding='utf-8')
+            temporary=self.path.with_suffix('.progress.tmp')
+            with self.native_open(temporary,'w',encoding='utf-8') as stream:
+                stream.write(json.dumps(payload,indent=2));stream.flush()
+            self.native_replace(temporary,self.path)
     def append(self,key,row):
         with self.lock:self.report.setdefault(key,[]).append(row);self.save()
     def close(self):
         if self.closed:return
         try:self.sentinel.close()
-        finally:self.closed=True;self.save()
+        finally:
+            with self.native_open(self.journal,'ab') as stream:stream.flush();self.native_fsync(stream.fileno())
+            self.closed=True;self.save()
 
 
 def classify_misses(rows, sentinel):
@@ -132,7 +157,10 @@ def classify_misses(rows, sentinel):
             if observation['seconds']<=observation['limit_seconds']:continue
             matching=[gap for gap in stalls if overlaps(observation,gap)]
             misses.append({'interval':observation,'classification':'machine-attributed' if matching else 'unattributed-real-miss',
-                'overlapping_sentinel_stalls':matching})
+                'overlapping_sentinel_stalls':[{**gap,
+                    'overlap_nanoseconds':min(observation['end_monotonic_ns'],gap['end_monotonic_ns'])-max(observation['start_monotonic_ns'],gap['start_monotonic_ns']),
+                    'miss_start_offset_within_stall_ns':observation['start_monotonic_ns']-gap['start_monotonic_ns'],
+                    'miss_end_offset_within_stall_ns':observation['end_monotonic_ns']-gap['start_monotonic_ns']} for gap in matching]})
         row['miss_classifications']=misses
         row['repeat_eligible_under_policy']=bool(misses) and all(m['classification']=='machine-attributed' for m in misses)
         # Error or ownership/retry failure cannot become eligible through an unrelated stall.
@@ -142,6 +170,47 @@ def classify_misses(rows, sentinel):
         if row.get('error') or row.get('exception_unexpected') or row.get('peer_errors') or row.get('instrument_errors') or row.get('functional_failure') or retry_count or ownership:
             row['repeat_eligible_under_policy']=False
     return sorted({row.get('caller',row.get('phase')) for row in rows if row.get('repeat_eligible_under_policy')})
+
+
+def instrument_valid(state):
+    return not state.get('errors') and state.get('cycles',0)>0 and state.get('running') is False
+
+
+def row_class(row):
+    if row.get('caller')=='facade_reads':return row.get('phase','setup_error')
+    return row.get('caller',row.get('phase'))
+
+
+def verify_machine_repeats(original,repeats):
+    """Return paired evidence; never mutate either run or claim D4 acceptance."""
+    originals=original['samples'];pairs=[]
+    for name in sorted({row_class(row) for row in originals if not row.get('pass',False)}):
+        failed=[row for row in originals if row_class(row)==name and not row.get('pass',False)]
+        repeat=repeats.get(name);reasons=[]
+        if not failed or not all(row.get('repeat_eligible_under_policy') for row in failed):reasons.append('Original class has an ineligible miss')
+        if not instrument_valid(original.get('machine_sentinel',{})):reasons.append('Original instrument invalid')
+        if repeat is None:reasons.append('Complete class repeat absent');rows=[]
+        else:
+            rows=repeat['samples']
+            for key in ('product_pin','source_sha256','tool_sha256','fixture_and_support_sha256'):
+                if not original.get(key) or original.get(key)!=repeat.get(key):reasons.append('Different provenance: '+key)
+            if not instrument_valid(repeat.get('machine_sentinel',{})):reasons.append('Repeat instrument invalid')
+            if len(rows)<10 or any(row_class(row)!=name for row in rows):reasons.append('Not a complete10+ sample class repeat')
+            identities=[row.get('fixture_identity') for row in rows]
+            if not all(identities) or len(set(identities))!=len(rows):reasons.append('Fresh unique fixtures not evidenced')
+            if any(not row.get('pass',False) or any(span['seconds']>span['limit_seconds'] for span in row.get('gate_intervals',[])) for row in rows):reasons.append('Repeat has misses or failures')
+            old_end=max((row.get('whole_call',{}).get('end_monotonic_ns',0) for row in originals),default=0)
+            if not old_end or any(row.get('whole_call',{}).get('start_monotonic_ns',0)<=old_end for row in rows):reasons.append('Repeat is not temporally fresh')
+            stalls=[gap for gap in repeat.get('machine_sentinel',{}).get('gaps_over_100ms',[]) if gap['seconds']>.5]
+            if any(overlaps(row.get('whole_call',{}),gap) for row in rows if row.get('whole_call') for gap in stalls):reasons.append('Repeat overlaps sentinel stall>0.5s')
+        pairs.append({'class':name,'original_samples':len([row for row in originals if row_class(row)==name]),
+            'original_misses':len(failed),'original_pass_fields_unchanged':[row.get('pass') for row in failed],
+            'repeat_samples':len(rows),
+            'original_max_interval_seconds':max((span['seconds'] for row in originals if row_class(row)==name for span in row.get('gate_intervals',[])),default=None),
+            'repeat_max_interval_seconds':max((span['seconds'] for row in rows for span in row.get('gate_intervals',[])),default=None),
+            'policy_satisfied':not reasons,'refusals':reasons})
+    return {'pairs':pairs,'machine_attributed_repeat_policy_satisfied':bool(pairs) and all(p['policy_satisfied'] for p in pairs),
+            'acceptance_claim':False}
 
 
 class ObservedRLock:
