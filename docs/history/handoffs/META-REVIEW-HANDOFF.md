@@ -2661,3 +2661,5 @@ if /i not "%~3"=="--check" pause
 exit /b 1
 
 ```
+
+Cleanup provenance: the launcher-baseline-audit SHA-256 table above is pinned to pre-cleanup commit 885a6616d643b59be9c3a586072873734d554671. Later link-only edits change that file's bytes; the recorded historical hash is preserved.

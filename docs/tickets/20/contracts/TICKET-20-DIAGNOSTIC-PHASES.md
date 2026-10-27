@@ -4,7 +4,7 @@ Status: D4 production CLEARED after independent review of 945ea482 reds. Impleme
 
 ## Why the boundary changes
 
-The one fresh D1/D2 production gate at product/tool pin 7fe71f7 failed. Heavy writes had median 0.228606800 s and maximum hold/peer 0.386682400/0.386908700 s; samples 8 and 9 missed 0.270 s and only one of ten met the 0.216 s margin. Structural reads also missed, at 0.270486300/0.271032500 s in sample 8. Summary and both import selections passed. Every replace-retry counter was zero. These are NORMAL misses, with no excluded samples or replacement run. [All 50 samples and phase summaries](TICKET-20-DIAGNOSTICS-D1-D2-GATE.md) are retained separately from the original failed gate and instrumented profile.
+The one fresh D1/D2 production gate at product/tool pin 7fe71f7 failed. Heavy writes had median 0.228606800 s and maximum hold/peer 0.386682400/0.386908700 s; samples 8 and 9 missed 0.270 s and only one of ten met the 0.216 s margin. Structural reads also missed, at 0.270486300/0.271032500 s in sample 8. Summary and both import selections passed. Every replace-retry counter was zero. These are NORMAL misses, with no excluded samples or replacement run. [All 50 samples and phase summaries](../history/TICKET-20-DIAGNOSTICS-D1-D2-GATE.md) are retained separately from the original failed gate and instrumented profile.
 
 The reviewer selected D4 instead of D3 evidence reuse: diagnostic disk/validation/inventory work leaves the engine and catalog boundary. Neither the 0.270 s hard limit nor retained-state budgets change. No claim about the cause of an individual historical outlier follows from the correlation between the two sample-8 misses.
 
@@ -251,7 +251,7 @@ Request terminal states at entry retain plain current-row/fulfilled ACK-repair b
 
 ## Merged-base decision checkpoint, before D4 reds
 
-The approved merge is 356a26d9eee33e41e0616d2885a2c8ba53e64b70 on codex/ticket-20-r2-on-a1. Its complete artifact_store.py outside the global A1 evidence block is byte-equal to preserved R2 be6fd652. All accepted A1 helpers and six packet methods are AST-equal to closed A1 2c34bbfb; service/MCP/A1 tests are exact Git-blob matches. Shared atomic_json remains R2 D2, so A1's isolated timing cannot establish merged persistence latency. [Merge proofs and focused results](TICKET-20-R2-ON-A1-MERGE.md). The two R1 diagnostics-fixture KeyErrors remain separate R2 migration work, not an A1 regression or accepted green gate.
+The approved merge is 356a26d9eee33e41e0616d2885a2c8ba53e64b70 on codex/ticket-20-r2-on-a1. Its complete artifact_store.py outside the global A1 evidence block is byte-equal to preserved R2 be6fd652. All accepted A1 helpers and six packet methods are AST-equal to closed A1 2c34bbfb; service/MCP/A1 tests are exact Git-blob matches. Shared atomic_json remains R2 D2, so A1's isolated timing cannot establish merged persistence latency. [Merge proofs and focused results](../history/TICKET-20-R2-ON-A1-MERGE.md). The two R1 diagnostics-fixture KeyErrors remain separate R2 migration work, not an A1 regression or accepted green gate.
 
 D4 remains necessary by call-path inference: the old heavy-write/structural-report gate ran facade quarantine_submission/diagnostics directly inside the boundary. Those owner validation, inventory, body put, metadata persistence and report paths do not call store._packet; A1 does not shorten or unlock them. Its scopes improve the healthy authority baseline only. Keep D1/D2, all original misses, unchanged budgets, and pending N/missing coverage. No D3 cache or new optimization is introduced.
 
@@ -294,11 +294,11 @@ Harness control checks (synthetic mocked rows, NO real measurement):90 authority
 
 ## G1-G5 final pre-run correction
 
-Reviewer cleared ONE design run after these harness-only corrections, no re-review required before execution. [Final delta, hashes and retained checkpoint receipts](TICKET-20-MERGED-DESIGN-CHECKPOINT.md). The G1-G5 protocol there supersedes the earlier three-phase facade list: attached/unattached request_diagnostics is measured before structural replacement; provenance is detected, body retries counted and the synthetic test is retained. No source/fixture migration or D4 gate is authorized.
+Reviewer cleared ONE design run after these harness-only corrections, no re-review required before execution. [Final delta, hashes and retained checkpoint receipts](../history/TICKET-20-MERGED-DESIGN-CHECKPOINT.md). The G1-G5 protocol there supersedes the earlier three-phase facade list: attached/unattached request_diagnostics is measured before structural replacement; provenance is detected, body retries counted and the synthetic test is retained. No source/fixture migration or D4 gate is authorized.
 
 ## Merged checkpoint result, awaiting D4 decision
 
-The authorized builder DESIGN collection at dd271d1 is complete: [all130 rows, provenance, G1-G5 delta and comparisons](TICKET-20-MERGED-DESIGN-CHECKPOINT.md). Authority raw A maxima <=0.165248; combined brief/parent median0.159700/max0.165012. Heavy diagnostic hold median0.208047/max1.103438 and peer1.103584 (sample10, no retry/error, retained NORMAL comparator exceedance). Structural hold max0.255557. These are design observations, not a passing gate. Root recommends retaining D4 direction; reviewer contract decision before reds/source. No new experiment, optimization, quota or retention-budget change follows.
+The authorized builder DESIGN collection at dd271d1 is complete: [all130 rows, provenance, G1-G5 delta and comparisons](../history/TICKET-20-MERGED-DESIGN-CHECKPOINT.md). Authority raw A maxima <=0.165248; combined brief/parent median0.159700/max0.165012. Heavy diagnostic hold median0.208047/max1.103438 and peer1.103584 (sample10, no retry/error, retained NORMAL comparator exceedance). Structural hold max0.255557. These are design observations, not a passing gate. Root recommends retaining D4 direction; reviewer contract decision before reds/source. No new experiment, optimization, quota or retention-budget change follows.
 
 ## Red-interface clarification and first-pin boundary
 
@@ -310,7 +310,7 @@ Startup held warning ordering is NOT a promised wire order: tests compare the se
 
 Stop tests exercise real service fence_source_requests -> engine.stop_session -> cancel-fence repair against a real temporary session. They are service/engine sequencing evidence, not HTTP Stop-route, native process or provider acceptance. Event waits bound the test rendezvous; they are not the0.270/0.216 production latency gate. All paused threads release and join on both red and green paths.
 
-[Exact first-red counts, per-test reachability and F-1..F-5 evidence](TICKET-20-D4-REDS.md) must be independently reviewed before product edits. Existing gates remain unchanged:10+ fresh A/C samples per caller/shape, added/changed holds/peer<=0.216 and hard<=0.270, real diagnostic B outside authority with report-only latency, full/held4MiB import<=0.300, no source optimization or budget change.
+[Exact first-red counts, per-test reachability and F-1..F-5 evidence](../history/TICKET-20-D4-REDS.md) must be independently reviewed before product edits. Existing gates remain unchanged:10+ fresh A/C samples per caller/shape, added/changed holds/peer<=0.216 and hard<=0.270, real diagnostic B outside authority with report-only latency, full/held4MiB import<=0.300, no source optimization or budget change.
 
 ## Final acceptance clarifications Q1-Q4
 

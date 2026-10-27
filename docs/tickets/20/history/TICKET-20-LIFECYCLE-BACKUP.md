@@ -574,7 +574,7 @@ Budget clarification2026-10-25: the accepted exact4MiB whole-lineage import gate
 
 ## Proposed R2 document amendment, not implemented
 
-R2 replaces the imported exact-key statements (140/156): imported rows retain audit/channel/state/reason/updated_at/version_id/import_source ONLY, without quarantine_ids. Empty imported attachment projection is through request_diagnostics, not a stored empty key. Portable archive and version provenance remain unchanged. See [R2 diagnostic ownership](TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
+R2 replaces the imported exact-key statements (140/156): imported rows retain audit/channel/state/reason/updated_at/version_id/import_source ONLY, without quarantine_ids. Empty imported attachment projection is through request_diagnostics, not a stored empty key. Portable archive and version provenance remain unchanged. See [R2 diagnostic ownership](../contracts/TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
 
 
 R2 also supersedes historical :316 location wording: standalone diagnostic writes change diagnostics.json rather than index.json; request/lineage/version state invariants remain. Proposed R2 location, not a rewrite of the recorded slice2 execution.

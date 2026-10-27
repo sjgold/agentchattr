@@ -4,7 +4,7 @@ Status: A1 CLOSED by reviewer atca47a8bf (producta8862f38), exact unit74f4697..c
 
 ## Purpose and current evidence
 
-At 3c04b0d the design-only combined parent/brief service work (including a harness guard-copy/hash, excluding MCP response serialization) measured median 0.238026 s, maximum 0.264433 s over ten max-source fixtures (2 MiB packet, 1000 refs, 512 KiB parent and 128 small prior requests). It reads/validates that packet through get_parent, service _packet and the queued-to-active state transition. Each store._packet currently parses, computes message refs/canonical encoding and re-encodes for byte equality. [All design measurements and limitations](TICKET-20-DIAGNOSTIC-PHASE-DESIGN.md) remain evidence, not an A1 or D4 pass.
+At 3c04b0d the design-only combined parent/brief service work (including a harness guard-copy/hash, excluding MCP response serialization) measured median 0.238026 s, maximum 0.264433 s over ten max-source fixtures (2 MiB packet, 1000 refs, 512 KiB parent and 128 small prior requests). It reads/validates that packet through get_parent, service _packet and the queued-to-active state transition. Each store._packet currently parses, computes message refs/canonical encoding and re-encodes for byte equality. [All design measurements and limitations](../history/TICKET-20-DIAGNOSTIC-PHASE-DESIGN.md) remain evidence, not an A1 or D4 pass.
 
 A1 removes duplicate content validation of the exact same bytes within one service call chain. Reads remain at their current points, as do fresh owner/index/request/authority checks. The target after A1 is <=0.216 s for combined A and the other caller classes; no timing improvement is claimed in this document.
 
@@ -170,7 +170,7 @@ Fresh pre-port R1 bounds+MCP21PASS2.688s. After port,33 A1 +3 MCP +18 R1 bounds 
 
 ## Independent verification complete, review pending
 
-[Complete isolated verification and raw measurements](TICKET-20-A1-VERIFICATION.md): R1 base74f4697, frozen product/tool8443e1c. Affected416PASS224.439s; ONE full discovery1714PASS/four skips325.416s (builder-run,33 A1 tests at that point). Final two test-only key/pair cases bring A1 to35 methods; final focused35+3MCP+18R1=56PASS6.963s, all20 in-memory mutants killed. Source/tool bytes unchanged after the full/timing pin. Corrected90 A samples all<=0.216, combined max0.179806s including MCP encoding/size and measured guard work,3 raw reads/1 content walk each. No D4 B/peer or whole-ticket acceptance. Independent review still required; no push/activation.
+[Complete isolated verification and raw measurements](../history/TICKET-20-A1-VERIFICATION.md): R1 base74f4697, frozen product/tool8443e1c. Affected416PASS224.439s; ONE full discovery1714PASS/four skips325.416s (builder-run,33 A1 tests at that point). Final two test-only key/pair cases bring A1 to35 methods; final focused35+3MCP+18R1=56PASS6.963s, all20 in-memory mutants killed. Source/tool bytes unchanged after the full/timing pin. Corrected90 A samples all<=0.216, combined max0.179806s including MCP encoding/size and measured guard work,3 raw reads/1 content walk each. No D4 B/peer or whole-ticket acceptance. Independent review still required; no push/activation.
 
 
 ### Proposed test-name to actual ROOT mapping (B5)

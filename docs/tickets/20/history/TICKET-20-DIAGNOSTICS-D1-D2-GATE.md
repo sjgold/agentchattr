@@ -2,7 +2,7 @@
 
 Status: FAILED builder-run measurement, not R2 acceptance. Source/tool pin 7fe71f71c3332a3c02598dc231c2994803f12720, tracked shell be4f6153-f953-4da4-9f54-abb9f7a581f3, exit 1. Real persistence/fsync, no overlapping root suite. The reviewer has recorded the result from the builder report, without running or reading the raw receipt independently.
 
-All 50 samples are retained below. No replacements, fault exclusions or limit changes. All replace-retry counters are zero, exceptions null and peer_errors empty. Heavy hard misses are samples 8 and 9; structural-read sample 8 also misses. Only one heavy sample meets the 0.216 s clearance margin. Passing summary/import selections do not offset those failures. The next step is the proposed [D4 phase-split contract](TICKET-20-DIAGNOSTIC-PHASES.md), before any further reds/source/gate.
+All 50 samples are retained below. No replacements, fault exclusions or limit changes. All replace-retry counters are zero, exceptions null and peer_errors empty. Heavy hard misses are samples 8 and 9; structural-read sample 8 also misses. Only one heavy sample meets the 0.216 s clearance margin. Passing summary/import selections do not offset those failures. The next step is the proposed [D4 phase-split contract](../contracts/TICKET-20-DIAGNOSTIC-PHASES.md), before any further reds/source/gate.
 
 |Phase|Samples|Median hold, s|Maximum hold, s|Maximum peer, s|Hard misses|
 |---|---:|---:|---:|---:|---|

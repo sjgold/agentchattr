@@ -22,4 +22,4 @@ Accepted results are projected into chat once, including a crash after the chat 
 
 Native Windows ownership is verified with retained process handles. Linux/Omarchy adoption and native AI-client compatibility remain deferred. Legacy runtimes without ownership metadata remain unverified and their files are preserved. Ending a local model process does not establish that remote provider compute stopped.
 
-For isolated fake-client reproduction, see [the review pack](TICKET-9-REVIEW.md). No live provider calls are needed for these checks.
+For isolated fake-client reproduction, see [the review pack](../tickets/09/TICKET-9-REVIEW.md). No live provider calls are needed for these checks.

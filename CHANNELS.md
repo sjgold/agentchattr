@@ -61,11 +61,11 @@ After a connection failure or unconfirmed management request, reload the catalog
 
 Ticket20's storage and recovery backend has independent acceptance at220f3400. The document request, reader and download flow is still unfinished. Authoring stays disabled until a separate reviewed activation change.
 
-The first release now covers reduced20-22: request and read a current-session document, download Markdown, export the actual transcript, and verify the everyday workflow. Multi-file input in23 comes next. Automatic review and synthesis in24-26 come later. The [reduced-release contract](TICKET-20-22-REDUCED-RELEASE.md) records the scope.
+The first release now covers reduced20-22: request and read a current-session document, download Markdown, export the actual transcript, and verify the everyday workflow. Multi-file input in23 comes next. Automatic review and synthesis in24-26 come later. The [reduced-release contract](docs/tickets/20/TICKET-20-22-REDUCED-RELEASE.md) records the scope.
 
 Storage compaction (R3) is deferred. Source refs remain copied into request and version metadata, so larger sources and more saved attempts increase storage and write cost. A historical max-source example used about293KB of index metadata for one fulfilled request. The proposed128-request/512KiB installation quota was withdrawn. No replacement quota is enabled. Deleting a channel or exporting its history retains authored records; artifact purge is unsupported.
 
-The final retained performance run passed190 comparisons with a stall sentinel. On that fixture, max-source service A phases were typically about0.16-0.18s and4MiB import measurements were about0.20-0.21s. Earlier runs include unexplained roughly1.1s stalls and failed measurements, all retained in [the attempt history](TICKET-20-D4-FINAL-GATE.md). These observations describe the tested machine and data; large histories can be slower.
+The final retained performance run passed190 comparisons with a stall sentinel. On that fixture, max-source service A phases were typically about0.16-0.18s and4MiB import measurements were about0.20-0.21s. Earlier runs include unexplained roughly1.1s stalls and failed measurements, all retained in [the attempt history](docs/tickets/20/history/TICKET-20-D4-FINAL-GATE.md). These observations describe the tested machine and data; large histories can be slower.
 
 Diagnostic logs use a separate private file. Diagnostic logs and retained diagnostic bodies are excluded from channel backups. Deleting a channel retains those diagnostic files. The strict worst-case latency promise is deferred for the reduced release; its smaller responsiveness check will be reviewed before implementation.
 
@@ -77,6 +77,6 @@ At 390 CSS pixels the Manage dialog measured 356 pixels wide, with 14px text and
 
 Local rename timing with a 33.9MB message log, 11.6MB jobs file and 3.3MB sessions file measured individual holds around 0.27 to 0.29 seconds. The engine boundary is released between steps. These are measurements for that shape and disk, not a general latency guarantee.
 
-[Independent review and method limits](REVIEW-CLAUDE-TICKET-19.md) distinguish component tests, native evidence and each observer's browser coverage. The isolation guard covers its listed Python operations; its documented blind spots include pre-hook startup, direct native calls and unlisted path operations. [STATUS.md](STATUS.md) records publication state.
+[Independent review and method limits](docs/tickets/19/REVIEW-CLAUDE-TICKET-19.md) distinguish component tests, native evidence and each observer's browser coverage. The isolation guard covers its listed Python operations; its documented blind spots include pre-hook startup, direct native calls and unlisted path operations. [STATUS.md](STATUS.md) records publication state.
 
 Ticket 20 artifact-backup checks currently cover temporary stores, in-memory ZIPs and in-process API handlers. Its native and rendered-browser acceptance is still pending; [STATUS.md](STATUS.md) distinguishes implementation, review and publication.

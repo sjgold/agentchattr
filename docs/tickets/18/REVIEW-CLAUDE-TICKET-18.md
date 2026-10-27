@@ -7,7 +7,7 @@ Acceptance verifier: `12c9a81d300f9c1613c74cc856146bbb551b07ca`.
 Base published main: `d787f4f79636dbdf8f7f1b9e40c7bc0d34ccc352`.
 Branch: `codex/ticket-18-document-input`.
 Reviewer: Claude, agent `3b53a0e1-7bc3-4807-bf3a-0d08fa9fea86`, configured alias `sonnet`, self-identifies as Sonnet 5.5. Exact provider backend ID is not independently attested. No tracked implementation edits by the reviewer.
-Guide: [DOCUMENT-INPUTS.md](DOCUMENT-INPUTS.md). Current status: [STATUS.md](STATUS.md).
+Guide: [DOCUMENT-INPUTS.md](../../guides/DOCUMENT-INPUTS.md). Current status: [STATUS.md](../../../STATUS.md).
 
 ## Delivered behavior
 

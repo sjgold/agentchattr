@@ -4,7 +4,7 @@ State: COMPLETE. Sonnet5.5 independent PASS WITH NONBLOCKING NOTES accepted on9f
 
 Base published main: `55bd7cbea6367b299fc4c927f71cf4736480bd40`. Branch: `codex/ticket-15-participant-replacement`. Executable implementation checkpoint: `1cebd9d4244177fdedd7027f22d101bf1c58381e`. Subsequent verifier header and review receipts are documentation only.
 
-Contract: [TICKET-15-PLAN.md](TICKET-15-PLAN.md). Usage: [PARTICIPANT-RECOVERY.md](PARTICIPANT-RECOVERY.md). Artifact receipts: ticket-15-contract-review, ticket-15-foundations-review and ticket-15-browser-qa.
+Contract: [TICKET-15-PLAN.md](TICKET-15-PLAN.md). Usage: [PARTICIPANT-RECOVERY.md](../../guides/PARTICIPANT-RECOVERY.md). Artifact receipts: ticket-15-contract-review, ticket-15-foundations-review and ticket-15-browser-qa.
 
 ## Source review focus
 

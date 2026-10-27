@@ -6,7 +6,7 @@ Status: baseline specification with dated amendments. Current implementation sta
 
 ## 2026-10-26 reduced-release scope amendment
 
-Seth approved reduced tickets20-22 as the first usable release, multi-file23 as the next separate milestone, and24-26 as a later separate package. Multi-file input is explicitly higher priority to him than automatic synthesis. The authoritative [reduced acceptance contract](../TICKET-20-22-REDUCED-RELEASE.md) records his exact answer, approved cuts and defaults.
+Seth approved reduced tickets20-22 as the first usable release, multi-file23 as the next separate milestone, and24-26 as a later separate package. Multi-file input is explicitly higher priority to him than automatic synthesis. The authoritative [reduced acceptance contract](tickets/20/TICKET-20-22-REDUCED-RELEASE.md) records his exact answer, approved cuts and defaults.
 
 For this release, DA-2 is manual current-session document request, safe reading and exact Markdown download; DA-3 is simple actual ordered transcript download. Preview/source/producer pickers, revision browser, advanced recovery UI, combined synthesis layouts and R3 storage compaction are deferred. Seth has withdrawn both strict worst-case timing and the later proposed numeric screen. Speed must remain practical, without agents taking forever. Phone-width checks and further browser-harness work are dropped; a desktop look is optional. Safety, auth, provenance, idempotency, Stop/cancellation, durable ordering and hold semantics are unchanged. Existing accepted backend functionality is retained. No quota, activation or push is newly authorized. Later requirements below remain future scope where they exceed this amendment.
 

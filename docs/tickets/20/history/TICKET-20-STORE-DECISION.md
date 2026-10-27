@@ -1,6 +1,6 @@
 # Ticket 20: choose the storage work before authoring
 
-**Current scope amendment,2026-10-26:** Seth approved reduced20-22 first, multi-file23 next,24-26 later. [Reduced-release contract](TICKET-20-22-REDUCED-RELEASE.md) is authoritative for this release. R3, advanced operator selection/revision/recovery UI and strict0.270s worst-case acceptance are deferred or replaced as specified there. Safety and accepted backend semantics remain. The 2026-10-25 storage decision below is retained as historical/future scope; its former next-step directions do not authorize work.
+**Current scope amendment,2026-10-26:** Seth approved reduced20-22 first, multi-file23 next,24-26 later. [Reduced-release contract](../TICKET-20-22-REDUCED-RELEASE.md) is authoritative for this release. R3, advanced operator selection/revision/recovery UI and strict0.270s worst-case acceptance are deferred or replaced as specified there. Safety and accepted backend semantics remain. The 2026-10-25 storage decision below is retained as historical/future scope; its former next-step directions do not authorize work.
 
 Status: SCOPE APPROVED by Seth on2026-10-25 through the structured question: "Approve R1-R3 (recommended)". This authorizes the three additional implementation/review slices. Their detailed schemas and compatibility contracts still need review; no quota, activation or R4 implementation is approved. Production artifact authoring remains disabled.
 

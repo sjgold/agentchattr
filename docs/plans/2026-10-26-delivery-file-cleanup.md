@@ -190,3 +190,9 @@ These requirements supersede any earlier single-commit wording. Execution remain
 7. Other worktrees are preserved. codex/ticket-20-artifacts is superseded for Ticket20 product work; any branch still editing moved root docs must rebase/resolve against the integration layout. Record accepted publication/review pins with their historical root paths before moving. No branch deletion or history rewrite.
 8. Update external Traycer entry artifacts separately: reduced-release-20-22/index.md, backend-production/index.md, backend-reds/index.md and delivery-cleanup/index.md under artifacts/autobuild/agentchattr. Preserve their comment threads and historical review pins.
 9. No further user decision is needed for this authorized reversible cleanup. Any proposed deletion requires a separate discussion; default remains no deletions.
+
+## Execution update, 2026-10-26 night
+
+Seth explicitly authorized execution tonight. K1 two-commit protocol is being followed. Transcript implementation remains sequenced after the seats and its later docs will use the new layout. Current activation is already reviewed; the older disabled-gate wording above is historical. No moves/deletions in .audit-tmp or runtime paths.
+
+Preservation verified:110 R100 moves, tracked573->576,215 fenced blocks unchanged,397 protected existing files byte-identical, links0->0, longest path143, no case collision, README in release smoke. Focused and full regression results follow in root STATUS.

@@ -1,6 +1,6 @@
 # Ticket 20 R2: failed production gate and design phase profile
 
-Status: HISTORICAL DESIGN PROFILE, not R2 acceptance. Latest D1/D2 fresh full-gate result is a retained MISS; see [all 50 samples](TICKET-20-DIAGNOSTICS-D1-D2-GATE.md) and the proposed [D4 contract](TICKET-20-DIAGNOSTIC-PHASES.md). The original measurements below remain unchanged. Original status: DESIGN REVIEW, not R2 acceptance. Product candidate a931275010d7f76154f6478fdc3d386671c803a6 is unchanged. Capability remains empty; no push. Root ran these measurements, the reviewer has not independently reproduced them. Existing40 tests pass4.892s, while N1-N10/additional mutation coverage, old fixture moves, R1/affected/full and structural/import timing remain outstanding.
+Status: HISTORICAL DESIGN PROFILE, not R2 acceptance. Latest D1/D2 fresh full-gate result is a retained MISS; see [all 50 samples](TICKET-20-DIAGNOSTICS-D1-D2-GATE.md) and the proposed [D4 contract](../contracts/TICKET-20-DIAGNOSTIC-PHASES.md). The original measurements below remain unchanged. Original status: DESIGN REVIEW, not R2 acceptance. Product candidate a931275010d7f76154f6478fdc3d386671c803a6 is unchanged. Capability remains empty; no push. Root ran these measurements, the reviewer has not independently reproduced them. Existing40 tests pass4.892s, while N1-N10/additional mutation coverage, old fixture moves, R1/affected/full and structural/import timing remain outstanding.
 
 ## Original gate result, retained without rerun substitution
 

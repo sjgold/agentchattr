@@ -2,7 +2,7 @@
 
 Status: independently PASS at d94f251 by full document read; final F1-F4 clarifications folded below, helper cleared for the initial two REDs. Store implementation waits for those REDs; expanded helper execution waits for readiness. Task0 at65bcb56 independently PASS (reviewer82/9.855s,3000 seeded MAC comparisons/no mismatch, read/error parity5 cases, private imports intact; full1374/four skips108.397s builder-only). This document covers the STORE only. No queue, adapter, public route, renderer or admission authority is implemented by this package.
 
-R1 compatibility candidate (independent production review pending): primitive bounds below are strengthened without new persisted keys, budgets, dispatch behavior or source/Markdown normalization. Current implementation and verification receipts are in [TICKET-20-STORE-BOUNDS.md](TICKET-20-STORE-BOUNDS.md). Production capability remains empty.
+R1 compatibility candidate (independent production review pending): primitive bounds below are strengthened without new persisted keys, budgets, dispatch behavior or source/Markdown normalization. Current implementation and verification receipts are in [TICKET-20-STORE-BOUNDS.md](../contracts/TICKET-20-STORE-BOUNDS.md). Production capability remains empty.
 
 ## Paths and policy boundary
 
@@ -162,7 +162,7 @@ Authority C1 enum amendment: response_too_large separates an omitted oversize bo
 
 ## Proposed R2 document amendment, not implemented
 
-R2 replaces the request-row/debug and diagnostic paragraphs (82/103/105/113/116): authoring-v2 rows have audit/channel/state/reason/updated_at/version_id (+import_source only for imported); no stored quarantine_ids or computed overflow_count. Independent diagnostics.json owns attachments/summaries, separate request_diagnostics supplies debug reads. All8/256/1024 and body budgets remain. See [R2 diagnostic ownership](TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
+R2 replaces the request-row/debug and diagnostic paragraphs (82/103/105/113/116): authoring-v2 rows have audit/channel/state/reason/updated_at/version_id (+import_source only for imported); no stored quarantine_ids or computed overflow_count. Independent diagnostics.json owns attachments/summaries, separate request_diagnostics supplies debug reads. All8/256/1024 and body budgets remain. See [R2 diagnostic ownership](../contracts/TICKET-20-DIAGNOSTICS.md) for the governing proposed delta; existing descriptions above remain the R1 implementation until its reviewed production pin.
 
 
 Additional R2 normative sites: :13 quarantine healthy-index requirement gains ordinary-corruption None bypass with legacy hold exception; :101 diagnostics move ownership; :132 gains exact owners/errors/partial report. Templates are separately defined authoring-v2, empty legacy-v1, diagnostic-v1. Proposed only; see R2 H1-H7.

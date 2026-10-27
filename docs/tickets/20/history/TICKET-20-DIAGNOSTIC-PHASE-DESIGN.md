@@ -4,7 +4,7 @@ Status: DESIGN evidence, NOT a production gate or D4 acceptance. Product remains
 
 ## Decision at collection, followed by later reviewer clarification
 
-The interpretation below records the original blanket-margin conclusion. The reviewer later accepted the finding but clarified the margin:0.270s hard cap every hold,0.216s for D4 new/changed holds; a cleared legacy hard-pass path above margin is a disclosed authoring-capacity fact, not by itself a D4 blocker. [A1 packet-validation reuse contract](TICKET-20-PACKET-VALIDATION-REUSE.md) is proposed before D4 reds, target0.216s on remeasurement. Raw samples/results below are unchanged.
+The interpretation below records the original blanket-margin conclusion. The reviewer later accepted the finding but clarified the margin:0.270s hard cap every hold,0.216s for D4 new/changed holds; a cleared legacy hard-pass path above margin is a disclosed authoring-capacity fact, not by itself a D4 blocker. [A1 packet-validation reuse contract](../contracts/TICKET-20-PACKET-VALIDATION-REUSE.md) is proposed before D4 reds, target0.216s on remeasurement. Raw samples/results below are unchanged.
 
 Combined MCP brief/parent A exceeds the 0.216 s clearance margin in all ten samples. Its maximum 0.264433 s is below the 0.270 s hard limit, but fails the agreed clearance condition. D4 alone cannot clear the current gate at this authoring shape. This is an authoring/R3 feasibility issue; no R3 code or new mechanism is authorized by the result. Return to design review before D4 reds/source or any final production gate.
 

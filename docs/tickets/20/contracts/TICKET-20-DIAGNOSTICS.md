@@ -3,7 +3,7 @@
 Current release rule, Seth2026-10-26/27:270ms and216ms were documentation/reviewer targets without a baseline derivation and are withdrawn as acceptance gates. Only the existing1.0s basic ceiling remains; import300ms is report-only. Old measurements/misses below remain unchanged historical evidence. No new timing campaign.
 
 
-Status: R2 exact owner payload freeze cleared at86dad152 and production authorized atbf89702, subject to additional tests and hard gates. Initial implementation plus D1/D2 is local and NOT accepted: the fresh full gate at7fe71f7 FAILED heavy and structural NORMAL samples. The reviewer selected [D4 service diagnostic phase-split DESIGN](TICKET-20-DIAGNOSTIC-PHASES.md), proposed now for review before any D4 reds/source/gates. [All 50 fresh samples](TICKET-20-DIAGNOSTICS-D1-D2-GATE.md) and the earlier misses/profile are retained. R1 is independently cleared; R3/operator/capacity/activation/push remain held; capability is empty.
+Status: R2 exact owner payload freeze cleared at86dad152 and production authorized atbf89702, subject to additional tests and hard gates. Initial implementation plus D1/D2 is local and NOT accepted: the fresh full gate at7fe71f7 FAILED heavy and structural NORMAL samples. The reviewer selected [D4 service diagnostic phase-split DESIGN](TICKET-20-DIAGNOSTIC-PHASES.md), proposed now for review before any D4 reds/source/gates. [All 50 fresh samples](../history/TICKET-20-DIAGNOSTICS-D1-D2-GATE.md) and the earlier misses/profile are retained. R1 is independently cleared; R3/operator/capacity/activation/push remain held; capability is empty.
 
 ## Outcome and governing choices
 
@@ -586,7 +586,7 @@ Static verification: both files compile, strictUTF8/AST30+10 methods/no BOM, git
 
 ## Production gate failure and requested profile
 
-Initial WIP producta931275 passes current40 tests but its real reachable heavy gate FAILED2/10 normal samples: maxhold0.359340200s/peer0.359698900s, zero replace retries. Original20 samples retained; no R2 acceptance or limit change. Reviewer requested harness-only phase profiling before any optimization. Ten fresh instrumented heavy samples completed, with product unchanged; [full profile, recommendation and original/new raw receipt](TICKET-20-DIAGNOSTICS-PROFILE.md). Inventory and metadata traversal dominate steady cost; body fsync tails reach21.34ms. Duplicate persist validation+size is roughly43ms but is not proved sufficient to eliminate the old tail. Next reviewer design ruling before any optimization or further tests/fixtures; all remaining N/affected/full/structural/import gates pending.
+Initial WIP producta931275 passes current40 tests but its real reachable heavy gate FAILED2/10 normal samples: maxhold0.359340200s/peer0.359698900s, zero replace retries. Original20 samples retained; no R2 acceptance or limit change. Reviewer requested harness-only phase profiling before any optimization. Ten fresh instrumented heavy samples completed, with product unchanged; [full profile, recommendation and original/new raw receipt](../history/TICKET-20-DIAGNOSTICS-PROFILE.md). Inventory and metadata traversal dominate steady cost; body fsync tails reach21.34ms. Duplicate persist validation+size is roughly43ms but is not proved sufficient to eliminate the old tail. Next reviewer design ruling before any optimization or further tests/fixtures; all remaining N/affected/full/structural/import gates pending.
 
 
 ## D1/D2 implementation and fresh-gate protocol
@@ -603,7 +603,7 @@ The original in-boundary diagnostic hold/read gate is not satisfied. D1/D2 remai
 
 ## D4 L1-L9 and authoring feasibility, still proposed
 
-[Amended D4 contract](TICKET-20-DIAGNOSTIC-PHASES.md) lists conditional replacements for the constructor EXACT clause, facade marker-lock wording, service no-phase-split clauses and report inventory scope. Existing text above remains the pre-D4 contract/historical record, not permission to implement a conflicting mechanism. [Ninety harness-only A/C design samples](TICKET-20-DIAGNOSTIC-PHASE-DESIGN.md) show combined brief/parent A misses the0.216s clearance margin10/10 (median0.238026/max0.264433); C is only a prospective guard/effect probe. D4 alone cannot close the current gate. No source/reds/gates until reviewer ruling; R3 still needs its own contract.
+[Amended D4 contract](TICKET-20-DIAGNOSTIC-PHASES.md) lists conditional replacements for the constructor EXACT clause, facade marker-lock wording, service no-phase-split clauses and report inventory scope. Existing text above remains the pre-D4 contract/historical record, not permission to implement a conflicting mechanism. [Ninety harness-only A/C design samples](../history/TICKET-20-DIAGNOSTIC-PHASE-DESIGN.md) show combined brief/parent A misses the0.216s clearance margin10/10 (median0.238026/max0.264433); C is only a prospective guard/effect probe. D4 alone cannot close the current gate. No source/reds/gates until reviewer ruling; R3 still needs its own contract.
 
 ## F-4 private test-interface pins
 

@@ -42,4 +42,4 @@ Echo that full object as `source_file` in the existing `POST /api/sessions/start
 
 The server recomputes the snapshot's size, hash and source ID at Start. This establishes self-consistency; the filename and file label are operator assertions, not attestation of an operating-system file path. Previews create no document library or stored upload. The run stores the text with its file metadata; briefs revalidate that metadata and place it only in the untrusted source packet. Existing run/turn/attempt and result authority checks continue to apply.
 
-Current scope is one file. Multi-file packets, directory crawling and PDF/office-format extraction are separate work. Verification results and platform limits are recorded in [STATUS.md](STATUS.md).
+Current scope is one file. Multi-file packets, directory crawling and PDF/office-format extraction are separate work. Verification results and platform limits are recorded in [STATUS.md](../../STATUS.md).

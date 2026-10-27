@@ -1,6 +1,6 @@
 # Ticket 20 R3: compact source provenance in the authoring index
 
-Status: DEFERRED by Seth2026-10-26. Historical proposal196666c and the review below are preserved; no R3 revision, red, code, schema conversion or timing work is active. The reduced20-22 release is governed by [the scope amendment](TICKET-20-22-REDUCED-RELEASE.md).
+Status: DEFERRED by Seth2026-10-26. Historical proposal196666c and the review below are preserved; no R3 revision, red, code, schema conversion or timing work is active. The reduced20-22 release is governed by [the scope amendment](../TICKET-20-22-REDUCED-RELEASE.md).
 
 ## Outcome and review decisions
 

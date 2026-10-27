@@ -12,7 +12,7 @@ Agents and humans talk in a shared chat room with multiple channels — when any
 
 ## Fork pre-flight entry point
 
-Run `windows/start.bat` on Windows or `sh macos-linux/start.sh` on Linux/Omarchy to start or reconnect to the local server and open pre-flight. Setup requires an explicit choice. See [launcher instructions](LAUNCHER.md) for desktop shortcuts, passive checks, failures and verification. Individual agent launchers below retain their upstream behavior until tickets #3/#4. Configured API-seat packages and launch controls are described in [API seats](API-SEATS.md); individual legacy agent launchers remain separate.
+Run `windows/start.bat` on Windows or `sh macos-linux/start.sh` on Linux/Omarchy to start or reconnect to the local server and open pre-flight. Setup requires an explicit choice. See [launcher instructions](docs/guides/LAUNCHER.md) for desktop shortcuts, passive checks, failures and verification. Individual agent launchers below retain their upstream behavior until tickets #3/#4. Configured API-seat packages and launch controls are described in [API seats](docs/guides/API-SEATS.md); individual legacy agent launchers remain separate.
 
 Channel rename, archive, reopen, retained records and repair are described in [Manage channels safely](CHANNELS.md).
 
@@ -52,7 +52,7 @@ Run `windows/start.bat --setup` once to prepare the Windows environment. Named l
 
 > **Tip:** To manually prompt an agent to check chat, type `mcp read #general` in their terminal.
 
-Saved packages can mix API and interactive CLI seats. See [CLI seat setup and launch behavior](CLI-SEATS.md) and [API seat controls](API-SEATS.md).
+Saved packages can mix API and interactive CLI seats. See [CLI seat setup and launch behavior](docs/guides/CLI-SEATS.md) and [API seat controls](docs/guides/API-SEATS.md).
 
 ## Quickstart (Mac / Linux)
 
