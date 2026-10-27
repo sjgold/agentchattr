@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (reviewer approved fixture visibility simulation;61 harness controls/cleanup repair green; fourth run still requires delta review)
+**Updated:** 2026-10-26 (attempt4 stopped at browser visibility override; cleanup verified; rendered acceptance incomplete)
 
 ## At a glance
 
@@ -18,7 +18,17 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer CLEARED first run after R fixes, now44 controls/compile green. Attempt2 reached READY but fixture marked shim blocked page init; stopped, browser closed, recovery8 births absent. Attempt3 reached healthy page startup and real CLI admission; offscreen document.hidden blocks foreground status/read/download. Stopped and owned browser closed; fixture-only visibility simulation approved; implementation/cleanup repair61 controls green goes to reviewer before any fourth run. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
+| Next | Reviewer: rule on attempt4 browser-runtime blocker and the next supported browser mechanism. No automatic fifth attempt. Backend/UI components accepted; rendered acceptance, screen, transcript, packaging, activation and delivery cleanup remain pending. |
+
+## Attempt4: browser runtime refused visibility simulation
+
+Reviewer authorized ONE run at40fe872 with --simulate-visibility. Root .audit-tmp/artifact-ui-pt13sdra reached READY. The isolated browser exposes document.hidden and document.visibilityState as non-configurable own getter properties. The approved instance override failed before the observer installed its evidence/report functions. DOM-only checks showed hidden=true, visibilityState=hidden, hasFocus=false, loader hidden,6 tabs and no help overlay. No document request was made. Root stopped the attempt without changing product code or trying another override.
+
+All12 cases remain incomplete; acceptance_claim=false. Native values were captured only in observer memory before the failed override, so no visibility record reached the server. Receipt/summary honestly retain null native fields, native_values_missing=true, visibility_simulated=true and the claim "no native foreground/visibility parity". The independent DOM probe supplies the observed native values separately. This is a browser-runtime/harness incompatibility, not a product failure or rendered acceptance. VM controls did not model non-configurable own properties.
+
+Raw cleanup.json: unresolved=[], births_visited=8, cooperative_shutdown=already_exited; six probes absent, PID4552 exited by query-only terminal check, PID19468 exited through its retained verified kernel handle. Later primary probes and independent Win32_Process enumeration show all8 absent; all4 owned ports have no listeners. Four guards have real_attempts=[], no unowned-port/watchdog/missing-case files. Original files, known listeners and the full raw-string Python baseline are unchanged. Owned browser/session closed, no forwards. Receipt, summary and postcheck exports passed the token/nonce scan. Earlier attempt histories and the PID58092 baseline deviation remain retained separately.
+
+Evidence stays local under the root, including recovery-baseline-verified.json and independent-postcheck.json; private root is not exported or deleted. No fifth attempt is authorized. Next owner reviewer: settle a supported browser mechanism; root implements only the reviewed delta and reruns only after explicit clearance. Accepted backend/UI components are unchanged. Screen/transcript/packaging/activation and final file cleanup remain pending. No push.
 
 ## Current handoff
 
@@ -36,7 +46,7 @@
 
 UI follow-ups7d962b07 independently ACCEPTED. Follow-ups implemented and tested: definitive refusal recovery, validation, encoded ids, salted digest, stable live text/focus, delayed Blob revocation, hidden-page polling and cancellation/list/stale-response fixes.39 UI/restart tests OK2.453s;61/61 assertion mutants killed with zero errors and unchanged source. Conditional serial-defense tests and explicit Node completion markers documented in the UI plan. No backend change or rendered acceptance claim.
 
-Next concrete action, owner reviewer: check the executable browser harness/tools/control pin and commands. Root runs only after that clearance, using the isolated browser and the actual CLI MCP/local fake API flows. Completion requires rendered evidence, bounded Blob proof and verified cleanup, never synthetic controls alone. Native-save interception is accepted for the bounded Blob claim. Screen,21 transcript,22 packaging, activation and cleanup remain later. No acceptance resources started; no push.
+Next concrete action, owner reviewer: review the attempt4 runtime result below and choose the next browser mechanism before another run. Root preserves all roots and receipts. Completion still requires all12 rendered cases, bounded Blob proof and verified cleanup. Screen,21 transcript,22 packaging, activation and cleanup remain later. No acceptance resources remain active; no push.
 
 ## Browser harness correction handoff
 
