@@ -145,7 +145,7 @@ class CliOverrideExtractionTests(unittest.TestCase):
         argv = ["run.py"]
         config_loader.apply_cli_overrides(argv)
         for env in ENV_VARS:
-            self.assertNotIn(env, os.environ)
+            self.assertFalse(env in os.environ, "Unexpected process override")
 
     def test_overrides_flow_through_to_load_config(self):
         argv = ["run.py", "--port", "8315", "--mcp-http-port", "8215"]
@@ -182,7 +182,7 @@ class CliOverrideExtractionTests(unittest.TestCase):
         ]
         config_loader.apply_cli_overrides(argv)
         self.assertEqual(os.environ["AGENTCHATTR_PORT"], "8310")
-        self.assertNotIn("AGENTCHATTR_DATA_DIR", os.environ)
+        self.assertFalse("AGENTCHATTR_DATA_DIR" in os.environ, "Unexpected data override")
 
     def test_pass_through_alone_ignores_everything(self):
         # If agentchattr flags appear ONLY after `--`, none are applied.
@@ -193,8 +193,8 @@ class CliOverrideExtractionTests(unittest.TestCase):
             "--data-dir", "/agent-arg",
         ]
         config_loader.apply_cli_overrides(argv)
-        self.assertNotIn("AGENTCHATTR_PORT", os.environ)
-        self.assertNotIn("AGENTCHATTR_DATA_DIR", os.environ)
+        self.assertFalse("AGENTCHATTR_PORT" in os.environ, "Unexpected port override")
+        self.assertFalse("AGENTCHATTR_DATA_DIR" in os.environ, "Unexpected data override")
 
 
 if __name__ == "__main__":

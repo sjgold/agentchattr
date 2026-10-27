@@ -153,14 +153,13 @@ def ensure_environment(root, setup=False):
     return python
 
 
-def _server_environment(root, config):
-    """Load only referenced NAME= lines into the server child's environment."""
+def referenced_api_key_names(root, config):
+    """Return configured names only; never open the key-value file."""
     import re
-    env = dict(os.environ)
     providers = {name: cfg for name, cfg in config.get('agents', {}).items()
                  if isinstance(cfg, dict) and cfg.get('type') == 'api'}
     if not providers:
-        return env
+        return set()
     names = {cfg.get('api_key_env', '') for cfg in providers.values()
              if isinstance(cfg.get('api_key_env', ''), str)}
     try:
@@ -176,10 +175,22 @@ def _server_environment(root, config):
                     names.add(seat['secret_ref'])
     except (OSError, ValueError):
         pass  # The seat store reports its own configuration errors, without secrets.
+    return {name for name in names if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name)}
+
+
+def strip_environment(environment, names):
+    normalize = str.upper if os.name == 'nt' else str
+    blocked = {normalize(name) for name in names}
+    return {key: value for key, value in environment.items() if normalize(key) not in blocked}
+
+
+def _server_environment(root, config):
+    """Load only referenced NAME= lines into the server child's environment."""
+    env = dict(os.environ)
+    names = referenced_api_key_names(root, config)
     present = {key.upper() if os.name == 'nt' else key for key in env}
     pending = {name.encode('ascii'): name for name in names
-               if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name)
-               and (name.upper() if os.name == 'nt' else name) not in present}
+               if (name.upper() if os.name == 'nt' else name) not in present}
     if not pending:
         return env
     try:

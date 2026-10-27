@@ -14,7 +14,7 @@ import time
 import uuid
 
 from api_seats import SeatError, atomic_json, validate_package
-from launcher import stop_owned_child
+from launcher import stop_owned_child, referenced_api_key_names, strip_environment
 
 
 class SeatManager:
@@ -105,6 +105,9 @@ class SeatManager:
             client['command'] = shutil.which(client['command']) or client['command']
             server = deepcopy(self.config.get('server', {}))
             server['data_dir'] = str(self.store.path.parent.resolve())
+            names = referenced_api_key_names(self.root, {**self.config, 'server': server})
+            if names:
+                client['strip_env'] = sorted(set(client.get('strip_env', [])) | names)
             if server.get('host', '127.0.0.1') not in ('127.0.0.1', 'localhost'):
                 raise SeatError('Managed CLI seats require an IPv4 loopback server.')
             return self._with_wrapper_protocol({'seat': seat, 'provider': client, 'server': server,
@@ -229,6 +232,8 @@ class SeatManager:
             options = {'cwd': str(self.root), 'stdin': subprocess.DEVNULL,
                        'stdout': subprocess.DEVNULL, 'stderr': subprocess.DEVNULL,
                        'close_fds': True}
+            if cli:
+                options['env'] = strip_environment(os.environ, effective['provider'].get('strip_env', []))
             if sys.platform == 'win32':
                 options['creationflags'] = subprocess.CREATE_NEW_CONSOLE if cli else subprocess.CREATE_NO_WINDOW
                 if cli:

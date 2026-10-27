@@ -11,7 +11,7 @@ import urllib.request
 
 from api_seats import Receipt, SeatError, validate_seat
 from cli_seats import build_cli_args, config_resource, probe_version
-from launcher import LaunchError, startup_lock
+from launcher import LaunchError, startup_lock, strip_environment
 from wrapper import (_auth_headers, _build_provider_launch, _get_server_url, _queue_watcher,
                      _register_instance, _resolve_mcp_inject, ROOT)
 
@@ -137,7 +137,7 @@ def run(snapshot_path):
                     raise SeatError('The owned MCP identity proxy could not start.')
                 proxy_url = proxy.url + parsed.path
             strip = {'CLAUDECODE'} | set(client.get('strip_env', []))
-            environment = {k: v for k, v in os.environ.items() if k not in strip}
+            environment = strip_environment(os.environ, strip)
             arguments, environment, inject_env, _ = _build_provider_launch(
                 seat['provider'], client, identity['name'], data, proxy_url,
                 build_cli_args(seat, client), environment, token=identity['token'],

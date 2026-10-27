@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 02:12 CDT. True cold startup passed; named-key loader tested, pending independent review. Offline-chat fallback next.
+**Updated:** 2026-10-27 02:19 CDT. CLI credential isolation fixed/tested; independent review and UAT CLI refresh pending.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -15,6 +15,8 @@ Documentation cleanup is accepted. Seven seats are running, including OMP (90B m
 The real Windows launcher reuse path, Pre-flight package editor/save/launch and Open chat path were exercised. Live sender labels are friendly (zero raw managed ids in sender elements). Reviewed UI commits08b1f0a/a8f624c/c6930b0 and0078e74 are integrated: visible Seats & launch link, clearer pre-flight flow, lighter help and usable menus.The first merge passed119 focused tests; the follow-up passed69. Launch team and open chat was exercised with7/7 ready seats. Seth's own end-to-end acceptance remains open.
 
 ## Needs Seth
+
+- [ ] 2026-10-27 02:19 CDT Security note: a test failure on2026-10-27 printed this machine's ambient environment into the Codex agent's tool output (visible to the model provider and stored in the local Traycer transcript). Credential-like variable NAMES visible: RESEND_API_KEY, STITCH_API_KEY, WIKI_LINT_API_KEY, TRAYCER_A2A_MCP_TOKEN (plus STARSHIP_SESSION_KEY). Values are not in any repo file. Consider rotating those that matter. No agent changed or rotated credentials.
 
 - [ ] Beyond the raw agent names, what else looked wrong on the main chat screen? Naming is implemented/tested and is visible on the running instance.
 
@@ -148,3 +150,11 @@ The first supervisor failed to create its audit directory and stopped its own cm
 Named-key red-first tests: original run had1 behavioral failure (spawn did not enrich child env) plus7 missing-helper subtest errors across7 tests. Added a malformed saved-provider red (TypeError), then guarded it. Now62 launcher/named-key/package/pre-flight tests pass in4.357s. Temp profiles/fake values only; no real .env read by the new loader. It reads only configured API template/saved-seat reference names, strict first NAME= match, existing env wins (including empty), one quote pair, CRLF; skips invalid bytes/NUL without values in diagnostics; enriches only spawn_server env. Review required before live reliance.
 
 Next: minimal offline marked fallback, then Ticket23 frozen contract/observed reds. Hermes and the safe daily AGY injection remain with Opus. Sanitized daily aliases/model-editing table are being prepared; no real-install config applied. No postponed audit/refactor work, no push.
+
+### 2026-10-27 02:19 CDT CLI credential boundary and assertion safety
+
+Reviewer found that server API keys could reach native CLI processes through inheritance. Shared referenced_api_key_names now serves both the key loader and CLI effective configuration. CLI-worker spawning and native-client environment construction both remove the referenced names, case-insensitively on Windows; API-worker spawning remains unchanged. No new snapshot field: the names use existing provider.strip_env.73 launcher/key/package/CLI-worker/config/CLI-seat/assertion-guard tests pass in3.699s. Native-client strip bypass mutant failed one assertion with0 errors. Initial safe red confirmed API-key presence in the CLI worker; missing helper was an infrastructure red.
+
+The failed first red accidentally formatted ambient env values; it was corrected to fake-only patch.dict(clear=True) plus boolean assertions and rerun red safely. The new AST assertion guard observed8 unsafe os.environ-container assertion sites (4 in test_config_overrides,4 in the new key tests), now rewritten without changing their predicates. Every future handoff scan includes the five incident variable names' current values in memory, without printing them. Full incident scan result is .audit-tmp/incident-export-scan.json; transcript output remains retained outside exports.
+
+UAT's Claude, Codex, Antigravity and OMP launches inherited ZAI_API_KEY, DEEPSEEK_API_KEY and META_API_KEY by the prior server/worker construction. This is established from the authorized startup env and snapshots, not a process-memory dump. Their restart with stripped environments is pending independent security clearance. No new live model call. Primary server remains available.

@@ -116,6 +116,26 @@ class PackageLaunchTests(unittest.TestCase):
         self.assertEqual(self.spawn.call_count, before + 1)
         self.assertIn(old['id'], cold.retired_attempts)
 
+    def test_api_keys_never_enter_cli_worker_but_api_worker_keeps_them(self):
+        self.manager.config['agents'] = self.providers
+        self.providers['fake-api']['api_key_env'] = 'FAKE_API_KEY_A'
+        package = self.store.package('team')
+        package['seats'][0]['secret_ref'] = 'FAKE_API_KEY_B'
+        self.store.save(package)
+        import os
+        with patch.dict(os.environ, {'FAKE_API_KEY_A':'fake-a', 'FAKE_API_KEY_B':'fake-b',
+                                     'UNREFERENCED_ENV':'keep'}, clear=True):
+            self.manager.launch('team','cli')
+            cli_env = self.spawn.call_args.kwargs.get('env', dict(os.environ))
+            self.assertFalse('FAKE_API_KEY_A' in cli_env, 'Referenced key A reached CLI worker')
+            self.assertFalse('FAKE_API_KEY_B' in cli_env, 'Referenced key B reached CLI worker')
+            self.assertEqual(cli_env['UNREFERENCED_ENV'], 'keep')
+            stripped = self.manager.attempts['team/cli']['effective']['provider']['strip_env']
+            self.assertTrue({'FAKE_API_KEY_A','FAKE_API_KEY_B'} <= set(stripped))
+            self.manager.launch('team','api')
+            api_env = self.spawn.call_args.kwargs.get('env', dict(os.environ))
+            self.assertEqual(api_env['FAKE_API_KEY_B'], 'fake-b')
+
     def test_mixed_package_roundtrip_and_revision_are_canonical(self):
         saved = self.store.package('team')
         self.assertEqual(saved, self.package)

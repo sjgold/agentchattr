@@ -36,7 +36,7 @@ class LauncherNamedKeyTests(unittest.TestCase):
         self.assertEqual(result['FAKE_KEY_A'],'FAKE_PRIVATE_A')
         self.assertNotIn('UNREFERENCED',result)
         self.assertNotIn('BAD_UTF8',result)
-        self.assertNotIn('FAKE_KEY_A',os.environ)
+        self.assertFalse('FAKE_KEY_A' in os.environ, 'Parent environment was modified')
         self.assertEqual(result['PATH'],'fixture-path')
 
     def test_saved_api_seat_reference_is_included_but_cli_and_unknown_template_are_not(self):
@@ -66,7 +66,7 @@ class LauncherNamedKeyTests(unittest.TestCase):
     def test_invalid_names_and_invalid_value_never_reach_child(self):
         self.config['agents']['api']['api_key_env']='BAD\nNAME'
         self.write(b'BAD\nNAME=private\n')
-        self.assertEqual(self.env(),dict(os.environ))
+        self.assertTrue(self.env()==dict(os.environ), "Unexpected environment change")
         self.config['agents']['api']['api_key_env']='FAKE_KEY_A'
         for raw in (b'FAKE_KEY_A=bad\x00value\n',b'FAKE_KEY_A=\xff\n'):
             self.write(raw)
@@ -75,7 +75,7 @@ class LauncherNamedKeyTests(unittest.TestCase):
     def test_no_references_does_not_open_dotenv(self):
         self.config['agents']={}
         with patch('pathlib.Path.open',side_effect=AssertionError('No key-file read needed')):
-            self.assertEqual(self.env(),dict(os.environ))
+            self.assertTrue(self.env()==dict(os.environ), "Unexpected environment change")
 
     def test_malformed_saved_reference_is_ignored_without_private_diagnostics(self):
         data=self.root/'data';data.mkdir()
@@ -86,6 +86,11 @@ class LauncherNamedKeyTests(unittest.TestCase):
         self.assertEqual(result['FAKE_KEY_A'],'good')
         self.assertNotIn('FAKE_KEY_B',result)
 
+    def test_strip_environment_is_case_insensitive_on_windows(self):
+        with patch('launcher.os.name','nt'):
+            result=launcher.strip_environment({'fake_key_a':'private','UNRELATED':'keep'}, {'FAKE_KEY_A'})
+        self.assertEqual(result, {'UNRELATED':'keep'})
+
     def test_spawn_enriches_only_server_child_without_logging_or_argv_leak(self):
         self.write(b'FAKE_KEY_A=FAKE_PRIVATE_SENTINEL\nUNREFERENCED=OTHER_PRIVATE\n')
         out=io.StringIO();err=io.StringIO()
@@ -94,7 +99,7 @@ class LauncherNamedKeyTests(unittest.TestCase):
         args,kw=spawn.call_args
         self.assertEqual(kw.get('env',{}).get('FAKE_KEY_A'),'FAKE_PRIVATE_SENTINEL')
         self.assertNotIn('UNREFERENCED',kw['env'])
-        self.assertNotIn('FAKE_KEY_A',os.environ)
+        self.assertFalse('FAKE_KEY_A' in os.environ, 'Parent environment was modified')
         self.assertNotIn('FAKE_PRIVATE_SENTINEL',str(args)+out.getvalue()+err.getvalue())
         self.assertNotIn(b'FAKE_PRIVATE_SENTINEL',(self.root/'.launcher/server.log').read_bytes())
 
