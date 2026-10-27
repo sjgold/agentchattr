@@ -9,6 +9,7 @@ Status: DESIGN APPROVED for tools and synthetic controls only at7d962b07 review;
 |tools/verify_artifact_ui.py|Parent fixture owner, generated server/local fake API responder/bootstrap, manifest, fixed controls, resource inventory/cleanup and receipts. --compile-only constructs no fixture/listener/process.|
 |tools/fake_artifact_client.py|Owned hidden fake CLI, genuine MCP client/tool calls and transport release, fixed canned Markdown. No model/LLM execution.|
 |tools/test_artifact_ui_harness_controls.py|Synthetic guard, capability, source/port/nonce, cleanup, lost-response and byte-verification controls. No real acceptance listeners/providers.|
+|tools/artifact_page_init_control.js|082b318902f3fe79008fd0570cd43723031bd102a411f0d4217f829d9617cad1|
 |Traycer browser controller|Own isolated Chromium session via the existing traycer-browser REPL, actual UI clicks/typing, snapshots, desktop/mobile screenshots and bounded read-only observation.|
 |Independent reviewer|Reviews executable tool/control/source hashes before the first run; separately drives/reproduces the bounded UI proof after root results.|
 
@@ -118,9 +119,10 @@ Frozen executable source SHA256s:
 
 |File|SHA256|
 |---|---|
-|tools/verify_artifact_ui.py|97327ecea1fea92dfa6bd9da444071ccf104d0a6a739f6acb6a0f3250df64a5e|
+|tools/verify_artifact_ui.py|830d9aac576e69813b939fec056fadf041f6a1df8c32dbf969df835ed848ff12|
 |tools/fake_artifact_client.py|57f8232969d0456827b1f19577bb2a780bda0a6435786917d8c6b100b82f6895|
-|tools/test_artifact_ui_harness_controls.py|d463314c01be28fe0025782bfc3deb8eb6456466bbf85314963cbdc23332e338|
+|tools/test_artifact_ui_harness_controls.py|73a03dcae047c567425c9c94b972bf26f5e0905658498d5e5ed00ad10a745be8|
+|tools/artifact_page_init_control.js|082b318902f3fe79008fd0570cd43723031bd102a411f0d4217f829d9617cad1|
 |tools/channel_guard.py|76fde78539634a7f1c4ef687f59afcddc82bd12de0aeb4c5e01f73649b23a927|
 |runtime_protocol.py|b770452455bcd48b1f50c5f306469aca328e9946292e58b83cd3e9e5cde69b01|
 
@@ -175,3 +177,36 @@ Stop-on-first-defect honored: no document action, durable index absent/request c
 |Cleanup / baseline / secrecy|Signed recovery8 absent, originals/ports unchanged, one un-attributed baseline PID departure|Original failures/deviation retained. No root/private/registry archive; DOM-only exports and screenshot visual check.|
 
 Control sequence: shared shim extraction kept old behavior, then actual Node method test failed and dry seam errored (1 FAIL +1 ERROR0.043s). Added setOptions and listener-free full runtime prebind mode. Final47 controls OK2.266s, including real guarded dry app startup and existing bootstrap children; compile-only OK. Console output retained in .audit-tmp/browser-harness-controls-after-attempt2-final.txt. No acceptance listener opened by these controls (stdlib internal socketpair allowance remains). No product/capability edit and no automatic third run. Reviewer receives this combined audit/pin before deciding another run.
+
+## Third-run hold: first-visit tour and real-page init backstop
+
+Reviewer withheld b14ff1a: a fresh isolated profile has no help_seen flag, so successful chat init schedules the help overlay after2500ms. This would block later clicks despite a healthy server. The fixture head now seeds localStorage.help_seen=1 before any product script. This is fixture-only origin state, never a personal profile or product-source change.
+
+NEW tools/artifact_page_init_control.js executes fixture_html('T','N') in one Node vm context. Python HTMLParser extracts every script tag in exact document order, inline token/observer/shim then all11 local static scripts. The DOM tree/strict id map comes from the actual HTML; unknown ids return null (no auto-created controls). Map-backed storage, recorded fetch/WebSocket, a schema-valid general-channel catalog and bounded microtask/history-task queue replace browser APIs. The real DOMContentLoaded callback runs, then settings/agents/history/history_complete enter the real ws.onmessage. It asserts: every script/async task completed without a throw or error log, marked.setOptions ran, the WebSocket is ws://127.0.0.1:1/ws?token=T (DUMMY test token), required channels/active-all/capacity fetches occurred, the real catalog validator accepts general, channel tabs exist, history hides loading-indicator, Documents.onclick is a function, help seed exists and help-guide is absent. Observer code is compiled using new vm.Script before execution. Loaded static source hashes and the new VM tool are frozen too.
+
+This is a globals/shim/order/init-throw backstop. The DOM parser/selectors/geometry and network are minimal doubles; no layout, CSP, focus, timing, real transport or browser acceptance claim. VM scaffolding initially lacked Event/insertAdjacentElement and used an incorrect active-all DTO; those control defects were corrected, and the real catalog acceptance assertion prevents a silently held catalog from passing. One in-memory debug probe logged the swallowed lifecycle exception to locate the stub gap; final green executes unmodified product scripts. No file under static/ was edited.
+
+Observed-red mutation results retained in .audit-tmp/artifact-page-init-vm-results.json:
+
+|In-process reversion|Observed failure|File/stage|
+|---|---|---|
+|Remove help seed from generated HTML|AssertionError: fixture must suppress first-visit help overlay|DOMContentLoaded/static/chat.js|
+|Remove setOptions from generated shim|TypeError: marked.setOptions is not a function|DOMContentLoaded/static/chat.js|
+|Break observer source syntax|SyntaxError from new vm.Script|inline-1 observer|
+
+Baseline VM PASS:14 scripts, optionsCalls1, exact dummy-token WebSocket, all required fetches, catalogAccepted=true, channelTabs1, loadingHidden=true, documentsClick=true, observerSyntax=true, helpSeed=true, uncaughtErrors0/errorLogs0. All3 reversions exit1 and are checked for their specific failure text. Final harness controls49 OK2.987s; compile-only and node --check pass. Raw console receipt .audit-tmp/browser-harness-controls-page-init-final.txt. No acceptance app/browser started after attempt2.
+
+Controller precondition BEFORE EVERY evidence case, after waiting for legitimate page/history loading: loading-indicator is hidden (hidden property, CSS hidden class or no visible layout), channel-tabs has children, and help-guide is absent. If this fails, stop as startup-invalid, not a case failure; never click through a backdrop or manufacture readiness. A DOM-only probe is permitted:
+
+```javascript
+await page.evaluate(() => {
+  const loader = document.getElementById('loading-indicator');
+  const loadingHidden = !!loader && (loader.hidden || loader.classList.contains('hidden') || getComputedStyle(loader).display === 'none');
+  const tabs = document.getElementById('channel-tabs')?.childElementCount || 0;
+  const helpAbsent = !document.getElementById('help-guide');
+  if (!loadingHidden || !tabs || !helpAbsent) throw new Error('Fixture startup invalid before evidence case');
+  return {loadingHidden, tabs, helpAbsent};
+});
+```
+
+Keep host127.0.0.1 for CSP. No source/script/function/page dumps or outbound Discord/donation clicks. The escape-only shim can double-escape angle brackets in ordinary chat (cosmetic; rich-chat parity excluded). Alert/naming-lightbox paths remain outside this bounded document flow. PID58092 baseline miss and both instrument-invalid attempts remain recorded. New pin goes to reviewer with the real-page VM red results; third run remains held until explicit clearance.

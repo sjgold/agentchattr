@@ -19,6 +19,20 @@ from tools import fake_artifact_client as client
 
 
 class ArtifactHarnessControls(unittest.TestCase):
+    def test_real_page_scripts_initialize_in_document_order(self):
+        result=harness.page_init_control()
+        self.assertTrue(result['pass'],json.dumps(result))
+        self.assertEqual(result['returncode'],0)
+        self.assertTrue(result['observerSyntax'])
+
+    def test_page_init_control_kills_help_seed_and_shim_reversions(self):
+        for mutation in ('help_seed','shim','observer'):
+            with self.subTest(mutation=mutation):
+                result=harness.page_init_control(mutation=mutation)
+                self.assertFalse(result['pass'],json.dumps(result))
+                self.assertNotEqual(result['returncode'],0)
+                self.assertIn({'help_seed':'fixture must suppress first-visit help overlay','shim':'marked.setOptions is not a function','observer':'SyntaxError'}[mutation],result['error'])
+
     def test_actual_shim_supports_every_marked_method_used_by_product(self):
         required=sorted(set(re.findall(r'\bmarked\.([a-zA-Z]+)',(harness.ROOT/'static/chat.js').read_text(encoding='utf-8'))))
         code="global.window=global;\n"+harness.marked_shim()+"\nconst assert=require('assert');\n"

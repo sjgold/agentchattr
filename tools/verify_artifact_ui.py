@@ -36,8 +36,10 @@ PIN_FILES = ('app.py', 'run.py', 'config_loader.py', 'api_seats.py', 'cli_seats.
     'wrapper_windows.py', 'wrapper_api.py', 'artifact_worker.py', 'artifact_operator.py',
     'artifact_routes.py', 'artifact_sources.py', 'artifact_service.py', 'artifact_store.py',
     'static/index.html', 'static/artifacts.js', 'static/artifacts.css', 'static/sessions.js',
+    'static/core.js', 'static/store.js', 'static/document-inputs.js', 'static/recipients.js',
+    'static/jobs.js', 'static/channel-lifecycle.js', 'static/channels.js', 'static/rules-panel.js',
     'tools/channel_guard.py', 'tools/verify_artifact_ui.py', 'tools/fake_artifact_client.py',
-    'tools/test_artifact_ui_harness_controls.py')
+    'tools/test_artifact_ui_harness_controls.py', 'tools/artifact_page_init_control.js')
 
 
 def read_json(path):
@@ -434,8 +436,57 @@ def fixture_html(token,nonce):
     html,replacements=re.subn(r'<script[^>]+src="https://[^\"]+marked[^\"]*"[^>]*></script>',
         lambda _: '<script>'+marked_shim()+'</script>',html)
     if replacements!=1: raise RuntimeError('CDN shim anchor changed')
-    script='<script>window.__SESSION_TOKEN__='+json.dumps(token)+';</script>'
+    script='<script>localStorage.setItem("help_seen","1");window.__SESSION_TOKEN__='+json.dumps(token)+';</script>'
     return html.replace('</head>',script+'<script>'+browser_observer(nonce)+'</script></head>')
+
+
+def page_init_control(*,mutation=None):
+    """Real script ordering/init in Node VM; no browser/network/layout claim."""
+    if mutation not in (None,'help_seed','shim','observer'): raise ValueError('Unknown in-process control mutation')
+    html=fixture_html('T','N')
+    if mutation=='help_seed':
+        anchor='localStorage.setItem("help_seen","1");'
+        if html.count(anchor)!=1: raise ValueError('Help seed mutation anchor differs')
+        html=html.replace(anchor,'',1)
+    elif mutation=='shim':
+        anchor='setOptions:()=>{},'
+        if html.count(anchor)!=1: raise ValueError('Shim mutation anchor differs')
+        html=html.replace(anchor,'',1)
+    elif mutation=='observer':
+        html=html.replace('window.__artifactFixtureEvidence=', 'window.__artifactFixtureEvidence=){',1)
+    from html.parser import HTMLParser
+    class Extract(HTMLParser):
+        def __init__(self):
+            super().__init__();self.nodes=[];self.stack=[];self.scripts=[];self.script=None
+        def handle_starttag(self,tag,attrs):
+            values=dict(attrs);index=len(self.nodes)
+            self.nodes.append({'tag':tag,'attrs':values,'parent':self.stack[-1] if self.stack else None})
+            if tag=='script': self.script={'src':values.get('src'),'chunks':[]}
+            if tag not in ('area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'):
+                self.stack.append(index)
+        def handle_endtag(self,tag):
+            if tag=='script' and self.script is not None:
+                script=self.script;self.script=None
+                if script['src']:
+                    path=script['src'].split('?')[0]
+                    if not path.startswith('/static/') or '..' in path.split('/'): raise ValueError('Nonlocal script in fixture HTML')
+                    code=(ROOT/path[1:]).read_text(encoding='utf-8');name=path[1:]
+                else: code=''.join(script['chunks']);name='inline-'+str(len(self.scripts))
+                self.scripts.append({'name':name,'code':code,'observer':'window.__artifactFixtureEvidence' in code})
+            for i in range(len(self.stack)-1,-1,-1):
+                if self.nodes[self.stack[i]]['tag']==tag:self.stack=self.stack[:i];break
+        def handle_data(self,data):
+            if self.script is not None:self.script['chunks'].append(data)
+    extracted=Extract();extracted.feed(html)
+    allowed={'PATH','SYSTEMROOT','WINDIR','COMSPEC','PATHEXT','SYSTEMDRIVE','PROCESSOR_ARCHITECTURE','NUMBER_OF_PROCESSORS'}
+    env={k:v for k,v in os.environ.items() if k.upper() in allowed}
+    result=subprocess.run(['node',str(ROOT/'tools/artifact_page_init_control.js')],
+        input=json.dumps({'nodes':extracted.nodes,'scripts':extracted.scripts}),text=True,
+        encoding='utf-8',capture_output=True,timeout=15,env=env,cwd=ROOT,
+        creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+    if not result.stdout.strip(): raise ValueError('VM control did not emit a result: '+result.stderr[:500])
+    value=json.loads(result.stdout.strip());value['returncode']=result.returncode
+    return value
 
 
 class _DryStartupComplete(Exception):

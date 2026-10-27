@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (attempt2 fixture page-init defect retained/recovered; combined startup audit +47 controls ready; third run held)
+**Updated:** 2026-10-26 (third run held; help seed +real-page VM backstop49 controls green,3 observed-red reversions ready for review)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer CLEARED first run after R fixes, now44 controls/compile green. Attempt2 reached READY but fixture marked shim blocked page init; stopped, browser closed, recovery8 births absent. Combined startup audit +47 controls/dry prebind proof goes to reviewer; no third run. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
+| Next | Reviewer CLEARED first run after R fixes, now44 controls/compile green. Attempt2 reached READY but fixture marked shim blocked page init; stopped, browser closed, recovery8 births absent. Help-tour blocker and real-page init backstop now covered:49 controls,3 specific observed-red reversions. Reviewer must clear new pin; no third run. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
 
 ## Current handoff
 
@@ -55,6 +55,12 @@ Actual package-validator control reproduced the refusal then passed after the he
 At5bc86df, fresh attempt2 root .audit-tmp/artifact-ui-99j19hmh reached READY with both managed authors/4 guards. Isolated page then stopped initializing: fixture shim omitted marked.setOptions. No document request, CLI tool or invocation record. Browser/session closed, no forwards. Original false receipt/cleanup warnings retained; signed recovery visits8/unresolved=[], all8 births absent,4 guards real_attempts0 and no unowned/watchdog files. Original data/known ports unchanged. Whole-machine Python baseline lost one unrelated-to-run/control-record PID58092 (cause unknown, retained deviation); do not call the full baseline unchanged.
 
 Combined static startup-defect audit is in docs/plans/2026-10-26-artifact-browser-harness.md. Shared shim now satisfies actual chat.js API calls; real guarded dry control follows runtime_server/run.main/full app configure/package/HTML path and stops before first listener, with service binds refused.47 controls OK2.266s + compile-only. Primary host/validator hashes added; product/capability bytes unchanged. Next owner reviewer: audit combined findings/correction pin before authorizing any third try. Root does not rerun automatically. UI/backend acceptance unchanged; screen/transcript21/packaging22/activation/cleanup later. No push.
+
+## Current review request: third run still held
+
+Reviewer found the fresh-profile first-visit help overlay would block the corrected page. Fixture HTML now seeds help_seen before product scripts. New Node VM control loads all14 actual inline/local scripts in order, strict actual-HTML ids/storage/fetch/WebSocket doubles, real DOMContentLoaded and four history/settings/agent events. It verifies setOptions, exact dummy-token WS, required fetches, accepted catalog/tabs, hidden loader and Documents onclick; observer uses vm.Script syntax compilation. Specific in-process help/shim/observer reversions all fail (observed red), baseline passes.49 controls OK2.987s +compile-only/Node syntax. No static product/capability byte change or third acceptance run. Minimal VM proves init globals/order/throws only, not browser/layout/CSP/focus. Browser controller must assert hidden loader +nonempty tabs +no help overlay before EVERY evidence case, otherwise stop startup-invalid.
+
+Next owner reviewer: check new pin and VM red results, then decide third-run clearance. Root replies to request8f410788 with this evidence; no automatic run. Prior invalid attempts/PID58092 deviation retained. UI/backend acceptance unchanged; screen/transcript21/packaging22/activation/cleanup later. No push.
 
 ## Earlier correction-review pointers (historical)
 
