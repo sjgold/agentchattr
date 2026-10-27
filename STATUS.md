@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:43 CDT. Integration adapter/provenance and publication note are reviewer-cleared. Both frozen UAT builds stay unchanged; waiting for Seth's RC1 verdict.
+**Updated:** 2026-10-27 05:38 CDT. RC0 stopped at Seth's request; RC1 remains up. MiMo Pro proof passed; Hermes file restore passed but hello failed. AGY proof window is open.
 
 **START HERE (Seth)**
 
@@ -8,11 +8,11 @@
 2. Check the six-seat team, then click Launch team and open chat (reuse is fine).
 3. In chat, use Documents: pick a completed source session, request a short document, then Read/Download.
 4. Try Start a session -> Choose UTF-8 files for the multi-file preview; starting a review uses the selected agents.
-5. For Antigravity use RC0: http://127.0.0.1:49949/preflight. RC1 leaves AGY and Hermes out.
-6. Decisions: keep Hermes deferred or discuss process61816; review the security rotation note; the app continues to start at Pre-flight.
+5. RC0 is STOPPED for the authorized AGY proof window. RC1 stays up and leaves AGY/Hermes out.
+6. Hermes remains deferred after its hello failure; rotations are scheduled by Seth; the app continues to start at Pre-flight.
 
 
-**UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
+**RC0 STOPPED, retained build:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
 RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI ideas and daily AGY injection. They remain integration/RC1 work.
 
@@ -30,15 +30,15 @@ Stop only RC1: `.audit-tmp/artifact-ui-rc1-euo3av0q/checkout/.audit-tmp/stop-rc1
 
 RC1 is available for comparison with RC0. Its final frozen discovery passed2164 tests with13 skips (9 post-launch transcript,4 existing). Reviewer cleared the exact pin and unchanged artifact-v1 activation. Six included seats are ready. One Claude Haiku document109B and one DeepSeek document73B each passed Read/Download byte equality. The browser picker checked two tiny files,31 raw bytes, with the expected packet revision. No multi-file agent review or screenshot acceptance is claimed.
 
-RC0 is unchanged and retains Antigravity. Hermes stays deferred: the running-path guard is integrated, but the Windows.cmd Stop limitation, pending stale-backup fix and Seth's existing Hermes process still prevent a real-home run. No Hermes home write/call happened.
+RC0 is now stopped at Seth's explicit request, with its shim entry removed. RC1 remains frozen and running. Hermes real-home writes/restores passed twice, but its injected hello failed with exit2; it remains excluded. MiMo Pro passed one24B managed document check and its temporary instance is stopped. AGY is being checked in the authorized window, at most3 launch/verify/Stop cycles.
 
 ## Needs Seth
 
-- [ ] Hermes: keep it deferred or arrange a safe review of the existing normal-home process61816 before a managed test. No agent will stop it automatically. Real Hermes/AGY adapter checks remain off until the client-running conditions and explicit go are met.
+- [ ] Hermes remains deferred: its YAML/MCP entry worked and restored exactly, but hello injection exited2. Investigation is post-launch; no further Hermes retry/log read is planned.
 
 - [ ] Release limit: corrected restart of a multi-file review does not edit the file list; changed files are reselected in a new review.
 
-- [ ] 2026-10-27 02:19 CDT Security note: a test failure on2026-10-27 printed this machine's ambient environment into the Codex agent's tool output (visible to the model provider and stored in the local Traycer transcript). Credential-like variable NAMES visible: RESEND_API_KEY, STITCH_API_KEY, WIKI_LINT_API_KEY, TRAYCER_A2A_MCP_TOKEN (plus STARSHIP_SESSION_KEY). Values are not in any repo file. Consider rotating those that matter. No agent changed or rotated credentials.
+- [ ] 2026-10-27 02:19 CDT Security note: a test failure on2026-10-27 printed this machine's ambient environment into the Codex agent's tool output (visible to the model provider and stored in the local Traycer transcript). Credential-like variable NAMES visible: RESEND_API_KEY, STITCH_API_KEY, WIKI_LINT_API_KEY, TRAYCER_A2A_MCP_TOKEN (plus STARSHIP_SESSION_KEY). Values are not in any repo file. Seth has rotations scheduled later this week and described the exposure as low with small budgets. No agent changes or rotates credentials.
 
 - [ ] Beyond the raw agent names, what else looked wrong on the main chat screen? Naming is implemented/tested and is visible on the running instance.
 
@@ -56,8 +56,9 @@ RC0 is unchanged and retains Antigravity. Hermes stays deferred: the running-pat
 |DeepSeek|deepseek-flash|RC0 ready; fresh Documents99B read/download exact. Earlier100B retained.1070 not mapped|
 |GLM|glm-5.3|Running; earlier Documents285B exact, no extra call|
 |Muse|muse-spark-1.3-contributor|Running; Documents81B exact. Hello needed512-token probe cap; normal document path worked unchanged|
-|Hermes|grok-4.7, existing xai-oauth|Adapter integrated/tested. Real proof deferred: existing bundled Python process; no home write or model call|
+|Hermes|grok-4.7, existing xai-oauth|Real YAML write/MCP tools/restore pass; injected hello exited2, deferred. Both proof gateways ended by ops under grant|
 |OMP|openai-codex/gpt-6.1-sol|Running; managed Documents90B read/download exact; model unverified in API metadata|
+|MiMo|mimo-v2.6-pro; Flash selectable|Integration-local ignored provider configured. One24B document/read/download pass; Pro confirmed. Temporary proof stopped; not added to frozen RC1|
 
 ## Next
 
@@ -327,3 +328,13 @@ The note separates the tested RC1 from later integration adapter fixes, requires
 Reviewer clearedc662722 after reading the one-key provenance delta and running217 related tests successfully with the trusted interpreter, no real-home writes. The285/298 broader focused sets remain builder evidence. Reviewer also cleared433f3e0's publication note and independently verified its local main base,316-file diff,605-at-code/606-at-note tracked counts, private-path boundary, no key-pattern matches outside ignored roots and clean tree. Updated the note's step2 from pending review to these clearances.
 
 Remaining publication gates: Seth's RC1 verdict, one full discovery on the exact final publication tip (later integration bytes are not covered by the RC1 full run), remote-target comparison and Seth's explicit push go. Both UAT builds remain frozen/running. No further model calls, global writes, cleanup or publication planned while waiting for Seth.
+
+### 2026-10-27 05:38 CDT Seth's proof-window decisions and current results
+
+Seth closed Hermes/AGY and authorized bounded real-file proofs. Reviewer/ops stopped the Hermes gateways under his grant; memory-DB processes were untouched. Ops alone wrote Hermes config atc662722: only agentchattr-uat added, MCP session/ListTools succeeded, final config SHA e67afc743a36d8035c6f108227bf20e3c328571c8a1e57eace731680262fefa2 equals both retained adapter backups and original. Backups are config.yaml.agentchattr-uat-20261027T102503Z-fec42b.bak and config.yaml.agentchattr-uat-20261027T102834Z-e83a92.bak under normal HERMES_HOME. Hello exited2; no retry or log read. The.cmd child survivor and running guard lacking a launch caller are post-launch findings.
+
+MiMo was unparked and changed to Pro by Seth. Integration config.local.toml contains only the non-secret provider block: https://api.xiaomimimo.com/v1, default mimo-v2.6-pro, Flash selectable, WIKI_LINT_API_KEY name. Current process and server-child presence booleans were true; no dotenv/key copy. One live managed document request fulfilled,24B SHA256fcc2e26b8b990ebc04d050700b3e1a006604408caf425190c9fbd85e16863ded, Pro confirmed, Read/Download200 and equal. Temporary server stopped cooperatively;6 signed owned resources ended,0 unresolved;15 exports scanned clean. An initial wrong-prefix supervisor failed closed before readiness/generation; retained root records it. No RC0/RC1 mutation for MiMo.
+
+Seth then explicitly opened a whole-RC0-stop window for AGY. Its own stop script ended server/workers and removed agentchattr-uat;49949-49951 closed, private merge record gone. One native45760 survived; signed birth/image plus live log-root verified, then ended by PID under his widened grant. Old natives55868/40428/50376 were ended after each signed creation time, exact renamed-image suffix and live old-UAT log path recheck; no product authority relaxed. Global MCP SHA before RC0stop bf43981e902ed1dd20fdb7a49b040dde015df8caf4f5d37c31f5469c170f5e4f; after shim removal62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d. AGY guard is now false. RC0 must remain stopped after the proof, no relaunch while Seth is away; RC1 stays up.
+
+Next: one supervised AGY attempt against the reviewed c662722 JSON adapter, entry agentchattr-fork only, backup/hash/diff-minus-entry and exact restore. Budget3 launch/verify/Stop cycles; stop/report on ownership or restore surprise. No push, no deletion, no unrelated global write.
