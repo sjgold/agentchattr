@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:05 CDT. Reviewed UI10ff7d0 merged for RC1;151 focused tests pass. RC0 is unchanged.
+**Updated:** 2026-10-27 04:06 CDT. RC1 UI/defaults/path-guard merges pass focused checks. RC0 stays frozen; Hermes and daily AGY writes remain deferred.
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
@@ -246,3 +246,9 @@ The daily Antigravity model proposal is in docs/guides/DAILY-SEAT-TEMPLATES.md. 
 ### 2026-10-27 04:05 CDT Reviewed UI ideas integrated for RC1
 
 Merged pinned10ff7d0: clearer text-field edges, side-by-side seat toggles, wider Documents reading space, compact channel actions, template-first session choices and a smaller idle addressed-agents line. Idea6 was intentionally skipped on the reviewed branch. Resolved cache-version conflicts using the new packet picker and newest UI assets; kept both default-model and toggle-layout tests. Canonical routing ids and display labels remain intact.151 readability/pre-flight/help/artifact/restart/naming/packet/default/CLI/package tests pass in8.161s. RC0 checkout and its served bytes were untouched. Next: path guard48c6d36, corrected AGY adapter only if cleared, then frozen RC1 verification.
+
+### 2026-10-27 04:06 CDT Reviewed path guard integrated
+
+Merged pinned48c6d36 without conflict. Hermes detection now checks executable paths beneath the resolved home as well as image names; unknown probes stay unknown.102 YAML/temp-home/CLI/default/protocol/environment-guard tests pass in3.310s. No real home, live process or global config was changed. Hermes stays excluded from RC1. The separate stale-backup receipt correction is still under Opus/reviewer review; no real YAML/JSON adapter write is permitted before that corrected pin.
+
+RC1 freeze proposal includes cleared multi-file work, model defaults, UI10ff7d0 and path guard48c6d36. The AGY JSON adapter remains excluded unless cleared with managed cleanup tests first. A sibling instance must not replace RC0's distinct global AGY MCP entry; concurrent AGY launch needs an explicit safe plan or omission. Final full discovery has not yet run on these merged bytes.

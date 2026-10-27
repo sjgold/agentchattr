@@ -502,21 +502,152 @@ def _text(output) -> str:
     return output.decode('utf-8', errors='replace') if isinstance(output, bytes) else (output or '')
 
 
-def hermes_running(image_names=('hermes.exe', 'hermes')) -> bool | None:
-    """Read-only check by process image name only (never command lines).
+def _image_names() -> set:
+    """Running process image names (never command lines)."""
+    if sys.platform == 'win32':
+        tasklist = os.path.join(os.environ.get('SystemRoot') or r'C:\Windows', 'System32', 'tasklist.exe')
+        output = _text(subprocess.run([tasklist, '/FO', 'CSV', '/NH'], capture_output=True, timeout=15,
+                                      creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout)
+        return {line.split('","', 1)[0].strip('"') for line in output.splitlines() if line.startswith('"')}
+    output = _text(subprocess.run(['ps', '-A', '-o', 'comm='], capture_output=True, timeout=15).stdout)
+    return {Path(line.strip()).name for line in output.splitlines() if line.strip()}
 
-    Returns True/False, or None when the process list could not be read. A Hermes started
-    through an interpreter (python.exe) is not visible by image name; pass its launcher image."""
-    wanted = {name.lower() for name in image_names}
-    try:
-        if sys.platform == 'win32':
-            tasklist = os.path.join(os.environ.get('SystemRoot') or r'C:\Windows', 'System32', 'tasklist.exe')
-            output = _text(subprocess.run([tasklist, '/FO', 'CSV', '/NH'], capture_output=True, timeout=15,
-                                          creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout)
-            images = {line.split('","', 1)[0].strip('"').lower() for line in output.splitlines() if line.startswith('"')}
-        else:
-            output = _text(subprocess.run(['ps', '-A', '-o', 'comm='], capture_output=True, timeout=15).stdout)
-            images = {Path(line.strip()).name.lower() for line in output.splitlines() if line.strip()}
-    except (OSError, ValueError, subprocess.SubprocessError):
+
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+
+def _windows_executable_paths(kernel32=None) -> list:
+    """Executable image paths via EnumProcesses/QueryFullProcessImageNameW; no shell.
+
+    Opens each process with PROCESS_QUERY_LIMITED_INFORMATION only, which cannot read a command
+    line or environment. Processes that refuse even that are skipped silently."""
+    import ctypes
+    from ctypes import wintypes
+    if kernel32 is None:
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel32.K32EnumProcesses.argtypes = [ctypes.POINTER(wintypes.DWORD), wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+        kernel32.K32EnumProcesses.restype = wintypes.BOOL
+        kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.QueryFullProcessImageNameW.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+                                                        ctypes.POINTER(wintypes.DWORD)]
+        kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+    count = 1024
+    while True:
+        pids, needed = (wintypes.DWORD * count)(), wintypes.DWORD()
+        if not kernel32.K32EnumProcesses(pids, ctypes.sizeof(pids), ctypes.byref(needed)):
+            raise OSError('EnumProcesses failed')
+        if needed.value < ctypes.sizeof(pids) or count >= 1 << 20:
+            break
+        count *= 2
+    buffer, paths = ctypes.create_unicode_buffer(32768), []
+    for pid in pids[:needed.value // ctypes.sizeof(wintypes.DWORD)]:
+        handle = kernel32.OpenProcess(_PROCESS_QUERY_LIMITED_INFORMATION, False, pid) if pid else None
+        if not handle:
+            continue
+        try:
+            size = wintypes.DWORD(len(buffer))
+            if kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size)):
+                paths.append(buffer.value)
+        finally:
+            kernel32.CloseHandle(handle)
+    return paths
+
+
+def _executable_paths():
+    """Executable paths of running processes, or None when this platform cannot list them."""
+    if sys.platform == 'win32':
+        return _windows_executable_paths()
+    if not os.path.isdir('/proc'):
         return None
-    return bool(images & wanted) if images else None
+    paths = []
+    for pid in os.listdir('/proc'):
+        if pid.isdigit():
+            try:
+                paths.append(os.readlink(f'/proc/{pid}/exe'))
+            except OSError:
+                continue
+    return paths
+
+
+def _path_forms(path) -> set:
+    """Normalised spellings of a path: as given and with symlinks resolved."""
+    forms = {os.path.normcase(os.path.normpath(os.path.abspath(path)))}
+    try:
+        forms.add(os.path.normcase(os.path.normpath(os.path.realpath(path))))
+    except (OSError, ValueError):
+        pass
+    return forms
+
+
+def _is_under(path, roots) -> bool:
+    for form in _path_forms(path):
+        for root in roots:
+            if form == root or form.startswith(root.rstrip(os.sep) + os.sep):
+                return True
+    return False
+
+
+def client_running(roots=(), image_names=(), *, lister=None) -> bool | None:
+    """Read-only check: is a client process running, by image name or by executable location.
+
+    True when a process image name matches ``image_names`` (case-insensitive), or when a running
+    executable's path lies under one of ``roots`` (compared on a separator boundary, as given and
+    with symlinks resolved, case- and separator-folded per platform). Only image names and
+    executable paths are read, never command lines or environments, and nothing is logged.
+
+    ``lister`` returns ``(image_names, executable_paths)``; ``executable_paths`` may be None when
+    the platform cannot list them, and path matching is then skipped. Any hit returns True.
+    Otherwise None means "could not fully check" (a list unreadable, no root given, or paths
+    unavailable), so it must never be read as "not running"; False only when both the image and
+    the path checks ran and found nothing.
+
+    Limitation: a client started from outside its root (for example a system Python running
+    Hermes's code) is not detected by path; only its image name could match."""
+    roots = [r for r in roots if r]
+    if lister is None:
+        def lister():
+            return _image_names(), (_executable_paths() if roots else None)
+    try:
+        images, paths = lister()
+    except (OSError, ValueError, AttributeError, subprocess.SubprocessError):
+        return None
+    wanted = {name.lower() for name in image_names}
+    if any(str(image).lower() in wanted for image in images or ()):
+        return True
+    if roots and paths:
+        root_forms = set().union(*(_path_forms(root) for root in roots))
+        if any(path and _is_under(path, root_forms) for path in paths):
+            return True
+    return False if images and roots and paths is not None else None
+
+
+def _client_home():
+    """HERMES_HOME expanded like mcp_settings_path, or None when unset, empty or unresolvable."""
+    raw = os.environ.get('HERMES_HOME', '')
+    if not raw.strip():
+        return None
+    try:
+        return str(resolve_settings_path(raw))
+    except YamlSettingsError:
+        return None
+
+
+def hermes_running(home=None, image_names=('hermes.exe', 'hermes'), *, lister=None) -> bool | None:
+    """Is Hermes running? ``client_running`` with Hermes's image names and home.
+
+    hermes.cmd launches the python.exe bundled under HERMES_HOME, so a process whose executable
+    lies under ``home`` counts. ``home`` defaults to HERMES_HOME (expanded as mcp_settings_path
+    is). When the home is unset, empty or unresolvable, path matching is skipped: an image-name
+    hit is still True, and anything else is None (unknown), never False. A Hermes run by an
+    interpreter outside its home is not detected."""
+    if home is None:
+        home = _client_home()
+    else:
+        try:
+            home = str(resolve_settings_path(str(home)))
+        except YamlSettingsError:
+            home = None
+    return client_running((str(home),) if home else (), image_names, lister=lister)
