@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 02:49 CDT. Hermes adapter merged with managed Stop cleanup fix; no real-home write before renewed clearance.
+**Updated:** 2026-10-27 02:59 CDT. RC0 freeze99361d1: clone/full discovery before UAT switch. Integration packet work continues separately.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -188,3 +188,11 @@ Budget tracking uses the662558f red-pin wall clock as a conservative upper bound
 Merged pinnedca2c80b, preserving the security strip changes and both new YAML/API packet source dependencies. PyYAML>=6.0 is declared explicitly. Before a real write, source tracing found the legacy wrapper finally had cleanup but managed cli_worker.run did not. Two temp-HERMES_HOME tests observed genuine failures: cooperative managed Stop and startup failure after apply both left the entry. A YAML-only ExitStack callback now registers before apply and runs while the lifetime settings lock is held; both tests assert exact original bytes and no temporary file.109 YAML/CLI/key/package/protocol/assertion-guard tests pass in4.939s.
 
 Forced worker termination on Windows skips Python finally and can leave the entry/token. No new server-side global-file recovery was added: the supervised real run must verify removal after Stop and explicitly check for leftover entry/tmp files; if proof/cleanup fails, stop and report. The normal-home run is held until reviewer checks this corrected integration pin. No real HERMES_HOME config read/write has happened in these tests.
+
+### 2026-10-27 02:59 CDT UAT freeze RC0 boundary
+
+Reviewer requested immediate UAT isolation from this moving integration tree. RC0 is99361d1 (reviewed UI, pre-flight fixes, key loader/CLI strip and offline Markdown fallback), before23 reds/core and Hermes. A fresh retained clone gets its own environment and one full root discovery; no switch until reviewer checks it. Existing UAT49949 remains up meanwhile. The transition plan is .audit-tmp/rc0-transition-plan.md.
+
+Copy boundary before switching: saved seat packages and non-runtime templates/config/env-var NAMES only. Re-seed synthetic accepted source sessions in the new runtime root. Never copy runtime, queue, process, ownership or other authority catalogs. Old root/data stay untouched. Operational helpers must be frozen with the new checkout, not import moving integration code. After the cooperative switch, further work never changes RC0; later fixes require reviewed RC1. Hermes real-home run will use a separate integration-owned instance or wait for RC1, with its same backup/removal/no-Hermes-running rules.
+
+RC1 trigger: Hermes result or explicit defer, reviewed default_model and the23 checkpoint. Include23 only if all3 groups are green/reviewed; otherwise explicitly exclude it. The7 UI ideas are deferred unless reviewed/pinned by freeze. Daily AGY injection is not an RC prerequisite (reviewed UAT shim remains); disclose it as pending.21/22/24-26 are post-launch. No push/publication.
