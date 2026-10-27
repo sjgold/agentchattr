@@ -131,16 +131,16 @@ class ArtifactCapabilityTests(unittest.TestCase):
                     'image_path': str(self.root / 'fixture-python.exe')}
         return path, snapshot, observed
 
-    def test_manifests_both_adapters_are_disabled_detached_and_strictly_validated(self):
+    def test_manifests_both_adapters_advertise_reviewed_support_detached_and_strictly_validated(self):
         protocol = importlib.import_module('runtime_protocol')
-        self.assertEqual(protocol.SUPPORTED_CAPABILITIES, ())
+        self.assertEqual(protocol.SUPPORTED_CAPABILITIES, ('artifact-v1',))
         for adapter in ('cli', 'openai-compatible'):
             with self.subTest(adapter=adapter):
                 manifest = protocol.build_manifest(fixture.ROOT, adapter)
                 self.assertEqual(set(manifest), {'version', 'adapter', 'capabilities', 'sources'})
                 self.assertEqual(manifest['version'], 1)
                 self.assertEqual(manifest['adapter'], adapter)
-                self.assertEqual(manifest['capabilities'], [])
+                self.assertEqual(manifest['capabilities'], ['artifact-v1'])
                 self.assertEqual(set(manifest['sources']), set(protocol.SOURCE_FILES[adapter]))
                 self.assertIn('runtime_protocol.py', manifest['sources'])
                 for name, digest in manifest['sources'].items():
@@ -166,6 +166,12 @@ class ArtifactCapabilityTests(unittest.TestCase):
                 for value in invalid:
                     with self.subTest(value=value), self.assertRaises(ValueError):
                         protocol.validate_manifest(value, adapter)
+
+    def test_explicit_disabled_policy_still_builds_empty_capability_manifests(self):
+        protocol = importlib.import_module('runtime_protocol')
+        with patch.object(protocol, 'SUPPORTED_CAPABILITIES', ()):
+            for adapter in ('cli', 'openai-compatible'):
+                self.assertEqual(protocol.build_manifest(fixture.ROOT, adapter)['capabilities'], [])
 
     def test_source_byte_drift_and_unreadable_closure_fail_closed_without_touching_sources(self):
         protocol = importlib.import_module('runtime_protocol')

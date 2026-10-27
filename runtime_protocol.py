@@ -5,8 +5,8 @@ from pathlib import Path
 import re
 
 
-# Enabled only by the separately reviewed wrapper-purpose implementation.
-SUPPORTED_CAPABILITIES = ()
+# Ticket20 activation: advertised only by new source-bound managed launches.
+SUPPORTED_CAPABILITIES = ('artifact-v1',)
 MAX_MANIFEST_SOURCES = 128
 SOURCE_FILES = {
     'cli': ('api_invocation.py', 'api_seats.py', 'artifact_delivery.py', 'artifact_protocol.py', 'artifact_store.py', 'artifact_worker.py',

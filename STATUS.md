@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (Ticket21/22 pending until20 acceptance; timing criteria corrected; frozen full regression next)
+**Updated:** 2026-10-26 (full1936 green/13 disclosed skips; activation candidate112 focused green, reviewer next;21/22 pending)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured API/CLI entries and transport/MCP/factory are independently component-cleared, and corrected full discovery passes. Artifact production remains disabled.**
+**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured API/CLI entries and transport/MCP/factory are independently component-cleared, and corrected full discovery passes. Published artifact production remains disabled; the local activation candidate is awaiting review and has not been launched.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -18,7 +18,19 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Root: frozen full Ticket20 test discovery, then separate activation for reviewer sign-off. Ticket21/22 pending; no new browser or timing campaign. |
+| Next | Reviewer: activation candidate review. Root then bounded real Claude/z.ai UAT when configured. Ticket21/22 pending until20 acceptance; no extra features or harness work. |
+
+## Ticket20 frozen regression and activation candidate, 2026-10-26/27
+
+Seth's freeze: "unless there is a blocking feature everything is frozen" (reviewer relay). No new features/hardening/harness/timing/refactor work. Only an evidenced blocking document-flow or safety/auth/data-loss defect may receive a minimal observed-red fix after reviewer notification. Ticket21/22 remain pending until20 acceptance.
+
+Frozen product0a009ca full root discovery:1936 tests across227 modules, OK398.132s,13 explicit skips (9 pending Ticket21 transcript +4 existing). Shell6384cb77-6ab5-42d7-8980-05aa28c91753 exit0; no product/test edits during the run. No timing campaign. Historical tool controls are not part of root discovery; their frozen4968 guard remains unchanged.
+
+Activation CANDIDATE, awaiting independent review: runtime_protocol.SUPPORTED_CAPABILITIES advertises only artifact-v1. This is the sole product edit. Three existing test defaults now expect the activated capability; all disabled-policy/legacy/source/birth/ownership refusal bodies remain, with an additional explicit empty-manifest policy test. Before the flag change,3 activation expectations failed by assertion (0.029s); after,112 capability/admission/worker/operator/routes/UI tests OK18.599s. Full1936 predates the flag;112 focused tests cover the candidate. No live runtime/seat/model launched from the candidate, no push. Existing managed launches must be relaunched to receive the new source-bound manifest; old retained launches are never retroactively granted support.
+
+Post-review UAT, fixed providers: real Claude CLI with claude-haiku-5-5, Sonnet/lower fallback only if needed; no Fable/Opus, no helper agents. API author z.ai only, exact model/base URL must come from Seth/config, never guessed. Both paths: one small create -> author -> submit -> read -> exact download, stop at first problem; live-path evidence only, no UI/visual acceptance. Authorization is after full discovery and activation review only. Isolated fixture roots, owned signed process cleanup/baseline comparison, credential/token scans, no global/Omarchy/Desktop changes. No keys in chat/logs/receipts; existing API-seat secret_ref path or Seth's one-process masked input. CLI executable is installed; login has not been exercised. No z.ai provider exists in either project config/batch tree; local config absent. Need base URL/model slug/environment reference and masked key setup before API live testing. No live calls made.
+
+Next owner reviewer: review the activation candidate and sign-off for launch/UAT. Root then performs bounded Claude and z.ai checks when configuration is available. Ticket21/22 stay pending; final file cleanup/publication later, explicit push authorization still required. Optional desktop look only; phone-width/speed-screen/browser-harness work is withdrawn.
 
 ## Ticket21 transcript: red checkpoint
 

@@ -486,10 +486,10 @@ class ArtifactWorkerTests(unittest.TestCase):
         self.assertEqual(self.files(), before)
         attempt['process'].terminate.assert_not_called()
 
-    def test_binding_manifest_birth_source_drift_and_default_disabled_policy_remain_closed(self):
+    def test_binding_manifest_birth_source_drift_and_immutable_launch_policy_remain_closed(self):
         worker = importlib.import_module('artifact_worker')
         protocol = importlib.import_module('runtime_protocol')
-        self.assertEqual(protocol.SUPPORTED_CAPABILITIES, ())
+        self.assertEqual(protocol.SUPPORTED_CAPABILITIES, ('artifact-v1',))
         self.setup_authority()
         audit, _ = self.claimed()
         record, owned = self.owned(audit)

@@ -372,9 +372,9 @@ class ArtifactAdmissionTests(unittest.TestCase):
         self.assertEqual(self.artifacts.list_versions(first['lineage_id'])['count'], 1)
         self.assertEqual(self.artifacts.list_versions(second['lineage_id'])['count'], 1)
 
-    def test_production_disabled_and_legacy_wrapper_refuse_enqueue_without_effects(self):
+    def test_disabled_policy_and_legacy_wrapper_refuse_enqueue_without_effects(self):
         protocol = importlib.import_module('runtime_protocol')
-        self.assertEqual(protocol.SUPPORTED_CAPABILITIES, ())  # Unpatched production default.
+        self.assertEqual(protocol.SUPPORTED_CAPABILITIES, ('artifact-v1',))  # Reviewed activation default.
         self.setup_authority()
         audit, packet = self.new_request()
         before = self.files()
