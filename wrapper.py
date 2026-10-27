@@ -200,7 +200,6 @@ def _reset_yaml_state() -> None:
 
 
 def _apply_yaml_mcp_settings(raw_path, project_dir, url: str, token: str) -> Path:
-    import dataclasses
     import yaml_mcp_settings
     target = yaml_mcp_settings.resolve_settings_path(raw_path, project_dir)
     with _YAML_LOCK:
@@ -209,11 +208,21 @@ def _apply_yaml_mcp_settings(raw_path, project_dir, url: str, token: str) -> Pat
         with _config_write_lock(target):
             receipt = yaml_mcp_settings.apply(target, url, token, entry=YAML_SERVER_NAME)
         key = os.path.normcase(str(target.resolve()))
-        earlier = _YAML_RECEIPTS.get(key)
-        if earlier is not None and receipt.backup_path is None:
-            receipt = dataclasses.replace(earlier, written_sha256=receipt.written_sha256)
-        _YAML_RECEIPTS[key] = receipt
+        _YAML_RECEIPTS[key] = _merge_receipt(_YAML_RECEIPTS.get(key), receipt)
     return target
+
+
+def _merge_receipt(earlier, receipt):
+    """Keep the first clean backup across token refreshes, but only while nobody else wrote
+    the file between our writes. Otherwise drop the backup (and the claim to have created the
+    file) so stop does the checked structural delete instead of restoring stale bytes."""
+    import dataclasses
+    if earlier is None or receipt.backup_path is not None:
+        return receipt
+    if earlier.written_sha256 == receipt.prior_sha256:
+        return dataclasses.replace(earlier, written_sha256=receipt.written_sha256, prior_sha256=receipt.prior_sha256)
+    return dataclasses.replace(earlier, backup_path=None, backup_sha256=None, created_file=False,
+                               written_sha256=receipt.written_sha256, prior_sha256=receipt.prior_sha256)
 
 
 def _remove_yaml_mcp_entries() -> list:
@@ -251,7 +260,6 @@ def _reset_json_state() -> None:
 
 
 def _apply_json_mcp_entry(inject_cfg: dict, project_dir, url: str, token: str) -> Path:
-    import dataclasses
     import json_mcp_settings
     target = json_mcp_settings.resolve_settings_path(inject_cfg.get("mcp_settings_path", ""), project_dir)
     entry = json_mcp_settings.entry_name(inject_cfg.get("mcp_entry_name"))
@@ -262,10 +270,7 @@ def _apply_json_mcp_entry(inject_cfg: dict, project_dir, url: str, token: str) -
         with _config_write_lock(target):
             receipt = json_mcp_settings.apply(target, url, token, entry=entry, key=url_key)
         key = os.path.normcase(str(target.resolve()))
-        earlier = _JSON_RECEIPTS.get(key)
-        if earlier is not None and receipt.backup_path is None:
-            receipt = dataclasses.replace(earlier, written_sha256=receipt.written_sha256)
-        _JSON_RECEIPTS[key] = receipt
+        _JSON_RECEIPTS[key] = _merge_receipt(_JSON_RECEIPTS.get(key), receipt)
     return target
 
 
@@ -287,6 +292,24 @@ def _remove_json_mcp_entries() -> list:
                 detail = str(error) if isinstance(error, json_mcp_settings.JsonSettingsError) else type(error).__name__
                 print(f"  Warning: could not remove {receipt.entry} from {receipt.path}: {detail}")
     return results
+
+
+def _stop_settings_cleanups(resources) -> None:
+    """Take our entries (and token) back out before the lifetime lock is released. Each cleanup
+    runs even if the one before it is interrupted (KeyboardInterrupt included), and
+    resources.close() always runs. Warnings name the exception type only."""
+    try:
+        try:
+            _remove_yaml_mcp_entries()
+        except Exception as error:
+            print(f"  Warning: YAML settings cleanup failed: {type(error).__name__}")
+        finally:
+            try:
+                _remove_json_mcp_entries()
+            except Exception as error:
+                print(f"  Warning: JSON settings cleanup failed: {type(error).__name__}")
+    finally:
+        resources.close()
 
 
 def _provider_from_command(command: object) -> str:
@@ -1028,18 +1051,7 @@ def main():
             if proxy is not None:
                 proxy.stop()
         finally:
-            try:
-                # Before the lifetime lock is released: take our entries (and token) back out.
-                try:
-                    _remove_yaml_mcp_entries()
-                except Exception as error:
-                    print(f"  Warning: YAML settings cleanup failed: {type(error).__name__}")
-                try:
-                    _remove_json_mcp_entries()
-                except Exception as error:
-                    print(f"  Warning: JSON settings cleanup failed: {type(error).__name__}")
-            finally:
-                resources.close()
+            _stop_settings_cleanups(resources)
 
     print("  Wrapper stopped.")
 

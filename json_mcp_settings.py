@@ -15,7 +15,26 @@ preservation, both undone by remove_exact when the file is unchanged since our w
 an empty ``mcpServers`` object written with inner whitespace (``{ }``) loses that
 whitespace, and a missing ``mcpServers`` is appended as the last root member.
 
+Ownership and integrity guards:
+- An existing member under our name is refreshed or removed only if it has exactly the shape
+  we write (the url key holding a loopback http URL, plus optionally headers with exactly one
+  "Authorization: Bearer ..." value). Anything else is the user's and is refused, untouched.
+- Every planned write is checked three ways: the bytes before and after the spliced region
+  are identical to the original, only mcpServers.<entry> differs structurally (key order
+  included), and the parsed result equals the expected value.
+- If the write fails for any reason after a backup was made, that backup is deleted.
+
+Strict parsing, by design: duplicate keys, a UTF-8 BOM, JSONC comments or trailing commas,
+NaN/Infinity, non-finite numbers, mixed or bare-CR line endings and an existing empty file
+are all refused rather than repaired.
+
 Operational notes:
+- The wrapper's lifetime lock file (<config>.agentchattr.lock, next to the config) is never
+  deleted; it is empty and harmless.
+- mcp_settings_path is not constrained beyond $VAR/~ expansion (relative paths resolve against
+  the project directory). Requiring an absolute path is a possible later tightening.
+- agy_running duplicates yaml_mcp_settings' process check; once the path-aware
+  client_running lands there (branch hermes-running-path), reuse it instead.
 - os.replace writes a new file: Windows gives it the directory's inherited ACL,
   POSIX mode bits are not copied, and a symlinked config becomes a regular file.
 - Backups (mcp_config.json.<entry>-<UTC>-<hex>.bak) are never deleted automatically.
@@ -61,6 +80,8 @@ class ApplyReceipt:
     written_sha256: str
     created_file: bool
     created_section: bool
+    prior_sha256: str | None = None   # sha256 of the bytes this write replaced; None if the file was new
+    url_key: str = DEFAULT_URL_KEY
 
 
 @dataclass
@@ -288,21 +309,26 @@ def _style_in(text: str, obj: _Object, newline: str) -> _Style:
     return _Style(multiline, parent + unit if multiline else parent, unit, newline, ': ', ' ')
 
 
-def _append_member(text: str, obj: _Object, key: str, value, newline: str) -> str:
+def _splice(text: str, start: int, end: int, insert: str):
+    """(new text, (start, end, len(insert))): text[start:end] replaced by insert."""
+    return text[:start] + insert + text[end:], (start, end, len(insert))
+
+
+def _append_member(text: str, obj: _Object, key: str, value, newline: str):
     style = _style_in(text, obj, newline)
     member = json.dumps(key) + style.colon + _format(value, style, style.indent)
     if obj.members:
         last = obj.members[-1]
-        return text[:last.value_end] + ',' + style.sep + member + text[last.value_end:]
+        return _splice(text, last.value_end, last.value_end, ',' + style.sep + member)
     if style.multiline:
         parent = _line_indent(text, obj.open)
         inner = newline + style.indent + member + newline + parent
     else:
         inner = member
-    return text[:obj.open + 1] + inner + text[obj.close:]
+    return _splice(text, obj.open + 1, obj.close, inner)
 
 
-def _replace_value(text: str, obj: _Object, member: _Member, value, newline: str) -> str:
+def _replace_value(text: str, obj: _Object, member: _Member, value, newline: str):
     """Refresh our entry in place, keeping whether its value spans lines."""
     old = text[member.value_start:member.value_end]
     multiline = '\n' in old
@@ -312,16 +338,62 @@ def _replace_value(text: str, obj: _Object, member: _Member, value, newline: str
     colon = text[member.key_end:member.value_start]
     item_sep = ' ' if multiline or re.search(r',\s', old) or ': ' in old else ''
     style = _Style(multiline, indent, unit, newline, ': ' if '\n' in colon else colon, item_sep)
-    return text[:member.value_start] + _format(value, style, indent) + text[member.value_end:]
+    return _splice(text, member.value_start, member.value_end, _format(value, style, indent))
 
 
-def _remove_member(text: str, obj: _Object, member: _Member) -> str:
+def _remove_member(text: str, obj: _Object, member: _Member):
     index = obj.members.index(member)
     if len(obj.members) == 1:
-        return text[:obj.open + 1] + text[obj.close:]
+        return _splice(text, obj.open + 1, obj.close, '')
     if index > 0:
-        return text[:obj.members[index - 1].value_end] + text[member.value_end:]
-    return text[:member.key_start] + text[obj.members[1].key_start:]
+        return _splice(text, obj.members[index - 1].value_end, member.value_end, '')
+    return _splice(text, member.key_start, obj.members[1].key_start, '')
+
+
+def _then(first, second):
+    """Old-text span (start, end) covering two successive splices; ``second`` is in the
+    coordinates of the text the first splice produced."""
+    start, end, inserted = first
+    a, b, _ = second
+
+    def back(x, low):
+        if x <= start:
+            return x
+        if x >= start + inserted:
+            return x - inserted + end
+        return start if low else end
+    return min(start, back(a, True)), max(end, back(b, False)), None
+
+
+def _check_outside(old: str, new: str, region, path: Path) -> None:
+    """Every byte before and after the spliced span is unchanged (M3), independent of the
+    structural checks: a splice cannot silently touch whitespace elsewhere."""
+    start, end = region[0], region[1]
+    tail = len(old) - end
+    if len(new) < start + tail or new[:start] != old[:start] or new[len(new) - tail:] != old[end:]:
+        raise JsonSettingsError(f'{path.name}: the planned edit would change bytes outside the spliced region; '
+                                'nothing was changed.')
+
+
+_OUR_URL = re.compile(r'http://(?:127\.0\.0\.1|localhost):\d{1,5}/')
+
+
+def _looks_ours(value, key: str) -> bool:
+    """The shape this module writes: the url key (a loopback http URL) plus, optionally,
+    headers with exactly one Authorization: Bearer value. Anything else is the user's."""
+    if not isinstance(value, dict) or set(value) not in ({key}, {key, 'headers'}):
+        return False
+    if not isinstance(value[key], str) or not _OUR_URL.match(value[key]):
+        return False
+    headers = value.get('headers', {'Authorization': 'Bearer '})
+    return (isinstance(headers, dict) and set(headers) == {'Authorization'}
+            and isinstance(headers['Authorization'], str) and headers['Authorization'].startswith('Bearer '))
+
+
+def _refuse_unless_ours(parsed: dict, entry: str, key: str, path: Path) -> None:
+    if not _looks_ours(parsed[SECTION][entry], key):
+        raise JsonSettingsError(f'{path.name} {SECTION}.{entry} was not written by agentchattr (unexpected keys or '
+                                f'URL); it is left untouched. Pick another mcp_entry_name or remove it by hand.')
 
 
 # --- Verification ----------------------------------------------------------
@@ -473,7 +545,7 @@ def apply(path, url: str, token: str, *, entry: str = DEFAULT_ENTRY, key: str = 
         raise JsonSettingsError(f'{path.parent} does not exist; nothing was changed.')
     for attempt in range(2):
         raw = _current_bytes(path)
-        plan = _plan_apply(path, raw, entry, _entry_value(url, token, key))
+        plan = _plan_apply(path, raw, entry, _entry_value(url, token, key), key)
         backup = backup_sha = None
         if raw is not None and not plan['had_entry']:
             backup, backup_sha = _backup(path, raw, entry), _sha256(raw)
@@ -483,15 +555,20 @@ def apply(path, url: str, token: str, *, entry: str = DEFAULT_ENTRY, key: str = 
             if backup is not None:
                 backup.unlink(missing_ok=True)       # our own backup of a version we did not edit
             continue
+        except BaseException:
+            if backup is not None:
+                backup.unlink(missing_ok=True)       # nothing was written, so the backup has no purpose
+            raise
         if backup is not None:
             log(f'  Backed up {path.name} -> {backup} (sha256 {backup_sha})')
         log(f'  {"Refreshed" if plan["had_entry"] else "Added"} {SECTION}.{entry} in {path} (sha256 {_sha256(plan["data"])})')
-        return ApplyReceipt(path, entry, backup, backup_sha, _sha256(plan['data']), raw is None, plan['created_section'])
+        return ApplyReceipt(path, entry, backup, backup_sha, _sha256(plan['data']), raw is None, plan['created_section'],
+                            None if raw is None else _sha256(raw), key)
     raise JsonSettingsError(f'{path.name} kept changing while it was being updated (is the client writing it?); '
                             'nothing of ours was written.')
 
 
-def _plan_apply(path: Path, raw, entry: str, value: dict) -> dict:
+def _plan_apply(path: Path, raw, entry: str, value: dict, key: str = DEFAULT_URL_KEY) -> dict:
     """Validate and build the new bytes from ``raw`` (None for a missing file). No side effects."""
     if raw is None:
         style = _Style(True, '', '  ', '\n', ': ', ' ')
@@ -503,12 +580,14 @@ def _plan_apply(path: Path, raw, entry: str, value: dict) -> dict:
     parsed, layout = _layout(text, path, entry)
     created_section = False
     if layout.entry is not None:
-        new_text = _replace_value(text, layout.section, layout.entry, value, newline)
+        _refuse_unless_ours(parsed, entry, key, path)
+        new_text, region = _replace_value(text, layout.section, layout.entry, value, newline)
     elif layout.section is not None:
-        new_text = _append_member(text, layout.section, entry, value, newline)
+        new_text, region = _append_member(text, layout.section, entry, value, newline)
     else:
-        new_text = _append_member(text, layout.root, SECTION, {entry: value}, newline)
+        new_text, region = _append_member(text, layout.root, SECTION, {entry: value}, newline)
         created_section = True
+    _check_outside(text, new_text, region, path)
     verify_only_one_key_changed(text, new_text, entry=entry, path=path)
     expected = dict(parsed)
     expected[SECTION] = {**expected.get(SECTION, {}), entry: value}
@@ -517,18 +596,21 @@ def _plan_apply(path: Path, raw, entry: str, value: dict) -> dict:
     return {'data': new_text.encode('utf-8'), 'had_entry': layout.entry is not None, 'created_section': created_section}
 
 
-def remove_exact(path, *, entry: str = DEFAULT_ENTRY, receipt: ApplyReceipt | None = None, log=print) -> RemovalResult:
+def remove_exact(path, *, entry: str = DEFAULT_ENTRY, receipt: ApplyReceipt | None = None, key: str | None = None,
+                 log=print) -> RemovalResult:
     """Remove exactly mcpServers.<entry>; caller holds the per-file write lock.
 
-    If the file is still byte-identical to what apply() wrote, the backup bytes are restored
-    (or the file we created is deleted). Otherwise only our member is deleted and the result
-    is checked to differ from the current file by that entry alone. Either way the result
-    is compared structurally with the backup and reported."""
+    An entry that does not have the shape apply() writes (``key``, default the receipt's url key)
+    is refused, never deleted. If the file is still byte-identical to what apply() wrote, the
+    backup bytes are restored (or the file we created is deleted). Otherwise only our member is
+    deleted and the result is checked to differ from the current file by that entry alone.
+    Either way the result is compared structurally with the backup and reported."""
     path = Path(path)
     entry = entry_name(entry)
+    key = url_key(key if key is not None else (receipt.url_key if receipt else None))
     for attempt in range(2):
         try:
-            return _remove_once(path, entry, receipt, log)
+            return _remove_once(path, entry, receipt, log, key)
         except _ChangedUnderUs:
             continue
     raise JsonSettingsError(f'{path.name} kept changing while {SECTION}.{entry} was being removed; '
@@ -546,7 +628,7 @@ def _verified_backup(receipt):
     return original if _sha256(original) == receipt.backup_sha256 else None
 
 
-def _remove_once(path: Path, entry: str, receipt, log) -> RemovalResult:
+def _remove_once(path: Path, entry: str, receipt, log, key: str = DEFAULT_URL_KEY) -> RemovalResult:
     raw = _current_bytes(path)
     if raw is None:
         return RemovalResult(path, 'absent', None, [])
@@ -554,6 +636,7 @@ def _remove_once(path: Path, entry: str, receipt, log) -> RemovalResult:
     parsed, layout = _layout(text, path, entry)
     if layout.entry is None:
         return RemovalResult(path, 'absent', None, [])
+    _refuse_unless_ours(parsed, entry, key, path)
     original = _verified_backup(receipt)
     unchanged_since_write = bool(receipt) and _sha256(raw) == receipt.written_sha256
     if unchanged_since_write and receipt.created_file:
@@ -567,13 +650,15 @@ def _remove_once(path: Path, entry: str, receipt, log) -> RemovalResult:
         log(f'  Restored {path.name} from backup (sha256 {receipt.backup_sha256})')
         return RemovalResult(path, 'restored-exact', True, [])
     # Edited since our write, or the backup is missing/tampered: delete only our member (checked).
-    new_text = _remove_member(text, layout.section, layout.entry)
+    new_text, region = _remove_member(text, layout.section, layout.entry)
     expected = dict(parsed)
     expected[SECTION] = {k: v for k, v in parsed[SECTION].items() if k != entry}
     if receipt and receipt.created_section and len(layout.section.members) == 1:
         root = _object_at(new_text, _skip_ws(new_text, 0))
-        new_text = _remove_member(new_text, root, root.find(SECTION))
+        new_text, second = _remove_member(new_text, root, root.find(SECTION))
+        region = _then(region, second)
         expected.pop(SECTION)
+    _check_outside(text, new_text, region, path)
     verify_only_one_key_changed(text, new_text, entry=entry, path=path)
     if not _same(_load(new_text, path), expected):
         raise JsonSettingsError(f'Could not remove {SECTION}.{entry} from {path.name} safely; file left unchanged.')
@@ -648,7 +733,7 @@ def _list_processes() -> list:
     lines = [line.strip() for line in output.splitlines() if line.strip()]
     if not lines:
         raise ValueError('ps listed no processes')
-    return [(Path(line).name, line if os.path.isabs(line) else None) for line in lines]
+    return [(Path(line).name, line if line.startswith('/') else None) for line in lines]
 
 
 def _default_install_root():
@@ -671,9 +756,9 @@ def agy_running(image_names=('agy.exe', 'agy'), install_root=None, lister=None) 
     match on a separator boundary). Lists image names and executable paths only, never
     command lines, arguments or environment.
 
-    True if either check matches; None when the process list could not be read or no install
-    root is known (POSIX without install_root, or LOCALAPPDATA unset); False only when both
-    checks ran and found nothing. ``lister`` returns (image name, path or None) pairs; tests
+    True if either check matches; None when the process list could not be read, no executable
+    path could be read, or no install root is known (POSIX without install_root, or
+    LOCALAPPDATA unset); False only when both checks ran and found nothing. ``lister`` returns (image name, path or None) pairs; tests
     inject a fake one. Limitation: an agy copied or started from outside its install root
     under another image name (or through node.exe) is not detected."""
     wanted = {name.lower() for name in image_names}
@@ -688,4 +773,6 @@ def agy_running(image_names=('agy.exe', 'agy'), install_root=None, lister=None) 
                 return True
     except (OSError, ValueError, subprocess.SubprocessError):
         return None
-    return False if processes and root else None
+    # False needs both checks to have run: no executable path at all (every OpenProcess
+    # refused, or a names-only lister) means the path check did not.
+    return False if processes and root and any(path for _, path in processes) else None

@@ -561,7 +561,7 @@ class RefreshTests(Base):
         self.assertEqual(data, {'serverURL': 'http://127.0.0.1:1/mcp', 'headers': {'Authorization': 'Bearer T'}})
 
     def test_refresh_keeps_a_one_line_entry_on_one_line(self):
-        original = '{"mcpServers": {"agentchattr-fork": {"serverURL": "old"}, "z": 1}, "k": 2}'
+        original = '{"mcpServers": {"agentchattr-fork": {"serverURL": "http://127.0.0.1:1/old"}, "z": 1}, "k": 2}'
         self.write(original)
         self.apply()
         text = self.config.read_text('utf-8')
@@ -625,7 +625,7 @@ class RemoveTests(Base):
         self.assertEqual(list(after['mcpServers']), ['first', 'agentchattr'])
 
     def test_our_entry_first_of_several_members(self):
-        original = ('{\n  "mcpServers": {\n    "agentchattr-fork": {"serverURL": "u"},\n'
+        original = ('{\n  "mcpServers": {\n    "agentchattr-fork": {"serverURL": "http://127.0.0.1:1/u"},\n'
                     '    "other": {"command": "x"}\n  }\n}\n')
         self.write(original)
         result = self.remove()
@@ -634,14 +634,14 @@ class RemoveTests(Base):
         self.assertEqual(self.config.read_text('utf-8'), '{\n  "mcpServers": {\n    "other": {"command": "x"}\n  }\n}\n')
 
     def test_our_entry_in_the_middle_of_several_members(self):
-        original = ('{"mcpServers": {"a": 1, "agentchattr-fork": {"serverURL": "u"}, "c": [2]}, "k": 0}\n')
+        original = ('{"mcpServers": {"a": 1, "agentchattr-fork": {"serverURL": "http://127.0.0.1:1/u"}, "c": [2]}, "k": 0}\n')
         self.write(original)
         result = self.remove()
         self.assertEqual(result.status, 'removed-entry')
         self.assertEqual(self.config.read_text('utf-8'), '{"mcpServers": {"a": 1, "c": [2]}, "k": 0}\n')
 
     def test_our_entry_the_only_member_leaves_an_empty_mcpservers(self):
-        self.write('{\n  "theme": "dark",\n  "mcpServers": {\n    "agentchattr-fork": {"serverURL": "u"}\n  }\n}\n')
+        self.write('{\n  "theme": "dark",\n  "mcpServers": {\n    "agentchattr-fork": {"serverURL": "http://127.0.0.1:1/u"}\n  }\n}\n')
         result = self.remove()
         self.assertEqual(result.status, 'removed-entry')
         self.assertEqual(json.loads(self.config.read_text('utf-8')), {'theme': 'dark', 'mcpServers': {}})
@@ -1128,7 +1128,8 @@ class AgyRunningTests(unittest.TestCase):
             return SimpleNamespace(stdout=output)
         kwargs.setdefault('install_root', os.path.join(os.sep, 'fake', 'agy', 'bin'))
         with patch.object(jm.sys, 'platform', platform), patch.object(jm.subprocess, 'run', side_effect=fake) as run, \
-                patch.object(jm, '_windows_executable_paths', return_value=[]):   # never touch real processes
+                patch.object(jm, '_windows_executable_paths',      # never touch real processes; one
+                             return_value=[os.path.join(os.sep, 'tools', 'node.exe')]):   # non-agy path => path check ran
             result = jm.agy_running(**kwargs)
         return result, run
 
@@ -1191,7 +1192,8 @@ class AgyRunningTests(unittest.TestCase):
         self.assertEqual(run.call_args.args[0], ['ps', '-A', '-o', 'comm='])
         self.assertEqual(run.call_count, 1)
         self.assertTrue(run.call_args.kwargs.get('timeout'))
-        self.assertIs(self.run_with('linux', 'init\nbash\n')[0], False)
+        self.assertIs(self.run_with('linux', '/sbin/init\n/bin/bash\n')[0], False)
+        self.assertIsNone(self.run_with('linux', 'init\nbash\n')[0])     # no executable paths: path check did not run
         self.assertIs(self.run_with('linux', 'init\n/opt/agy-tools/helper\nagyx\n')[0], False)
         self.assertIs(self.run_with('darwin', '  AGY  \n')[0], True)
 
@@ -1205,7 +1207,7 @@ class AgyRunningTests(unittest.TestCase):
     def test_posix_undecodable_bytes_are_replaced(self):
         result, _ = self.run_with('linux', b'init\n\xff\xfe\nagy\n')
         self.assertIs(result, True)
-        result, _ = self.run_with('linux', b'init\n\xff\xfe\n')
+        result, _ = self.run_with('linux', b'/sbin/init\n\xff\xfe\n')
         self.assertIs(result, False)
 
     def test_system_root_is_used_for_the_tasklist_path(self):

@@ -475,7 +475,7 @@ class HandEditedEntryTests(Base):
     def test_refresh_checks_its_own_deletion_of_an_existing_entry(self):
         # Reviewer must-fix 5: the delete of an existing entry is verified on its own.
         self.write(ORIGINAL)
-        with patch.object(ym, '_without_entry', side_effect=lambda text, layout: text.replace('model:', 'modelx:')):
+        with patch.object(ym, '_without_entry', side_effect=lambda text, layout: (text.replace('model:', 'modelx:'), (0, 0, 0))):
             with self.assertRaises(YamlSettingsError):
                 ym.apply(self.config, URL, TOKEN, log=lambda *_: None)
                 ym.apply(self.config, URL, TOKEN2, log=lambda *_: None)

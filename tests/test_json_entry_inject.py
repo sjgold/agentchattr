@@ -110,6 +110,27 @@ class WrapperLifecycleTests(AgyHome):
         self.assertEqual(len(backups), 1)
         self.assertNotIn(TOKEN.encode(), backups[0].read_bytes())
 
+    def test_user_edit_before_a_refresh_survives_stop(self):
+        # Reviewer B2: never restore the first backup over an edit made between our writes.
+        import wrapper
+        self.config.write_bytes(ORIGINAL.encode('utf-8'))
+        self.apply()
+        self.config.write_bytes(self.config.read_bytes().replace(b'"keep"', b'"edited"'))
+        self.apply(token=TOKEN + 'refreshed')
+        results = wrapper._remove_json_mcp_entries()
+        self.assertEqual([r.status for r in results], ['removed-entry'])
+        self.assertEqual(self.config.read_bytes(), ORIGINAL.replace('"keep"', '"edited"').encode('utf-8'))
+
+    def test_user_edit_to_a_created_file_before_a_refresh_keeps_the_file(self):
+        import wrapper
+        self.apply()
+        self.config.write_bytes(self.config.read_bytes().replace(b'{\n', b'{\n  "mine": 1,\n', 1))
+        self.apply(token=TOKEN + 'refreshed')
+        wrapper._remove_json_mcp_entries()
+        self.assertTrue(self.config.exists())
+        self.assertEqual(json.loads(self.config.read_text('utf-8')).get('mine'), 1)
+        self.assertNotIn(TOKEN.encode(), self.config.read_bytes())
+
     def test_missing_file_is_created_then_deleted(self):
         import wrapper
         self.apply()
