@@ -70,5 +70,29 @@ def uses_accent_as_text(css):
     return re.search(r'(?<![-\w])color:\s*var\(--accent\)', strip_comments(css)) is not None
 
 
+def sheet(name):
+    return (STATIC / name).read_text(encoding='utf-8')
+
+
+class PreflightReadabilityTests(unittest.TestCase):
+    def test_preflight_text_is_at_least_11px(self):
+        self.assertGreaterEqual(smallest_font(sheet('preflight.css')), 11)
+
+    def test_preflight_field_hints_are_at_least_12px(self):
+        rule = re.search(r'\.preflight-page label small\s*\{([^}]*)\}', strip_comments(sheet('preflight.css'))).group(1)
+        self.assertGreaterEqual(float(re.search(r'font-size:\s*(\d+)px', rule).group(1)), 12)
+
+    def test_seat_state_stripe_outranks_the_base_seat_rule(self):
+        # Regression: '.preflight-page fieldset.pf-seat' set border-left and beat the
+        # '.pf-seat[data-state=...]' colours, so the ready/problem stripe never showed.
+        css = strip_comments(sheet('preflight.css'))
+        for state in ('ready', 'starting', 'failed'):
+            with self.subTest(state=state):
+                self.assertRegex(css, r'\.preflight-page fieldset\.pf-seat\[data-state="%s"\]' % state)
+
+    def test_preflight_never_uses_accent_as_text(self):
+        self.assertFalse(uses_accent_as_text(sheet('preflight.css')))
+
+
 if __name__ == '__main__':
     unittest.main()
