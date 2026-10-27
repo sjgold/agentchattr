@@ -186,33 +186,53 @@ _VALID_INJECT_MODES = {"settings_file", "yaml_settings_file", "env", "flag", "pr
 # backup and the latest written digest so a refreshed token still restores exactly.
 YAML_SERVER_NAME = "agentchattr-uat"
 _YAML_RECEIPTS: dict = {}
+# Held across apply and removal. Once the stop hook has run, a late re-registration
+# from the heartbeat thread cannot write the entry (and a token) back.
+_YAML_LOCK = threading.Lock()
+_YAML_CLOSED = False
+
+
+def _reset_yaml_state() -> None:
+    global _YAML_CLOSED
+    with _YAML_LOCK:
+        _YAML_RECEIPTS.clear()
+        _YAML_CLOSED = False
 
 
 def _apply_yaml_mcp_settings(raw_path, project_dir, url: str, token: str) -> Path:
     import dataclasses
     import yaml_mcp_settings
     target = yaml_mcp_settings.resolve_settings_path(raw_path, project_dir)
-    with _config_write_lock(target):
-        receipt = yaml_mcp_settings.apply(target, url, token, entry=YAML_SERVER_NAME)
-    key = os.path.normcase(str(target.resolve()))
-    earlier = _YAML_RECEIPTS.get(key)
-    if earlier is not None and receipt.backup_path is None:
-        receipt = dataclasses.replace(earlier, written_sha256=receipt.written_sha256)
-    _YAML_RECEIPTS[key] = receipt
+    with _YAML_LOCK:
+        if _YAML_CLOSED:
+            raise ValueError(f"Wrapper is stopping; {YAML_SERVER_NAME} is not written again.")
+        with _config_write_lock(target):
+            receipt = yaml_mcp_settings.apply(target, url, token, entry=YAML_SERVER_NAME)
+        key = os.path.normcase(str(target.resolve()))
+        earlier = _YAML_RECEIPTS.get(key)
+        if earlier is not None and receipt.backup_path is None:
+            receipt = dataclasses.replace(earlier, written_sha256=receipt.written_sha256)
+        _YAML_RECEIPTS[key] = receipt
     return target
 
 
 def _remove_yaml_mcp_entries() -> list:
-    """Stop hook: remove every entry this process added. Returns the removal results."""
-    import yaml_mcp_settings
+    """Stop hook: close further writes, then remove every entry this process added."""
+    global _YAML_CLOSED
     results = []
-    for key, receipt in list(_YAML_RECEIPTS.items()):
-        try:
-            with _config_write_lock(receipt.path):
-                results.append(yaml_mcp_settings.remove_exact(receipt.path, entry=YAML_SERVER_NAME, receipt=receipt))
-            _YAML_RECEIPTS.pop(key, None)
-        except (OSError, ValueError) as error:
-            print(f"  Warning: could not remove {YAML_SERVER_NAME} from {receipt.path}: {error}")
+    with _YAML_LOCK:
+        _YAML_CLOSED = True
+        if not _YAML_RECEIPTS:
+            return results
+        import yaml_mcp_settings
+        for key, receipt in list(_YAML_RECEIPTS.items()):
+            try:
+                with _config_write_lock(receipt.path):
+                    results.append(yaml_mcp_settings.remove_exact(receipt.path, entry=YAML_SERVER_NAME, receipt=receipt))
+                _YAML_RECEIPTS.pop(key, None)
+            except Exception as error:     # never block resources.close(); messages carry no token
+                detail = str(error) if isinstance(error, yaml_mcp_settings.YamlSettingsError) else type(error).__name__
+                print(f"  Warning: could not remove {YAML_SERVER_NAME} from {receipt.path}: {detail}")
     return results
 
 
@@ -954,6 +974,8 @@ def main():
             try:
                 # Before the lifetime lock is released: take our entry (and token) back out.
                 _remove_yaml_mcp_entries()
+            except Exception as error:
+                print(f"  Warning: YAML settings cleanup failed: {type(error).__name__}")
             finally:
                 resources.close()
 

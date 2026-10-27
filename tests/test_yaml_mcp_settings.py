@@ -417,15 +417,79 @@ class BackupTests(Base):
         self.assertIsNone(receipt.backup_sha256)
         self.assertEqual(self.baks(), [])
 
-    def test_tampered_backup_makes_removal_refuse(self):
+    def test_tampered_backup_falls_back_to_removing_only_our_entry(self):
+        # Reviewer must-fix 2: a bad backup must not leave the token behind.
         self.write(ORIGINAL)
         receipt = self.apply()
         receipt.backup_path.write_bytes(b'tampered: true\n')
-        written = self.config.read_bytes()
-        with self.assertRaises(YamlSettingsError) as caught:
-            self.remove(receipt)
-        self.assertEqual(self.config.read_bytes(), written)
-        self.assertNotIn('SECRET', str(caught.exception))
+        result = self.remove(receipt)
+        self.assertEqual(result.status, 'removed-entry')
+        self.assertFalse(result.matches_backup)
+        self.assertNotIn(TOKEN.encode(), self.config.read_bytes())
+        self.assertEqual(yaml.safe_load(self.config.read_text('utf-8')), yaml.safe_load(ORIGINAL))
+
+    def test_missing_backup_falls_back_to_removing_only_our_entry(self):
+        self.write(ORIGINAL)
+        receipt = self.apply()
+        receipt.backup_path.unlink()
+        result = self.remove(receipt)
+        self.assertEqual(result.status, 'removed-entry')
+        self.assertFalse(result.matches_backup)
+        self.assertNotIn(TOKEN.encode(), self.config.read_bytes())
+
+
+class ConcurrentWriterTests(Base):
+    def test_apply_redoes_its_plan_when_the_file_changes_before_replace(self):
+        # Reviewer must-fix 4: Hermes may write config.yaml while we prepare ours.
+        self.write(ORIGINAL)
+        real = ym._atomic_write
+        calls = []
+
+        def racing(path, data, expect):
+            if not calls:
+                Path(path).write_bytes(ORIGINAL.replace('model:', 'model_new: 1\nmodel:').encode('utf-8'))
+            calls.append(1)
+            return real(path, data, expect)
+        with patch.object(ym, '_atomic_write', side_effect=racing):
+            self.apply()
+        data = yaml.safe_load(self.config.read_text('utf-8'))
+        self.assertEqual(data['model_new'], 1)                 # the concurrent edit survived
+        self.assertIn('agentchattr-uat', data['mcp_servers'])
+        self.assertEqual(len(calls), 2)
+
+    def test_apply_refuses_when_the_file_keeps_changing(self):
+        self.write(ORIGINAL)
+        real = ym._atomic_write
+        counter = iter(range(100))
+
+        def always_racing(path, data, expect):
+            Path(path).write_bytes((ORIGINAL + f'x{next(counter)}: 1\n').encode('utf-8'))
+            return real(path, data, expect)
+        with patch.object(ym, '_atomic_write', side_effect=always_racing):
+            with self.assertRaises(YamlSettingsError):
+                self.apply()
+        self.assertNotIn(TOKEN.encode(), self.config.read_bytes())
+
+
+class HandEditedEntryTests(Base):
+    def test_refresh_checks_its_own_deletion_of_an_existing_entry(self):
+        # Reviewer must-fix 5: the delete of an existing entry is verified on its own.
+        self.write(ORIGINAL)
+        with patch.object(ym, '_without_entry', side_effect=lambda text, layout: text.replace('model:', 'modelx:')):
+            with self.assertRaises(YamlSettingsError):
+                ym.apply(self.config, URL, TOKEN, log=lambda *_: None)
+                ym.apply(self.config, URL, TOKEN2, log=lambda *_: None)
+
+
+class UnicodeLineBreakTests(Base):
+    def test_unicode_line_separators_are_refused(self):
+        for char in ('\u0085', ' ', ' '):
+            with self.subTest(char=repr(char)):
+                self.write('model: x' + char + 'y\n')
+                before = self.config.read_bytes()
+                with self.assertRaises(YamlSettingsError):
+                    ym.apply(self.config, URL, TOKEN, log=lambda *_: None)
+                self.assertEqual(self.config.read_bytes(), before)
 
 
 class ResolveSettingsPathTests(Base):
@@ -444,6 +508,15 @@ class ResolveSettingsPathTests(Base):
             ym.resolve_settings_path('$HERMES_HOME/config.yaml')
         with self.assertRaises(YamlSettingsError):
             ym.resolve_settings_path('${HERMES_HOME}/config.yaml')
+
+    def test_variable_set_to_empty_is_refused(self):
+        # Reviewer must-fix 6: HERMES_HOME="" would otherwise give a root-level /config.yaml.
+        for empty in ('', '   '):
+            with self.subTest(value=repr(empty)), patch.dict(os.environ, {'HERMES_HOME': empty}):
+                with self.assertRaises(YamlSettingsError):
+                    ym.resolve_settings_path('$HERMES_HOME/config.yaml')
+                with self.assertRaises(YamlSettingsError):
+                    ym.resolve_settings_path('${HERMES_HOME}/config.yaml')
 
     def test_empty_raises(self):
         for raw in ('', '   ', None):
@@ -469,8 +542,18 @@ class HermesRunningTests(unittest.TestCase):
         csv = '"System","4","Services","0","100 K"\n"hermes.exe","123","Console","1","50,000 K"\n'
         result, run = self.run_with('win32', csv)
         self.assertIs(result, True)
-        self.assertEqual(run.call_args.args[0], ['tasklist', '/FO', 'CSV', '/NH'])
+        command = run.call_args.args[0]
+        # Reviewer must-fix 7: the System32 tasklist by full path, never a PATH lookup.
+        self.assertTrue(command[0].lower().endswith(os.path.join('system32', 'tasklist.exe')), command[0])
+        self.assertTrue(os.path.isabs(command[0]))
+        self.assertEqual(command[1:], ['/FO', 'CSV', '/NH'])
         self.assertEqual(run.call_count, 1)
+
+    def test_undecodable_bytes_and_value_errors_give_none_or_a_result_not_an_exception(self):
+        result, _ = self.run_with('win32', b'"hermes.exe","1","Console","1","1 K"\n"\xff\xfe.exe","2"\n')
+        self.assertIs(result, True)
+        result, _ = self.run_with('win32', error=ValueError('bad'))
+        self.assertIsNone(result)
 
     def test_windows_without_hermes(self):
         result, run = self.run_with('win32', '"System","4","Services","0","100 K"\n"python.exe","9","Console","1","1 K"\n')
@@ -478,7 +561,8 @@ class HermesRunningTests(unittest.TestCase):
         argv = [a.lower() for a in run.call_args.args[0]]
         self.assertNotIn('/v', argv)
         self.assertNotIn('/svc', argv)
-        self.assertEqual(argv, ['tasklist', '/fo', 'csv', '/nh'])
+        self.assertTrue(argv[0].endswith(os.path.join('system32', 'tasklist.exe')), argv[0])
+        self.assertEqual(argv[1:], ['/fo', 'csv', '/nh'])
 
     def test_windows_oserror_is_none(self):
         result, _ = self.run_with('win32', error=OSError('no tasklist'))
@@ -499,8 +583,8 @@ class WrapperStopHookTests(Base):
         super().setUp()
         import wrapper
         self.wrapper = wrapper
-        wrapper._YAML_RECEIPTS.clear()
-        self.addCleanup(wrapper._YAML_RECEIPTS.clear)
+        wrapper._reset_yaml_state()
+        self.addCleanup(wrapper._reset_yaml_state)
 
     def test_failed_removal_warns_without_the_token_and_does_not_raise(self):
         self.write(ORIGINAL)

@@ -67,8 +67,8 @@ class WrapperLifecycleTests(HermesHome):
     def setUp(self):
         super().setUp()
         import wrapper
-        wrapper._YAML_RECEIPTS.clear()
-        self.addCleanup(wrapper._YAML_RECEIPTS.clear)
+        wrapper._reset_yaml_state()
+        self.addCleanup(wrapper._reset_yaml_state)
 
     def apply(self, token=TOKEN):
         import wrapper
@@ -100,6 +100,34 @@ class WrapperLifecycleTests(HermesHome):
         backups = list(self.home.glob('config.yaml.agentchattr-uat-*.bak'))
         self.assertEqual(len(backups), 1)                # the refresh made no second backup
         self.assertNotIn(TOKEN.encode(), backups[0].read_bytes())
+
+    def test_late_reregistration_after_removal_cannot_write_the_entry_back(self):
+        # Reviewer must-fix 1: the heartbeat thread may re-register (409) after the stop
+        # hook removed our entry; that rewrite must not put the entry and token back.
+        import wrapper
+        self.config.write_bytes(ORIGINAL.encode('utf-8'))
+        self.apply()
+        wrapper._remove_yaml_mcp_entries()
+        with self.assertRaises(ValueError):
+            self.apply(token=TOKEN + 'late')
+        self.assertEqual(self.config.read_bytes(), ORIGINAL.encode('utf-8'))
+
+    def test_stop_hook_does_not_import_the_yaml_module_for_other_modes(self):
+        # Reviewer must-fix 3: non-YAML modes are byte-for-byte unaffected.
+        import wrapper
+        sys.modules.pop('yaml_mcp_settings', None)
+        with patch.dict(sys.modules, {'yaml_mcp_settings': None}):   # any import would now fail
+            self.assertEqual(wrapper._remove_yaml_mcp_entries(), [])
+
+    def test_stop_hook_survives_unexpected_errors(self):
+        import wrapper
+        self.config.write_bytes(ORIGINAL.encode('utf-8'))
+        self.apply()
+        with patch('yaml_mcp_settings.remove_exact', side_effect=RuntimeError('boom ' + TOKEN)):
+            out = __import__('io').StringIO()
+            with patch('sys.stdout', out):
+                self.assertEqual(wrapper._remove_yaml_mcp_entries(), [])
+        self.assertNotIn(TOKEN, out.getvalue())
 
     def test_stop_with_nothing_applied_is_a_no_op(self):
         import wrapper

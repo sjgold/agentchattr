@@ -7,6 +7,18 @@ PyYAML is used only to locate nodes and to verify the result structurally; the
 file is never re-serialised through it. Anything unexpected is refused before
 any write. Messages and exceptions carry paths, key names and SHA-256 digests
 only, never file contents or the bearer token.
+
+Operational notes:
+- os.replace writes a new file: Windows gives it the directory's inherited ACL,
+  POSIX mode bits are not copied, and a symlinked config.yaml becomes a regular file.
+- Backups (config.yaml.agentchattr-uat-<UTC>-<hex>.bak) are never deleted
+  automatically. They hold the user's own file, including any secrets of theirs, but
+  never our token; prune old ones by hand.
+- A hard kill skips the stop hook: the entry and its token stay, and an orphaned
+  config.yaml.*.tmp may remain. The next launch refreshes the entry (no new backup) and
+  its normal stop removes it; remove_exact(path) also works without a receipt.
+- The wrapper's lifetime lock file sits next to config.yaml, so taking it can create a
+  missing HERMES_HOME directory before apply() checks that the directory exists.
 """
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -75,6 +87,8 @@ def _decode(raw: bytes, path: Path):
         raise YamlSettingsError(f'{path.name} mixes line endings; nothing was changed.')
     if re.search(r'\r(?!\n)', text):
         raise YamlSettingsError(f'{path.name} uses bare carriage returns; nothing was changed.')
+    if re.search('[\u0085  ]', text):
+        raise YamlSettingsError(f'{path.name} uses Unicode line separators; nothing was changed.')
     newline = '\r\n' if '\r\n' in text else '\n'
     return text, bom, newline
 
@@ -151,8 +165,9 @@ def _layout(text: str, path: Path, entry: str) -> _Layout:
     if not matches:
         return _Layout('mapping', None, None, None, None)
     key, value = matches[0]
+    # PyYAML nodes do not carry their anchor; an anchored or aliased value's text starts with & or *.
     value_text = text[value.start_mark.index:value.end_mark.index]
-    if value_text.startswith('*') or getattr(value, 'anchor', None) or re.match(r'&', value_text):
+    if value_text.startswith(('*', '&')):
         raise YamlSettingsError(f'{path.name} {SECTION} uses an anchor or alias; nothing was changed.')
     if isinstance(value, yaml.ScalarNode):
         if not value.tag.endswith(':null') or value_text.strip():
@@ -282,13 +297,30 @@ def verify_only_one_key_changed(before_text: str, after_text: str, *, entry: str
 
 # --- File I/O --------------------------------------------------------------
 
-def _atomic_write(path: Path, data: bytes) -> None:
+class _ChangedUnderUs(Exception):
+    """The file no longer holds the bytes the plan was made from."""
+
+
+def _current_bytes(path: Path):
+    try:
+        return path.read_bytes()
+    except FileNotFoundError:
+        return None
+
+
+def _atomic_write(path: Path, data: bytes, expect) -> None:
+    """Replace path with data only if it still holds ``expect`` (None means: must not exist).
+
+    The check runs immediately before os.replace, which narrows but cannot close the window
+    against another writer; callers re-plan once on a mismatch and then refuse."""
     fd, temporary = tempfile.mkstemp(prefix=path.name + '.', suffix='.tmp', dir=path.parent)
     try:
         with os.fdopen(fd, 'wb') as output:
             output.write(data)
             output.flush()
             os.fsync(output.fileno())
+        if _current_bytes(path) != expect:
+            raise _ChangedUnderUs()
         for attempt in range(8):
             try:
                 os.replace(temporary, path)
@@ -318,6 +350,10 @@ def resolve_settings_path(raw, project_dir=None) -> Path:
     """Expand $VARS and ~ exactly once; refuse an unset variable rather than guessing a home."""
     if not isinstance(raw, str) or not raw.strip():
         raise YamlSettingsError("mcp_inject = 'yaml_settings_file' requires mcp_settings_path.")
+    for groups in re.findall(r'\$\{([A-Za-z_]\w*)\}|\$([A-Za-z_]\w*)|%([A-Za-z_]\w*)%', raw):
+        name = next(g for g in groups if g)
+        if not os.environ.get(name, '').strip():
+            raise YamlSettingsError(f'mcp_settings_path uses {name}, which is not set or is empty.')
     expanded = os.path.expanduser(os.path.expandvars(raw))
     if re.search(r'\$\{?[A-Za-z_]|%[A-Za-z_][A-Za-z0-9_]*%', expanded):
         raise YamlSettingsError('mcp_settings_path names an environment variable that is not set (for example HERMES_HOME).')
@@ -331,16 +367,51 @@ def apply(path, url: str, token: str, *, entry: str = DEFAULT_ENTRY, log=print) 
     """Insert or refresh mcp_servers.<entry>. Caller holds the per-file write lock.
 
     Backup: a timestamped sibling with the exact prior bytes, made only when the file exists and
-    does not already hold the entry (so a backup never contains our bearer token)."""
+    does not already hold the entry (so a backup never contains our bearer token).
+
+    Existing lines are kept byte for byte, with two documented exceptions: a file without a
+    final newline gets one before the appended block, and an empty `mcp_servers:` or
+    `mcp_servers: {}` key line is rewritten as `mcp_servers:` (keeping a trailing comment) so
+    the entry can sit under it. Both are covered by the structural check, and remove_exact
+    restores the original bytes when the file is unchanged since this write.
+    If the file changes between reading and replacing it, the plan is redone once, then refused."""
     path = Path(path)
     if not path.parent.is_dir():
         raise YamlSettingsError(f'{path.parent} does not exist; nothing was changed.')
-    created_file = not path.exists()
-    raw = b'' if created_file else path.read_bytes()
-    text, bom, newline = _decode(raw, path)
+    for attempt in range(2):
+        raw = _current_bytes(path)
+        plan = _plan_apply(path, raw, entry, url, token)
+        backup = backup_sha = None
+        if raw is not None and not plan['had_entry']:
+            backup, backup_sha = _backup(path, raw), _sha256(raw)
+        try:
+            _atomic_write(path, plan['data'], raw)
+        except _ChangedUnderUs:
+            if backup is not None:
+                backup.unlink(missing_ok=True)       # our own backup of a version we did not edit
+            continue
+        if backup is not None:
+            log(f'  Backed up {path.name} -> {backup} (sha256 {backup_sha})')
+        log(f'  {"Refreshed" if plan["had_entry"] else "Added"} {SECTION}.{entry} in {path} (sha256 {_sha256(plan["data"])})')
+        return ApplyReceipt(path, entry, backup, backup_sha, _sha256(plan['data']), raw is None, plan['created_section'])
+    raise YamlSettingsError(f'{path.name} kept changing while it was being updated (is the client writing it?); '
+                            'nothing of ours was written.')
+
+
+def _plan_apply(path: Path, raw, entry: str, url: str, token: str) -> dict:
+    """Validate and build the new bytes from ``raw`` (None for a missing file). No side effects."""
+    text, bom, newline = _decode(raw or b'', path)
     layout = _layout(text, path, entry)
     had_entry = layout.entry_key is not None
-    base = _without_entry(text, layout) if had_entry else text
+    base = text
+    if had_entry:
+        base = _without_entry(text, layout)
+        # Check the deletion on its own, so a hand-edited entry cannot hide a wider change.
+        verify_only_one_key_changed(text, base, entry=entry, path=path)
+        expected_base = _normalised(_load(text, path))
+        expected_base[SECTION].pop(entry, None)
+        if _normalised(_load(base, path)) != expected_base:
+            raise YamlSettingsError(f'Could not refresh {SECTION}.{entry} in {path.name} safely; nothing was changed.')
     new_text, created_section = _with_entry(base, path, entry, url, token, newline)
     verify_only_one_key_changed(base, new_text, entry=entry, path=path)
     expected = _load(base, path) or {}
@@ -349,16 +420,7 @@ def apply(path, url: str, token: str, *, entry: str = DEFAULT_ENTRY, log=print) 
     expected[SECTION][entry] = {'url': url, **({'headers': {'Authorization': 'Bearer ' + token}} if token else {})}
     if _load(new_text, path) != expected:
         raise YamlSettingsError(f'Could not update {path.name} safely; nothing was changed.')
-    data = _encode(new_text, bom)
-    backup = backup_sha = None
-    if not created_file and not had_entry:
-        backup, backup_sha = _backup(path, raw), _sha256(raw)
-        log(f'  Backed up {path.name} -> {backup.name} (sha256 {backup_sha})')
-    _atomic_write(path, data)
-    if path.read_bytes() != data:
-        raise YamlSettingsError(f'{path.name} changed during the write; check it before relaunching.')
-    log(f'  {"Refreshed" if had_entry else "Added"} {SECTION}.{entry} in {path} (sha256 {_sha256(data)})')
-    return ApplyReceipt(path, entry, backup, backup_sha, _sha256(data), created_file, created_section)
+    return {'data': _encode(new_text, bom), 'had_entry': had_entry, 'created_section': created_section}
 
 
 def remove_exact(path, *, entry: str = DEFAULT_ENTRY, receipt: ApplyReceipt | None = None, log=print) -> RemovalResult:
@@ -369,26 +431,47 @@ def remove_exact(path, *, entry: str = DEFAULT_ENTRY, receipt: ApplyReceipt | No
     result is checked to differ from the current file by that entry alone. Either way the result
     is compared structurally with the backup and reported."""
     path = Path(path)
-    if not path.exists():
+    for attempt in range(2):
+        try:
+            return _remove_once(path, entry, receipt, log)
+        except _ChangedUnderUs:
+            continue
+    raise YamlSettingsError(f'{path.name} kept changing while {SECTION}.{entry} was being removed; '
+                            'remove it by hand or stop the client and retry.')
+
+
+def _verified_backup(receipt):
+    """Backup bytes if present and still matching the recorded sha256, else None."""
+    if not receipt or not receipt.backup_path:
+        return None
+    try:
+        original = receipt.backup_path.read_bytes()
+    except OSError:
+        return None
+    return original if _sha256(original) == receipt.backup_sha256 else None
+
+
+def _remove_once(path: Path, entry: str, receipt, log) -> RemovalResult:
+    raw = _current_bytes(path)
+    if raw is None:
         return RemovalResult(path, 'absent', None, [])
-    raw = path.read_bytes()
     text, bom, newline = _decode(raw, path)
     layout = _layout(text, path, entry)
     if layout.entry_key is None:
         return RemovalResult(path, 'absent', None, [])
-    if receipt and _sha256(raw) == receipt.written_sha256 and (receipt.backup_path or receipt.created_file):
-        if receipt.created_file:
-            path.unlink()
-            log(f'  Removed {path} (created for this run; sha256 matched)')
-            return RemovalResult(path, 'deleted-created-file', True, [])
-        original = receipt.backup_path.read_bytes()
-        if _sha256(original) != receipt.backup_sha256:
-            raise YamlSettingsError(f'Backup {receipt.backup_path.name} no longer matches its recorded sha256; {path.name} left unchanged.')
-        _atomic_write(path, original)
-        if path.read_bytes() != original:
-            raise YamlSettingsError(f'{path.name} changed during restore; check it by hand.')
+    original = _verified_backup(receipt)
+    unchanged_since_write = bool(receipt) and _sha256(raw) == receipt.written_sha256
+    if unchanged_since_write and receipt.created_file:
+        if _current_bytes(path) != raw:
+            raise _ChangedUnderUs()
+        path.unlink()
+        log(f'  Removed {path} (created for this run; sha256 matched)')
+        return RemovalResult(path, 'deleted-created-file', True, [])
+    if unchanged_since_write and original is not None:
+        _atomic_write(path, original, raw)
         log(f'  Restored {path.name} from backup (sha256 {receipt.backup_sha256})')
         return RemovalResult(path, 'restored-exact', True, [])
+    # Edited since our write, or the backup is missing/tampered: delete only our entry (checked).
     new_text = _without_entry(text, layout)
     if receipt and receipt.created_section:
         after = _layout(new_text, path, entry)
@@ -403,15 +486,20 @@ def remove_exact(path, *, entry: str = DEFAULT_ENTRY, receipt: ApplyReceipt | No
     if _normalised(_load(new_text, path)) != _normalised(expected):
         raise YamlSettingsError(f'Could not remove {SECTION}.{entry} from {path.name} safely; file left unchanged.')
     data = _encode(new_text, bom)
-    _atomic_write(path, data)
+    _atomic_write(path, data, raw)
     matches, differing = None, []
-    if receipt and receipt.backup_path:
-        backup_value = _load(_decode(receipt.backup_path.read_bytes(), path)[0], path) or {}
-        differing = _diff_keys(backup_value, _load(new_text, path) or {})
+    if original is not None:
+        differing = _diff_keys(_load(_decode(original, path)[0], path) or {}, _load(new_text, path) or {})
         matches = not differing
+    elif receipt and receipt.backup_path:
+        matches, differing = False, ['<backup missing or changed>']
     log(f'  Removed {SECTION}.{entry} from {path.name} (sha256 {_sha256(data)})'
         + ('' if matches is None else ('; matches backup' if matches else f'; differs from backup at {", ".join(differing)}')))
     return RemovalResult(path, 'removed-entry', matches, differing)
+
+
+def _text(output) -> str:
+    return output.decode('utf-8', errors='replace') if isinstance(output, bytes) else (output or '')
 
 
 def hermes_running(image_names=('hermes.exe', 'hermes')) -> bool | None:
@@ -422,12 +510,13 @@ def hermes_running(image_names=('hermes.exe', 'hermes')) -> bool | None:
     wanted = {name.lower() for name in image_names}
     try:
         if sys.platform == 'win32':
-            output = subprocess.run(['tasklist', '/FO', 'CSV', '/NH'], capture_output=True, text=True, timeout=15,
-                                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout
+            tasklist = os.path.join(os.environ.get('SystemRoot') or r'C:\Windows', 'System32', 'tasklist.exe')
+            output = _text(subprocess.run([tasklist, '/FO', 'CSV', '/NH'], capture_output=True, timeout=15,
+                                          creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout)
             images = {line.split('","', 1)[0].strip('"').lower() for line in output.splitlines() if line.startswith('"')}
         else:
-            output = subprocess.run(['ps', '-A', '-o', 'comm='], capture_output=True, text=True, timeout=15).stdout
+            output = _text(subprocess.run(['ps', '-A', '-o', 'comm='], capture_output=True, timeout=15).stdout)
             images = {Path(line.strip()).name.lower() for line in output.splitlines() if line.strip()}
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, ValueError, subprocess.SubprocessError):
         return None
     return bool(images & wanted) if images else None
