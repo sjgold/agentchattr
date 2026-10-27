@@ -561,8 +561,9 @@ class HermesRunningTests(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_windows_without_hermes(self):
+        # No HERMES_HOME, so the path check could not run: an image miss is "unknown", not False.
         result, run = self.run_with('win32', '"System","4","Services","0","100 K"\n"python.exe","9","Console","1","1 K"\n')
-        self.assertIs(result, False)
+        self.assertIsNone(result)
         argv = [a.lower() for a in run.call_args.args[0]]
         self.assertNotIn('/v', argv)
         self.assertNotIn('/svc', argv)
@@ -578,7 +579,7 @@ class HermesRunningTests(unittest.TestCase):
         self.assertIs(result, True)
         self.assertEqual(run.call_args.args[0], ['ps', '-A', '-o', 'comm='])
         result, _ = self.run_with('linux', 'init\nbash\n')
-        self.assertIs(result, False)
+        self.assertIsNone(result)
         result, _ = self.run_with('linux', error=OSError('no ps'))
         self.assertIsNone(result)
 
@@ -629,27 +630,33 @@ class ClientRunningByPathTests(unittest.TestCase):
     def test_unreadable_image_list_is_none_even_with_paths(self):
         self.assertIsNone(self.running(images=(), paths=[r'C:\Windows\explorer.exe']))
 
-    def test_path_listing_unavailable_falls_back_to_images(self):
-        self.assertIs(self.running(paths=None), False)
+    def test_path_listing_unavailable_is_unknown_unless_an_image_hits(self):
+        self.assertIsNone(self.running(paths=None))
         self.assertIs(self.running(images={'hermes'}, paths=None), True)
 
-    def test_hermes_home_unset_or_empty_is_image_check_only(self):
-        calls = []
-
+    def test_hermes_home_unset_or_empty_is_image_check_only_and_a_miss_is_unknown(self):
         def lister():
-            calls.append(1)
             return {'python.exe'}, [HOME + r'\python.exe']
         for env in ({}, {'HERMES_HOME': ''}, {'HERMES_HOME': '   '}):
             with self.subTest(env=env), patch.dict(os.environ, env, clear=True):
                 self.assertEqual(ym._client_home(), None)
-                self.assertIs(ym.hermes_running(lister=lister), False)
+                self.assertIsNone(ym.hermes_running(lister=lister))
+                self.assertIs(ym.hermes_running(lister=fake_lister(images={'hermes.exe'})), True)
         with patch.dict(os.environ, {'HERMES_HOME': HOME}, clear=True):
             self.assertIs(ym.hermes_running(lister=lister), True)
+
+    def test_unresolvable_explicit_home_degrades_instead_of_raising(self):
+        env = {k: v for k, v in os.environ.items() if k != 'AGENTCHATTR_UNSET_HOME'}
+        with patch.dict(os.environ, env, clear=True):
+            for home in ('$AGENTCHATTR_UNSET_HOME/hermes', '%AGENTCHATTR_UNSET_HOME%\\hermes', '', '  '):
+                with self.subTest(home=home):
+                    self.assertIsNone(ym.hermes_running(home, lister=fake_lister(paths=[HOME + r'\python.exe'])))
+                    self.assertIs(ym.hermes_running(home, lister=fake_lister(images={'hermes.exe'})), True)
 
     def test_default_lister_reads_paths_only_when_a_root_is_given(self):
         with patch.object(ym, '_image_names', return_value={'x.exe'}), \
                 patch.object(ym, '_executable_paths', return_value=[HOME + r'\python.exe']) as paths:
-            self.assertIs(ym.client_running((), ('hermes.exe',)), False)
+            self.assertIsNone(ym.client_running((), ('hermes.exe',)))
             paths.assert_not_called()
             self.assertIs(ym.client_running((HOME,), ('hermes.exe',)), True)
             paths.assert_called_once_with()

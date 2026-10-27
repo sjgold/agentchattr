@@ -599,8 +599,10 @@ def client_running(roots=(), image_names=(), *, lister=None) -> bool | None:
     executable paths are read, never command lines or environments, and nothing is logged.
 
     ``lister`` returns ``(image_names, executable_paths)``; ``executable_paths`` may be None when
-    the platform cannot list them, and path matching is then skipped. Returns None when a process
-    list cannot be read; False only when the checks ran and found nothing.
+    the platform cannot list them, and path matching is then skipped. Any hit returns True.
+    Otherwise None means "could not fully check" (a list unreadable, no root given, or paths
+    unavailable), so it must never be read as "not running"; False only when both the image and
+    the path checks ran and found nothing.
 
     Limitation: a client started from outside its root (for example a system Python running
     Hermes's code) is not detected by path; only its image name could match."""
@@ -619,7 +621,7 @@ def client_running(roots=(), image_names=(), *, lister=None) -> bool | None:
         root_forms = set().union(*(_path_forms(root) for root in roots))
         if any(path and _is_under(path, root_forms) for path in paths):
             return True
-    return False if images else None
+    return False if images and roots and paths is not None else None
 
 
 def _client_home():
@@ -638,12 +640,14 @@ def hermes_running(home=None, image_names=('hermes.exe', 'hermes'), *, lister=No
 
     hermes.cmd launches the python.exe bundled under HERMES_HOME, so a process whose executable
     lies under ``home`` counts. ``home`` defaults to HERMES_HOME (expanded as mcp_settings_path
-    is); when HERMES_HOME is unset or empty, path matching is skipped and only image names are
-    checked. A Hermes run by an interpreter outside its home is not detected."""
+    is). When the home is unset, empty or unresolvable, path matching is skipped: an image-name
+    hit is still True, and anything else is None (unknown), never False. A Hermes run by an
+    interpreter outside its home is not detected."""
     if home is None:
         home = _client_home()
-    elif str(home).strip():
-        home = str(resolve_settings_path(str(home)))
     else:
-        home = None
+        try:
+            home = str(resolve_settings_path(str(home)))
+        except YamlSettingsError:
+            home = None
     return client_running((str(home),) if home else (), image_names, lister=lister)
