@@ -1,6 +1,6 @@
 # Open pre-flight
 
-Python 3.11 or newer is required. These launchers open `/preflight`. Use its seat editor to choose/configure a saved team, launch or reuse that team, then choose Open chat with this team. Opening the page alone does not launch agents.
+Python 3.11 or newer is required. These launchers open `/preflight`. Use its seat editor to choose/configure a saved team, choose Launch team and open chat. If a seat needs attention, retry it or leave it out before continuing. Chat has a Seats & launch link back to pre-flight. Opening the page alone does not launch agents.
 
 Windows: run `windows\start.bat`. To add a desktop shortcut, run `powershell -NoProfile -ExecutionPolicy Bypass -File windows\install_shortcut.ps1` from this checkout. The installer refuses an existing `Agentchattr.lnk`.
 
@@ -19,3 +19,9 @@ Pre-flight finds CLI paths without executing the commands. Unknown version, unch
 ## Verification
 
 Run the existing unittest suite in the platform environment. On restricted hosts, loopback tests require local network permission and a writable temporary directory. `tools/verify_preflight.py` starts an isolated local app using temporary data and three dynamically chosen ports, exercises two separate relaunches and token enforcement, then stops its owned server. `--serve` keeps that test page available until Enter for browser verification. It does not call providers.
+
+## Provider keys and daily configuration
+
+Pre-flight selects saved seats and model settings from configured templates. Add distinct template names in the installation's gitignored config.local.toml under [agents.NAME]; existing names in config.toml cannot be overridden by that local file. Store only environment-variable names in api_key_env/secret_ref, never key values. The current launcher inherits the starting terminal's environment and does not read .env. Seth has authorized child-only named-key loading; that fix is pending its tests/review. Until it is implemented, keys must already be present in the terminal that starts windows/start.bat.
+
+A fresh installation needs its own platform environment; the one-time explicit --setup path creates it and installs requirements.txt. An environment belonging to a different checkout is not silently reused.

@@ -12,13 +12,13 @@ Agents and humans talk in a shared chat room with multiple channels — when any
 
 ## Fork pre-flight entry point
 
-Run `windows/start.bat` on Windows or `sh macos-linux/start.sh` on Linux/Omarchy to start or reconnect to the local server and open pre-flight. Setup requires an explicit choice. See [launcher instructions](docs/guides/LAUNCHER.md) for desktop shortcuts, passive checks, failures and verification. Individual agent launchers below retain their upstream behavior until tickets #3/#4. Configured API-seat packages and launch controls are described in [API seats](docs/guides/API-SEATS.md); individual legacy agent launchers remain separate.
+Run `windows/start.bat` on Windows or `sh macos-linux/start.sh` on Linux/Omarchy to start or reconnect to the local server and open pre-flight. Setup requires an explicit choice. See [launcher instructions](docs/guides/LAUNCHER.md) for desktop shortcuts, passive checks, failures and verification. Use the pre-flight team flow for this fork; the individual launchers below are legacy alternatives. Configured API-seat packages and launch controls are described in [API seats](docs/guides/API-SEATS.md); individual legacy agent launchers remain separate.
 
 Channel rename, archive, reopen, retained records and repair are described in [Manage channels safely](CHANNELS.md).
 
 ## Quickstart (Windows)
 
-**1. Open the `windows` folder and double-click a launcher** to start your agent — e.g. `start_claude.bat`, `start_codex.bat`, `start_gemini.bat`, etc.
+**1. Open the `windows` folder and double-click `start.bat`.** It opens Pre-flight. Choose a saved team, edit the included seats and their model settings, save changes, then choose **Launch team and open chat**. Seats that need attention stay visible for retry or leaving out. From chat, **Seats & launch** returns to Pre-flight.
 
 Run `windows/start.bat --setup` once to prepare the Windows environment. Named launchers then start or reuse the matching server through bounded app-specific health checks and configure MCP on launch. Clients with fixed settings files permit one owned seat per path; other profiles can run multiple isolated seats.
 
@@ -46,7 +46,7 @@ Run `windows/start.bat --setup` once to prepare the Windows environment. Named l
 
 </details>
 
-**2. Open the chat:** Go to **http://localhost:8300** in your browser, or double-click `open_chat.html`.
+**2. Continue in chat:** the ready-team action opens chat on the same local server. The default address is **http://127.0.0.1:8300**; use the printed address if you configured another port. `open_chat.html` is a legacy shortcut.
 
 **3. Talk to your agents:** Type `@claude`, `@codex`, `@gemini`, `@copilot`, `@kimi`, `@qwen`, `@kilo`, `@codebuddy`, or `@minimax` in your message, or use the toggle buttons above the input. The agent will wake up, read the chat, and respond.
 

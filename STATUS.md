@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 01:46 CDT. Multi-file proposal reviewed and clarified; Hermes adapter pending its reviewed pin.
+**Updated:** 2026-10-27 01:59 CDT. Ticket23 approved;21/22/24-26 moved post-launch. Cold-launch essentials and child-only key loading come first.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -20,7 +20,7 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 
 - [ ] Decide later whether in-UI provider/template setup, credential entry, live model discovery belong in scope. These setup features are absent today; launch-and-go-chat is now implemented and exercised.
 
-- [ ] [Ticket23 multi-file proposal](docs/plans/2026-10-27-multi-file-packets.md): approve the bounded slice/checkpoint, starting aggregate capacity and file-id quote contract before code.
+- [ ] Launch handoff: cold startup verification is in progress; daily-use sanitized template aliases will be prepared for approval. No further scope decision is needed for23 shape.
 
 ## Seats
 
@@ -39,8 +39,9 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 
 1. Pre-flight retry/Leave out fixes0251004 are reviewer-cleared; keep the running UAT instance available.
 2. Opus implements Hermes YAML support on temporary homes in its own worktree. Codex integrates its reviewed pin; explicit reviewer approval before any real-home write, then one tiny request with the existing login.
-3. Ticket23 MultiPackets plan only, then authorized Ticket21 and22.24-26 remain uncleared.
-4. Final activation review and regression before publication. Push requires Seth's explicit go-ahead.
+3. Cold-start verification and the approved named-key child-environment fix; then freeze Ticket23 contract/observed reds, review, implement within its90-minute agent-time checkpoint.
+4. Tickets21/22/24-26 are post-launch; preserve transcript plan and9 dated skipped reds. Final full discovery, activation review and file-state check precede any publication.
+5. Push/publication requires Seth's explicit go-ahead.
 
 ## UAT
 
@@ -60,7 +61,7 @@ The distinct Antigravity `agentchattr-uat` global MCP entry is currently active 
 - 2026-10-27 01:37 CDT: Seth: "so we dont split brain hermes use my normal home". Normal HERMES_HOME is authorized with a distinct agentchattr-uat YAML entry, backup, structural diff and exact-entry removal at stop. Adapter review precedes the first real write.
 - No push/publication without Seth's explicit go-ahead. No deletions. No Fable/helper calls. No new keys. Global writes require the approved backup/distinct-entry/structural-diff/removal protocol and Seth's permission.
 
-Next owners: Opus prepares the Hermes adapter and fixture tests; reviewer checks the pinned diff; Codex integrates and operates the normal-home seat only after clearance. Ticket21 waits for Hermes to finish or be explicitly skipped.
+Next owners: Opus prepares the Hermes adapter and fixture tests; reviewer checks the pinned diff; Codex integrates and operates the normal-home seat only after clearance. Ticket21/22 are post-launch by Seth's latest decision;23 follows launch essentials, with Hermes parallel where files do not overlap.
 
 ## Verification and limits
 
@@ -123,3 +124,13 @@ The morning note and seats artifact now show seven working seats, Hermes delegat
 ### 2026-10-27 01:46 CDT Multi-file proposal review
 
 Reviewer found the proposal source-grounded and suitable to present as a proposal. Clarifications: raw-member-byte totals in preview, a separate encoded-envelope safety allowance pinned before code, helper-only quote membership (no Ticket25 findings/UI/synthesis), reorder-as-new-revision as an explicit default proposal, and a90-minute agent-time stop/report checkpoint. Seth has not approved23 code. Hermes remains with Opus; no real config write authorized by this docs change.
+
+### 2026-10-27 01:59 CDT Seth release decisions
+
+Seth: "Approve the Ticket 23 shape and the 90-minute checkpoint. Aggregate cap is 512 KiB, and reordering counts as a new packet." Raw member bytes determine the aggregate; encoded-envelope/metadata allowance is pinned before code. The checkpoint is90 minutes of agent time, then stop/report. Contract and observed reds go to reviewer before implementation.
+
+Seth: "24-26 are going to come in post launch" and "to be honest im fine with slipping 21-22 to post launch as well". Release essentials are20, pre-flight/UI, the seven seats plus Hermes, and23. Transcript plan/9 dated skipped reds remain; no21/22/24-26 implementation now. No postponed feature is inherently needed for a source-checkout launch, provided start.bat, configuration/key supply and operator notes work. Final full discovery must disclose the9 transcript skips plus existing skips.
+
+Seth approved daily-use key loading like the old launchers: only referenced api_key_env/secret_ref NAME= lines, first match, existing env wins, quote pair stripped, server-child env only, missing file/name harmless, no value in output/argv/errors. Temp-profile reds precede the fix. No real .env read for this source audit. README legacy-first/stale-ticket guidance and LAUNCHER entry flow were corrected.
+
+Cold-start preparation is approved in one fresh pinned clone under the isolated UAT area, with its own .venv-windows and pip cache/temp paths. requirements.txt installs from PyPI only; no existing environment, global install, junction or interpreter monkeypatch. The directory is retained. Existing UAT49949 remains untouched.
