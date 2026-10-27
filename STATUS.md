@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:04 CDT. Ticket23 slice is reviewer-cleared. RC1 model-default integration passes85 focused tests; RC0 stays unchanged.
+**Updated:** 2026-10-27 04:05 CDT. Reviewed UI10ff7d0 merged for RC1;151 focused tests pass. RC0 is unchanged.
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
@@ -242,3 +242,7 @@ RC0 still serves49949 from99361d1. This check scanned17 current exports clean ag
 Merged reviewed4af9bc2. A blank CLI model now uses its template default, with an explicit seat model winning. Added default_model to managed client snapshots and provenance fingerprints; requested_model reports the effective value both before and after launch. Two managed-runtime tests observed real failures before the integration fix; they now verify frozen worker arguments and changed-default fingerprints without launching a client.85 CLI/default/runtime/worker/pre-flight/package/protocol/security-guard tests pass in6.208s. One test initially changed the original template instead of SeatStore's detached copy; corrected the fixture, then reran the full focused set.
 
 The daily Antigravity model proposal is in docs/guides/DAILY-SEAT-TEMPLATES.md. Injection remains pending corrected adapter review; no daily/global config applied. RC1 will run beside RC0 on its own free port block, not replace it. Hermes remains excluded; its real-home proof is deferred. Next: reviewed UI10ff7d0 and path guard48c6d36, then the corrected AGY adapter only if cleared, final frozen discovery and reviewer activation-state check.
+
+### 2026-10-27 04:05 CDT Reviewed UI ideas integrated for RC1
+
+Merged pinned10ff7d0: clearer text-field edges, side-by-side seat toggles, wider Documents reading space, compact channel actions, template-first session choices and a smaller idle addressed-agents line. Idea6 was intentionally skipped on the reviewed branch. Resolved cache-version conflicts using the new packet picker and newest UI assets; kept both default-model and toggle-layout tests. Canonical routing ids and display labels remain intact.151 readability/pre-flight/help/artifact/restart/naming/packet/default/CLI/package tests pass in8.161s. RC0 checkout and its served bytes were untouched. Next: path guard48c6d36, corrected AGY adapter only if cleared, then frozen RC1 verification.

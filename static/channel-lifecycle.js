@@ -294,10 +294,14 @@ window.ChannelLifecycle = (() => {
         form.dialog.replaceChildren();
         const header = node('header', undefined, 'channel-manager-header');
         const title = node('h2', 'Manage channels'); title.id = 'channel-manager-title';
-        header.append(title, button('Close', () => closeManager(form), null, 'close')); form.dialog.appendChild(header);
+        // Catalog actions share the title row with Close instead of stacking like list items.
+        const actions = node('div', undefined, 'channel-manager-header-actions');
+        actions.append(button('Create channel', () => choose(form, '', 'create'), null, 'create'),
+            button('Reload catalog', () => refresh().catch(error => report(form, errorText(error))), null, 'reload'),
+            button('Close', () => closeManager(form), null, 'close'));
+        header.append(title, actions); form.dialog.appendChild(header);
         const status = node('p', [form.error, form.warning].filter(Boolean).join(' ') || (!ready ? 'Checking channel status. Drafts are kept.' : ''), 'channel-manager-status');
         status.id = 'channel-manager-status'; status.setAttribute('role', 'alert'); form.dialog.appendChild(status);
-        form.dialog.appendChild(button('Reload catalog', () => refresh().catch(error => report(form, errorText(error))), null, 'reload'));
         if (catalog?.intent) {
             const intent = catalog.intent, repair = node('section', undefined, 'channel-manager-repair');
             repair.append(node('h3', 'Channel repair is pending'), node('p', `${intent.op}: ${intent.old}${intent.new ? ' to ' + intent.new : ''}`),
@@ -310,7 +314,6 @@ window.ChannelLifecycle = (() => {
             repair.appendChild(retry); form.dialog.appendChild(repair);
         }
         const layout = node('div', undefined, 'channel-manager-layout'), list = node('section'); list.id = 'channel-manager-list';
-        list.appendChild(button('Create channel', () => choose(form, '', 'create'), null, 'create'));
         for (const [key, title] of [['active', 'Active'], ['archived', 'Archived'], ['retired', 'Retired'], ['unregistered', 'Unregistered data']]) {
             list.appendChild(node('h3', title));
             const rows = catalog?.channels.filter(row => row.state === key) || [];

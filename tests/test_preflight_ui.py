@@ -343,6 +343,17 @@ assert(seatCard('alpha').querySelector('.pf-seat-summary').textContent.includes(
 assert(seatCard('beta').querySelector('.pf-seat-summary').textContent.includes('provider default model'));
 """)
 
+    def test_seat_toggles_share_one_row(self):
+        # Idea 2: "Configure" and "Status details" sit side by side instead of stacking.
+        self.run_js(r"""
+await boot();
+const card=seatCard('alpha');
+const row=card.runtime.config.parentElement;
+assert(row&&row.classList.contains('pf-seat-toggles'),'toggles row missing');
+assert.strictEqual(card.runtime.statusDetails.parentElement,row);
+assert.strictEqual(row.parentElement,card);
+""")
+
     # 4. Failure path -------------------------------------------------------
     def test_failed_seat_blocks_chat_and_offers_retry_or_leave_out(self):
         self.run_js(r"""

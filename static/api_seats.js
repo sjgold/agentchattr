@@ -268,7 +268,10 @@
         const statusActions = element('div', 'actions');
         statusDetails.append(statusList, statusActions);
 
-        editor.append(legend, head, problem, config, statusDetails);
+        // Both toggles share one row while closed; an open one takes the full width (CSS).
+        const toggles = element('div', 'pf-seat-toggles');
+        toggles.append(config, statusDetails);
+        editor.append(legend, head, problem, toggles);
         editor.readSeat = () => ({id: id.value, name: name.value, provider: provider.value,
             model: model.value || null, reasoning: reasoning.value || null,
             secret_ref: secret.value, adapter: adapter.value, launch_profile: 'standard'});

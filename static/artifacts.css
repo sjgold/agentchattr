@@ -13,7 +13,7 @@
 .artifact-documents label { display: block; margin: 14px 0 6px; font-weight: 600; }
 .artifact-documents textarea, .artifact-documents select {
     box-sizing: border-box; display: block; width: 100%; max-width: 72ch; min-width: 0;
-    color: var(--text); background: var(--bg-input); border: 1px solid var(--border-strong);
+    color: var(--text); background: var(--bg-input); border: 1px solid var(--border-input);
     border-radius: var(--radius-sm); font: inherit; padding: 10px; accent-color: var(--accent);
 }
 .artifact-documents textarea { resize: vertical; min-height: 88px; caret-color: var(--text); }
@@ -30,6 +30,13 @@
 #artifact-error:empty { display: none; }
 #artifact-error, #artifact-abandon-warning { color: var(--text); background: var(--bg-input); padding: 10px; border-radius: var(--radius-sm); }
 #artifact-reader { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.65; max-width: 72ch; margin: 18px 0; }
+/* Wide windows: the request form on the left, the document text on the right with its own scroll. */
+@media (min-width: 1100px) {
+    .artifact-documents { display: grid; grid-template-columns: minmax(0, 72ch) minmax(0, 1fr); column-gap: 40px; align-items: start; }
+    .artifact-side { position: sticky; top: 0; max-height: calc(58vh - 36px); overflow: auto; }
+    .artifact-side:has(#artifact-reader:not([hidden])) { border-left: 1px solid var(--border); padding-left: 24px; }
+    .artifact-side #artifact-reader { margin: 0; max-width: 80ch; }
+}
 #artifact-documents-open { background: none; border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text); min-height: 40px; padding: 0 9px; cursor: pointer; flex-shrink: 0; }
 .session-artifact-warning { overflow-wrap: anywhere; }
 @media (max-width: 480px) { .artifact-documents { padding: 14px 12px; } #artifact-documents-open { padding: 0 5px; font-size: 12px; } }

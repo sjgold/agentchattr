@@ -1826,6 +1826,9 @@ function showSessionLauncher() {
             <div class="session-launcher-goal">
                 <input id="session-goal-input" type="text" placeholder="Goal (optional) -- what should this session achieve?" />
             </div>
+            <div id="session-step-templates">
+                <div class="session-launcher-templates">${templateOptions}${designCard}</div>
+            </div>
             ${capacitySummary()}
             <div class="session-source-editor">
                 <label for="session-source-input">Pasted review source (optional)</label>
@@ -1833,9 +1836,6 @@ function showSessionLauncher() {
                 <p>Start freezes this source, the task brief, design and rules. Source is data, not tool instructions. Oversized input is rejected and stays here for editing.</p>
             </div>
             ${recoveryPolicyEditor()}
-            <div id="session-step-templates">
-                <div class="session-launcher-templates">${templateOptions}${designCard}</div>
-            </div>
             <div id="session-step-cast" class="hidden"></div>
         </div>
     `;
@@ -1892,8 +1892,9 @@ function showCastPreview(templateId) {
         <button class="session-start-btn" onclick="launchSessionWithCast('${window.escapeHtml(templateId)}')">Start Session</button>
     `;
     updateDocumentStart(document.getElementById('session-launcher-modal'));
-    // The cast sits below the source editor; bring it into view so the next step is visible.
-    castStep.scrollIntoView?.({block: 'start', behavior: 'smooth'});
+    // Templates fold away; the next steps read top to bottom: source, timing, then the cast.
+    castStep.closest('.session-launcher-dialog')?.querySelector('.session-source-editor')
+        ?.scrollIntoView?.({block: 'start', behavior: 'smooth'});
 }
 
 function sessionCastBack() {

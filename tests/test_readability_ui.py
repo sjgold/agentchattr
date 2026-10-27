@@ -172,5 +172,67 @@ class ManageChannelsReadabilityTests(unittest.TestCase):
         self.assertRegex(body, r'box-shadow:\s*none')
 
 
+class AddressedAgentsIdleTests(unittest.TestCase):
+    def test_idle_hint_is_one_compact_line(self):
+        # Idea 7: with nothing addressed, the box is one short line instead of a 70px block.
+        js = (STATIC / 'recipients.js').read_text(encoding='utf-8')
+        idle = js[js.index('function idle()'):js.index('function error(')]
+        self.assertIn("'recipient-idle'", idle)
+        css = sheet('recipients.css')
+        self.assertIn('.recipient-preview:has(.recipient-idle)', css)
+        self.assertRegex(rule(css, '.recipient-preview:has(.recipient-idle) p'), r'display:\s*inline')
+
+
+class SessionLauncherOrderTests(unittest.TestCase):
+    def test_templates_come_before_the_source_and_the_cast_after_it(self):
+        # Idea 5: choose the kind of session first, then the source, then who plays which role.
+        js = (STATIC / 'sessions.js').read_text(encoding='utf-8')
+        body = js[js.index('function showSessionLauncher'):js.index('async function sendDesignRequest')]
+        goal, templates = body.index('session-launcher-goal'), body.index('id="session-step-templates"')
+        source, cast = body.index('class="session-source-editor"'), body.index('id="session-step-cast"')
+        self.assertLess(goal, templates)
+        self.assertLess(templates, source)
+        self.assertLess(source, cast)
+        preview = js[js.index('function showCastPreview'):js.index('function sessionCastBack')]
+        self.assertIn('.session-source-editor', preview)   # after a pick, bring the source box into view
+
+
+class ManageChannelsHeaderTests(unittest.TestCase):
+    def test_create_and_reload_sit_in_the_title_row(self):
+        # Idea 4: the two catalog actions join Close in the dialog's title row instead of
+        # stacking like list items.
+        js = (STATIC / 'channel-lifecycle.js').read_text(encoding='utf-8')
+        body = js[js.index('function renderManager'):js.index('const layout = node(')]
+        self.assertIn("'channel-manager-header-actions'", body)
+        actions = re.search(r"actions\.append\(([^;]*)\);", body)
+        self.assertIsNotNone(actions, 'header actions group missing')
+        for label in ('Create channel', 'Reload catalog', 'Close'):
+            self.assertIn(f"button('{label}'", actions.group(1))
+        self.assertNotIn("list.appendChild(button('Create channel'", js)
+        self.assertIn('.channel-manager-header-actions', sheet('channel-lifecycle.css'))
+
+
+class InputBorderTests(unittest.TestCase):
+    """Idea 1: text boxes need a visible edge (WCAG 1.4.11 asks 3:1 for field boundaries)."""
+    FIELDS = (('preflight.css', '.preflight-page input, .preflight-page select'),
+              ('artifacts.css', '.artifact-documents textarea, .artifact-documents select'),
+              ('sessions.css', '.session-launcher-goal input'),
+              ('sessions.css', '.session-source-editor textarea'),
+              ('sessions.css', '.session-cast-select'),
+              ('channel-lifecycle.css', '.channel-manager input'),
+              ('style.css', '#input'))
+
+    def test_input_border_token_reaches_3_to_1(self):
+        t = tokens()
+        for surface in ('bg', 'bg-header', 'bg-input'):
+            with self.subTest(surface=surface):
+                self.assertGreaterEqual(contrast(t['border-input'], t[surface]), 3.0)
+
+    def test_fields_on_the_reviewed_screens_use_it(self):
+        for name, selector in self.FIELDS:
+            with self.subTest(selector=selector):
+                self.assertIn('var(--border-input)', rule(sheet(name), selector))
+
+
 if __name__ == '__main__':
     unittest.main()

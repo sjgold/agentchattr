@@ -44,9 +44,10 @@
 .channel-manager button, .channel-state-banner button, .channel-manager-entry { cursor: pointer; }
 .channel-manager button:hover:enabled, .channel-state-banner button:hover:enabled, .channel-manager-entry:hover { background: var(--accent-hover); }
 .channel-manager button:disabled { opacity: .55; cursor: default; }
-/* Utility action: quieter than Create channel and the per-channel actions. */
-.channel-manager > button:not(:hover) { background: transparent; border-style: dashed; }
-.channel-manager input { display: block; width: 100%; margin: 6px 0 16px; caret-color: var(--user-color); }
+/* Title row actions: Create channel, a quiet Reload catalog, Close. */
+.channel-manager-header-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.channel-manager-header-actions [data-focus-key="reload"]:not(:hover) { background: transparent; border-style: dashed; }
+.channel-manager input { display: block; width: 100%; margin: 6px 0 16px; caret-color: var(--user-color); border-color: var(--border-input); }
 .channel-manager label { display: block; margin-top: 16px; font-weight: 600; }
 .channel-manager :focus-visible, .channel-state-banner :focus-visible, .channel-manager-entry:focus-visible { outline: 2px solid var(--user-color); outline-offset: 3px; }
 .channel-manager-status, .channel-manager-blocker { color: var(--warning); }

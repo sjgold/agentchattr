@@ -599,6 +599,19 @@ assert.strictEqual(element('artifact-reader').textContent,markdown);
 assert.strictEqual(JSON.stringify(scrolls),JSON.stringify([{block:'nearest'}]));
 """)
 
+    def test_documents_panel_has_form_and_reader_columns(self):
+        # Idea 3: the form sits in a left column and the document text in a right one.
+        self.run_js(r"""
+await open();
+const panel=element('artifact-documents-panel');
+const form=element('artifact-instruction').parentElement, side=element('artifact-reader').parentElement;
+assert(form.className.includes('artifact-form'),form.className);
+assert(side.className.includes('artifact-side'),side.className);
+assert.strictEqual(form.parentElement,panel);assert.strictEqual(side.parentElement,panel);
+for(const id of ['artifact-session-select','artifact-submit','artifact-status','artifact-error','artifact-refresh'])
+ assert(form===element(id).parentElement||form.querySelectorAll('#'+id).length,'not in form column: '+id);
+""")
+
     def test_empty_session_list_shows_disabled_placeholder(self):
         self.run_js(r"""
 const original=responder;
