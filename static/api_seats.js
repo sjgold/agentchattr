@@ -494,6 +494,8 @@
         finally {
             teamPending = false;
             goProgress = null;
+            // Keep checking for a while so seats still starting settle without a reload.
+            pollsLeft = 20;
             await refresh(false);
         }
     }
