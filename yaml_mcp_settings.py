@@ -8,7 +8,19 @@ file is never re-serialised through it. Anything unexpected is refused before
 any write. Messages and exceptions carry paths, key names and SHA-256 digests
 only, never file contents or the bearer token.
 
+Ownership and integrity guards:
+- An existing entry under our name is refreshed or removed only if it has exactly the shape we
+  write (url holding a loopback http URL, plus optionally headers with exactly one
+  "Authorization: Bearer ..." value). Anything else is the user's and is refused, untouched.
+- Every planned write is checked three ways: the bytes before and after the spliced region
+  are identical to the original (comments included), only mcp_servers.<entry> differs
+  structurally, and the parsed result equals the expected value.
+- If the write fails for any reason after a backup was made, that backup is deleted.
+
 Operational notes:
+- mcp_settings_path is not constrained beyond $VAR/~ expansion (relative paths resolve against
+  the project directory). Requiring an absolute path is a possible later tightening.
+- The wrapper's lifetime lock file (config.yaml.agentchattr.lock) is never deleted.
 - os.replace writes a new file: Windows gives it the directory's inherited ACL,
   POSIX mode bits are not copied, and a symlinked config.yaml becomes a regular file.
 - Backups (config.yaml.agentchattr-uat-<UTC>-<hex>.bak) are never deleted
@@ -51,6 +63,7 @@ class ApplyReceipt:
     written_sha256: str
     created_file: bool
     created_section: bool
+    prior_sha256: str | None = None   # sha256 of the bytes this write replaced; None if the file was new
 
 
 @dataclass
@@ -214,14 +227,20 @@ def _content_end(node) -> int:
     return node.end_mark.index
 
 
-def _without_entry(text: str, layout: _Layout) -> str:
+def _without_entry(text: str, layout: _Layout):
+    """(new_text, (start, end, 0)): the entry's lines cut out."""
     start = _line_start(text, layout.entry_key.start_mark.index)
     end = _after_line(text, _content_end(layout.entry_value))
-    return text[:start] + text[end:]
+    return text[:start] + text[end:], (start, end, 0)
+
+
+def _region(old: str, new: str, start: int, end: int):
+    """(start, end, inserted length) for a single splice of old[start:end]."""
+    return start, end, len(new) - len(old) + (end - start)
 
 
 def _with_entry(text: str, path: Path, entry: str, url: str, token: str, newline: str):
-    """Return (new_text, created_section). ``text`` must not already hold the entry."""
+    """Return (new_text, created_section, region). ``text`` must not already hold the entry."""
     layout = _layout(text, path, entry)
     if layout.entry_key is not None:
         raise AssertionError('caller removes an existing entry first')
@@ -229,7 +248,8 @@ def _with_entry(text: str, path: Path, entry: str, url: str, token: str, newline
         prefix = text
         if prefix and not prefix.endswith('\n'):
             prefix += newline
-        return prefix + SECTION + ':' + newline + _entry_lines(entry, url, token, '  ', newline), True
+        new = prefix + SECTION + ':' + newline + _entry_lines(entry, url, token, '  ', newline)
+        return new, True, _region(text, new, len(text), len(text))
     key, value = layout.section_key, layout.section_value
     yaml = _yaml()
     if isinstance(value, yaml.MappingNode) and not value.flow_style:
@@ -238,7 +258,8 @@ def _with_entry(text: str, path: Path, entry: str, url: str, token: str, newline
         body = text[:at]
         if body and not body.endswith('\n'):
             body += newline
-        return body + _entry_lines(entry, url, token, indent, newline) + text[at:], False
+        new = body + _entry_lines(entry, url, token, indent, newline) + text[at:]
+        return new, False, _region(text, new, at, at)
     # `mcp_servers:` with nothing after it, or `mcp_servers: {}` on one line: keep the key line
     # (and any trailing comment), drop an empty `{}`, and add the entry as a block under it.
     line_start = _line_start(text, key.start_mark.index)
@@ -249,7 +270,54 @@ def _with_entry(text: str, path: Path, entry: str, url: str, token: str, newline
     comment = shape.group(2)
     line = text[line_start:key.end_mark.index] + shape.group(1) + ((' ' + comment) if comment else '') + newline
     indent = ' ' * (key.start_mark.column + 2)
-    return text[:line_start] + line + _entry_lines(entry, url, token, indent, newline) + text[line_end:], False
+    new = text[:line_start] + line + _entry_lines(entry, url, token, indent, newline) + text[line_end:]
+    return new, False, _region(text, new, line_start, line_end)
+
+
+def _then(first, second):
+    """Old-text span (start, end) covering two successive splices; ``second`` is in the
+    coordinates of the text the first splice produced."""
+    start, end, inserted = first
+    a, b, _ = second
+
+    def back(x, low):
+        if x <= start:
+            return x
+        if x >= start + inserted:
+            return x - (start + inserted) + end
+        return start if low else end
+    return min(start, back(a, True)), max(end, back(b, False)), None
+
+
+def _check_outside(old: str, new: str, region, path: Path) -> None:
+    """Every byte before and after the spliced span is unchanged (comments included), independent
+    of the structural checks, which cannot see comments or formatting."""
+    start, end = region[0], region[1]
+    tail = len(old) - end
+    if len(new) < start + tail or new[:start] != old[:start] or new[len(new) - tail:] != old[end:]:
+        raise YamlSettingsError(f'{path.name}: the planned edit would change bytes outside the spliced region; '
+                                'nothing was changed.')
+
+
+_OUR_URL = re.compile(r'http://(?:127\.0\.0\.1|localhost):\d{1,5}/')
+
+
+def _looks_ours(value) -> bool:
+    """The shape this module writes: url (a loopback http URL) plus, optionally, headers with
+    exactly one Authorization: Bearer value. Anything else is the user's."""
+    if not isinstance(value, dict) or set(value) not in ({'url'}, {'url', 'headers'}):
+        return False
+    if not isinstance(value['url'], str) or not _OUR_URL.match(value['url']):
+        return False
+    headers = value.get('headers', {'Authorization': 'Bearer '})
+    return (isinstance(headers, dict) and set(headers) == {'Authorization'}
+            and isinstance(headers['Authorization'], str) and headers['Authorization'].startswith('Bearer '))
+
+
+def _refuse_unless_ours(text: str, path: Path, entry: str) -> None:
+    if not _looks_ours(((_load(text, path) or {}).get(SECTION) or {}).get(entry)):
+        raise YamlSettingsError(f'{path.name} {SECTION}.{entry} was not written by agentchattr (unexpected keys or '
+                                'URL); it is left untouched. Remove it by hand if it is stale.')
 
 
 # --- Verification ----------------------------------------------------------
@@ -337,13 +405,33 @@ def _backup(path: Path, raw: bytes) -> Path:
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     backup = path.with_name(f'{path.name}.{DEFAULT_ENTRY}-{stamp}-{secrets.token_hex(3)}.bak')
     with backup.open('xb') as handle:      # reserve the name; never overwrite an earlier backup
-        handle.write(raw)
-        handle.flush()
-        os.fsync(handle.fileno())
-    shutil.copystat(path, backup)
-    if backup.read_bytes() != raw:
-        raise YamlSettingsError(f'Backup of {path.name} could not be verified; nothing was changed.')
+        try:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        except BaseException:
+            handle.close()
+            backup.unlink(missing_ok=True)
+            raise
+    try:
+        shutil.copystat(path, backup)
+        if backup.read_bytes() != raw:
+            raise YamlSettingsError(f'Backup of {path.name} could not be verified; nothing was changed.')
+    except BaseException:
+        backup.unlink(missing_ok=True)     # never leave a half-made backup behind
+        raise
     return backup
+
+
+def _never_raises(log):
+    """The file may already be written when we log; a failing log (stdout encoding) must not
+    lose the receipt or the result."""
+    def safe(message):
+        try:
+            log(message)
+        except Exception:
+            pass
+    return safe
 
 
 def resolve_settings_path(raw, project_dir=None) -> Path:
@@ -376,24 +464,30 @@ def apply(path, url: str, token: str, *, entry: str = DEFAULT_ENTRY, log=print) 
     restores the original bytes when the file is unchanged since this write.
     If the file changes between reading and replacing it, the plan is redone once, then refused."""
     path = Path(path)
+    log = _never_raises(log)
     if not path.parent.is_dir():
         raise YamlSettingsError(f'{path.parent} does not exist; nothing was changed.')
     for attempt in range(2):
         raw = _current_bytes(path)
         plan = _plan_apply(path, raw, entry, url, token)
         backup = backup_sha = None
-        if raw is not None and not plan['had_entry']:
-            backup, backup_sha = _backup(path, raw), _sha256(raw)
         try:
+            if raw is not None and not plan['had_entry']:
+                backup, backup_sha = _backup(path, raw), _sha256(raw)
             _atomic_write(path, plan['data'], raw)
         except _ChangedUnderUs:
             if backup is not None:
                 backup.unlink(missing_ok=True)       # our own backup of a version we did not edit
             continue
+        except BaseException:
+            if backup is not None:
+                backup.unlink(missing_ok=True)       # nothing was written, so the backup has no purpose
+            raise
         if backup is not None:
             log(f'  Backed up {path.name} -> {backup} (sha256 {backup_sha})')
         log(f'  {"Refreshed" if plan["had_entry"] else "Added"} {SECTION}.{entry} in {path} (sha256 {_sha256(plan["data"])})')
-        return ApplyReceipt(path, entry, backup, backup_sha, _sha256(plan['data']), raw is None, plan['created_section'])
+        return ApplyReceipt(path, entry, backup, backup_sha, _sha256(plan['data']), raw is None, plan['created_section'],
+                            None if raw is None else _sha256(raw))
     raise YamlSettingsError(f'{path.name} kept changing while it was being updated (is the client writing it?); '
                             'nothing of ours was written.')
 
@@ -404,15 +498,19 @@ def _plan_apply(path: Path, raw, entry: str, url: str, token: str) -> dict:
     layout = _layout(text, path, entry)
     had_entry = layout.entry_key is not None
     base = text
+    removed = None
     if had_entry:
-        base = _without_entry(text, layout)
+        _refuse_unless_ours(text, path, entry)
+        base, removed = _without_entry(text, layout)
         # Check the deletion on its own, so a hand-edited entry cannot hide a wider change.
         verify_only_one_key_changed(text, base, entry=entry, path=path)
         expected_base = _normalised(_load(text, path))
         expected_base[SECTION].pop(entry, None)
         if _normalised(_load(base, path)) != expected_base:
             raise YamlSettingsError(f'Could not refresh {SECTION}.{entry} in {path.name} safely; nothing was changed.')
-    new_text, created_section = _with_entry(base, path, entry, url, token, newline)
+    new_text, created_section, region = _with_entry(base, path, entry, url, token, newline)
+    data = _encode(new_text, bom)
+    _check_outside(text, _decode(data, path)[0], _then(removed, region) if removed else region, path)
     verify_only_one_key_changed(base, new_text, entry=entry, path=path)
     expected = _load(base, path) or {}
     if not isinstance(expected.get(SECTION), dict):
@@ -420,7 +518,7 @@ def _plan_apply(path: Path, raw, entry: str, url: str, token: str) -> dict:
     expected[SECTION][entry] = {'url': url, **({'headers': {'Authorization': 'Bearer ' + token}} if token else {})}
     if _load(new_text, path) != expected:
         raise YamlSettingsError(f'Could not update {path.name} safely; nothing was changed.')
-    return {'data': _encode(new_text, bom), 'had_entry': had_entry, 'created_section': created_section}
+    return {'data': data, 'had_entry': had_entry, 'created_section': created_section}
 
 
 def remove_exact(path, *, entry: str = DEFAULT_ENTRY, receipt: ApplyReceipt | None = None, log=print) -> RemovalResult:
@@ -431,6 +529,7 @@ def remove_exact(path, *, entry: str = DEFAULT_ENTRY, receipt: ApplyReceipt | No
     result is checked to differ from the current file by that entry alone. Either way the result
     is compared structurally with the backup and reported."""
     path = Path(path)
+    log = _never_raises(log)
     for attempt in range(2):
         try:
             return _remove_once(path, entry, receipt, log)
@@ -459,6 +558,7 @@ def _remove_once(path: Path, entry: str, receipt, log) -> RemovalResult:
     layout = _layout(text, path, entry)
     if layout.entry_key is None:
         return RemovalResult(path, 'absent', None, [])
+    _refuse_unless_ours(text, path, entry)
     original = _verified_backup(receipt)
     unchanged_since_write = bool(receipt) and _sha256(raw) == receipt.written_sha256
     if unchanged_since_write and receipt.created_file:
@@ -472,12 +572,15 @@ def _remove_once(path: Path, entry: str, receipt, log) -> RemovalResult:
         log(f'  Restored {path.name} from backup (sha256 {receipt.backup_sha256})')
         return RemovalResult(path, 'restored-exact', True, [])
     # Edited since our write, or the backup is missing/tampered: delete only our entry (checked).
-    new_text = _without_entry(text, layout)
+    new_text, region = _without_entry(text, layout)
     if receipt and receipt.created_section:
         after = _layout(new_text, path, entry)
         if after.section_key is not None and not getattr(after.section_value, 'value', None):
             start = _line_start(new_text, after.section_key.start_mark.index)
-            new_text = new_text[:start] + new_text[_after_line(new_text, after.section_key.end_mark.index):]
+            end = _after_line(new_text, after.section_key.end_mark.index)
+            new_text = new_text[:start] + new_text[end:]
+            region = _then(region, (start, end, 0))
+    _check_outside(text, new_text, region, path)
     verify_only_one_key_changed(text, new_text, entry=entry, path=path)
     expected = _load(text, path)
     expected[SECTION].pop(entry)

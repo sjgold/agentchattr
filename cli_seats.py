@@ -102,6 +102,15 @@ def validate_cli_seat(seat, template):
     if injection.get('mcp_inject') == 'yaml_settings_file':
         if not isinstance(injection.get('mcp_settings_path'), str) or not injection['mcp_settings_path'].strip():
             raise SeatError('A YAML settings-file client requires mcp_settings_path.')
+    if injection.get('mcp_inject') == 'json_entry_file':
+        if not isinstance(injection.get('mcp_settings_path'), str) or not injection['mcp_settings_path'].strip():
+            raise SeatError('A JSON entry-file client requires mcp_settings_path.')
+        from json_mcp_settings import JsonSettingsError, entry_name, url_key
+        try:
+            entry_name(injection.get('mcp_entry_name'))
+            url_key(injection.get('mcp_http_key'))
+        except JsonSettingsError as error:
+            raise SeatError(str(error)) from None
     strip = template.get('strip_env', [])
     if not isinstance(strip, list) or any(not isinstance(v, str) or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', v) for v in strip):
         raise SeatError('CLI strip_env must be a list of environment-variable names.')
@@ -128,6 +137,13 @@ def config_resource(template, project_dir):
         try:
             target = resolve_settings_path(cfg.get('mcp_settings_path'), project_dir)
         except YamlSettingsError as error:
+            raise SeatError(str(error)) from None
+        return os.path.normcase(str(target.resolve()))
+    if cfg.get('mcp_inject') == 'json_entry_file':
+        from json_mcp_settings import JsonSettingsError, resolve_settings_path as resolve_json_path
+        try:
+            target = resolve_json_path(cfg.get('mcp_settings_path'), project_dir)
+        except JsonSettingsError as error:
             raise SeatError(str(error)) from None
         return os.path.normcase(str(target.resolve()))
     if cfg.get('mcp_inject') != 'settings_file':

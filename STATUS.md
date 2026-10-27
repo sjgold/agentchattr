@@ -1,6 +1,15 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:28 CDT. RC1 is up beside RC0: full2164-test run green,6 seats ready, CLI/API document smokes pass. Nothing pushed.
+**Updated:** 2026-10-27 04:34 CDT. RC1 handoff accepted. Corrected adapter cleanup is integration-only,285 focused tests pass; frozen UAT builds stay unchanged.
+
+**START HERE (Seth)**
+1. Open RC1: http://127.0.0.1:50010/preflight.
+2. Check the six-seat team, then click Launch team and open chat (reuse is fine).
+3. In chat, use Documents: pick a completed source session, request a short document, then Read/Download.
+4. Try Start a session -> Choose UTF-8 files for the multi-file preview; starting a review uses the selected agents.
+5. For Antigravity use RC0: http://127.0.0.1:49949/preflight. RC1 leaves AGY and Hermes out.
+6. Decisions: keep Hermes deferred or discuss process61816; review the security rotation note; the app continues to start at Pre-flight.
+
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
@@ -289,3 +298,11 @@ Exactly2 new document requests: Claude Haiku requested,109B SHA256dc827c229d465b
 Real browser Pre-flight showed6/6 ready and the polished cards; chat had Seats&launch -> /preflight and0 raw managed ids in visible text. Dismissed the one-time Welcome through its control. Two browser File objects (native file dialog not used) passed the real picker/HTTP route: f1 one.txt17B including BOM/CRLF, f2 two.txt14B;31 raw bytes; revision4748b2758fdbdbd0c73f6d7ed3296e5be2941ce1ae90e9379fd22bd60029a11e independently matches preview_packet. Start was not clicked: a multi-agent live packet review was skipped to keep calls bounded. Report: runtime/rc1-ui-packet-check.json.
 
 Signed inventory:17 live,0 uncertain, intentionally active and not cleanup-complete. Original checkout data manifest unchanged (1 file); both Pre-flight URLs return200. CLI frozen configs strip all3 referenced API names; proof is configuration plus tested native env construction, not process-memory inspection. Both pinned checkouts have0 tracked changes. No global config write, push, publication or deletion from RC1.
+
+### 2026-10-27 04:34 CDT Corrected JSON adapter and managed cleanup, integration only
+
+Merged reviewer-clearedff32cb6, preserving the reviewed executable-path guard. It fixes stale-backup receipt composition in both YAML/JSON adapters and adds the distinct-name JSON option. Two actual managed-worker tests observed original-byte failures before B1: cooperative Stop and startup failure after apply left the JSON entry. cli_worker now registers the JSON cleanup callback before apply, inside the lifetime settings lock, matching YAML. Both modes are exercised on temporary homes, including lock-before-cleanup assertions and exact-byte/no-tmp checks.285 focused adapter/guard/managed-worker/CLI/default/runtime/protocol/key/assertion tests pass in8.297s.
+
+RC0 and RC1 still serve their original clean pins; this merge does not reach them. No real YAML/JSON write, agent launch or model call occurred in these tests. Further real-home use still needs reviewer clearance, Seth's go and the running-client conditions; Hermes.cmd Stop limitation remains. Next: reviewer checks this integration pin; prepare a docs-only publication-readiness note for reviewer review, no push.
+
+RC1 handoff was independently accepted: reviewer checked both HTTP endpoints, listeners,7 copy hashes, pin/clean tree, full-run log and STATUS. Live smoke/preview/trust observations and28-export scan remain builder evidence. Final file-state check:126 tracked Markdown files,0 broken links;0 tracked deletions RC0..RC1; both frozen trees clean.

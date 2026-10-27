@@ -179,7 +179,7 @@ _BUILTIN_DEFAULTS: dict[str, dict] = {
     },
 }
 
-_VALID_INJECT_MODES = {"settings_file", "yaml_settings_file", "env", "flag", "proxy_flag", "env_content"}
+_VALID_INJECT_MODES = {"settings_file", "yaml_settings_file", "json_entry_file", "env", "flag", "proxy_flag", "env_content"}
 
 # yaml_settings_file adds a distinctly named entry (never the user's own "agentchattr"
 # entry) and removes it again when the wrapper stops. Receipts keep the first clean
@@ -200,7 +200,6 @@ def _reset_yaml_state() -> None:
 
 
 def _apply_yaml_mcp_settings(raw_path, project_dir, url: str, token: str) -> Path:
-    import dataclasses
     import yaml_mcp_settings
     target = yaml_mcp_settings.resolve_settings_path(raw_path, project_dir)
     with _YAML_LOCK:
@@ -209,11 +208,21 @@ def _apply_yaml_mcp_settings(raw_path, project_dir, url: str, token: str) -> Pat
         with _config_write_lock(target):
             receipt = yaml_mcp_settings.apply(target, url, token, entry=YAML_SERVER_NAME)
         key = os.path.normcase(str(target.resolve()))
-        earlier = _YAML_RECEIPTS.get(key)
-        if earlier is not None and receipt.backup_path is None:
-            receipt = dataclasses.replace(earlier, written_sha256=receipt.written_sha256)
-        _YAML_RECEIPTS[key] = receipt
+        _YAML_RECEIPTS[key] = _merge_receipt(_YAML_RECEIPTS.get(key), receipt)
     return target
+
+
+def _merge_receipt(earlier, receipt):
+    """Keep the first clean backup across token refreshes, but only while nobody else wrote
+    the file between our writes. Otherwise drop the backup (and the claim to have created the
+    file) so stop does the checked structural delete instead of restoring stale bytes."""
+    import dataclasses
+    if earlier is None or receipt.backup_path is not None or receipt.created_file:
+        return receipt        # a fresh backup, or a file we (re)created ourselves: this write stands alone
+    if earlier.written_sha256 == receipt.prior_sha256:
+        return dataclasses.replace(earlier, written_sha256=receipt.written_sha256, prior_sha256=receipt.prior_sha256)
+    return dataclasses.replace(earlier, backup_path=None, backup_sha256=None, created_file=False,
+                               written_sha256=receipt.written_sha256, prior_sha256=receipt.prior_sha256)
 
 
 def _remove_yaml_mcp_entries() -> list:
@@ -234,6 +243,93 @@ def _remove_yaml_mcp_entries() -> list:
                 detail = str(error) if isinstance(error, yaml_mcp_settings.YamlSettingsError) else type(error).__name__
                 print(f"  Warning: could not remove {YAML_SERVER_NAME} from {receipt.path}: {detail}")
     return results
+
+
+# json_entry_file (Antigravity agy): the same contract for one member of a fixed global
+# JSON file's "mcpServers" object, named by mcp_entry_name (default agentchattr-fork).
+_JSON_RECEIPTS: dict = {}
+_JSON_LOCK = threading.Lock()
+_JSON_CLOSED = False
+
+
+def _reset_json_state() -> None:
+    global _JSON_CLOSED
+    with _JSON_LOCK:
+        _JSON_RECEIPTS.clear()
+        _JSON_CLOSED = False
+
+
+def _apply_json_mcp_entry(inject_cfg: dict, project_dir, url: str, token: str) -> Path:
+    import json_mcp_settings
+    target = json_mcp_settings.resolve_settings_path(inject_cfg.get("mcp_settings_path", ""), project_dir)
+    entry = json_mcp_settings.entry_name(inject_cfg.get("mcp_entry_name"))
+    url_key = json_mcp_settings.url_key(inject_cfg.get("mcp_http_key"))
+    with _JSON_LOCK:
+        if _JSON_CLOSED:
+            raise ValueError(f"Wrapper is stopping; {entry} is not written again.")
+        with _config_write_lock(target):
+            receipt = json_mcp_settings.apply(target, url, token, entry=entry, key=url_key)
+        key = os.path.normcase(str(target.resolve()))
+        _JSON_RECEIPTS[key] = _merge_receipt(_JSON_RECEIPTS.get(key), receipt)
+    return target
+
+
+def _remove_json_mcp_entries() -> list:
+    """Stop hook: close further writes, then remove every JSON entry this process added."""
+    global _JSON_CLOSED
+    results = []
+    with _JSON_LOCK:
+        _JSON_CLOSED = True
+        if not _JSON_RECEIPTS:
+            return results
+        import json_mcp_settings
+        for key, receipt in list(_JSON_RECEIPTS.items()):
+            try:
+                with _config_write_lock(receipt.path):
+                    results.append(json_mcp_settings.remove_exact(receipt.path, entry=receipt.entry, receipt=receipt))
+                _JSON_RECEIPTS.pop(key, None)
+            except Exception as error:     # never block resources.close(); messages carry no token
+                detail = str(error) if isinstance(error, json_mcp_settings.JsonSettingsError) else type(error).__name__
+                print(f"  Warning: could not remove {receipt.entry} from {receipt.path}: {detail}")
+    return results
+
+
+def _stop_settings_cleanups(resources) -> None:
+    """Take our entries (and token) back out before the lifetime lock is released. Each cleanup
+    runs even if the one before it is interrupted (KeyboardInterrupt included), and
+    resources.close() always runs. Warnings name the exception type only."""
+    try:
+        try:
+            _remove_yaml_mcp_entries()
+        except Exception as error:
+            print(f"  Warning: YAML settings cleanup failed: {type(error).__name__}")
+        finally:
+            try:
+                _remove_json_mcp_entries()
+            except Exception as error:
+                print(f"  Warning: JSON settings cleanup failed: {type(error).__name__}")
+    finally:
+        resources.close()
+
+
+def _shutdown_wrapper(resources, *, queue_stop=None, watcher=None, deregister=None, proxy=None) -> None:
+    """main()'s stop sequence. The settings cleanup sits in the outer finally, so an interrupt
+    in the watcher join, the deregister call or proxy.stop() still takes our entries (and
+    token) back out, and resources.close() still runs last."""
+    try:
+        if queue_stop is not None:
+            queue_stop.set()
+            if watcher:
+                watcher.join(timeout=6)
+        if deregister is not None:
+            try:
+                deregister()
+            except Exception:
+                pass
+        if proxy is not None:
+            proxy.stop()
+    finally:
+        _stop_settings_cleanups(resources)
 
 
 def _provider_from_command(command: object) -> str:
@@ -328,6 +424,10 @@ def _apply_mcp_inject(
         # Merge one entry into a user-owned YAML config such as $HERMES_HOME/config.yaml.
         settings_path = _apply_yaml_mcp_settings(inject_cfg.get("mcp_settings_path", ""),
                                                  project_dir, server_url, token)
+
+    elif mode == "json_entry_file":
+        # Merge one entry into a fixed global JSON config such as agy's ~/.gemini/config/mcp_config.json.
+        settings_path = _apply_json_mcp_entry(inject_cfg, project_dir, server_url, token)
 
     elif mode == "env":
         # Write a settings file in provider-config dir, expose via env var
@@ -950,14 +1050,12 @@ def main():
         code = run_agent(**run_kwargs)
         return code if isinstance(code, int) else 1
     finally:
-        if "_queue_stop" in locals():
-            _queue_stop.set()
-            if _watcher_thread:
-                _watcher_thread.join(timeout=6)
-        try:
+        has_identity = 'get_identity' in locals()
+
+        def _deregister():
             current_name = registration['name']
             current_token = registration['token']
-            if 'get_identity' in locals():
+            if has_identity:
                 current_name, _ = get_identity()
                 current_token = get_token()
             dereg_req = urllib.request.Request(
@@ -965,19 +1063,9 @@ def main():
                 method="POST", data=b"", headers=_auth_headers(current_token))
             with urllib.request.urlopen(dereg_req, timeout=5):
                 pass
-        except Exception:
-            pass
-        try:
-            if proxy is not None:
-                proxy.stop()
-        finally:
-            try:
-                # Before the lifetime lock is released: take our entry (and token) back out.
-                _remove_yaml_mcp_entries()
-            except Exception as error:
-                print(f"  Warning: YAML settings cleanup failed: {type(error).__name__}")
-            finally:
-                resources.close()
+
+        _shutdown_wrapper(resources, queue_stop=locals().get('_queue_stop'),
+                          watcher=locals().get('_watcher_thread'), deregister=_deregister, proxy=proxy)
 
     print("  Wrapper stopped.")
 

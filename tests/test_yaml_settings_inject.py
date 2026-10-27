@@ -101,6 +101,57 @@ class WrapperLifecycleTests(HermesHome):
         self.assertEqual(len(backups), 1)                # the refresh made no second backup
         self.assertNotIn(TOKEN.encode(), backups[0].read_bytes())
 
+    def test_user_edit_before_a_refresh_survives_stop(self):
+        # Reviewer B2: the first backup must not be paired with a later write when the user
+        # edited the file in between, or stop would restore the stale backup over the edit.
+        import wrapper
+        import yaml
+        self.config.write_bytes(ORIGINAL.encode('utf-8'))
+        self.apply()
+        edited = self.config.read_bytes().replace(b'backend: local', b'backend: docker')
+        self.config.write_bytes(edited)
+        self.apply(token=TOKEN + 'refreshed')
+        results = wrapper._remove_yaml_mcp_entries()
+        self.assertEqual([r.status for r in results], ['removed-entry'])
+        data = yaml.safe_load(self.config.read_text('utf-8'))
+        self.assertEqual(data['terminal'], {'backend': 'docker'})
+        self.assertNotIn('agentchattr-uat', data['mcp_servers'])
+        self.assertEqual(self.config.read_bytes(), ORIGINAL.replace('backend: local', 'backend: docker').encode('utf-8'))
+
+    def test_user_edit_to_a_created_file_before_a_refresh_keeps_the_file(self):
+        import wrapper
+        import yaml
+        self.apply()
+        self.config.write_bytes(self.config.read_bytes() + b'model: mine\n')
+        self.apply(token=TOKEN + 'refreshed')
+        wrapper._remove_yaml_mcp_entries()
+        self.assertTrue(self.config.exists())
+        self.assertEqual(yaml.safe_load(self.config.read_text('utf-8')).get('model'), 'mine')
+        self.assertNotIn(TOKEN.encode(), self.config.read_bytes())
+
+    def test_refresh_that_recreates_a_user_deleted_file_deletes_it_at_stop(self):
+        import wrapper
+        self.config.write_bytes(ORIGINAL.encode('utf-8'))
+        self.apply()
+        self.config.unlink()
+        self.apply(token=TOKEN + 'refreshed')
+        self.assertEqual([r.status for r in wrapper._remove_yaml_mcp_entries()], ['deleted-created-file'])
+        self.assertFalse(self.config.exists())
+
+    def test_a_print_that_raises_cannot_lose_the_receipt(self):
+        import io
+        import wrapper
+
+        class Unprintable(io.StringIO):
+            def write(self, _text):
+                raise UnicodeEncodeError('cp1252', 'x', 0, 1, 'unmappable')
+        self.config.write_bytes(ORIGINAL.encode('utf-8'))
+        with patch('sys.stdout', Unprintable()):
+            self.apply()
+        self.assertEqual(len(wrapper._YAML_RECEIPTS), 1)
+        wrapper._remove_yaml_mcp_entries()
+        self.assertEqual(self.config.read_bytes(), ORIGINAL.encode('utf-8'))
+
     def test_late_reregistration_after_removal_cannot_write_the_entry_back(self):
         # Reviewer must-fix 1: the heartbeat thread may re-register (409) after the stop
         # hook removed our entry; that rewrite must not put the entry and token back.
