@@ -320,7 +320,9 @@ for(const code of ['source_unavailable','source_too_large','request_too_large','
 }
 for(const cause of ['capability_off','no_live_instance','no_agent_role','not_supported','unmanaged','binding_changed','runtime_unverified','ambiguous','producer_unavailable']){
  responder=async()=>response({code:'no_author_available',cause,error:'No author available',author_name:'<img author>',examined_roles:2,durability:'not_recorded'},409);await submit();
- assert(element('artifact-error').textContent.includes(cause==='capability_off'?'Artifact authoring is not enabled':'No author available'));
+ // no_live_instance uses the approved plain-language sentence instead of the server text.
+ assert(element('artifact-error').textContent.includes(cause==='capability_off'?'Artifact authoring is not enabled':
+  cause==='no_live_instance'?'The agent that ran this session is no longer running.':'No author available'));
 }
 responder=async()=>response({code:'request_conflict',cause:'packet_exists',error:'Submit with a new request_id',durability:'not_recorded'},409);await submit();assert(element('artifact-error').textContent.includes('new request_id'));
 responder=async()=>({ok:false,status:502,json:async()=>{throw Error('<html>PRIVATE_PROXY</html>')}});await submit();
@@ -593,7 +595,8 @@ await open();await submit();current={...current,state:'fulfilled',label:'ready',
 const scrolls=[];element('artifact-reader').scrollIntoView=arg=>scrolls.push(arg);
 await activate('artifact-read');
 assert.strictEqual(element('artifact-reader').textContent,markdown);
-assert.deepStrictEqual(scrolls,[{block:'nearest'}]);
+// The argument object comes from the vm realm, so compare by value.
+assert.strictEqual(JSON.stringify(scrolls),JSON.stringify([{block:'nearest'}]));
 """)
 
     def test_empty_session_list_shows_disabled_placeholder(self):
