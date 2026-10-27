@@ -1,18 +1,18 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 night (two UI fixes cleared; five requested seats ready; MiMo/agy pending; MiniMax not used; morning handoff, work stopped)
+**Updated:** 2026-10-26 night (two UI fixes cleared; six-seat checks complete; five running, agy pending; MiMo parked; MiniMax not used; morning handoff, work stopped)
 
 ## Morning note for Seth
 
-- Ticket20 is reviewer-accepted; both live document paths passed. Two UI fixes now clarify an old card's source and remove the false Choose prompt;40 tests/63 mutants pass.
-- Open http://127.0.0.1:49949 (reload), or /preflight for the team. Five seats are ready; left running without further model calls.
-- Claude claude-opus-5-5 and Codex gpt-6.1-sol: one OAuth hello each passed; managed seats ready. Codex needed one isolated MCP-config fix; global settings unchanged.
-- DeepSeek deepseek-flash: one hello passed. GLM glm-5.3: prior document check retained, no extra generation.1070 has no mapping in DeepSeek's model list.
-- Muse muse-spark-1.3-contributor: passed with512-token cap after32/128 caps;3 authorized calls total. No older-model substitution.
-- MiMo seat pending Seth: key env var name, base URL, model slug. MiniMax not used (Seth corrected the provider name). Antigravity4.8 is not listed (only3.8 Flash variants); global-MCP permission pending,0 generations.
-- Preflight model/seat editing IS built; URLs/templates need config and CLI model flags must be declared. UAT mappings are wired; see the detailed seat report for file:line and exact evidence/call limits.
-- Stop via .audit-tmp/stop-ticket20-uat.ps1. Non-blocking UI notes (raw IDs, old duplicate labels, queue badge, departure lines) remain notes only.
-- Waiting for Seth: Ticket21 go, file-cleanup go, publication go. Work stops here; no new features, helpers, deletion or push.
+- Ticket20 is reviewer-accepted. Both original live document paths pass; the two UI fixes pass40 tests/63 mutation checks.
+- UAT: http://127.0.0.1:49949. Claude, Codex, DeepSeek, GLM and Muse remain running.
+- Claude Opus5.5/Codex Sol6.1: one OAuth hello each and managed readiness pass; no new document runs for either.
+- DeepSeek and Muse light Documents checks pass,100B and81B read/download exact. GLM's prior285B pass is retained.
+- Antigravity gemini-3.8-flash-medium: native hellos pass; managed document timed out/cancelled. Seat stopped, needs Seth's managed-login check.
+- Distinct global agentchattr-uat MCP entry removed; remaining structure equals backup. No global trust-file change occurred.
+- MiMo parked by Seth; MiniMax not used. Preflight model/seat editing already exists.
+- Stop only this UAT with .audit-tmp/stop-ticket20-uat.ps1. Backup/removal details and the six-row table are below.
+- Next, after Seth's UAT/decisions: Hermes/OMP CLI seats -> Ticket21 ->22 -> cleanup -> publication. None started tonight; no push.
 
 ## At a glance
 
@@ -30,7 +30,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | REVIEWER ACCEPTED atfaab835; activationcfcbdf1 reviewed. Both real-agent paths passed. Seth UAT remains open. |
 | Latest checks | Full1936 OK/13 disclosed skips; activated candidate112 focused/root and112 reviewer tests pass. Live CLI124B/API285B exact read-download matches. |
-| Next | Seth morning UAT on49949. Five ready seats; MiMo connection details/agy model+global-MCP decisions pending.21/22, cleanup and publication await his go. Work stopped. |
+| Next | Seth UAT/decisions -> Hermes/OMP CLI seats -> Ticket21 ->22 ->cleanup ->publication. Five seats running; agy pending managed login. No overnight work on the next items. |
 
 ## Initial two-path UAT handoff (historical; see morning note)
 
@@ -1282,46 +1282,48 @@ Credential handling: only the authorized ZAI_API_KEY line from the user's .env w
 
 Next owner reviewer: final Ticket20 sign-off on these live results. Root keeps the instance up for Seth;21/22 stay pending until acceptance. All non-blocking findings remain notes, not new work.
 
-## Requested seats: nightly verification
+## Requested seats: final nightly verification
 
-UAT: http://127.0.0.1:49949. Reload the page; open /preflight for the saved team and editable Model ID fields. The selected five-seat team is ready. Test data and provider configuration are isolated; no push or publication.
+UAT: http://127.0.0.1:49949. Five working seats remain running. Antigravity is stopped pending a managed-login check. Ticket20 remains reviewer-accepted; these checks add provider-path evidence, not Seth's UAT verdict. The two UI fixes are reviewed (40 tests, 63 mutation checks).
 
-|Seat|Exact model|Result and evidence|Generation count|
+|Seat|Pinned model|How checked|Result|
 |---|---|---|---|
-|Claude|claude-opus-5-5|Native OAuth hello passed, one turn/OK; managed MCP seat ready. Not a fresh Opus document-flow test.|1 native invocation|
-|Codex|gpt-6.1-sol|ID from installed models cache; native ChatGPT OAuth hello passed, no tools/helpers; managed MCP seat ready after local config fix.|1 native invocation|
-|DeepSeek|deepseek-flash|Only advertised Flash alias; API-seat request helper returned OK and confirmed this model; managed API adapter ready.|1 API completion|
-|Muse|muse-spark-1.3-contributor|Latest contributor listed; final API-seat hello passed/confirmed at512-token cap (148 completion tokens, OK); adapter ready.|3 authorized bounded completions:32/128/512|
-|GLM|glm-5.3|Still latest main GLM listed; prior real document create/read/download passed,285B match; current adapter ready.|1 earlier document call;0 extra|
-|MiMo|Pending Seth|Key env var name, base URL, model slug needed. No setup or credential search tonight.|0 completions|
-|MiniMax (historical)|Not used|Seth corrected the requested provider to Xiaomi MiMo; earlier missing-key check retained as history.|0 completions|
-|Antigravity|4.8 not found|agy models lists gemini-3.8-flash-high/medium/low only. Not wired or generated: model/level needs confirmation and global MCP merge needs explicit yes.|0 completions|
+|Claude|claude-opus-5-5|Managed readiness and one native OAuth hello; earlier Haiku full document check retained|PASS at this scope; no Opus document run|
+|Codex|gpt-6.1-sol|Managed readiness and one native ChatGPT OAuth hello; isolated MCP-config fix|PASS at this scope; no Sol document run|
+|Antigravity|gemini-3.8-flash-medium, effort medium|Two separately authorized native hellos passed; one managed document request timed out and was cancelled|PENDING: managed startup reports not logged into Antigravity although native print hellos pass; needs Seth's login check. Seat stopped|
+|DeepSeek|deepseek-flash|One hello, then one real Documents create/author/read/download|PASS, 100 bytes, read/download exact; provider confirms model|
+|GLM|glm-5.3|Earlier real Documents create/author/read/download and current readiness|PASS, 285 bytes exact; no extra generation tonight|
+|Muse|muse-spark-1.3-contributor|Three authorized hello probes (32/128/512 caps), then one real Documents create/author/read/download|PASS, 81 bytes exact; provider confirms model. Normal document path needed no token-cap fix|
 
-Earlier real Haiku document and z.ai document-flow evidence remains retained. The new Opus/Sol checks are native single hellos plus managed startup, not new full document runs. CLI counts are native invocations; no Fable or helper agents were used. Opus reported one turn. Sol reported5 output tokens/zero reasoning-output/tool items; its standard CLI context was29,152 input tokens (12,416 cached), despite the tiny answer. No retry of either generation.
+The three new light document requests were DeepSeek, Muse and Antigravity, one each, no retries. Sources were synthetic accepted fixtures through the real stores; read and download were real authenticated routes. The Antigravity request is durably cancelled. No more calls tonight. Opus/Sol each had exactly one native invocation and no new document run. CLI invocations are not an asserted HTTP-call count. No Fable or helpers.
 
-Muse's first32-token adapter error had no useful retained cause; the authorized128-token diagnostic showed HTTP200/contentNone/finish_reason:length, then the final512 cap returned text. This was the probe's token budget, not model unavailability. No1.2 substitution. Normal saved-seat requests do not inherit the probe's32/128 cap; no product token-limit feature was added. DeepSeek's list exposes no1070 ID/version mapping; the sole Flash alias was selected without claiming a1070 suffix.
+MiMo is parked by Seth while he investigates. MiniMax is not used; the earlier request named the wrong provider. DeepSeek's list has no1070 mapping, so only the advertised Flash alias is claimed.
 
-Codex's initial managed startup reported invalid transport. One UAT-config-only fix replaces the per-process MCP table with just the owned local server; native config validation and the managed seat then pass. No global Codex configuration was edited; its default remains gpt-6-astra. No extra Sol generation for that startup fix. API key variables are stripped from native CLI children; API credentials remain child-environment values, never config values.
+## Current global MCP status and stop
 
-## What preflight already does
+The authorized merge DID add only mcpServers.agentchattr-uat to C:/Users/SJG/.gemini/config/mcp_config.json. Structural comparison showed no changes to any existing entry, folderTrust or other key. The entry contained the isolated seat's bearer token; it was never exported. Because the managed document path did not work, the exact entry was REMOVED immediately. The remaining structure equals the original backup. No stale UAT entry remains.
 
-Yes: seat adapter/template selection, editable Model ID with configured suggestions, supported reasoning settings, and credential ENV-NAME references are built. See static/api_seats.js:116-161 and static/preflight.html:18-19. Saved versus running model is shown separately at static/api_seats.js:192-194; a saved edit needs an explicit restart to affect a running seat.
+Backup: `C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\artifact-ui-uat-g4za9ro9\mcp_config-before-agy-20261026-234242-1793076162427677800.json`.
+SHA-256: `62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d`.
 
-Provider URLs/default models and available template declarations come from config.toml/config.local.toml (config_loader.py:123-138; api_seats.py:176-204). CLI model editing requires declared cli_model_args (cli_seats.py:29-46); several default fork CLI templates had no such mapping. Tonight's UAT supplies the declared Claude/Codex mappings and the four API templates. There is no provider-URL editor, secret-value form or automatic live-model discovery in preflight. This is configuration of existing controls, not new UI. Spec97-101 intended per-seat settings and honest next-launch/model confirmation; that framework exists.
+The global trustedFolders.json file was NOT changed. An initial warning was corrected after tracing actual callers: only legacy wrapper.main invokes its trust helper; managed cli_worker does not. No trust restoration was needed. Future operational launches also redirect GEMINI_CLI_TRUSTED_FOLDERS_PATH into the UAT root.
 
-The runtime UI's provider-confirmed badge changes only after that running seat's own response. These separate smoke checks do not forge its verification receipt.
+Stop the five remaining seats/owned server with:
+`& 'C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-r2-on-a1/.audit-tmp/stop-ticket20-uat.ps1'`
 
-## Pending decisions
+The stop hook also removes only the exact recorded agentchattr-uat entry if present, preserves unrelated changes and records equality against the backup. Global removal has already been exercised successfully; full server shutdown is intentionally not exercised because the five seats stay up for Seth.
 
-- Seth: Ticket21 go, file-cleanup go, publication go. None started.
-- MiMo seat pending Seth: key env var name, base URL, model slug. MiniMax is not used; the earlier request named the wrong provider.
-- Antigravity: confirm the advertised3.8 Flash level or another available model, and explicitly approve any reversible/backup-first global MCP merge. No ~/.gemini MCP file was written.
-- Optional proposal only: promote sanitized provider-template blocks (environment-variable names, never values) into repository configuration after Seth's yes. Only the isolated root was configured tonight.
+Explicit idempotent removal, from the active worktree:
+`& 'C:/Users/SJG/Documents/CodePlayground/agentchattr/.venv-windows/Scripts/python.exe' '.audit-tmp/agy_global_entry.py' --remove 'C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\artifact-ui-uat-g4za9ro9'`
 
-Stop only this instance from PowerShell:
+Full backup restore, only after stopping UAT and checking for unrelated subsequent edits:
+`Copy-Item -LiteralPath 'C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\artifact-ui-uat-g4za9ro9\mcp_config-before-agy-20261026-234242-1793076162427677800.json' -Destination 'C:/Users/SJG/.gemini/config/mcp_config.json' -Force`
+The targeted removal is preferred because it preserves later edits. Backup contents remain private.
 
-`& 'C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\stop-ticket20-uat.ps1'`
+## Preflight and next steps
 
-A future owned reload (after an authorized key update) uses .audit-tmp/reload_live_uat.py; it reads only the four authorized key lines into child environment memory. Keep MiniMax omitted. Do not read a MiMo credential until Seth names and authorizes that line. Existing failed/cancelled/refused attempts and signed births are retained. No deletion, file cleanup, new feature, new browser harness, timing campaign or push.
+Seat/model editing is built: static/api_seats.js:116-161 and static/preflight.html:18-19. Saved versus running model is separate (static/api_seats.js:192-194); changes apply on explicit restart. Provider URLs/templates come from config.toml/config.local.toml (config_loader.py:123-138; api_seats.py:176-204). CLI model flags require cli_model_args (cli_seats.py:29-46). Provider URL editing, key-value entry and automatic live /models discovery are not in the UI. Separate smoke checks do not forge running-seat confirmation badges.
 
-Final handoff check: 33 public reports/config-reference/log files passed the available authorized API-key, UI-token and owned-registry token/nonce scan. Documentation diff reviewed; no product changes in this handoff. The running instance is intentionally not cleanup-complete.
+Seth's order: his UAT and decisions -> Hermes/OMP CLI seats -> Ticket21 transcript -> Ticket22 -> file cleanup -> publication. Hermes/OMP are not started tonight. Begin with read-only wrapper/artifact-v1 compatibility investigation; global changes require Seth's yes, backup, distinct entry and structural comparison. Existing logins/OAuth, one bounded call each when authorized. MiMo remains parked. No new features, deletion, cleanup, publication or push tonight.
+
+Final export check: 44 public reports/config-reference/log files passed the three used authorized API-key and owned session/registry token scan. No product code changed in this handoff; documentation diff reviewed. Global MCP entry already removed and structurally restored; five-seat server intentionally remains running.

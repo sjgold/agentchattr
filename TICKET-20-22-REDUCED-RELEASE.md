@@ -313,8 +313,10 @@ Non-blocking notes:
 
 Full1936/13 explicit skips and focused112/independent112 checks stand. Live CLI124B and API285B read/download matches stand.15 public-export/server-log files passed credential/session-token scans; no secret values exported. Signed active inventory remains7 live, deliberately not a cleanup-complete claim. Short UAT checklist and stop script are linked above.
 
-## Nightly requested-seat handoff
+## Final nightly requested-seat handoff
 
-Five selected seats ready in isolated UAT: claude-opus-5-5, gpt-6.1-sol, deepseek-flash, muse-spark-1.3-contributor, glm-5.3. MiniMax not used (Seth corrected the provider to Xiaomi MiMo). MiMo awaits key env var name, base URL and model slug; agy awaits model/global-MCP confirmation. No new product feature: configuration only after the two reviewed UI defects. Full details and preflight code references are in the Ticket20 seat artifact and STATUS morning note. No new model calls or21/22/cleanup/publication work after this handoff; instance remains up for Seth.
+Five seats remain running: Claude Opus5.5, Codex Sol6.1, DeepSeek Flash, GLM5.3 and Muse1.3 contributor. DeepSeek100B and Muse81B real document read/download match; GLM prior285B match reused. Claude/Codex readiness and native hellos only, no new expensive document loops.
 
-Final nightly export scan: 33 files clean against available authorized credentials and owned session/registry tokens. Earlier seven-live-process inventory is historical, before the expanded team; current instance is left running, not cleanup-complete.
+Antigravity gemini-3.8-flash-medium native hellos pass, but its managed document timed out and was durably cancelled; startup reports not logged in. Seat stopped, needs Seth's login check. The authorized distinct global MCP entry was backed up, added alone, then removed; remaining structure equals backup. No global trust-file change occurred.
+
+MiMo parked, MiniMax not used. Next after Seth UAT/decisions: Hermes/OMP CLI seats before Ticket21, then22, cleanup, publication. None started tonight; no push. Full six-row report, exact backup hash/path, removal and stop instructions are in STATUS and the shared seat artifact.
