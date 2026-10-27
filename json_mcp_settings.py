@@ -374,7 +374,10 @@ def verify_only_one_key_changed(before_text: str, after_text: str, *, entry: str
     after = _load(after_text, path)
     if not isinstance(before, dict) or not isinstance(after, dict):
         raise JsonSettingsError(f'{path.name} root is not a JSON object.')
-    if not _same(_without(before, entry), _without(after, entry)):
+    # _without drops an mcpServers left empty, so pin its position separately when both sides
+    # have one. A created or removed mcpServers may sit anywhere (apply checks it is appended last).
+    moved = SECTION in before and SECTION in after and list(before) != list(after)
+    if moved or not _same(_without(before, entry), _without(after, entry)):
         unexpected = [p for p in _diff_keys(before, after) if p not in (SECTION, f'{SECTION}.{entry}')]
         raise JsonSettingsError(f'{path.name}: unexpected structural change at {", ".join(unexpected) or "<order>"}.')
     return _diff_keys(before, after)

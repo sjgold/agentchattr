@@ -981,10 +981,8 @@ class VerifyOnlyOneKeyChangedTests(unittest.TestCase):
                 with self.assertRaises(JsonSettingsError):
                     self.verify(before, after)
 
-    @unittest.expectedFailure
     def test_rejects_an_empty_mcpservers_that_moves_while_gaining_our_entry(self):
-        # BUG: _without() drops an empty mcpServers before comparing, so moving it from after "a"
-        # to before "a" while adding our entry passes as "only our entry changed".
+        # _without() drops an empty mcpServers before comparing, so its position is pinned separately.
         with self.assertRaises(JsonSettingsError):
             self.verify('{"a": 1, "mcpServers": {}}', '{"mcpServers": {"%s": {}}, "a": 1}' % ENTRY)
 
