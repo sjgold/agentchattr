@@ -1,17 +1,18 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (Ticket20 reviewer ACCEPTED; live UAT running49949;21/22/cleanup/publication pending Seth)
+**Updated:** 2026-10-26 night (two UI fixes cleared; five requested seats ready; MiniMax/agy deferred; morning handoff, work stopped)
 
-## Tonight / morning note
+## Morning note for Seth
 
-- Ticket20 code-path acceptance stands; reviewer also checked both live paths visibly, with exact Read/Download and no console errors.
-- Fixed the stale card: switching source sessions now labels the old card with its original source title, without changing saved IDs or replay.
-- Fixed the idle status: selected sessions no longer say "Choose a session"; truly empty selection still does.
-- Both defects had observed-red Node tests.40 UI tests pass;63/63 UI mutants killed, zero errors. Page reload only, no server restart for these fixes.
-- UAT: http://127.0.0.1:49949. Stop with .audit-tmp/stop-ticket20-uat.ps1. Kept running; idle seats do not generate model calls.
-- Non-blocking notes: native Claude trust once; CLI model unverified; raw agent IDs, historical duplicate Planning labels, stale queue badge and departure chat lines. Prior failed/refused attempts retained.
-- New seat/endpoint checks requested tonight are starting separately; results will replace this planned line. No new features,21/22, cleanup, deletion or push.
-- Waiting for Seth: Ticket21 go, file-cleanup go, publication go.
+- Ticket20 is reviewer-accepted; both live document paths passed. Two UI fixes now clarify an old card's source and remove the false Choose prompt;40 tests/63 mutants pass.
+- Open http://127.0.0.1:49949 (reload), or /preflight for the team. Five seats are ready; left running without further model calls.
+- Claude claude-opus-5-5 and Codex gpt-6.1-sol: one OAuth hello each passed; managed seats ready. Codex needed one isolated MCP-config fix; global settings unchanged.
+- DeepSeek deepseek-flash: one hello passed. GLM glm-5.3: prior document check retained, no extra generation.1070 has no mapping in DeepSeek's model list.
+- Muse muse-spark-1.3-contributor: passed with512-token cap after32/128 caps;3 authorized calls total. No older-model substitution.
+- MiniMax MiniMax-M3 is configured but omitted: key line missing, latest unverified,0 generations. Antigravity4.8 is not listed (only3.8 Flash variants); global-MCP permission pending,0 generations.
+- Preflight model/seat editing IS built; URLs/templates need config and CLI model flags must be declared. UAT mappings are wired; see the detailed seat report for file:line and exact evidence/call limits.
+- Stop via .audit-tmp/stop-ticket20-uat.ps1. Non-blocking UI notes (raw IDs, old duplicate labels, queue badge, departure lines) remain notes only.
+- Waiting for Seth: Ticket21 go, file-cleanup go, publication go. Work stops here; no new features, helpers, deletion or push.
 
 ## At a glance
 
@@ -29,9 +30,9 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | REVIEWER ACCEPTED atfaab835; activationcfcbdf1 reviewed. Both real-agent paths passed. Seth UAT remains open. |
 | Latest checks | Full1936 OK/13 disclosed skips; activated candidate112 focused/root and112 reviewer tests pass. Live CLI124B/API285B exact read-download matches. |
-| Next | Seth UAT at49949; keep instance running.21/22, cleanup and publication pending his call. Fix existing-feature defects if reported; no push. |
+| Next | Seth morning UAT on49949. Five ready seats; MiniMax key/agy model+global-MCP decisions pending.21/22, cleanup and publication await his go. Work stopped. |
 
-## For Seth: UAT is ready
+## Initial two-path UAT handoff (historical; see morning note)
 
 Open http://127.0.0.1:49949. Both seats are ready; this uses separate test data.
 
@@ -1280,3 +1281,46 @@ The12 short UAT steps are in the shared Ticket20 UAT artifact and .audit-tmp/tic
 Credential handling: only the authorized ZAI_API_KEY line from the user's .env was read into child environment memory; no key value in config, arguments, logs, receipts or summaries. Provider block is confined to the owned root's config.local.toml. No other .env key was parsed; no normal-install config was copied. Exact Desktop/agentchatrr reference was absent, so no broad search or launch/write there occurred. Native Claude login was reused without copying an authentication home.
 
 Next owner reviewer: final Ticket20 sign-off on these live results. Root keeps the instance up for Seth;21/22 stay pending until acceptance. All non-blocking findings remain notes, not new work.
+
+## Requested seats: nightly verification
+
+UAT: http://127.0.0.1:49949. Reload the page; open /preflight for the saved team and editable Model ID fields. The selected five-seat team is ready. Test data and provider configuration are isolated; no push or publication.
+
+|Seat|Exact model|Result and evidence|Generation count|
+|---|---|---|---|
+|Claude|claude-opus-5-5|Native OAuth hello passed, one turn/OK; managed MCP seat ready. Not a fresh Opus document-flow test.|1 native invocation|
+|Codex|gpt-6.1-sol|ID from installed models cache; native ChatGPT OAuth hello passed, no tools/helpers; managed MCP seat ready after local config fix.|1 native invocation|
+|DeepSeek|deepseek-flash|Only advertised Flash alias; API-seat request helper returned OK and confirmed this model; managed API adapter ready.|1 API completion|
+|Muse|muse-spark-1.3-contributor|Latest contributor listed; final API-seat hello passed/confirmed at512-token cap (148 completion tokens, OK); adapter ready.|3 authorized bounded completions:32/128/512|
+|GLM|glm-5.3|Still latest main GLM listed; prior real document create/read/download passed,285B match; current adapter ready.|1 earlier document call;0 extra|
+|MiniMax|MiniMax-M3 (existing default, latest unverified)|MINIMAX_API_KEY line missing (rechecked including BOM/whitespace/export forms). Unauthenticated /models401. Configured but omitted; no further attempts.|0 completions|
+|Antigravity|4.8 not found|agy models lists gemini-3.8-flash-high/medium/low only. Not wired or generated: model/level needs confirmation and global MCP merge needs explicit yes.|0 completions|
+
+Earlier real Haiku document and z.ai document-flow evidence remains retained. The new Opus/Sol checks are native single hellos plus managed startup, not new full document runs. CLI counts are native invocations; no Fable or helper agents were used. Opus reported one turn. Sol reported5 output tokens/zero reasoning-output/tool items; its standard CLI context was29,152 input tokens (12,416 cached), despite the tiny answer. No retry of either generation.
+
+Muse's first32-token adapter error had no useful retained cause; the authorized128-token diagnostic showed HTTP200/contentNone/finish_reason:length, then the final512 cap returned text. This was the probe's token budget, not model unavailability. No1.2 substitution. Normal saved-seat requests do not inherit the probe's32/128 cap; no product token-limit feature was added. DeepSeek's list exposes no1070 ID/version mapping; the sole Flash alias was selected without claiming a1070 suffix.
+
+Codex's initial managed startup reported invalid transport. One UAT-config-only fix replaces the per-process MCP table with just the owned local server; native config validation and the managed seat then pass. No global Codex configuration was edited; its default remains gpt-6-astra. No extra Sol generation for that startup fix. API key variables are stripped from native CLI children; API credentials remain child-environment values, never config values.
+
+## What preflight already does
+
+Yes: seat adapter/template selection, editable Model ID with configured suggestions, supported reasoning settings, and credential ENV-NAME references are built. See static/api_seats.js:116-161 and static/preflight.html:18-19. Saved versus running model is shown separately at static/api_seats.js:192-194; a saved edit needs an explicit restart to affect a running seat.
+
+Provider URLs/default models and available template declarations come from config.toml/config.local.toml (config_loader.py:123-138; api_seats.py:176-204). CLI model editing requires declared cli_model_args (cli_seats.py:29-46); several default fork CLI templates had no such mapping. Tonight's UAT supplies the declared Claude/Codex mappings and the four API templates. There is no provider-URL editor, secret-value form or automatic live-model discovery in preflight. This is configuration of existing controls, not new UI. Spec97-101 intended per-seat settings and honest next-launch/model confirmation; that framework exists.
+
+The runtime UI's provider-confirmed badge changes only after that running seat's own response. These separate smoke checks do not forge its verification receipt.
+
+## Pending decisions
+
+- Seth: Ticket21 go, file-cleanup go, publication go. None started.
+- MiniMax: add the authorized key line before a future test; no further attempts tonight.
+- Antigravity: confirm the advertised3.8 Flash level or another available model, and explicitly approve any reversible/backup-first global MCP merge. No ~/.gemini MCP file was written.
+- Optional proposal only: promote sanitized provider-template blocks (environment-variable names, never values) into repository configuration after Seth's yes. Only the isolated root was configured tonight.
+
+Stop only this instance from PowerShell:
+
+`& 'C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\stop-ticket20-uat.ps1'`
+
+A future owned reload (after an authorized key update) uses .audit-tmp/reload_live_uat.py; it reads only the four authorized key lines into child environment memory. Keep MiniMax omitted until its key and model are verified. Existing failed/cancelled/refused attempts and signed births are retained. No deletion, file cleanup, new feature, new browser harness, timing campaign or push.
+
+Final handoff check: 33 public reports/config-reference/log files passed the available authorized API-key, UI-token and owned-registry token/nonce scan. Documentation diff reviewed; no product changes in this handoff. The running instance is intentionally not cleanup-complete.

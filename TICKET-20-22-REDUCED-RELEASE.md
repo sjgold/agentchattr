@@ -312,3 +312,9 @@ Non-blocking notes:
 - The cancelled first CLI request and refused stale-source retry remain retained history.
 
 Full1936/13 explicit skips and focused112/independent112 checks stand. Live CLI124B and API285B read/download matches stand.15 public-export/server-log files passed credential/session-token scans; no secret values exported. Signed active inventory remains7 live, deliberately not a cleanup-complete claim. Short UAT checklist and stop script are linked above.
+
+## Nightly requested-seat handoff
+
+Five selected seats ready in isolated UAT: claude-opus-5-5, gpt-6.1-sol, deepseek-flash, muse-spark-1.3-contributor, glm-5.3. MiniMax omitted for missing key; agy deferred for model/global-MCP confirmation. No new product feature: configuration only after the two reviewed UI defects. Full details and preflight code references are in the Ticket20 seat artifact and STATUS morning note. No new model calls or21/22/cleanup/publication work after this handoff; instance remains up for Seth.
+
+Final nightly export scan: 33 files clean against available authorized credentials and owned session/registry tokens. Earlier seven-live-process inventory is historical, before the expanded team; current instance is left running, not cleanup-complete.
