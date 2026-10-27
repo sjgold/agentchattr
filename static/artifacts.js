@@ -335,7 +335,12 @@ window.ArtifactDocuments = (() => {
         actions.append(refreshButton, cancelButton, readButton, downloadButton, abandon);
         const reader = node('pre', 'artifact-reader'); reader.hidden = true; reader.tabIndex = 0; reader.setAttribute('aria-label', 'Verified document text');
         const history = node('p', null, 'Only the latest request is shown here. Earlier requests are not listed and may still be running.'); history.className = 'artifact-note';
-        panel.append(heading, intro, label, select, more, instructionLabel, instruction, policy, submitButton, status, source, error, actions, warning, reader, history);
+        // Two columns on wide windows: the request form left, the document text right (CSS).
+        const formColumn = node('div'); formColumn.className = 'artifact-form';
+        formColumn.append(heading, intro, label, select, more, instructionLabel, instruction, policy, submitButton, status, source, error, actions, warning, history);
+        const sideColumn = node('div'); sideColumn.className = 'artifact-side';
+        sideColumn.append(reader);
+        panel.append(formColumn, sideColumn);
         panel.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); close(); } });
         document.getElementById('session-bar').after(panel);
         s.nodes = {panel, select, more, instruction, policy, submit: submitButton, status, source, error,
