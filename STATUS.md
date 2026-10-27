@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:34 CDT. RC1 handoff accepted. Corrected adapter cleanup is integration-only,285 focused tests pass; frozen UAT builds stay unchanged.
+**Updated:** 2026-10-27 04:37 CDT. Both frozen UAT builds remain up. Integration adapter cleanup/provenance passes298 focused tests; publication note pending review.
 
 **START HERE (Seth)**
 1. Open RC1: http://127.0.0.1:50010/preflight.
@@ -306,3 +306,9 @@ Merged reviewer-clearedff32cb6, preserving the reviewed executable-path guard. I
 RC0 and RC1 still serve their original clean pins; this merge does not reach them. No real YAML/JSON write, agent launch or model call occurred in these tests. Further real-home use still needs reviewer clearance, Seth's go and the running-client conditions; Hermes.cmd Stop limitation remains. Next: reviewer checks this integration pin; prepare a docs-only publication-readiness note for reviewer review, no push.
 
 RC1 handoff was independently accepted: reviewer checked both HTTP endpoints, listeners,7 copy hashes, pin/clean tree, full-run log and STATUS. Live smoke/preview/trust observations and28-export scan remain builder evidence. Final file-state check:126 tracked Markdown files,0 broken links;0 tracked deletions RC0..RC1; both frozen trees clean.
+
+### 2026-10-27 04:37 CDT Entry-file settings provenance sweep
+
+Reviewed every mcp_* setting read through cli_worker, wrapper and cli_seats for JSON/YAML launch. Nine consumed settings were found: mcp_inject, mcp_settings_path, mcp_http_key, mcp_transport, mcp_entry_name, mcp_env_var, mcp_flag, mcp_merge_project and mcp_proxy_flag_template. Only mcp_entry_name was missing from the explicit retained-provenance whitelist; added that key. URL ports remain in the separate frozen mcp object, and the loopback host is fixed by _get_server_url. YAML's entry name is a code constant; JSON uses the newly bound setting.
+
+Three tests observed2 real failures (missing key sweep, equal provenance fingerprints after an entry change) and1 existing tampered-snapshot refusal pass. After the one-key fix,298 adapter/worker/CLI/default/runtime/ownership/protocol/key/security-guard tests pass in7.015s. An entry edit changes provenance and requires deliberate restart; a tampered entry snapshot is refused before apply/birth. Default-model keys remain intact. No live adapter write or model call, and neither UAT build changed.

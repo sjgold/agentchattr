@@ -436,7 +436,7 @@ class SeatManager:
             'context_messages', 'command', 'cwd', 'cli_args', 'cli_model_args', 'default_model', 'cli_reasoning_args',
             'cli_version_args', 'strip_env', 'inject_delay', 'enter_backend', 'cli_fresh_context_args',
             'cli_fresh_context_verified', 'mcp_inject', 'mcp_flag', 'mcp_transport', 'mcp_merge_project',
-            'mcp_env_var', 'mcp_proxy_flag_template', 'mcp_settings_path', 'mcp_http_key')
+            'mcp_env_var', 'mcp_proxy_flag_template', 'mcp_settings_path', 'mcp_http_key', 'mcp_entry_name')
         result = {'seat': deepcopy(effective['seat']),
                   'provider': {key: deepcopy(value) for key, value in effective['provider'].items() if key in provider_fields},
                   'server': {key: deepcopy(value) for key, value in effective['server'].items() if key in ('host', 'port', 'data_dir')}}
