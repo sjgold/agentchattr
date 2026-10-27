@@ -18,7 +18,9 @@
     color-scheme: dark;
 }
 .channel-manager::backdrop { background: var(--bg-overlay); }
-.channel-manager-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* Reset the app-bar look that style.css gives every <header>. */
+.channel-manager-header { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 0 0 16px; margin-bottom: 16px; background: none; box-shadow: none; border-bottom: 1px solid var(--border); }
 .channel-manager h2 { margin: 0; font-size: 22px; }
 .channel-manager h3 { margin: 24px 0 8px; font-size: 17px; }
 .channel-manager h4 { margin: 20px 0 8px; font-size: 15px; }
@@ -42,6 +44,8 @@
 .channel-manager button, .channel-state-banner button, .channel-manager-entry { cursor: pointer; }
 .channel-manager button:hover:enabled, .channel-state-banner button:hover:enabled, .channel-manager-entry:hover { background: var(--accent-hover); }
 .channel-manager button:disabled { opacity: .55; cursor: default; }
+/* Utility action: quieter than Create channel and the per-channel actions. */
+.channel-manager > button:not(:hover) { background: transparent; border-style: dashed; }
 .channel-manager input { display: block; width: 100%; margin: 6px 0 16px; caret-color: var(--user-color); }
 .channel-manager label { display: block; margin-top: 16px; font-weight: 600; }
 .channel-manager :focus-visible, .channel-state-banner :focus-visible, .channel-manager-entry:focus-visible { outline: 2px solid var(--user-color); outline-offset: 3px; }

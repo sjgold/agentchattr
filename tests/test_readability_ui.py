@@ -151,5 +151,14 @@ class DocumentsReadabilityTests(unittest.TestCase):
         self.assertRegex(rule(sheet('artifacts.css'), '.artifact-heading h2'), r'color:\s*var\(--text-muted\)')
 
 
+class ManageChannelsReadabilityTests(unittest.TestCase):
+    def test_dialog_header_does_not_inherit_the_app_header_bar(self):
+        # style.css styles every <header> as the app bar (background, shadow, padding);
+        # the dialog's own <header> picked that up and rendered as a boxed band.
+        body = rule(sheet('channel-lifecycle.css'), '.channel-manager-header')
+        self.assertRegex(body, r'background:\s*(none|transparent)')
+        self.assertRegex(body, r'box-shadow:\s*none')
+
+
 if __name__ == '__main__':
     unittest.main()
