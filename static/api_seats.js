@@ -27,7 +27,7 @@
     let timer;
     const pending = new Set();
     const STATE_LABELS = {not_started: 'Not launched', starting: 'Starting…', ready: 'Ready for chat',
-        action_required: 'Needs attention', blocked: 'Blocked', failed: 'Failed', stopped: 'Stopped', unverified: 'Unverified'};
+        action_required: 'Needs attention', blocked: 'Blocked', failed: 'Failed', stopped: 'Stopped', exited: 'Not running (launch again)', unverified: 'Unverified'};
     const PROBLEM_STATES = ['action_required', 'blocked', 'failed'];
 
     function remember(id) {
@@ -391,7 +391,12 @@
                 let remembered;
                 try { remembered = localStorage.getItem('agentchattr.lastPackage'); } catch (_) { remembered = null; }
                 if (!snapshot.packages.some(pkg => pkg.id === remembered) && snapshot.packages.length === 1) remembered = snapshot.packages[0].id;
-                if (snapshot.packages.some(pkg => pkg.id === remembered)) editPackage(remembered);
+                if (snapshot.packages.some(pkg => pkg.id === remembered)) {
+                    editPackage(remembered);
+                    // Returning with a saved team: fold the agent list so the team comes first.
+                    const agentsDetails = document.getElementById('agents-details');
+                    if (agentsDetails) agentsDetails.open = false;
+                }
             }
             if (!editors.children.length) addEditor();
             renderRuntime();

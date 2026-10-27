@@ -51,6 +51,7 @@ html:has(.preflight-page) { scroll-padding-top:72px; scroll-padding-bottom:140px
 .pf-chip--neutral { color:var(--text-dim); border-style:dashed; }
 
 /* Step 1: agents */
+.pf-agents-details > summary { margin-top:12px; font-size:14px; }
 .pf-agent-list { display:flex; flex-direction:column; gap:6px; margin-top:14px; }
 .preflight-page .pf-agent { display:grid; grid-template-columns:minmax(180px,240px) 1fr auto; align-items:center; gap:4px 16px; min-width:0; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius-lg); background:var(--bg); }
 .pf-agent-head { display:flex; align-items:center; gap:10px; min-width:0; }
