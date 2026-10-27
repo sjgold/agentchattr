@@ -1392,10 +1392,12 @@ function updateChatEmptyState() {
     const hasMessages = [...messages.children].some(el => el.dataset.id && (el.dataset.channel || 'general') === channel);
     empty.hidden = loading || hasMessages;
     if (empty.hidden) return;
-    const first = Object.entries(agentConfig)[0];
-    empty.textContent = first
-        ? `No messages yet. Mention @${first[1].label || first[0]}, or press the play button to start a session`
-        : 'No messages yet. Mention an agent with @, or press the play button to start a session';
+    // Mentions route by canonical name; only suggest one a person can actually type.
+    const name = Object.keys(agentConfig)[0];
+    const typeable = !!name && /^[a-z0-9-]+$/.test(name) && !/^(cli|api)-/.test(name);
+    empty.textContent = typeable
+        ? `No messages yet. Mention @${name}, or press the play button to start a session`
+        : 'No messages yet. Type @ to pick an agent, or press the play button to start a session';
 }
 
 function watchChatEmptyState() {

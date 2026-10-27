@@ -94,5 +94,31 @@ class PreflightReadabilityTests(unittest.TestCase):
         self.assertFalse(uses_accent_as_text(sheet('preflight.css')))
 
 
+def rule(css, selector):
+    css = strip_comments(css)
+    return ' '.join(m.group(2) for m in re.finditer(r'([^{}]+)\{([^{}]*)\}', css) if m.group(1).strip() == selector)
+
+
+def px(body):
+    return float(re.search(r'font-size:\s*(\d+(?:\.\d+)?)px', body).group(1))
+
+
+class HelpGuideReadabilityTests(unittest.TestCase):
+    def test_guide_text_sizes(self):
+        css = sheet('style.css')
+        self.assertGreaterEqual(px(rule(css, '.hg-module-desc')), 13)
+        self.assertGreaterEqual(px(rule(css, '.hg-module-tip')), 12)
+        self.assertGreaterEqual(px(rule(css, '.hg-loc')), 11)
+
+    def test_guide_text_uses_aa_tokens_without_extra_fading(self):
+        # Tips were rgba(106,106,128,0.7) (about 2.2:1) and tags were faded with opacity.
+        css = sheet('style.css')
+        for selector in ('.hg-module-desc', '.hg-module-tip', '.hg-loc'):
+            with self.subTest(selector=selector):
+                body = rule(css, selector)
+                self.assertRegex(body, r'color:\s*var\(--text(-dim)?\)')
+                self.assertNotIn('opacity', body)
+
+
 if __name__ == '__main__':
     unittest.main()

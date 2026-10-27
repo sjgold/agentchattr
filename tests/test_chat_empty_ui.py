@@ -81,15 +81,24 @@ assert.notStrictEqual(c.children[0].className,'no-agents-hint');
 """)
 
     # 12. Empty chat state ---------------------------------------------------
-    def test_empty_chat_shows_mention_prompt_with_first_agent_label(self):
+    def test_empty_chat_names_first_agent_only_when_its_mention_is_valid(self):
+        # Mentions route by canonical name; a display label like 'Claude Prime' or a raw
+        # managed id (cli-/api-) is not something a person should be told to type.
         self.run_js(r"""
+const generic='No messages yet. Type @ to pick an agent, or press the play button to start a session';
 setAgents({claude:{label:'Claude Prime'},codex:{}});
 run('updateChatEmptyState')();
 assert.strictEqual(empty.hidden,false);
-assert.strictEqual(empty.textContent,'No messages yet. Mention @Claude Prime, or press the play button to start a session');
-setAgents({codex:{}});
+assert.strictEqual(empty.textContent,'No messages yet. Mention @claude, or press the play button to start a session');
+setAgents({'Claude Opus':{label:'Claude Opus 5.5'}});
 run('updateChatEmptyState')();
-assert.strictEqual(empty.textContent,'No messages yet. Mention @codex, or press the play button to start a session');
+assert.strictEqual(empty.textContent,generic);
+setAgents({'api-00df3d1b-e042e0931f34':{label:'Planner'}});
+run('updateChatEmptyState')();
+assert.strictEqual(empty.textContent,generic);
+setAgents({'cli-03b8aae1':{}});
+run('updateChatEmptyState')();
+assert.strictEqual(empty.textContent,generic);
 """)
 
     def test_empty_chat_without_agents_gives_generic_prompt(self):
@@ -97,7 +106,7 @@ assert.strictEqual(empty.textContent,'No messages yet. Mention @codex, or press 
 setAgents({});
 run('updateChatEmptyState')();
 assert.strictEqual(empty.hidden,false);
-assert.strictEqual(empty.textContent,'No messages yet. Mention an agent with @, or press the play button to start a session');
+assert.strictEqual(empty.textContent,'No messages yet. Type @ to pick an agent, or press the play button to start a session');
 """)
 
     def test_empty_state_hidden_when_active_channel_has_messages(self):
