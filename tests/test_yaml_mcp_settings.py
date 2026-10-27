@@ -10,6 +10,7 @@ import io
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -530,11 +531,15 @@ class ResolveSettingsPathTests(Base):
 
 class HermesRunningTests(unittest.TestCase):
     def run_with(self, platform, output=None, error=None):
+        # HERMES_HOME unset: image-name check only, so no real process paths are read.
         def fake(*args, **kwargs):
             if error:
                 raise error
             return SimpleNamespace(stdout=output)
-        with patch.object(ym.sys, 'platform', platform), patch.object(ym.subprocess, 'run', side_effect=fake) as run:
+        env = {k: v for k, v in os.environ.items() if k != 'HERMES_HOME'}
+        with patch.dict(os.environ, env, clear=True), patch.object(ym.sys, 'platform', platform), \
+                patch.object(ym.subprocess, 'run', side_effect=fake) as run, \
+                patch.object(ym, '_executable_paths', side_effect=AssertionError('paths read without HERMES_HOME')):
             result = ym.hermes_running()
         return result, run
 
@@ -576,6 +581,149 @@ class HermesRunningTests(unittest.TestCase):
         self.assertIs(result, False)
         result, _ = self.run_with('linux', error=OSError('no ps'))
         self.assertIsNone(result)
+
+
+HOME = r'C:\x\hermes'
+
+
+def fake_lister(images=('System', 'explorer.exe'), paths=(r'C:\Windows\explorer.exe',), error=None):
+    def lister():
+        if error:
+            raise error
+        return set(images), list(paths) if paths is not None else None
+    return lister
+
+
+class ClientRunningByPathTests(unittest.TestCase):
+    """Fake listers only: no real process access."""
+
+    def running(self, home=HOME, **kwargs):
+        return ym.hermes_running(home, lister=fake_lister(**kwargs))
+
+    def test_bundled_python_under_home_is_running(self):
+        bundled = HOME + r'\tools\python-3.11\python.exe'
+        self.assertIs(self.running(paths=[r'C:\Windows\explorer.exe', bundled]), True)
+
+    def test_unrelated_python_elsewhere_is_not(self):
+        self.assertIs(self.running(paths=[r'C:\Python311\python.exe', r'C:\Windows\explorer.exe']), False)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows path case/separator folding')
+    def test_case_and_forward_slashes_still_match(self):
+        self.assertIs(self.running(paths=['c:/X/HERMES/tools/python-3.11/Python.EXE']), True)
+        self.assertIs(ym.hermes_running('C:/X/Hermes/', lister=fake_lister(paths=[HOME + r'\python.exe'])), True)
+
+    def test_sibling_prefix_does_not_match(self):
+        self.assertIs(self.running(paths=[r'C:\x\hermes2\python.exe', r'C:\x\hermes-old\python.exe']), False)
+
+    def test_home_itself_and_inaccessible_entries(self):
+        self.assertIs(self.running(paths=[None, '', HOME]), True)
+
+    def test_lister_failure_is_none(self):
+        for error in (OSError('denied'), ValueError('bad'), subprocess.SubprocessError('timeout')):
+            with self.subTest(error=error):
+                self.assertIsNone(self.running(error=error))
+
+    def test_image_name_only_hit(self):
+        self.assertIs(self.running(images={'System', 'HERMES.EXE'}, paths=[]), True)
+
+    def test_unreadable_image_list_is_none_even_with_paths(self):
+        self.assertIsNone(self.running(images=(), paths=[r'C:\Windows\explorer.exe']))
+
+    def test_path_listing_unavailable_falls_back_to_images(self):
+        self.assertIs(self.running(paths=None), False)
+        self.assertIs(self.running(images={'hermes'}, paths=None), True)
+
+    def test_hermes_home_unset_or_empty_is_image_check_only(self):
+        calls = []
+
+        def lister():
+            calls.append(1)
+            return {'python.exe'}, [HOME + r'\python.exe']
+        for env in ({}, {'HERMES_HOME': ''}, {'HERMES_HOME': '   '}):
+            with self.subTest(env=env), patch.dict(os.environ, env, clear=True):
+                self.assertEqual(ym._client_home(), None)
+                self.assertIs(ym.hermes_running(lister=lister), False)
+        with patch.dict(os.environ, {'HERMES_HOME': HOME}, clear=True):
+            self.assertIs(ym.hermes_running(lister=lister), True)
+
+    def test_default_lister_reads_paths_only_when_a_root_is_given(self):
+        with patch.object(ym, '_image_names', return_value={'x.exe'}), \
+                patch.object(ym, '_executable_paths', return_value=[HOME + r'\python.exe']) as paths:
+            self.assertIs(ym.client_running((), ('hermes.exe',)), False)
+            paths.assert_not_called()
+            self.assertIs(ym.client_running((HOME,), ('hermes.exe',)), True)
+            paths.assert_called_once_with()
+
+    def test_symlinked_home_matches_its_real_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            real = Path(tmp) / 'real-hermes'
+            (real / 'tools').mkdir(parents=True)
+            link = Path(tmp) / 'hermes-link'
+            try:
+                os.symlink(real, link, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest('symlinks not permitted here')
+            exe = str(real / 'tools' / 'python.exe')
+            self.assertIs(ym.hermes_running(str(link), lister=fake_lister(paths=[exe])), True)
+            self.assertIs(ym.hermes_running(str(real), lister=fake_lister(paths=[str(link / 'tools' / 'python.exe')])), True)
+
+
+class WindowsExecutablePathTests(unittest.TestCase):
+    """The ctypes lister against a fake kernel32: image paths only, never command lines."""
+
+    class FakeKernel32:
+        def __init__(self, processes):
+            self.processes = processes  # pid -> path, or None when access is denied
+            self.calls = []
+
+        def K32EnumProcesses(self, array, size, needed_ref):
+            self.calls.append('K32EnumProcesses')
+            pids = list(self.processes)
+            for i, pid in enumerate(pids[:len(array)]):
+                array[i] = pid
+            needed_ref._obj.value = len(pids) * 4
+            return 1
+
+        def OpenProcess(self, access, inherit, pid):
+            self.calls.append(('OpenProcess', access))
+            return pid if self.processes.get(pid) else 0
+
+        def QueryFullProcessImageNameW(self, handle, flags, buffer, size_ref):
+            self.calls.append(('QueryFullProcessImageNameW', flags))
+            buffer.value = self.processes[handle]
+            size_ref._obj.value = len(buffer.value)
+            return 1
+
+        def CloseHandle(self, handle):
+            self.calls.append('CloseHandle')
+            return 1
+
+    def test_lists_paths_with_limited_query_rights_and_no_shell(self):
+        fake = self.FakeKernel32({4: None, 100: r'C:\Windows\explorer.exe', 200: HOME + r'\python.exe', 300: None})
+        with patch.object(ym.subprocess, 'run', side_effect=AssertionError('no shell for paths')):
+            paths = ym._windows_executable_paths(fake)
+        self.assertEqual(paths, [r'C:\Windows\explorer.exe', HOME + r'\python.exe'])
+        names = {c if isinstance(c, str) else c[0] for c in fake.calls}
+        self.assertEqual(names, {'K32EnumProcesses', 'OpenProcess', 'QueryFullProcessImageNameW', 'CloseHandle'})
+        # PROCESS_QUERY_LIMITED_INFORMATION only: no PROCESS_VM_READ, so no command line or environment.
+        self.assertEqual({c[1] for c in fake.calls if c[0] == 'OpenProcess'}, {0x1000})
+        self.assertEqual({c[1] for c in fake.calls if c[0] == 'QueryFullProcessImageNameW'}, {0})
+        self.assertEqual(fake.calls.count('CloseHandle'), 2)
+
+    def test_enum_failure_raises_oserror(self):
+        fake = self.FakeKernel32({})
+        fake.K32EnumProcesses = lambda *a: 0
+        with self.assertRaises(OSError):
+            ym._windows_executable_paths(fake)
+
+    def test_executable_paths_dispatch_never_uses_a_subprocess(self):
+        with patch.object(ym.subprocess, 'run', side_effect=AssertionError('no shell for paths')):
+            with patch.object(ym.sys, 'platform', 'win32'), \
+                    patch.object(ym, '_windows_executable_paths', return_value=['a']) as win:
+                self.assertEqual(ym._executable_paths(), ['a'])
+                win.assert_called_once_with()
+            with patch.object(ym.sys, 'platform', 'linux'), patch.object(ym.os.path, 'isdir', return_value=False):
+                self.assertIsNone(ym._executable_paths())
 
 
 class WrapperStopHookTests(Base):
