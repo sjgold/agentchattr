@@ -4577,3 +4577,17 @@ footer {
     cursor: pointer;
 }
 .hg-welcome-actions .hg-welcome-primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+
+/* --- Empty states: no agents running, empty channel --- */
+.no-agents-hint {
+    padding: 4px 10px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-full);
+    color: var(--text-muted);
+    font-size: 12px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.no-agents-hint:hover { border-color: var(--accent); color: var(--text); }
+.chat-empty { margin: 48px 16px; text-align: center; color: var(--text-dim); font-size: 14px; }
+.chat-empty[hidden] { display: none; }

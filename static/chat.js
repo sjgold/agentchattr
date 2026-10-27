@@ -248,6 +248,7 @@ function init() {
     Jobs.init();
     Sessions.init();
     Channels.init();
+    watchChatEmptyState();
     checkForUpdate();
 
     // Dismiss channel edit controls when clicking outside channel bar
@@ -1369,6 +1370,45 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// --- Empty states ---
+// Where the agent pills sit: say so when no agent is running and point to pre-flight.
+function renderNoAgentsHint(container) {
+    if (container.children.length) return;
+    const hint = document.createElement('a');
+    hint.className = 'no-agents-hint';
+    hint.href = '/preflight';
+    hint.textContent = 'No agents running · Seats & launch';
+    container.appendChild(hint);
+}
+
+// One line in an empty channel so a first visit is not a blank page.
+function updateChatEmptyState() {
+    const empty = document.getElementById('chat-empty');
+    const messages = document.getElementById('messages');
+    if (!empty || !messages) return;
+    const channel = window.activeChannel || 'general';
+    const loader = document.getElementById('loading-indicator');
+    const loading = !!loader && !loader.classList.contains('hidden');
+    const hasMessages = [...messages.children].some(el => el.dataset.id && (el.dataset.channel || 'general') === channel);
+    empty.hidden = loading || hasMessages;
+    if (empty.hidden) return;
+    const first = Object.entries(agentConfig)[0];
+    empty.textContent = first
+        ? `No messages yet. Mention @${first[1].label || first[0]}, or press the play button to start a session`
+        : 'No messages yet. Mention an agent with @, or press the play button to start a session';
+}
+
+function watchChatEmptyState() {
+    const messages = document.getElementById('messages');
+    const loader = document.getElementById('loading-indicator');
+    const observer = new MutationObserver(updateChatEmptyState);
+    if (messages) observer.observe(messages, {childList: true});
+    if (loader) observer.observe(loader, {attributes: true, attributeFilter: ['class']});
+    window.Store?.watch?.('activeChannel', updateChatEmptyState);
+    updateChatEmptyState();
+}
+// --- End empty states ---
+
 function buildStatusPills() {
     const container = document.getElementById('agent-status');
     container.innerHTML = '';
@@ -1394,6 +1434,8 @@ function buildStatusPills() {
         });
         container.appendChild(pill);
     }
+    renderNoAgentsHint(container);
+    updateChatEmptyState();
     enableDragScroll(container);
     if (channelRecipientPreview) channelRecipientPreview.invalidate();
     updateSendButton();
