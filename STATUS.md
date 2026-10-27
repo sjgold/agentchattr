@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (third run held; help seed +real-page VM backstop49 controls green,3 observed-red reversions ready for review)
+**Updated:** 2026-10-26 (attempt3 real CLI document admitted; hidden browser runtime blocks foreground UI coverage; stopped, reviewer mechanism decision next)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer CLEARED first run after R fixes, now44 controls/compile green. Attempt2 reached READY but fixture marked shim blocked page init; stopped, browser closed, recovery8 births absent. Help-tour blocker and real-page init backstop now covered:49 controls,3 specific observed-red reversions. Reviewer must clear new pin; no third run. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
+| Next | Reviewer CLEARED first run after R fixes, now44 controls/compile green. Attempt2 reached READY but fixture marked shim blocked page init; stopped, browser closed, recovery8 births absent. Attempt3 reached healthy page startup and real CLI admission; offscreen document.hidden blocks foreground status/read/download. Stopped and owned browser closed; reviewer visibility/cleanup decision next, no fourth run. UI follow-ups independently accepted. Backend accepted+D8 closed; screen/transcript/activation/push/cleanup remain later. |
 
 ## Current handoff
 
@@ -61,6 +61,14 @@ Combined static startup-defect audit is in docs/plans/2026-10-26-artifact-browse
 Reviewer found the fresh-profile first-visit help overlay would block the corrected page. Fixture HTML now seeds help_seen before product scripts. New Node VM control loads all14 actual inline/local scripts in order, strict actual-HTML ids/storage/fetch/WebSocket doubles, real DOMContentLoaded and four history/settings/agent events. It verifies setOptions, exact dummy-token WS, required fetches, accepted catalog/tabs, hidden loader and Documents onclick; observer uses vm.Script syntax compilation. Specific in-process help/shim/observer reversions all fail (observed red), baseline passes.49 controls OK2.987s +compile-only/Node syntax. No static product/capability byte change or third acceptance run. Minimal VM proves init globals/order/throws only, not browser/layout/CSP/focus. Browser controller must assert hidden loader +nonempty tabs +no help overlay before EVERY evidence case, otherwise stop startup-invalid.
 
 Next owner reviewer: check new pin and VM red results, then decide third-run clearance. Root replies to request8f410788 with this evidence; no automatic run. Prior invalid attempts/PID58092 deviation retained. UI/backend acceptance unchanged; screen/transcript21/packaging22/activation/cleanup later. No push.
+
+## Attempt3 current result and handoff
+
+Cleared120f491/root .audit-tmp/artifact-ui-_i8od3z3: startup preconditions passed (hidden loader,6 tabs,no help). Rendered completed-session request caused real MCP brief/submit/release and one fulfilled99-byte version matching the expected BOM/CRLF SHA. Offscreen isolated Electron stays document.hidden=true despite supported attach/focus; UI correctly pauses polling/Refresh while hidden. Card/read/download/foreground coverage not completed. No visibility override or product edit. Controller selector/invalid Read wait retained as instrumentation deviations, not product timing failures.
+
+Browser/session closed, no forwards;8 signed recovery visits,7 birth probes absent/44120 still uncertain, independent process enumeration lists none of8 PIDs and owned listeners0. Raw cleanup warnings/unresolved44120 retained, never relabeled clean. Guards4/real_attempts0; no unowned/watchdog/missing-case files. Attempt3 data/ports/Python baseline unchanged; prior58092 miss retained. Receipt acceptance_claim=false, partial cases not_observed, token/nonce scan clean.
+
+Next owner reviewer: assess partial result/cleanup evidence and choose supported visible browser or reviewed bounded visibility simulation before ANY fourth run. Root does not rerun automatically; no live acceptance work is intentionally retained. UI/backend acceptance unchanged, rendered acceptance pending. Screen/transcript21/packaging22/activation/cleanup later; no push.
 
 ## Earlier correction-review pointers (historical)
 
