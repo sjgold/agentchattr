@@ -66,10 +66,10 @@ Next owners: Opus prepares the Hermes adapter and fixture tests; reviewer checks
 
 - Frozen root discovery:1936 tests,13 disclosed skips (9 pending transcript +4 existing),398.132s, OK. Activation:112 focused builder and112 independent reviewer tests pass.
 - UI fixes:40 tests pass,63/63 mutation checks killed. Live Claude/GLM read/download exact; DeepSeek/Muse light document checks exact. No new expensive Opus/Sol document calls.
-- Final provider handoff exports:44 files scanned clean against used authorized API credentials and owned tokens/nonces. The owned server is deliberately active, not cleanup-complete.
+- Current provider handoff exports:57 files scanned clean against used authorized API credentials and owned tokens/nonces. The owned server is deliberately active, not cleanup-complete.
 - Prior R2/D4 timing misses, instrument-invalid attempts, host stalls and final190-observation PASS remain [retained history](docs/tickets/20/history/TICKET-20-D4-FINAL-GATE.md). Full refs remain in the index, historically about293KB per fulfilled max-source request; R3 compaction is deferred. The old128/512KiB quota was withdrawn.
 - Browser harness is partial; no phone-width requirement or further harness work. Reviewer visibly exercised both original live paths. Seth's UAT verdict remains open.
-- Non-blocking notes: first-use CLI workspace trust; CLI-path actual model confirmation unavailable; raw IDs/old duplicate labels/queue badge/departure lines; earlier cancelled/refused requests retained. The Desktop/agentchatrr reference path was absent on this host.
+- Non-blocking notes: first-use CLI workspace trust; CLI-path actual model confirmation unavailable; raw IDs/old duplicate labels/queue badge/departure lines; earlier cancelled/refused requests retained. The earlier Desktop/agentchatrr spelling was absent; Seth's real Desktop/agentchattr-0.5.0 install was later found and used read-only for CLI template reference.
 - Cleanup checks/results are recorded below as they finish. Tests and live UAT must remain intact.
 
 ## Where things live
@@ -88,7 +88,7 @@ AGENTS.md names `status.md`, while the tracked entry is `STATUS.md`; casing rema
 
 ## Cleanup verification
 
-Pure rename commit9fc6a4d contains exactly110 R100 entries. Baseline573 tracked files ->576, with only docs/README.md, historical STATUS snapshot and tools/check_markdown_links.py added. All215 fenced blocks unchanged;397 pre-existing code/tests/tools/static/AGENTS files byte-identical; zero case collisions; longest moved path143 characters; links0 broken before/after. Release build smoke includes README (archive output redirected into scratch). Localhost49949 still listening. Focused guide/backend, artifact selection and one full discovery are next on this frozen cleanup source; no result claimed yet.
+Pure rename commit9fc6a4d contains exactly110 R100 entries. Baseline573 tracked files ->576, with only docs/README.md, historical STATUS snapshot and tools/check_markdown_links.py added. All215 fenced blocks unchanged;397 pre-existing code/tests/tools/static/AGENTS files byte-identical; zero case collisions; longest moved path143 characters; links0 broken before/after. Release build smoke includes README (archive output redirected into scratch). Localhost49949 still listening. Cleanup was reviewer-accepted after88 guide/backend passes and the1939-test full discovery (404.096s,13 skips), which exposed four subtests of one stale pre-activation expectation. Commitsfa1fef0/ea4bdf6 corrected only activated-capability expectations;80 full protocol/capability/worker/admission/operator tests passed. Prior failures remain in the receipt. Reviewer requested no repeat full run now; one final full run follows21/22 before publication.
 
 Cleanup regression update:88 focused tests pass. Artifact selection559 ran with9 explicit pending-transcript skips and one stale pre-activation expectation in test_artifact_capability_recovery (expected empty capabilities, actual reviewed artifact-v1). Product unchanged. Corrected that one test expectation in a separate test-only activation follow-up; retained all recovery/legacy assertions. Full discovery had not started, so the single full run follows this correction.
 
@@ -115,3 +115,7 @@ Cold package status restores only saved omitted-seat checkbox choices for the ex
 ### 2026-10-27 01:43 CDT Review and multi-file proposal
 
 Reviewer cleared0251004 after reading the ownership delta and rerunning33 package/pre-flight tests. His approved split assigns Hermes wrapper.py/cli_seats.py/helper/temp-home tests to Opus, while Codex retains integration, STATUS and the Ticket23 plan. No real Hermes file has been written. The multi-file proposal is documentation only: existing512KiB source cap is a starting proposal, not a new settled gate. No23 product code, no new live calls, no push.
+
+### 2026-10-27 01:44 CDT Current handoff refreshed
+
+The morning note and seats artifact now show seven working seats, Hermes delegated, and the active AGY global MCP entry with current backup path/hash and stop removal.57 public exports scanned clean against the three used authorized API credentials and owned tokens/nonces. The UAT server remains running; no new model call, global write or shutdown occurred.
