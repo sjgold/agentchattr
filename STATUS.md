@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 02:00 CDT. Reviewed UI polish58aedb4 integrated;149 focused tests pass. Cold-launch setup next.
+**Updated:** 2026-10-27 02:12 CDT. True cold startup passed; named-key loader tested, pending independent review. Offline-chat fallback next.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -40,7 +40,7 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 1. Pre-flight retry/Leave out fixes0251004 are reviewer-cleared; keep the running UAT instance available.
 2. Opus implements Hermes YAML support on temporary homes in its own worktree. Codex integrates its reviewed pin; explicit reviewer approval before any real-home write, then one tiny request with the existing login.
 3. Cold-start verification and the approved named-key child-environment fix; then freeze Ticket23 contract/observed reds, review, implement within its90-minute agent-time checkpoint.
-4. Tickets21/22/24-26 are post-launch; preserve transcript plan and9 dated skipped reds. Final full discovery, activation review and file-state check precede any publication.
+4. [Post-launch scope](C:/Users/SJG/.traycer/epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/post-launch-scope/index.md) is the shared next-scoping list. Tickets21/22/24-26 are post-launch; preserve transcript plan and9 dated skipped reds. Final full discovery, activation review and file-state check precede any publication.
 5. Push/publication requires Seth's explicit go-ahead.
 
 ## UAT
@@ -138,3 +138,13 @@ Cold-start preparation is approved in one fresh pinned clone under the isolated 
 ### 2026-10-27 02:00 CDT Final reviewed UI polish
 
 Merged pinned58aedb484763a73ae9ebccaa5cba0b046fa2ab23 (12 reviewed commits after0078e74), preserving the naming/canonical-id changes.149 naming/identity/package/pre-flight/help/Documents/restart/readability/chat-empty/layout tests passed in9.118s. The first command named a nonexistent test_identity_registry and had one loader error; corrected to test_identity_contract and reran the full intended selection. The existing HTTPError404 ResourceWarning remains. No backend or model calls in this merge. Opus can base Hermes on this merged integration pin.
+
+### 2026-10-27 02:12 CDT Launch essentials: cold startup and keys
+
+Cold clone2673954 at .audit-tmp/artifact-ui-cold-kmfwi68g/checkout: real windows/start.bat --setup created its own .venv-windows, installed only requirements.txt through PyPI, and cold-bootstrapped the server in31.435s. The isolated browser picked/saved one configured Codex seat, launched it and automatically reached chat with the Cold Codex pill. No model prompt. --no-browser kept default/personal browser untouched; the controller opened the printed URL. Setup/bootstrap/one-seat readiness pass, not proof of every seat on this fresh environment.
+
+The first supervisor failed to create its audit directory and stopped its own cmd before setup; logs retained, no child/venv/server remained. After fixing the operational directory, the same untouched clone was used. Final cleanup: seat API returned stopped; signed server50372 and verified descendant66148 both ended through retained birth-verified handles. Clone/environment retained. Primary UAT49949 unchanged.
+
+Named-key red-first tests: original run had1 behavioral failure (spawn did not enrich child env) plus7 missing-helper subtest errors across7 tests. Added a malformed saved-provider red (TypeError), then guarded it. Now62 launcher/named-key/package/pre-flight tests pass in4.357s. Temp profiles/fake values only; no real .env read by the new loader. It reads only configured API template/saved-seat reference names, strict first NAME= match, existing env wins (including empty), one quote pair, CRLF; skips invalid bytes/NUL without values in diagnostics; enriches only spawn_server env. Review required before live reliance.
+
+Next: minimal offline marked fallback, then Ticket23 frozen contract/observed reds. Hermes and the safe daily AGY injection remain with Opus. Sanitized daily aliases/model-editing table are being prepared; no real-install config applied. No postponed audit/refactor work, no push.

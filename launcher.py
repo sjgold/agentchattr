@@ -153,12 +153,64 @@ def ensure_environment(root, setup=False):
     return python
 
 
+def _server_environment(root, config):
+    """Load only referenced NAME= lines into the server child's environment."""
+    import re
+    env = dict(os.environ)
+    providers = {name: cfg for name, cfg in config.get('agents', {}).items()
+                 if isinstance(cfg, dict) and cfg.get('type') == 'api'}
+    if not providers:
+        return env
+    names = {cfg.get('api_key_env', '') for cfg in providers.values()
+             if isinstance(cfg.get('api_key_env', ''), str)}
+    try:
+        path = Path(root) / config.get('server', {}).get('data_dir', './data') / 'api_seats.json'
+        saved = json.loads(path.read_text(encoding='utf-8'))
+        packages = saved.get('packages', []) if isinstance(saved, dict) else []
+        for package in packages if isinstance(packages, list) else []:
+            seats = package.get('seats', []) if isinstance(package, dict) else []
+            for seat in seats if isinstance(seats, list) else []:
+                if (isinstance(seat, dict) and seat.get('adapter') == 'openai-compatible'
+                        and isinstance(seat.get('provider'), str) and seat['provider'] in providers
+                        and isinstance(seat.get('secret_ref'), str)):
+                    names.add(seat['secret_ref'])
+    except (OSError, ValueError):
+        pass  # The seat store reports its own configuration errors, without secrets.
+    present = {key.upper() if os.name == 'nt' else key for key in env}
+    pending = {name.encode('ascii'): name for name in names
+               if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name)
+               and (name.upper() if os.name == 'nt' else name) not in present}
+    if not pending:
+        return env
+    try:
+        with (Path.home() / '.env').open('rb') as stream:
+            for line in stream:
+                prefix = line.split(b'=', 1)[0]
+                if prefix not in pending or not line.startswith(prefix + b'='):
+                    continue
+                name = pending.pop(prefix)  # First exact NAME= line wins, even if invalid.
+                try:
+                    value = line[len(prefix) + 1:].strip().decode('utf-8')
+                    if len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'"):
+                        value = value[1:-1]
+                    if '\0' not in value:
+                        env[name] = value
+                except UnicodeError:
+                    pass
+                if not pending:
+                    break
+    except OSError:
+        pass  # Missing/unreadable key file stays an honest missing credential.
+    return env
+
+
 def spawn_server(root, python, config):
     directory = Path(root) / '.launcher'
     directory.mkdir(exist_ok=True)
     with (directory / 'server.log').open('ab') as log:
         kwargs = {'cwd': str(root), 'stdin': subprocess.DEVNULL, 'stdout': log,
-                  'stderr': subprocess.STDOUT, 'close_fds': True}
+                  'stderr': subprocess.STDOUT, 'close_fds': True,
+                  'env': _server_environment(root, config)}
         if sys.platform == 'win32':
             kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
         else:
