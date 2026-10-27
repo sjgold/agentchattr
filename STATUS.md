@@ -28,7 +28,7 @@ Stop only RC1: `.audit-tmp/artifact-ui-rc1-euo3av0q/checkout/.audit-tmp/stop-rc1
 
 ## Now
 
-RC1 is available for comparison with RC0. Its final frozen discovery passed2164 tests with13 skips (9 post-launch transcript,4 existing). Reviewer cleared the exact pin and unchanged artifact-v1 activation. Six included seats are ready. One Claude Haiku document109B and one DeepSeek document73B each passed Read/Download byte equality. The browser picker checked two tiny files,31 raw bytes, with the expected packet revision. No multi-file agent review or screenshot acceptance is claimed.
+RC1 is available for UAT; RC0 is retained and intentionally stopped. Its final frozen discovery passed2164 tests with13 skips (9 post-launch transcript,4 existing). Reviewer cleared the exact pin and unchanged artifact-v1 activation. Six included seats are ready. One Claude Haiku document109B and one DeepSeek document73B each passed Read/Download byte equality. The browser picker checked two tiny files,31 raw bytes, with the expected packet revision. No multi-file agent review or screenshot acceptance is claimed.
 
 RC0 is now stopped at Seth's explicit request, with its shim entry removed. RC1 remains frozen and running. Hermes real-home writes/restores passed twice, but its injected hello failed with exit2; it remains excluded. MiMo Pro passed one24B managed document check and its temporary instance is stopped. AGY's authorized real-file proof passed:34B document/read/download exact, entry removed and original file restored. All AGY proof processes are stopped; no third attempt is needed.
 
@@ -50,14 +50,14 @@ RC0 is now stopped at Seth's explicit request, with its shim entry removed. RC1 
 
 |Seat|Model|Current check/status|
 |---|---|---|
-|Claude|claude-opus-5-5|Running; native OAuth hello passed. Earlier Haiku document124B exact; no Opus document loop|
+|Claude|RC1 claude-haiku-5-5; RC0 Opus stopped|RC1 ready;109B document exact. Requested/displayed model; CLI metadata unverified. No Opus document loop|
 |Codex|gpt-6.1-sol|Running; native OAuth hello passed; isolated MCP launch fixed. No Sol document loop|
 |Antigravity|gemini-3.8-flash-medium|Real distinct-name JSON adapter proof34B read/download exact; medium displayed, CLI metadata unverified. Exact global restore, all stopped. Not in RC1|
-|DeepSeek|deepseek-flash|RC0 ready; fresh Documents99B read/download exact. Earlier100B retained.1070 not mapped|
+|DeepSeek|deepseek-flash|RC1 ready;73B document read/download exact. Earlier RC0/old-root checks retained;1070 not mapped|
 |GLM|glm-5.3|Running; earlier Documents285B exact, no extra call|
-|Muse|muse-spark-1.3-contributor|Running; Documents81B exact. Hello needed512-token probe cap; normal document path worked unchanged|
+|Muse|muse-spark-1.3-contributor|RC1 ready; earlier81B document exact. Prior hello needed512-token probe cap; no new call|
 |Hermes|grok-4.7, existing xai-oauth|Real YAML write/MCP tools/restore pass; injected hello exited2, deferred. Both proof gateways ended by ops under grant|
-|OMP|openai-codex/gpt-6.1-sol|Running; managed Documents90B read/download exact; model unverified in API metadata|
+|OMP|openai-codex/gpt-6.1-sol|RC1 ready; earlier90B managed document exact. CLI model unverified in metadata; no new call|
 |MiMo|mimo-v2.6-pro; Flash selectable|Integration-local ignored provider configured. One24B document/read/download pass; Pro confirmed. Temporary proof stopped; not added to frozen RC1|
 
 ## Next
@@ -70,9 +70,9 @@ RC0 is now stopped at Seth's explicit request, with its shim entry removed. RC1 
 
 ## UAT
 
-Chat: http://127.0.0.1:49949. Pre-flight: http://127.0.0.1:49949/preflight. It runs from the frozen RC0 clone, not this integration worktree. Stop command is in the top RC0 block; the old .audit-tmp/stop-ticket20-uat.ps1 targets only the retained, stopped old instance.
+RC1 is running: http://127.0.0.1:50010/preflight (chat50010). Its pin and exact stop command are in the top block. RC0:49949 is STOPPED deliberately after Seth's proof-window instruction; its checkout/data/history are retained, and it will not relaunch automatically. Ask for its reviewed start path in a fresh owned runtime when needed.
 
-The distinct Antigravity `agentchattr-uat` global MCP entry is currently active for the running seat. It was backed up and structurally verified as the only new entry; the stop hook removes it and checks the remaining structure against the backup. Earlier removal was exercised successfully. Global trustedFolders was untouched. Exact backup hash/path and restore/removal instructions are in the [historical handoff](docs/history/STATUS-2026-10-26.md#requested-seats-final-nightly-verification) and private `.audit-tmp/ticket20-seat-morning.md`. MiMo parked; MiniMax not used.
+Both agentchattr-uat and agentchattr-fork entries are now absent from the global AGY MCP file. The pre-existing agentchattr entry belongs to Seth and remains unchanged. Final file SHA62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d matches the baseline after RC0's authorized shim cleanup. Proof backups and lock files remain in place; no global MCP content is an export. MiMo Pro's local proof server is also stopped, and its provider block contains only env-var names in ignored integration config.local.toml.
 
 ## Seth's decisions and execution order
 
