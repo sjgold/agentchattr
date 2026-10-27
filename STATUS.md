@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (UAT running on49949; real Claude and z.ai document paths pass; final20 sign-off pending)
+**Updated:** 2026-10-26 (Ticket20 reviewer ACCEPTED; live UAT running49949;21/22/cleanup/publication pending Seth)
 
 ## At a glance
 
-**Ticket19 is published. Ticket20 activation is independently signed off; both live document paths now pass. The isolated UAT instance is running for Seth at http://127.0.0.1:49949. Ticket21/22 remain pending final20 acceptance.**
+**Ticket19 is published. Ticket20 activation is independently signed off; both live document paths now pass. The isolated UAT instance is running for Seth at http://127.0.0.1:49949. Ticket20 is reviewer-accepted; Seth's own UAT verdict is pending.21/22/cleanup/publication wait for his call.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -16,9 +16,9 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Reduced manual-document implementation and activation independently reviewed. Live Claude/z.ai create/read/download passed; final20 sign-off pending. |
+| Ticket20 | REVIEWER ACCEPTED atfaab835; activationcfcbdf1 reviewed. Both real-agent paths passed. Seth UAT remains open. |
 | Latest checks | Full1936 OK/13 disclosed skips; activated candidate112 focused/root and112 reviewer tests pass. Live CLI124B/API285B exact read-download matches. |
-| Next | Reviewer final20 sign-off; Seth UAT on49949. Instance stays up;21/22 pending acceptance. No new features, harnesses or timing work. |
+| Next | Seth UAT at49949; keep instance running.21/22, cleanup and publication pending his call. Fix existing-feature defects if reported; no push. |
 
 ## For Seth: UAT is ready
 
@@ -26,9 +26,23 @@ Open http://127.0.0.1:49949. Both seats are ready; this uses separate test data.
 
 - Worked: real Claude CLI (requested Haiku5.5) and z.ai GLM5.3 each authored, saved, read and downloaded matching bytes.
 - Setup note: Claude needed its empty UAT workspace trusted. No product fix; earlier failed/refused requests remain recorded.
-- Pending: final20 sign-off.21/22 remain pending acceptance. Features are frozen; real defects can be fixed. No more browser/speed/phone work.
+- Pending: Seth's UAT verdict;21/22, cleanup and publication wait for his call. Features are frozen; real defects can be fixed. No more browser/speed/phone work.
 
 Stop: run [.audit-tmp/stop-ticket20-uat.ps1](.audit-tmp/stop-ticket20-uat.ps1) in PowerShell. It stops only this instance and its seats. The shared Ticket20 UAT artifact has6 steps per path. Instance stays running until Seth says stop. No push/publication.
+
+## Ticket20 reviewer acceptance
+
+Reviewer signed off atfaab83599a71890976dac70bce78b683d3039b29. Accepted product activation iscfcbdf1; subsequent changes are documentation only. Both live code paths passed. This is code-path acceptance, not visual/browser acceptance, Seth's UAT verdict, publication or cleanup.
+
+UAT stays running at http://127.0.0.1:49949 until Seth requests stop. Ticket21/22, final file cleanup and publication stay pending Seth's call. Fix reported defects in existing features with focused checks; add no features, harnesses, timing work or refactors. No push.
+
+Non-blocking notes:
+- A fresh Claude workspace needs one-time Yes at the native trust menu, whose default is No, exit.
+- The CLI path cannot verify the actual model; requested Haiku5.5 is labeled honestly.
+- Exact Desktop/agentchatrr reference path was absent on this host and was not used.
+- The cancelled first CLI request and refused stale-source retry remain retained history.
+
+Full1936/13 explicit skips and focused112/independent112 checks stand. Live CLI124B and API285B read/download matches stand.15 public-export/server-log files passed credential/session-token scans; no secret values exported. Signed active inventory remains7 live, deliberately not a cleanup-complete claim. Short UAT checklist and stop script are linked above.
 
 ## Ticket20 frozen regression and activation candidate, 2026-10-26/27
 

@@ -298,3 +298,17 @@ The12 short UAT steps are in the shared Ticket20 UAT artifact and .audit-tmp/tic
 Credential handling: only the authorized ZAI_API_KEY line from the user's .env was read into child environment memory; no key value in config, arguments, logs, receipts or summaries. Provider block is confined to the owned root's config.local.toml. No other .env key was parsed; no normal-install config was copied. Exact Desktop/agentchatrr reference was absent, so no broad search or launch/write there occurred. Native Claude login was reused without copying an authentication home.
 
 Next owner reviewer: final Ticket20 sign-off on these live results. Root keeps the instance up for Seth;21/22 stay pending until acceptance. All non-blocking findings remain notes, not new work.
+
+## Ticket20 reviewer acceptance
+
+Reviewer signed off atfaab83599a71890976dac70bce78b683d3039b29. Accepted product activation iscfcbdf1; subsequent changes are documentation only. Both live code paths passed. This is code-path acceptance, not visual/browser acceptance, Seth's UAT verdict, publication or cleanup.
+
+UAT stays running at http://127.0.0.1:49949 until Seth requests stop. Ticket21/22, final file cleanup and publication stay pending Seth's call. Fix reported defects in existing features with focused checks; add no features, harnesses, timing work or refactors. No push.
+
+Non-blocking notes:
+- A fresh Claude workspace needs one-time Yes at the native trust menu, whose default is No, exit.
+- The CLI path cannot verify the actual model; requested Haiku5.5 is labeled honestly.
+- Exact Desktop/agentchatrr reference path was absent on this host and was not used.
+- The cancelled first CLI request and refused stale-source retry remain retained history.
+
+Full1936/13 explicit skips and focused112/independent112 checks stand. Live CLI124B and API285B read/download matches stand.15 public-export/server-log files passed credential/session-token scans; no secret values exported. Signed active inventory remains7 live, deliberately not a cleanup-complete claim. Short UAT checklist and stop script are linked above.
