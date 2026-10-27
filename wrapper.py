@@ -179,7 +179,41 @@ _BUILTIN_DEFAULTS: dict[str, dict] = {
     },
 }
 
-_VALID_INJECT_MODES = {"settings_file", "env", "flag", "proxy_flag", "env_content"}
+_VALID_INJECT_MODES = {"settings_file", "yaml_settings_file", "env", "flag", "proxy_flag", "env_content"}
+
+# yaml_settings_file adds a distinctly named entry (never the user's own "agentchattr"
+# entry) and removes it again when the wrapper stops. Receipts keep the first clean
+# backup and the latest written digest so a refreshed token still restores exactly.
+YAML_SERVER_NAME = "agentchattr-uat"
+_YAML_RECEIPTS: dict = {}
+
+
+def _apply_yaml_mcp_settings(raw_path, project_dir, url: str, token: str) -> Path:
+    import dataclasses
+    import yaml_mcp_settings
+    target = yaml_mcp_settings.resolve_settings_path(raw_path, project_dir)
+    with _config_write_lock(target):
+        receipt = yaml_mcp_settings.apply(target, url, token, entry=YAML_SERVER_NAME)
+    key = os.path.normcase(str(target.resolve()))
+    earlier = _YAML_RECEIPTS.get(key)
+    if earlier is not None and receipt.backup_path is None:
+        receipt = dataclasses.replace(earlier, written_sha256=receipt.written_sha256)
+    _YAML_RECEIPTS[key] = receipt
+    return target
+
+
+def _remove_yaml_mcp_entries() -> list:
+    """Stop hook: remove every entry this process added. Returns the removal results."""
+    import yaml_mcp_settings
+    results = []
+    for key, receipt in list(_YAML_RECEIPTS.items()):
+        try:
+            with _config_write_lock(receipt.path):
+                results.append(yaml_mcp_settings.remove_exact(receipt.path, entry=YAML_SERVER_NAME, receipt=receipt))
+            _YAML_RECEIPTS.pop(key, None)
+        except (OSError, ValueError) as error:
+            print(f"  Warning: could not remove {YAML_SERVER_NAME} from {receipt.path}: {error}")
+    return results
 
 
 def _provider_from_command(command: object) -> str:
@@ -269,6 +303,11 @@ def _apply_mcp_inject(
         env_var = inject_cfg.get("mcp_env_var")
         if env_var:
             inject_env[env_var] = str(settings_path)
+
+    elif mode == "yaml_settings_file":
+        # Merge one entry into a user-owned YAML config such as $HERMES_HOME/config.yaml.
+        settings_path = _apply_yaml_mcp_settings(inject_cfg.get("mcp_settings_path", ""),
+                                                 project_dir, server_url, token)
 
     elif mode == "env":
         # Write a settings file in provider-config dir, expose via env var
@@ -912,7 +951,11 @@ def main():
             if proxy is not None:
                 proxy.stop()
         finally:
-            resources.close()
+            try:
+                # Before the lifetime lock is released: take our entry (and token) back out.
+                _remove_yaml_mcp_entries()
+            finally:
+                resources.close()
 
     print("  Wrapper stopped.")
 

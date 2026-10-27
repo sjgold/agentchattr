@@ -92,6 +92,9 @@ def validate_cli_seat(seat, template):
     if injection.get('mcp_inject') in ('env', 'env_content'):
         if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', injection.get('mcp_env_var', '')):
             raise SeatError('CLI MCP environment-variable name is invalid.')
+    if injection.get('mcp_inject') == 'yaml_settings_file':
+        if not isinstance(injection.get('mcp_settings_path'), str) or not injection['mcp_settings_path'].strip():
+            raise SeatError('A YAML settings-file client requires mcp_settings_path.')
     strip = template.get('strip_env', [])
     if not isinstance(strip, list) or any(not isinstance(v, str) or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', v) for v in strip):
         raise SeatError('CLI strip_env must be a list of environment-variable names.')
@@ -112,6 +115,14 @@ def validate_cli_seat(seat, template):
 def config_resource(template, project_dir):
     from wrapper import _resolve_mcp_inject
     cfg = _resolve_mcp_inject('', template)
+    if cfg.get('mcp_inject') == 'yaml_settings_file':
+        # Same $VAR/~ resolution as the writer, so the lifetime lock guards the file it edits.
+        from yaml_mcp_settings import YamlSettingsError, resolve_settings_path
+        try:
+            target = resolve_settings_path(cfg.get('mcp_settings_path'), project_dir)
+        except YamlSettingsError as error:
+            raise SeatError(str(error)) from None
+        return os.path.normcase(str(target.resolve()))
     if cfg.get('mcp_inject') != 'settings_file':
         return None
     raw = cfg.get('mcp_settings_path')
