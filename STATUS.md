@@ -1,6 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 02:59 CDT. RC0 freeze99361d1: clone/full discovery before UAT switch. Integration packet work continues separately.
+**Updated:** 2026-10-27 03:31 CDT. UAT RC0 is frozen at99361d1 on49949;7 seats ready. API document verified; AGY document smoke remains unverified.
+
+**UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
+Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
+RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI ideas and daily AGY injection. They remain integration/RC1 work.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -24,7 +28,7 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 
 - [ ] Decide later whether in-UI provider/template setup, credential entry, live model discovery belong in scope. These setup features are absent today; launch-and-go-chat is now implemented and exercised.
 
-- [ ] Launch handoff: cold startup verification is in progress; daily-use sanitized template aliases will be prepared for approval. No further scope decision is needed for23 shape.
+- [ ] RC0 AGY document path is unverified: one tiny request timed out/cancelled. DeepSeek document and Claude readiness/cooperative Stop verified. No Plan/notices/trust/permission prompt found in the read-only flag check; further retry requires an identified cause. Daily-use sanitized template aliases are still being prepared.
 
 ## Seats
 
@@ -32,8 +36,8 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 |---|---|---|
 |Claude|claude-opus-5-5|Running; native OAuth hello passed. Earlier Haiku document124B exact; no Opus document loop|
 |Codex|gpt-6.1-sol|Running; native OAuth hello passed; isolated MCP launch fixed. No Sol document loop|
-|Antigravity|gemini-3.8-flash-medium, effort medium|Running; managed Documents63B read/download exact. Prior timeout/cancellation retained; CLI model remains unverified in API metadata|
-|DeepSeek|deepseek-flash|Running; Documents create/read/download100B exact.1070 not mapped by provider list|
+|Antigravity|gemini-3.8-flash-medium|RC0 ready; document smoke timed out/cancelled. Earlier UAT63B success retained, not claimed forRC0. High/medium/low suggestions editable|
+|DeepSeek|deepseek-flash|RC0 ready; fresh Documents99B read/download exact. Earlier100B retained.1070 not mapped|
 |GLM|glm-5.3|Running; earlier Documents285B exact, no extra call|
 |Muse|muse-spark-1.3-contributor|Running; Documents81B exact. Hello needed512-token probe cap; normal document path worked unchanged|
 |Hermes|Normal HERMES_HOME authorized|YAML adapter needs temporary-fixture tests and review before any real-home write|
@@ -49,7 +53,7 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 
 ## UAT
 
-Chat: http://127.0.0.1:49949. Direct Pre-flight: http://127.0.0.1:49949/preflight. Stop only this instance from the active worktree with `.audit-tmp/stop-ticket20-uat.ps1`.
+Chat: http://127.0.0.1:49949. Pre-flight: http://127.0.0.1:49949/preflight. It runs from the frozen RC0 clone, not this integration worktree. Stop command is in the top RC0 block; the old .audit-tmp/stop-ticket20-uat.ps1 targets only the retained, stopped old instance.
 
 The distinct Antigravity `agentchattr-uat` global MCP entry is currently active for the running seat. It was backed up and structurally verified as the only new entry; the stop hook removes it and checks the remaining structure against the backup. Earlier removal was exercised successfully. Global trustedFolders was untouched. Exact backup hash/path and restore/removal instructions are in the [historical handoff](docs/history/STATUS-2026-10-26.md#requested-seats-final-nightly-verification) and private `.audit-tmp/ticket20-seat-morning.md`. MiMo parked; MiniMax not used.
 
@@ -196,3 +200,13 @@ Reviewer requested immediate UAT isolation from this moving integration tree. RC
 Copy boundary before switching: saved seat packages and non-runtime templates/config/env-var NAMES only. Re-seed synthetic accepted source sessions in the new runtime root. Never copy runtime, queue, process, ownership or other authority catalogs. Old root/data stay untouched. Operational helpers must be frozen with the new checkout, not import moving integration code. After the cooperative switch, further work never changes RC0; later fixes require reviewed RC1. Hermes real-home run will use a separate integration-owned instance or wait for RC1, with its same backup/removal/no-Hermes-running rules.
 
 RC1 trigger: Hermes result or explicit defer, reviewed default_model and the23 checkpoint. Include23 only if all3 groups are green/reviewed; otherwise explicitly exclude it. The7 UI ideas are deferred unless reviewed/pinned by freeze. Daily AGY injection is not an RC prerequisite (reviewed UAT shim remains); disclose it as pending.21/22/24-26 are post-launch. No push/publication.
+
+### 2026-10-27 03:31 CDT RC0 switch, evidence and open risk
+
+Pinned clone99361d1 full discovery:2025 tests in407.218s, OK13 skips (9 post-launch transcript+4 existing). Exact log: C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr/codex-ticket-20-r2-on-a1/.audit-tmp/artifact-ui-rc0-_om1o8fc/full-discovery.log. Reviewer checked the pin and cleared the switch. Copy manifest .audit-tmp/rc0-copy-manifest.json records9 config/control script hashes; product config validation passed7 seats. No runtime/queue/process/ownership/authority catalog copied. Old root/data retained; synthetic sources were re-seeded in the new root.
+
+Cooperative old Stop removed its AGY entry and stopped server/workers. Full signed inventory then found native agy36368 andclaude54236 leftovers. Only their exact current-birth verified handles were terminated/waited. Reviewer's extra ancestor-chain precaution arrived after this action; a retrospective current Traycer/Claude/Codex chain check found0 matches, not a pre-termination proof. The normal RC0 Claude Stop cycle subsequently ended native70724 cooperatively and restarted/rebound the team to7/7,0 model prompts. No broad process kill or port/name authority.
+
+RC0 Pre-flight loads with7 editable model fields and saved choices retained on reload. AGY suggestions are high/medium/low and saved model is explicitlymedium; blank-default fallback is absent inRC0. Fresh smoke: DeepSeek99B exact; AGY1 request accepted202 but timed out180s and was cancelled, with no automatic retry. Native console flags: Medium, no Plan/notice/trust/permission prompt, no artifact tool text visible. The durable queue has a cancelling transport record; no conclusion about cause. Earlier original-UAT CLI passes stay historical.
+
+Next: group2 packet consumers within the checkpoint; Hermes proof uses a separate integration-owned instance or RC1, never editsRC0. The currently running AGY shim/merge and server bootstrap are frozen ignored control files insideRC0. All later UI/product merges remain integration-only. No push/publication.
