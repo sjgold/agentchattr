@@ -2,6 +2,17 @@
 
 **Updated:** 2026-10-26 (Ticket20 reviewer ACCEPTED; live UAT running49949;21/22/cleanup/publication pending Seth)
 
+## Tonight / morning note
+
+- Ticket20 code-path acceptance stands; reviewer also checked both live paths visibly, with exact Read/Download and no console errors.
+- Fixed the stale card: switching source sessions now labels the old card with its original source title, without changing saved IDs or replay.
+- Fixed the idle status: selected sessions no longer say "Choose a session"; truly empty selection still does.
+- Both defects had observed-red Node tests.40 UI tests pass;63/63 UI mutants killed, zero errors. Page reload only, no server restart for these fixes.
+- UAT: http://127.0.0.1:49949. Stop with .audit-tmp/stop-ticket20-uat.ps1. Kept running; idle seats do not generate model calls.
+- Non-blocking notes: native Claude trust once; CLI model unverified; raw agent IDs, historical duplicate Planning labels, stale queue badge and departure chat lines. Prior failed/refused attempts retained.
+- New seat/endpoint checks requested tonight are starting separately; results will replace this planned line. No new features,21/22, cleanup, deletion or push.
+- Waiting for Seth: Ticket21 go, file-cleanup go, publication go.
+
 ## At a glance
 
 **Ticket19 is published. Ticket20 activation is independently signed off; both live document paths now pass. The isolated UAT instance is running for Seth at http://127.0.0.1:49949. Ticket20 is reviewer-accepted; Seth's own UAT verdict is pending.21/22/cleanup/publication wait for his call.**

@@ -18,6 +18,8 @@ def main():
     hashes=lambda:{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in paths}
     before=hashes()
     checks=[
+        ('card source after session switch','static/artifacts.js',"const cardLabel = otherSession ? 'Latest request: ' + requestTitle + ' · ' : '';","const cardLabel = '';",'test_switching_selected_session_labels_card_source_without_changing_saved_request'),
+        ('selected session prompt','static/artifacts.js',"s.listBusy ? 'Loading sessions...' : s.selected ? '' : 'Choose a session to write from'","s.listBusy ? 'Loading sessions...' : 'Choose a session to write from'",'test_selected_session_has_no_choose_prompt_but_empty_list_keeps_it'),
         ('operator auth header','static/artifacts.js',"'X-Session-Token': window.SESSION_TOKEN","'X-Session-Token': ''",'test_completed_session_list_and_more_are_authenticated'),
         ('lazy rotated token','static/artifacts.js',"'X-Session-Token': window.SESSION_TOKEN","'X-Session-Token': 'OPERATOR_ONLY'",'test_unknown_reload_retry_requires_original_instruction_and_lazy_token'),
         ('double submit','static/artifacts.js','s.submitting = true; stopPoll(s);','s.submitting = false; stopPoll(s);','test_double_activation_and_unknown_effect_keep_same_request_id'),

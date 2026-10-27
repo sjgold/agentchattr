@@ -99,6 +99,32 @@ class ArtifactUITests(unittest.TestCase):
         self.assertEqual(source.count(old),1)
         self.source_overrides={**self.source_overrides,name:source.replace(old,new,1)}
 
+    def test_switching_selected_session_labels_card_source_without_changing_saved_request(self):
+        self.run_js(r"""
+const original=responder;
+responder=async(url,options)=>url.includes('/sessions?')?response({sessions:[session,{...session,session_id:2,run_id:'d'.repeat(32),title:'Other source'}],offset:0,has_more:false}):original(url,options);
+await open();await submit();current={...current,state:'fulfilled',version_id:'c'.repeat(32)};
+await activate('artifact-refresh');await activate('artifact-read');
+const saved=storage.get('artifact-request:review'), count=calls.length;
+element('artifact-session-select').value='2';await element('artifact-session-select').dispatch('change');
+assert(element('artifact-status').textContent.includes('Latest request: Completed source'));
+assert(element('artifact-status').textContent.includes('Ready'));
+assert.strictEqual(storage.get('artifact-request:review'),saved);assert.strictEqual(calls.length,count);
+assert.strictEqual(element('artifact-reader').textContent,markdown);
+element('artifact-session-select').value='1';await element('artifact-session-select').dispatch('change');
+assert.strictEqual(element('artifact-status').textContent,'Ready');
+""")
+
+    def test_selected_session_has_no_choose_prompt_but_empty_list_keeps_it(self):
+        self.run_js(r"""
+await open();assert.strictEqual(element('artifact-session-select').value,'1');
+assert.strictEqual(element('artifact-status').textContent,'');
+window.ArtifactDocuments.close();const original=responder;
+responder=async(url,options)=>url.includes('/sessions?')?response({sessions:[],offset:0,has_more:false}):original(url,options);
+await window.ArtifactDocuments.open();
+assert.strictEqual(element('artifact-status').textContent,'Choose a session to write from');
+""")
+
     def test_stop_warning_is_literal_and_distinct_from_review_outcome(self):
         self.run_js(r"""
 load('static/sessions.js');const panel=new Element('section');

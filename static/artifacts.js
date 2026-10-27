@@ -121,9 +121,12 @@ window.ArtifactDocuments = (() => {
     function render(s) {
         if (!active(s)) return;
         const n = s.nodes, row = s.row;
-        text(n.status, row ? textFor(row) + (s.offline ? ' (status unavailable)' : '')
+        const otherSession = row && s.selected && row.source.session_id !== s.selected.session_id;
+        const requestTitle = row?.source.session_id ? (s.sessions.get(row.source.session_id)?.title || 'Session ' + row.source.session_id) : 'Imported source';
+        const cardLabel = otherSession ? 'Latest request: ' + requestTitle + ' · ' : '';
+        text(n.status, row ? cardLabel + textFor(row) + (s.offline ? ' (status unavailable)' : '')
             : s.notFound ? 'Not found yet (the earlier request may still finish)'
-            : s.known?.unknown ? 'Not confirmed' : s.listBusy ? 'Loading sessions...' : 'Choose a session to write from');
+            : s.known?.unknown ? 'Not confirmed' : s.listBusy ? 'Loading sessions...' : s.selected ? '' : 'Choose a session to write from');
         let detail = row ? (row.source.session_id ? 'Session ' + row.source.session_id : 'Imported source') + ' · ' + (row.author_name || 'Author unavailable') + ' · ' + row.source.message_count + ' source messages · '
             + row.source.packet_bytes + ' bytes' + (row.source.source_so_far ? ' · Source so far' : ' · Completed source') : '';
         if (s.cancelWarning) detail += ' Document cancellation is unconfirmed; the worker may still be running.';
