@@ -172,6 +172,20 @@ class ManageChannelsReadabilityTests(unittest.TestCase):
         self.assertRegex(body, r'box-shadow:\s*none')
 
 
+class SessionLauncherOrderTests(unittest.TestCase):
+    def test_templates_come_before_the_source_and_the_cast_after_it(self):
+        # Idea 5: choose the kind of session first, then the source, then who plays which role.
+        js = (STATIC / 'sessions.js').read_text(encoding='utf-8')
+        body = js[js.index('function showSessionLauncher'):js.index('async function sendDesignRequest')]
+        goal, templates = body.index('session-launcher-goal'), body.index('id="session-step-templates"')
+        source, cast = body.index('class="session-source-editor"'), body.index('id="session-step-cast"')
+        self.assertLess(goal, templates)
+        self.assertLess(templates, source)
+        self.assertLess(source, cast)
+        preview = js[js.index('function showCastPreview'):js.index('function sessionCastBack')]
+        self.assertIn('.session-source-editor', preview)   # after a pick, bring the source box into view
+
+
 class ManageChannelsHeaderTests(unittest.TestCase):
     def test_create_and_reload_sit_in_the_title_row(self):
         # Idea 4: the two catalog actions join Close in the dialog's title row instead of
