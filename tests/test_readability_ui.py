@@ -120,5 +120,20 @@ class HelpGuideReadabilityTests(unittest.TestCase):
                 self.assertNotIn('opacity', body)
 
 
+class SessionsReadabilityTests(unittest.TestCase):
+    def test_sessions_text_is_at_least_11px(self):
+        self.assertGreaterEqual(smallest_font(sheet('sessions.css')), 11)
+
+    def test_sessions_never_use_accent_as_text(self):
+        # Role names, phase numbers, the session-bar template and "View output" were
+        # accent purple text (about 3.3:1).
+        self.assertFalse(uses_accent_as_text(sheet('sessions.css')))
+
+    def test_launcher_copy_is_plain_sentence_case(self):
+        js = (STATIC / 'sessions.js').read_text(encoding='utf-8')
+        self.assertNotIn('Start a Session<', js)
+        self.assertNotIn(' -- Cast', js)
+
+
 if __name__ == '__main__':
     unittest.main()
