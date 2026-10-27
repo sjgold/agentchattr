@@ -1,12 +1,14 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:09 CDT. Frozen RC1 fdc6c27 is in its final full discovery. RC0 stays available; RC1 launch waits for review.
+**Updated:** 2026-10-27 04:28 CDT. RC1 is up beside RC0: full2164-test run green,6 seats ready, CLI/API document smokes pass. Nothing pushed.
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
 RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI ideas and daily AGY injection. They remain integration/RC1 work.
 
-**RC1 candidate:** `fdc6c275edb8d81f387c782aaeaf27a4e216816a`, final full discovery running; not launched, URL/stop command pending. Includes multi-file packets, model defaults and reviewed UI ideas. **RC1 has no Antigravity seat (RC0 has it); daily Antigravity needs the reviewed distinct-name adapter, in review.** Hermes is excluded.
+**UAT RC1:** `fdc6c275edb8d81f387c782aaeaf27a4e216816a`, http://127.0.0.1:50010/preflight. **Frozen: no merges reach this build.** Adds multi-file packets, effective CLI model defaults and reviewed UI ideas. Six seats ready; Claude is Haiku5.5 for the bounded check, while RC0 keeps Opus.
+Stop only RC1: `.audit-tmp/artifact-ui-rc1-euo3av0q/checkout/.audit-tmp/stop-rc1.ps1` from this integration worktree.
+**RC1 has no Antigravity seat (RC0 has it); daily Antigravity needs the reviewed distinct-name adapter, in review.** Hermes is excluded. RC1 contains dormant Hermes YAML adapter code with the known stale-backup B2 flaw; no Hermes seat or yaml_settings_file template is present, so that path cannot run. The AGY JSON adapter is absent.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -16,9 +18,9 @@ RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI 
 
 ## Now
 
-Frozen RC0 runs from its own pinned checkout. Seven seats are ready; DeepSeek document read/download passed. Its Antigravity document request timed out and was cancelled. Earlier successful AGY evidence belongs to the old instance.
+RC1 is available for comparison with RC0. Its final frozen discovery passed2164 tests with13 skips (9 post-launch transcript,4 existing). Reviewer cleared the exact pin and unchanged artifact-v1 activation. Six included seats are ready. One Claude Haiku document109B and one DeepSeek document73B each passed Read/Download byte equality. The browser picker checked two tiny files,31 raw bytes, with the expected packet revision. No multi-file agent review or screenshot acceptance is claimed.
 
-Multi-file review core and delivery groups are reviewer-cleared. Route/picker group1d0ed71+b36cebf and follow-up9a751cd are reviewer-cleared;179 focused tests pass. Three targeted mutation checks were killed. It is excluded from RC0. Hermes proof stopped before any write because an existing bundled Hermes Python process is running; that process is untouched.
+RC0 is unchanged and retains Antigravity. Hermes stays deferred: the running-path guard is integrated, but the Windows.cmd Stop limitation, pending stale-backup fix and Seth's existing Hermes process still prevent a real-home run. No Hermes home write/call happened.
 
 ## Needs Seth
 
@@ -47,11 +49,11 @@ Multi-file review core and delivery groups are reviewer-cleared. Route/picker gr
 
 ## Next
 
-1. Ticket23 groups1-3 are cleared. Stop/report this bounded slice before its90-minute checkpoint; reviewer checks the small follow-up pin. RC1 may include23 after final frozen verification.
-2. Hermes is excluded from RC1 unless Seth decides otherwise: path-based running guard, Windows .cmd child Stop limitation, and his existing process61816 remain blockers. The process stays untouched; Opus owns the path guard.
-3. Integrate reviewed default_model fallback with managed-runtime tests. Optional reviewed UI ideas enter only through RC1. RC0 stays frozen.
-4. Final frozen full discovery, activation-state review and file-state check precede publication. Tickets21/22/24-26 stay post-launch; preserve9 transcript skips.
-5. [Post-launch scope](C:/Users/SJG/.traycer/epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/post-launch-scope/index.md) holds the next-scoping list. Push/publication requires Seth's explicit go-ahead.
+1. Seth compares the frozen builds through Pre-flight and chat. RC1:50010 has the new UI/packets/defaults; RC0:49949 keeps the earlier build and AGY. Report defects in this handoff before any publication.
+2. Reviewer checks the RC1 operational results and export scan. No additional model calls are planned.
+3. Hermes and daily AGY injection remain deferred. The Windows owned process-tree Stop design and picker/source-label notes are in the post-launch list. No real YAML/JSON adapter write before its corrected pin is reviewed.
+4. [Post-launch scope](C:/Users/SJG/.traycer/epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/post-launch-scope/index.md) holds Tickets21/22/24-26 and later decisions. Keep9 transcript skips and retained history.
+5. Publication requires Seth's explicit go-ahead. No push or deletion is authorized.
 
 ## UAT
 
@@ -275,3 +277,15 @@ RC1 tests verify a blank CLI seat uses the template default in the frozen worker
 ### 2026-10-27 04:09 CDT Frozen RC1 discovery started
 
 Candidate pin: fdc6c275edb8d81f387c782aaeaf27a4e216816a. Fresh clone: C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\artifact-ui-rc1-euo3av0q\checkout. Exact full-discovery log: C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\artifact-ui-rc1-euo3av0q\full-discovery.log. Own environment setup succeeded; the single full root discovery is running. No server or model calls in this window. RC1 has separate future runtime/ownership/ports and leaves AGY out; no RC0 shim/global entry is copied. Expected skip disclosure is9 post-launch transcript plus existing skips; actual counts/result will replace this pending note.
+
+### 2026-10-27 04:28 CDT Frozen RC1 launch and bounded checks
+
+Exact pinfdc6c275edb8d81f387c782aaeaf27a4e216816a, clean clone,245 modules/2164 tests/413.123s, OK13skips. Exact log: .audit-tmp/artifact-ui-rc1-euo3av0q/full-discovery.log. Reviewer verified pin/clean tree/log and SUPPORTED_CAPABILITIES=('artifact-v1',), then cleared sibling launch. Runtime is .audit-tmp/artifact-ui-rc1-euo3av0q/checkout/.audit-tmp/artifact-ui-uat-rc1 on ports50010-50013. RC0/its registries remain separate and unchanged. Only config/templates/package/bootstrap/owned controls were copied;0 authority catalogs. Seven copied-file names/hashes and six-seat validation are in .audit-tmp/rc1-copy-manifest.json. AGY shim and global cleanup imports were removed; no Hermes/AGY provider or YAML/JSON entry mode exists in RC1.
+
+First supervisor invocation lacked PYTHONPATH and failed at import before creating any child. Explicit pinned PYTHONPATH fixed that operational invocation without a code change. Claude's new-workspace trust menu defaulted to No: numeric1+Enter did not select Yes and the client exited before generation. Explicit Restart followed by Up+Enter accepted only the owned empty workspace; the trust prompt disappeared and Haiku was visible. Package rebind restored6/6 readiness. This is one-time console trust, not a global-settings edit by our scripts.
+
+Exactly2 new document requests: Claude Haiku requested,109B SHA256dc827c229d465be2d131c50c54d2a72c61b1575dcf000af643039fa214f23692; DeepSeekFlash confirmed,73B SHA256302deedc1446b146473f2de01eef5bbc4dc2b7384c81d70aec69e629567abc23. Both fulfilled, Read/Download200 and byte-equal. CLI actual model remains unverified by metadata; no Opus/Sol document loop. Reports: runtime/rc1-document-smoke.json and rc1-claude-trust.json.
+
+Real browser Pre-flight showed6/6 ready and the polished cards; chat had Seats&launch -> /preflight and0 raw managed ids in visible text. Dismissed the one-time Welcome through its control. Two browser File objects (native file dialog not used) passed the real picker/HTTP route: f1 one.txt17B including BOM/CRLF, f2 two.txt14B;31 raw bytes; revision4748b2758fdbdbd0c73f6d7ed3296e5be2941ce1ae90e9379fd22bd60029a11e independently matches preview_packet. Start was not clicked: a multi-agent live packet review was skipped to keep calls bounded. Report: runtime/rc1-ui-packet-check.json.
+
+Signed inventory:17 live,0 uncertain, intentionally active and not cleanup-complete. Original checkout data manifest unchanged (1 file); both Pre-flight URLs return200. CLI frozen configs strip all3 referenced API names; proof is configuration plus tested native env construction, not process-memory inspection. Both pinned checkouts have0 tracked changes. No global config write, push, publication or deletion from RC1.
