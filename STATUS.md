@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 05:58 CDT. AGY and MiMo proofs pass; Hermes restore passes but hello is excluded. RC0 stopped intentionally, RC1 up. Final exports and links checked; no push.
+**Updated:** 2026-10-27 06:40 CDT. RC2 preparing for Seth's morning test. Hermes is free; native exit-2 cause pending. A small global-file disclosure fix passes68 focused tests.
 
 **START HERE (Seth)**
 
@@ -19,6 +19,10 @@ RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI 
 **UAT RC1:** `fdc6c275edb8d81f387c782aaeaf27a4e216816a`, http://127.0.0.1:50010/preflight. **Frozen: no merges reach this build.** Adds multi-file packets, effective CLI model defaults and reviewed UI ideas. Six seats ready; Claude is Haiku5.5 for the bounded check, while RC0 keeps Opus.
 Stop only RC1: `.audit-tmp/artifact-ui-rc1-euo3av0q/checkout/.audit-tmp/stop-rc1.ps1` from this integration worktree.
 **RC1 has no Antigravity seat (RC0 has it); daily Antigravity's distinct-name adapter passed its authorized real-file proof; it is not installed into this frozen build.** Hermes is excluded. RC1 contains dormant Hermes YAML adapter code with the known stale-backup B2 flaw; no Hermes seat or yaml_settings_file template is present, so that path cannot run. The AGY JSON adapter is absent.
+
+**RC2 plan:** separate frozen build with the reviewed adapters/defaults/packets/UI, MiMo Pro and AGY daily template. AGY is LEFT OUT/unlaunched by default; Seth selects Use + Launch to test its global entry. Other seven seats will be ready without new generation calls. Hermes is excluded until its native cause/fix is cleared. RC1 stays untouched; RC0 stays stopped.
+
+**Hermes is free:** ops handed it back06:27:14CDT with no owned process/gateway/listener and config SHAe67afc74...efa2; no later live launch occurred. No live launch after09:00; clean handback by09:30CDT so Seth can use it by10:00.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -360,3 +364,13 @@ RC0 signed inventory now reports0 live/0 uncertain and cleanup_complete true aft
 Final available-value export scan:50 files clean,26 historical paths absent/excluded. It covers current authorized API/incident variable values, active RC1 UI token and retained registry tokens. RC0's retired UI token cannot be fetched after Stop; the earlier29-file scan covered it while live. Separate MiMo15-file and AGY18-file scans captured their UI tokens in memory before Stop. Private MCP backups are not exports and were not presented as sanitized files.127 tracked Markdown files have0 broken links. No application test rerun was needed for these documentation-only updates.
 
 Next owner: Seth tries RC1 when ready and chooses the eventual publication window. Codex will not restart RC0, run more models, touch global config or publish without the applicable go-ahead. Remaining release gates are unchanged.
+
+### 2026-10-27 06:40 CDT Renewed Hermes diagnosis and RC2 disclosure fix
+
+Seth asked for AGY/Hermes morning testing and authorized RC2. The bounded read-only diagnosis found the retained command hermes.cmd, no model/reasoning/extra args, console_input and0.3s delay, matching his original launch config. Exact historical environment names were not stored: proof_server inherited os.environ, so no complete names list is claimed. Native source does not support an input-event fix; client had been alive about68s before the injected hello and exit2.
+
+The approved single05:28:34-05:29:45CDT agent.log window produced7 redacted lines, fake redactor tests passed. Initial display failed on a Unicode arrow; reviewer approved one ASCII re-render only after matching redacted SHA256c919831264de4776c48001dccc14de0ce0fc8c96007149c4b0c2f2f2de0ecdeb. Lines show no stdin/console error and no explicit exit-2 cause; the pre-existing agentchattr MCP connection was refused/parked nonfatally, while our uat entry connected. No errors.log read or window widening. Hermes's own answer is pending; no justified wrapper fix or further live launch. Early diagnosis checkpoint closed at11minutes; ops remains sole real-home writer if a concrete fix is later cleared.
+
+RC2 preparation exposed a real description defect: JSON/YAML entry modes were described as private configs. Three tests failed on that old text; the legacy-mode control passed. describe_providers now names the actual file and exact entry, backup-before-add/refresh, and Stop removal/conditional restore. Legacy settings_file/env/flag/proxy/env_content text is byte-unchanged.68 description/provider/CLI/default/provenance/pre-flight/protocol/security-guard tests pass in7.463s. No UI/JS or launch/auth behavior change. This code delta needs reviewer clearance before freezing RC2.
+
+Approved RC2 environment plan: reuse the trusted original venv, no install or copied environment; compare Scripts/ and site-packages names+sizes before/after the exact-tip full discovery, disable bytecode writes. Own code/root/ports/signing registry. AGY stays unlaunched by default to preserve global SHA62cf...2198d. Cleanup is inventory/staging only, nothing deleted; Opus handles only its own items,49970 retained, root owns the later repo-wide candidate list with sizes/owners/reasons.

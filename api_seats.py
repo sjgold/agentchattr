@@ -184,14 +184,25 @@ class SeatStore:
                 if cfg.get('type') != 'api' and cfg.get('command'):
                     from cli_seats import validate_cli_seat
                     validate_cli_seat({'model': None, 'reasoning': None, 'launch_profile': 'standard', 'secret_ref': ''}, cfg)
+                    effects = 'Launch writes a private MCP identity configuration for this seat. Native login is reused; no authentication home is copied.'
+                    mode = cfg.get('mcp_inject')
+                    if mode == 'settings_file':
+                        effects = ('Launch merges MCP identity into ' + str(cfg.get('mcp_settings_path')) +
+                                   ' and creates a backup. Only one seat may own this fixed settings path.')
+                    elif mode in ('yaml_settings_file', 'json_entry_file'):
+                        if mode == 'yaml_settings_file':
+                            from wrapper import YAML_SERVER_NAME
+                            entry = YAML_SERVER_NAME
+                        else:
+                            from json_mcp_settings import entry_name
+                            entry = entry_name(cfg.get('mcp_entry_name'))
+                        effects = ('Launch takes a backup of ' + str(cfg.get('mcp_settings_path')) +
+                                   ', then adds/refreshes only entry ' + entry + '. Stop removes that entry and restores the backup if the file has no other edits.')
                     result.append({'id': name, 'name': cfg.get('label', name), 'adapter': 'cli',
                                    'default_model': cfg.get('default_model'), 'models': [m for m in cfg.get('models', []) if isinstance(m, str)] if isinstance(cfg.get('models', []), list) else [],
                                    'reasoning_efforts': cfg.get('reasoning_efforts', []) if cfg.get('cli_reasoning_args') else [],
                                    'supports_model': bool(cfg.get('cli_model_args')), 'secret_ref': '',
-                                   'configuration_effects': ('Launch merges MCP identity into ' + str(cfg.get('mcp_settings_path')) +
-                                       ' and creates a backup. Only one seat may own this fixed settings path.'
-                                       if cfg.get('mcp_inject') == 'settings_file' else
-                                       'Launch writes a private MCP identity configuration for this seat. Native login is reused; no authentication home is copied.')})
+                                   'configuration_effects': effects})
                     continue
                 validate_provider(cfg)
                 models = cfg.get('models', [])
