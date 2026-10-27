@@ -1,6 +1,6 @@
 # Open pre-flight
 
-Python 3.11 or newer is required. These launchers open `/preflight`; Open chat goes to the existing chat page. They do not start agents or call providers. Agent/package launch controls are later tickets.
+Python 3.11 or newer is required. These launchers open `/preflight`. Use its seat editor to choose/configure a saved team, launch or reuse that team, then choose Open chat with this team. Opening the page alone does not launch agents.
 
 Windows: run `windows\start.bat`. To add a desktop shortcut, run `powershell -NoProfile -ExecutionPolicy Bypass -File windows\install_shortcut.ps1` from this checkout. The installer refuses an existing `Agentchattr.lnk`.
 

@@ -43,3 +43,13 @@ const Hub = (() => {
 // Make Hub available globally during the transition period.
 // Once all modules use ES imports, this can be removed.
 window.Hub = Hub;
+
+// Display aliases are separate from the canonical ids used by every action.
+window.agentDisplayLabels = {};
+function agentDisplayName(name) {
+    const key = String(name || '').toLowerCase(), labels = window.agentDisplayLabels;
+    if (typeof labels[key] === 'string') return labels[key];
+    const family = key.match(/^(?:api|cli)-[a-f0-9]{8}-/);
+    return family && typeof labels[family[0]] === 'string' ? labels[family[0]] : name;
+}
+window.agentDisplayName = agentDisplayName;

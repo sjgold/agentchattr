@@ -1945,10 +1945,26 @@ async def broadcast_hats():
     ws_clients.difference_update(dead)
 
 
+def agent_display_labels():
+    """Labels never participate in identity, routing or authorization."""
+    import hashlib
+    labels = registry.display_labels() if registry else {}
+    if api_seat_store is not None:
+        try:
+            for package in api_seat_store.list():
+                for seat in package['seats']:
+                    family = ('cli-' if seat['adapter'] == 'cli' else 'api-')
+                    family += hashlib.sha256((package['id'] + '/' + seat['id']).encode()).hexdigest()[:8] + '-'
+                    labels[family] = seat['name']
+        except (OSError, ValueError):
+            pass  # A held seat store must not hold chat display.
+    return labels
+
+
 async def broadcast_agents():
     """Send updated agent config (from registry) to all WebSocket clients."""
     agent_cfg = registry.get_agent_config() if registry else {}
-    data = json.dumps({"type": "agents", "data": agent_cfg})
+    data = json.dumps({"type": "agents", "data": agent_cfg, "labels": agent_display_labels()})
     dead = set()
     for client in list(ws_clients):
         try:
@@ -1994,7 +2010,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     # Send registered instances (used for pills/mentions)
     agent_cfg = registry.get_agent_config() if registry else {}
-    await websocket.send_text(json.dumps({"type": "agents", "data": agent_cfg}))
+    await websocket.send_text(json.dumps({"type": "agents", "data": agent_cfg, "labels": agent_display_labels()}))
 
     # Send base agent colors (used for message coloring, no pills)
     base_colors = {}

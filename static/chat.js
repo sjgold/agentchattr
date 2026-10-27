@@ -579,9 +579,10 @@ function handleServerEvent(event) {
         document.querySelectorAll('#messages .message').forEach(el => {
             // Regular chat messages
             const senderEl = el.querySelector('.msg-sender');
-            if (senderEl && senderEl.textContent === event.old_name) {
+            if (senderEl && (el.dataset.sender || senderEl.textContent) === event.old_name) {
 
-                senderEl.textContent = event.new_name;
+                el.dataset.sender = event.new_name;
+                senderEl.textContent = agentDisplayName(event.new_name);
                 senderEl.style.color = newColor;
                 // Update bubble accent color
                 const bubble = el.querySelector('.chat-bubble');
@@ -612,15 +613,17 @@ function handleServerEvent(event) {
             }
             // Join/leave messages (separate structure, no .msg-sender)
             const joinText = el.querySelector('.join-text strong');
-            if (joinText && joinText.textContent === event.old_name) {
+            if (joinText && (el.dataset.sender || joinText.textContent) === event.old_name) {
 
-                joinText.textContent = event.new_name;
+                el.dataset.sender = event.new_name;
+                joinText.textContent = agentDisplayName(event.new_name);
                 joinText.style.color = newColor;
                 const joinDot = el.querySelector('.join-dot');
                 if (joinDot) joinDot.style.background = newColor;
             }
         });
     } else if (event.type === 'agents') {
+        window.agentDisplayLabels = event.labels || {};
         applyAgentConfig(event.data);
     } else if (event.type === 'base_colors') {
         baseColors = event.data || {};
@@ -909,15 +912,16 @@ function appendMessage(msg, options = {}) {
     el.dataset.id = msg.id;
     const msgChannel = msg.channel || 'general';
     el.dataset.channel = msgChannel;
+    el.dataset.sender = msg.sender;
 
     if (msg.type === 'join' || msg.type === 'leave') {
         el.classList.add('join-msg');
         const color = getColor(msg.sender);
-        el.innerHTML = `<span class="join-dot" style="background: ${color}"></span><span class="join-text"><strong style="color: ${color}">${escapeHtml(msg.sender)}</strong> ${msg.type === 'join' ? 'joined' : 'left'}</span>`;
+        el.innerHTML = `<span class="join-dot" style="background: ${color}"></span><span class="join-text"><strong style="color: ${color}">${escapeHtml(agentDisplayName(msg.sender))}</strong> ${msg.type === 'join' ? 'joined' : 'left'}</span>`;
     } else if (msg.type === 'summary') {
         el.classList.add('summary-msg');
         const color = getColor(msg.sender);
-        el.innerHTML = `<div class="summary-card"><span class="summary-pill">Summary</span><span class="summary-author" style="color: ${color}">${escapeHtml(msg.sender)}</span><div class="summary-text">${escapeHtml(msg.text)}</div></div>`;
+        el.innerHTML = `<div class="summary-card"><span class="summary-pill">Summary</span><span class="summary-author" style="color: ${color}">${escapeHtml(agentDisplayName(msg.sender))}</span><div class="summary-text">${escapeHtml(msg.text)}</div></div>`;
     } else if (msg.type === 'job_proposal') {
         el.classList.add('proposal-msg');
         const meta = msg.metadata || {};
@@ -933,7 +937,7 @@ function appendMessage(msg, options = {}) {
             <div class="proposal-card ${isPending ? '' : 'proposal-resolved'}">
                 <div class="proposal-header">
                     <span class="proposal-pill">Job Proposal</span>
-                    <span class="proposal-author" style="color: ${color}">${escapeHtml(msg.sender)}</span>
+                    <span class="proposal-author" style="color: ${color}">${escapeHtml(agentDisplayName(msg.sender))}</span>
                 </div>
                 <div class="proposal-title">${title}</div>
                 ${body ? `<div class="proposal-body">${body}</div>` : ''}
@@ -959,7 +963,7 @@ function appendMessage(msg, options = {}) {
             <div class="proposal-card rule-proposal-card ${isPending ? '' : 'proposal-resolved'}">
                 <div class="proposal-header">
                     <span class="proposal-pill rule-proposal-pill">Rule Proposal</span>
-                    <span class="proposal-author" style="color: ${color}">${escapeHtml(msg.sender)}</span>
+                    <span class="proposal-author" style="color: ${color}">${escapeHtml(agentDisplayName(msg.sender))}</span>
                 </div>
                 <div class="rule-proposal-text">${ruleText}</div>
                 ${isPending ? `
@@ -1047,7 +1051,7 @@ function appendMessage(msg, options = {}) {
                 ).join('') + '</div>';
             }
         }
-        el.innerHTML = `<div class="todo-strip"></div>${isSelf ? '' : avatarHtml}<div class="chat-bubble" style="--bubble-color: ${senderColor}">${replyHtml}<div class="bubble-header"><span class="msg-sender" style="color: ${senderColor}">${escapeHtml(msg.sender)}</span>${rolePillHtml}<span class="msg-time">${msg.time || ''}</span><span class="msg-num">#${msg.id}</span></div><div class="msg-text">${textHtml}</div>${choicesHtml}${attachmentsHtml}<button class="convert-job-pill" onclick="startJobFromMessage(${msg.id}); event.stopPropagation();" title="Convert to job">convert to job</button><button class="bubble-copy" onclick="copyMessage(${msg.id}, event)" title="Copy message"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div><div class="msg-actions"><button class="reply-btn" onclick="startReply(${msg.id}, event)">reply</button><button class="todo-hint" onclick="todoCycle(${msg.id}); event.stopPropagation();">${statusLabel}</button><button class="delete-btn" onclick="deleteClick(${msg.id}, event)" title="Delete">del</button></div>`;
+        el.innerHTML = `<div class="todo-strip"></div>${isSelf ? '' : avatarHtml}<div class="chat-bubble" style="--bubble-color: ${senderColor}">${replyHtml}<div class="bubble-header"><span class="msg-sender" style="color: ${senderColor}">${escapeHtml(agentDisplayName(msg.sender))}</span>${rolePillHtml}<span class="msg-time">${msg.time || ''}</span><span class="msg-num">#${msg.id}</span></div><div class="msg-text">${textHtml}</div>${choicesHtml}${attachmentsHtml}<button class="convert-job-pill" onclick="startJobFromMessage(${msg.id}); event.stopPropagation();" title="Convert to job">convert to job</button><button class="bubble-copy" onclick="copyMessage(${msg.id}, event)" title="Copy message"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div><div class="msg-actions"><button class="reply-btn" onclick="startReply(${msg.id}, event)">reply</button><button class="todo-hint" onclick="todoCycle(${msg.id}); event.stopPropagation();">${statusLabel}</button><button class="delete-btn" onclick="deleteClick(${msg.id}, event)" title="Delete">del</button></div>`;
         if (todoStatus) el.classList.add('msg-todo', `msg-todo-${todoStatus}`);
         if (msg.metadata?.session_output) el.classList.add('session-output');
 
@@ -1186,6 +1190,7 @@ function applyAgentConfig(data) {
     agentConfig = {};
     for (const [name, cfg] of Object.entries(data)) {
         agentConfig[name.toLowerCase()] = cfg;
+        window.agentDisplayLabels[name.toLowerCase()] = cfg.label || name;
     }
     buildStatusPills();
     buildMentionToggles();
@@ -1198,9 +1203,10 @@ function applyAgentConfig(data) {
 function recolorMessages() {
     const msgs = document.querySelectorAll('.message[data-id]');
     for (const el of msgs) {
-        const sender = el.querySelector('.msg-sender');
+        const sender = el.querySelector('.msg-sender, .join-text strong, .summary-author, .proposal-author');
         if (!sender) continue;
-        const name = sender.textContent.trim();
+        const name = el.dataset.sender || sender.textContent.trim();
+        sender.textContent = agentDisplayName(name);
         const color = getColor(name);
         sender.style.color = color;
         // Update bubble color
@@ -1860,7 +1866,7 @@ function _syncBubbleRolePills(agentName) {
     document.querySelectorAll('.message').forEach(msg => {
         const senderEl = msg.querySelector('.msg-sender');
         const btn = msg.querySelector('.bubble-role');
-        if (!btn || !senderEl || senderEl.textContent !== agentName) return;
+        if (!btn || !senderEl || (msg.dataset?.sender || senderEl.textContent) !== agentName) return;
         btn.textContent = pillText;
         btn.title = role || 'Set role';
         btn.classList.toggle('has-role', !!role);

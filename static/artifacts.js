@@ -127,7 +127,7 @@ window.ArtifactDocuments = (() => {
         text(n.status, row ? cardLabel + textFor(row) + (s.offline ? ' (status unavailable)' : '')
             : s.notFound ? 'Not found yet (the earlier request may still finish)'
             : s.known?.unknown ? 'Not confirmed' : s.listBusy ? 'Loading sessions...' : s.selected ? '' : 'Choose a session to write from');
-        let detail = row ? (row.source.session_id ? 'Session ' + row.source.session_id : 'Imported source') + ' · ' + (row.author_name || 'Author unavailable') + ' · ' + row.source.message_count + ' source messages · '
+        let detail = row ? (row.source.session_id ? 'Session ' + row.source.session_id : 'Imported source') + ' · ' + ((window.agentDisplayName ? window.agentDisplayName(row.author_name) : row.author_name) || 'Author unavailable') + ' · ' + row.source.message_count + ' source messages · '
             + row.source.packet_bytes + ' bytes' + (row.source.source_so_far ? ' · Source so far' : ' · Completed source') : '';
         if (s.cancelWarning) detail += ' Document cancellation is unconfirmed; the worker may still be running.';
         if (s.storageUnavailable) detail += ' Browser status recovery is unavailable after reload.';

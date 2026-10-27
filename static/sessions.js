@@ -104,6 +104,7 @@ window._messageRenderers['session_draft'] = function (el, msg) {
     const tmpl = meta.template || {};
     const draftId = meta.draft_id || '';
     const proposedBy = meta.proposed_by || '?';
+    el.dataset.proposedBy = proposedBy;
     const revision = meta.revision || 1;
     const proposedByColor = window.getColor ? window.getColor(proposedBy) : 'var(--text-dim)';
 
@@ -124,7 +125,7 @@ window._messageRenderers['session_draft'] = function (el, msg) {
             <div class="proposal-card session-proposal-card session-proposal-invalid">
                 <div class="proposal-header">
                     <span class="proposal-pill">Session Proposal</span>
-                    <span class="proposal-author" style="color: ${proposedByColor}">${window.escapeHtml(proposedBy)}</span>
+                    <span class="proposal-author" style="color: ${proposedByColor}">${window.escapeHtml(window.agentDisplayName?.(proposedBy) || proposedBy)}</span>
                 </div>
                 <div class="proposal-title">Invalid session draft</div>
                 <div class="proposal-body session-proposal-desc">This draft needs changes before it can be run or saved.</div>
@@ -136,7 +137,7 @@ window._messageRenderers['session_draft'] = function (el, msg) {
                 </details>
                 <div class="proposal-actions">
                     <button class="proposal-request-changes" onclick="recheckSessionDraft(${msg.id}, this)">Check current limits</button>
-                    <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(proposedBy)}', ${msg.id})">Request Changes</button>
+                    <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(window.agentDisplayName?.(proposedBy) || proposedBy)}', ${msg.id})">Request Changes</button>
                     <button class="proposal-dismiss" onclick="dismissDraft(${msg.id})">Dismiss</button>
                 </div>
             </div>`;
@@ -165,7 +166,7 @@ window._messageRenderers['session_draft'] = function (el, msg) {
             <div class="proposal-card session-proposal-card">
                 <div class="proposal-header">
                     <span class="proposal-pill">Session Proposal</span>
-                    <span class="proposal-author" style="color: ${proposedByColor}">${window.escapeHtml(proposedBy)}</span>
+                    <span class="proposal-author" style="color: ${proposedByColor}">${window.escapeHtml(window.agentDisplayName?.(proposedBy) || proposedBy)}</span>
                     ${metaLabel ? `<span class="session-draft-meta">${metaLabel}</span>` : ''}
                 </div>
                 <div class="proposal-title">${window.escapeHtml(tmpl.name || '?')}</div>
@@ -177,7 +178,7 @@ window._messageRenderers['session_draft'] = function (el, msg) {
                 <div class="proposal-actions">
                     <button class="proposal-accept" onclick="runDraft(${msg.id})">Run</button>
                     <button class="proposal-request-changes session-draft-btn-save" onclick="saveDraft(${msg.id}, this)">Save Template</button>
-                    <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(proposedBy)}', ${msg.id})">Request Changes</button>
+                    <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(window.agentDisplayName?.(proposedBy) || proposedBy)}', ${msg.id})">Request Changes</button>
                     <button class="proposal-dismiss" onclick="dismissDraft(${msg.id})">Dismiss</button>
                 </div>
             </div>`;
@@ -217,7 +218,7 @@ async function recheckSessionDraft(messageId, button) {
         card.classList.remove('session-draft-invalid');
         window._messageRenderers.session_draft(card, {id: messageId, metadata: {
             draft_id: card.dataset.draftId, revision: Number(card.dataset.draftRevision),
-            proposed_by: card.querySelector('.proposal-author')?.textContent || 'coordinator',
+            proposed_by: card.dataset.proposedBy || card.querySelector('.proposal-author')?.textContent || 'coordinator',
             template: result.template, valid: result.valid, errors: result.errors,
         }});
     } catch (error) {
@@ -413,7 +414,7 @@ function updateSessionBar() {
         waitingEl.textContent = 'Waiting for your choice';
         waitingEl.style.display = '';
     } else if (s.state === 'waiting' && waitingAgent) {
-        waitingEl.textContent = `Waiting for ${waitingAgent}`;
+        waitingEl.textContent = `Waiting for ${window.agentDisplayName?.(waitingAgent) || waitingAgent}`;
         waitingEl.style.display = '';
     } else if (s.state === 'paused') {
         waitingEl.textContent = 'Paused';
@@ -1634,7 +1635,7 @@ function buildSessionCastEditor(tmpl, cast, assignees) {
         return (tmpl.roles || []).map(role => {
             const assigned = cast ? cast[role] : '';
             const options = assignees.map(a =>
-                `<option value="${window.escapeHtml(a)}" ${a === assigned ? 'selected' : ''}>${window.escapeHtml(a)}</option>`
+                `<option value="${window.escapeHtml(a)}" ${a === assigned ? 'selected' : ''}>${window.escapeHtml(window.agentDisplayName?.(a) || a)}</option>`
             ).join('');
             return `<div class="session-cast-row">
                 <span class="session-cast-role">${window.escapeHtml(role)}</span>
@@ -1647,7 +1648,7 @@ function buildSessionCastEditor(tmpl, cast, assignees) {
         const participantRows = (phase.participants || []).map(role => {
             const assigned = cast ? cast[role] : '';
             const options = assignees.map(a =>
-                `<option value="${window.escapeHtml(a)}" ${a === assigned ? 'selected' : ''}>${window.escapeHtml(a)}</option>`
+                `<option value="${window.escapeHtml(a)}" ${a === assigned ? 'selected' : ''}>${window.escapeHtml(window.agentDisplayName?.(a) || a)}</option>`
             ).join('');
             return `<div class="session-cast-row">
                 <span class="session-cast-role">${window.escapeHtml(role)}</span>
@@ -1796,7 +1797,7 @@ function showSessionLauncher() {
     // "Design a session" card -- lets user describe what they want and pick an agent to draft it
     const agents = _getAvailableAgents();
     const agentOptions = agents.map(a =>
-        `<option value="${window.escapeHtml(a)}">${window.escapeHtml(a)}</option>`
+        `<option value="${window.escapeHtml(a)}">${window.escapeHtml(window.agentDisplayName?.(a) || a)}</option>`
     ).join('');
     const designCard = `
         <div class="session-tmpl-card session-design-card">
@@ -2165,7 +2166,7 @@ function requestDraftChanges(draftId, proposedBy, msgId) {
     inputRow.innerHTML = `
         <textarea class="draft-changes-textarea" rows="2" placeholder="What changes do you want?"></textarea>
         <div class="draft-changes-btns">
-            <button class="session-draft-btn run" onclick="submitDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(proposedBy)}', ${msgId})">Send</button>
+            <button class="session-draft-btn run" onclick="submitDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(window.agentDisplayName?.(proposedBy) || proposedBy)}', ${msgId})">Send</button>
             <button class="session-draft-btn dismiss" onclick="dismissDraftChanges(this)">Cancel</button>
         </div>
     `;

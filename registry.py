@@ -519,6 +519,12 @@ class RuntimeRegistry:
         with self._lock:
             return {n: _inst_dict(i) for n, i in self._instances.items()}
 
+    def display_labels(self) -> dict[str, str]:
+        """Display-only names from persisted identities; no tokens or presence."""
+        with self._lock:
+            return {name: inst.label for name, inst in
+                    {**self._reclaimable, **self._instances}.items()}
+
     def get_agent_config(self) -> dict[str, dict]:
         """For WebSocket 'agents' message: {name: {color, label, base, state}}."""
         with self._lock:

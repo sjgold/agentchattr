@@ -2,13 +2,21 @@
 
 **Updated:** 2026-10-27. Documentation cleanup in verification; UAT remains running.
 
+**North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
+
+- Each ticket names the part of that goal it serves and an effort budget. Exceeding the budget, or encountering an untraceable gate, stops work for steering under Needs Seth.
+- Acceptance gates cite a spec location or Seth quote; otherwise they are advisory. The unsourced270ms target was withdrawn.
+- A milestone is done only after Seth has seen it work end to end. Reviewer/code-path acceptance is recorded separately.
+
 ## Now
 
-Documentation cleanup completed and reviewer-accepted on the retained full-run plus focused-correction evidence:110 byte-identical moves, repaired links and the full historical STATUS snapshot. Ticket20 remains reviewer-accepted. Five UAT seats are running; Antigravity's native login works but its managed launch needs an environment/config check.
+Documentation cleanup completed and reviewer-accepted on the retained full-run plus focused-correction evidence:110 byte-identical moves, repaired links and the full historical STATUS snapshot. Ticket20 remains reviewer-accepted. Naming correction implemented/tested, awaiting live server refresh. Five UAT seats are running; Antigravity's native login works but its managed launch needs an environment/config check.
 
 ## Needs Seth
 
-- [ ] Beyond the raw agent names, what else looked wrong on the main chat screen? Naming is already queued as a small defect fix after the cleanup run.
+- [ ] Beyond the raw agent names, what else looked wrong on the main chat screen? Naming is implemented/tested and will appear after the owned server refresh.
+
+- [ ] Decide later whether in-UI provider/template setup, credential entry, live model discovery and launch-and-go-chat belong in scope. They are absent today and are not being built tonight.
 
 ## Seats
 
@@ -25,7 +33,7 @@ Documentation cleanup completed and reviewer-accepted on the retained full-run p
 
 ## Next
 
-1. Naming fix: use existing durable labels for chat, session cast/owner, Documents and join/leave; preserve routing IDs. Small red-first fix, then focused checks.
+1. Live-check the tested naming correction after the owned server refresh; canonical routing IDs remain unchanged.
 2. Exercise real isolated start -> Pre-flight -> saved six-seat package -> launch -> Open chat. Diagnose managed agy environment within that flow; normal login is already confirmed by Seth.
 3. UI is part of the handoff and outranks Hermes/OMP: integrate the separate Opus UI branch only after reviewer clearance, then run focused UI checks. That agent owns Pre-flight/help/header-link layout; no overlapping edits here.
 4. Hermes/OMP CLI seats afterward if easy; otherwise explicit skip/cause. Existing logins only, time-boxed investigation first.
@@ -34,7 +42,7 @@ Documentation cleanup completed and reviewer-accepted on the retained full-run p
 
 ## UAT
 
-http://127.0.0.1:49949. Stop only this instance from the active worktree with `.audit-tmp/stop-ticket20-uat.ps1`.
+Chat: http://127.0.0.1:49949. Direct Pre-flight: http://127.0.0.1:49949/preflight. Stop only this instance from the active worktree with `.audit-tmp/stop-ticket20-uat.ps1`.
 
 The distinct Antigravity `agentchattr-uat` global MCP entry was backed up, added alone, then removed; remaining structure equals backup. Global trustedFolders was untouched. Exact backup hash/path and restore/removal instructions are in the [historical handoff](docs/history/STATUS-2026-10-26.md#requested-seats-final-nightly-verification) and private `.audit-tmp/ticket20-seat-morning.md`. MiMo parked; MiniMax not used.
 
@@ -82,3 +90,5 @@ Pure rename commit9fc6a4d contains exactly110 R100 entries. Baseline573 tracked 
 Cleanup regression update:88 focused tests pass. Artifact selection559 ran with9 explicit pending-transcript skips and one stale pre-activation expectation in test_artifact_capability_recovery (expected empty capabilities, actual reviewed artifact-v1). Product unchanged. Corrected that one test expectation in a separate test-only activation follow-up; retained all recovery/legacy assertions. Full discovery had not started, so the single full run follows this correction.
 
 Cleanup acceptance: full1939 ran404.096s with13 disclosed skips and4 subtest failures from one remaining pre-activation fresh-launch assertion. Corrected only that literal/comment; entire protocol-upgrade/capability/capability-recovery/workers/admission/operator core+routes80 PASS20.843s. Reviewer accepts combined evidence, no repeat full run now; final full run remains required before publication. Both failed runs remain recorded. Static sweep26 hits across10 files: remaining expectations are explicit disabled/denied/old/imported fixtures, plus historical browser harness source guards retained at their original pre-activation pin. Those tools are not current acceptance and were not weakened. No product code changed in the activation-test follow-ups.
+
+Naming fix: durable retained-identity labels plus saved-package family aliases are exposed as display-only WebSocket metadata. Chat/join/leave, session cast/design/owner/proposer and Documents author text use the label; role/action values retain canonical IDs. Three new tests first showed missing-seam/Node reds, then passed; the raw-render mutation produces a genuine assertion failure. Focused naming/UI/restart/identity/operator-route86 PASS5.968s; UI mutation63/63 killed; Node syntax checks pass. One existing HTTPError404 ResourceWarning appeared in the identity suite and is retained, not silently fixed. Product change is display-only; no authority/queue/store invariant change.
