@@ -280,3 +280,21 @@ Activation CANDIDATE, awaiting independent review: runtime_protocol.SUPPORTED_CA
 Post-review UAT, fixed providers: real Claude CLI with claude-haiku-5-5, Sonnet/lower fallback only if needed; no Fable/Opus, no helper agents. API author z.ai only, exact model/base URL must come from Seth/config, never guessed. Both paths: one small create -> author -> submit -> read -> exact download, stop at first problem; live-path evidence only, no UI/visual acceptance. Authorization is after full discovery and activation review only. Isolated fixture roots, owned signed process cleanup/baseline comparison, credential/token scans, no global/Omarchy/Desktop changes. No keys in chat/logs/receipts; existing API-seat secret_ref path or Seth's one-process masked input. CLI executable is installed; login has not been exercised. No z.ai provider exists in either project config/batch tree; local config absent. Need base URL/model slug/environment reference and masked key setup before API live testing. No live calls made.
 
 Next owner reviewer: review the activation candidate and sign-off for launch/UAT. Root then performs bounded Claude and z.ai checks when configuration is available. Ticket21/22 stay pending; final file cleanup/publication later, explicit push authorization still required. Optional desktop look only; phone-width/speed-screen/browser-harness work is withdrawn.
+
+## For Seth: Ticket20 UAT is running
+
+Open http://127.0.0.1:49949. Separate test data; normal installation data and known ports are unchanged. Both seats are ready. The instance stays running until you request stop.
+
+Worked: real Claude CLI, requested Haiku5.5, created/read/downloaded a124-byte document with identical bytes. Live z.ai glm-5.3 did the same with285 bytes; API response confirmed glm-5.3. CLI model confirmation remains honestly unverified. Rough live usage: one API generation, one Claude print probe and one Claude document generation; no Fable/Opus/helpers.
+
+Setup note: Claude's initial workspace-trust menu defaulted to No, causing the first CLI request to stall/exit. Only the empty owned UAT workspace was approved; a fresh source-bound seat/session then passed. The old request was durably cancelled, and a stale-source retry was refused without a new document. No product fix was needed. One owned setup restart loaded the authorized z.ai environment; a later refresh rebound the test sessions. Previous API data survived the restart. Historical failures are retained.
+
+Features are frozen, code is not: Seth's correction permits minimal fixes to defects in existing features with focused checks, without new features/refactors/harness/timing work. Ticket21/22 remain pending until20 acceptance. Activation cfcbdf1 was independently signed off with112 reviewer tests; prior full1936/13 skips remains retained.
+
+Stop in PowerShell: `& 'C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\stop-ticket20-uat.ps1'`. This requests cooperative shutdown of this instance and its seats only. Signed births remain for verification; the active inventory has7 owned live processes, so no cleanup-complete claim is made while it is running. No browser/profile was created for live UAT. No push/publication/deletion.
+
+The12 short UAT steps are in the shared Ticket20 UAT artifact and .audit-tmp/ticket20-uat-handoff.md. Choose Documents in #general, then Claude UAT source or z.ai UAT source. Those are declared synthetic accepted fixture sessions. Live checks cover the API/CLI paths, not visual UI acceptance. Optional desktop look only; no phone/speed/browser gate.
+
+Credential handling: only the authorized ZAI_API_KEY line from the user's .env was read into child environment memory; no key value in config, arguments, logs, receipts or summaries. Provider block is confined to the owned root's config.local.toml. No other .env key was parsed; no normal-install config was copied. Exact Desktop/agentchatrr reference was absent, so no broad search or launch/write there occurred. Native Claude login was reused without copying an authentication home.
+
+Next owner reviewer: final Ticket20 sign-off on these live results. Root keeps the instance up for Seth;21/22 stay pending until acceptance. All non-blocking findings remain notes, not new work.

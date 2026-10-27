@@ -1,10 +1,10 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (full1936 green/13 disclosed skips; activation candidate112 focused green, reviewer next;21/22 pending)
+**Updated:** 2026-10-26 (UAT running on49949; real Claude and z.ai document paths pass; final20 sign-off pending)
 
 ## At a glance
 
-**Ticket 19 is published and closed. Ticket 20 storage, disabled capability gate and internal admission/recovery are independently accepted. The wrapper-purpose contract is approved and helper components pass; configured API/CLI entries and transport/MCP/factory are independently component-cleared, and corrected full discovery passes. Published artifact production remains disabled; the local activation candidate is awaiting review and has not been launched.**
+**Ticket19 is published. Ticket20 activation is independently signed off; both live document paths now pass. The isolated UAT instance is running for Seth at http://127.0.0.1:49949. Ticket21/22 remain pending final20 acceptance.**
 
 | Checkpoint | Status |
 | --- | --- |
@@ -16,9 +16,19 @@
 | Browser acceptance | Root PASS plus bounded independent Sonnet reproduction in separate isolated Electron Chromium sessions |
 | Cleanup | All acceptance resources stopped; no model/API runtime and no unresolved resources |
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
-| Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
-| Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer: activation candidate review. Root then bounded real Claude/z.ai UAT when configured. Ticket21/22 pending until20 acceptance; no extra features or harness work. |
+| Ticket20 | Reduced manual-document implementation and activation independently reviewed. Live Claude/z.ai create/read/download passed; final20 sign-off pending. |
+| Latest checks | Full1936 OK/13 disclosed skips; activated candidate112 focused/root and112 reviewer tests pass. Live CLI124B/API285B exact read-download matches. |
+| Next | Reviewer final20 sign-off; Seth UAT on49949. Instance stays up;21/22 pending acceptance. No new features, harnesses or timing work. |
+
+## For Seth: UAT is ready
+
+Open http://127.0.0.1:49949. Both seats are ready; this uses separate test data.
+
+- Worked: real Claude CLI (requested Haiku5.5) and z.ai GLM5.3 each authored, saved, read and downloaded matching bytes.
+- Setup note: Claude needed its empty UAT workspace trusted. No product fix; earlier failed/refused requests remain recorded.
+- Pending: final20 sign-off.21/22 remain pending acceptance. Features are frozen; real defects can be fixed. No more browser/speed/phone work.
+
+Stop: run [.audit-tmp/stop-ticket20-uat.ps1](.audit-tmp/stop-ticket20-uat.ps1) in PowerShell. It stops only this instance and its seats. The shared Ticket20 UAT artifact has6 steps per path. Instance stays running until Seth says stop. No push/publication.
 
 ## Ticket20 frozen regression and activation candidate, 2026-10-26/27
 
@@ -1227,3 +1237,21 @@ Seth: "pend 21 to after acceptance" (reviewer relay). Ticket21 and22 are pending
 270ms/216ms were docs/reviewer targets without a derived baseline; reviewer withdraws them at Seth's request. Only the existing1.0s basic timing ceiling remains; import300ms is report-only. Standalone tools now use1.0s for timing failures; historical comparative values/misses remain. Safety/error/retry/ownership checks unchanged. No speed-screen tool or new timing campaign.
 
 Threshold-only verification:24 applicable checkpoint controls passed3.009s;9 transcript tests explicitly skipped pending Ticket20 acceptance. Running all31 historical tool controls exposed3 pre-existing frozen4968 product-hash assumptions; the unchanged historical verify_frozen_product guard was re-executed from HEAD and confirmed to reject the current post-Q/backend product too. Their failure record is retained, the guard is not weakened. These tools are not root discovery. Remaining4 tail controls passed in that31 run. Frozen root full discovery next, no measurement campaign.
+
+## Live UAT detailed receipt (retained reference)
+
+Open http://127.0.0.1:49949. Separate test data; normal installation data and known ports are unchanged. Both seats are ready. The instance stays running until you request stop.
+
+Worked: real Claude CLI, requested Haiku5.5, created/read/downloaded a124-byte document with identical bytes. Live z.ai glm-5.3 did the same with285 bytes; API response confirmed glm-5.3. CLI model confirmation remains honestly unverified. Rough live usage: one API generation, one Claude print probe and one Claude document generation; no Fable/Opus/helpers.
+
+Setup note: Claude's initial workspace-trust menu defaulted to No, causing the first CLI request to stall/exit. Only the empty owned UAT workspace was approved; a fresh source-bound seat/session then passed. The old request was durably cancelled, and a stale-source retry was refused without a new document. No product fix was needed. One owned setup restart loaded the authorized z.ai environment; a later refresh rebound the test sessions. Previous API data survived the restart. Historical failures are retained.
+
+Features are frozen, code is not: Seth's correction permits minimal fixes to defects in existing features with focused checks, without new features/refactors/harness/timing work. Ticket21/22 remain pending until20 acceptance. Activation cfcbdf1 was independently signed off with112 reviewer tests; prior full1936/13 skips remains retained.
+
+Stop in PowerShell: `& 'C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\stop-ticket20-uat.ps1'`. This requests cooperative shutdown of this instance and its seats only. Signed births remain for verification; the active inventory has7 owned live processes, so no cleanup-complete claim is made while it is running. No browser/profile was created for live UAT. No push/publication/deletion.
+
+The12 short UAT steps are in the shared Ticket20 UAT artifact and .audit-tmp/ticket20-uat-handoff.md. Choose Documents in #general, then Claude UAT source or z.ai UAT source. Those are declared synthetic accepted fixture sessions. Live checks cover the API/CLI paths, not visual UI acceptance. Optional desktop look only; no phone/speed/browser gate.
+
+Credential handling: only the authorized ZAI_API_KEY line from the user's .env was read into child environment memory; no key value in config, arguments, logs, receipts or summaries. Provider block is confined to the owned root's config.local.toml. No other .env key was parsed; no normal-install config was copied. Exact Desktop/agentchatrr reference was absent, so no broad search or launch/write there occurred. Native Claude login was reused without copying an authentication home.
+
+Next owner reviewer: final Ticket20 sign-off on these live results. Root keeps the instance up for Seth;21/22 stay pending until acceptance. All non-blocking findings remain notes, not new work.
