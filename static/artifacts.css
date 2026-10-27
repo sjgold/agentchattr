@@ -1,7 +1,7 @@
 .artifact-documents {
     box-sizing: border-box; padding: 18px 20px; background: var(--bg-header);
     color: var(--text); border-bottom: 1px solid var(--border); overflow: auto;
-    max-height: 58vh; min-height: 0; flex-shrink: 0; overflow-wrap: anywhere;
+    max-height: 58vh; min-height: 96px; flex-shrink: 1; overflow-wrap: anywhere;
 }
 .artifact-documents[hidden], .artifact-documents [hidden] { display: none !important; }
 .artifact-heading, .artifact-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }

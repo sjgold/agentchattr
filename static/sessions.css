@@ -5,7 +5,9 @@
     border-bottom: 1px solid var(--border);
     max-height: 42vh;
     overflow: auto;
-    flex-shrink: 0;
+    /* Shares leftover height with other panels so the composer stays on screen. */
+    flex-shrink: 1;
+    min-height: 96px;
     font-size: 14px;
     overflow-wrap: anywhere;
 }
@@ -837,6 +839,12 @@
 
 .session-draft-card .session-capacity-note {
     margin: 12px 0;
+}
+
+/* Short windows: a smaller source box keeps the template list in view. */
+@media (max-height: 820px) {
+    .session-launcher-dialog { max-height: 94vh; }
+    .session-launcher-dialog .session-source-editor textarea { min-height: 0; height: 80px; }
 }
 
 /* In the launcher the limits are reference text, not the first thing to read. */
