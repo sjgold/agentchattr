@@ -172,6 +172,21 @@ class ManageChannelsReadabilityTests(unittest.TestCase):
         self.assertRegex(body, r'box-shadow:\s*none')
 
 
+class ManageChannelsHeaderTests(unittest.TestCase):
+    def test_create_and_reload_sit_in_the_title_row(self):
+        # Idea 4: the two catalog actions join Close in the dialog's title row instead of
+        # stacking like list items.
+        js = (STATIC / 'channel-lifecycle.js').read_text(encoding='utf-8')
+        body = js[js.index('function renderManager'):js.index('const layout = node(')]
+        self.assertIn("'channel-manager-header-actions'", body)
+        actions = re.search(r"actions\.append\(([^;]*)\);", body)
+        self.assertIsNotNone(actions, 'header actions group missing')
+        for label in ('Create channel', 'Reload catalog', 'Close'):
+            self.assertIn(f"button('{label}'", actions.group(1))
+        self.assertNotIn("list.appendChild(button('Create channel'", js)
+        self.assertIn('.channel-manager-header-actions', sheet('channel-lifecycle.css'))
+
+
 class InputBorderTests(unittest.TestCase):
     """Idea 1: text boxes need a visible edge (WCAG 1.4.11 asks 3:1 for field boundaries)."""
     FIELDS = (('preflight.css', '.preflight-page input, .preflight-page select'),
