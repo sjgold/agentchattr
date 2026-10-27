@@ -230,7 +230,7 @@ function dismissUpdate(e, version) {
 
 function init() {
     // Configure marked for chat-style rendering
-    marked.setOptions({
+    if (typeof marked !== 'undefined') marked.setOptions({
         breaks: true,      // single newline → <br>
         gfm: true,         // GitHub-flavored markdown
     });
@@ -260,6 +260,9 @@ function init() {
 }
 
 function renderMarkdown(text) {
+    if (typeof marked === 'undefined') {
+        return escapeHtml(text).replace(/\r\n|\r|\n/g, '<br>');
+    }
     // Protect Windows paths from escape replacement (e.g. \tests → tab, \new → newline)
     const pathSlots = [];
     text = text.replace(/[A-Z]:[\\\/][\w\-.\\ \/]+/g, (m) => {

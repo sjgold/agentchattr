@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 02:19 CDT. CLI credential isolation fixed/tested; independent review and UAT CLI refresh pending.
+**Updated:** 2026-10-27 02:26 CDT. Seven UAT seats refreshed with CLI key isolation; offline chat fallback tested. Ticket23 contract/reds next.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -158,3 +158,11 @@ Reviewer found that server API keys could reach native CLI processes through inh
 The failed first red accidentally formatted ambient env values; it was corrected to fake-only patch.dict(clear=True) plus boolean assertions and rerun red safely. The new AST assertion guard observed8 unsafe os.environ-container assertion sites (4 in test_config_overrides,4 in the new key tests), now rewritten without changing their predicates. Every future handoff scan includes the five incident variable names' current values in memory, without printing them. Full incident scan result is .audit-tmp/incident-export-scan.json; transcript output remains retained outside exports.
 
 UAT's Claude, Codex, Antigravity and OMP launches inherited ZAI_API_KEY, DEEPSEEK_API_KEY and META_API_KEY by the prior server/worker construction. This is established from the authorized startup env and snapshots, not a process-memory dump. Their restart with stripped environments is pending independent security clearance. No new live model call. Primary server remains available.
+
+### 2026-10-27 02:26 CDT UAT refresh and offline chat
+
+Security fix51a53b6 cleared by reviewer (51 focused reviewer tests). Owned UAT cooperative refresh completed:7/7 ready,0 model prompts. Fresh Claude/Codex/AGY/OMP effective snapshots include all3 referenced API names in strip_env; filtering name-presence probes gives false for all3 on each CLI. Verification is launch construction plus immutable snapshots, not process-memory inspection. Public report cli-api-key-isolation-check.json.
+
+Offline CDN defect: init and renderMarkdown threw ReferenceError when marked was absent. After correcting one Node test argv-fixture error,2 genuine reds were observed and the normal-parser control passed. Added a guard around marked setup and an early escaped-plain-text/line-break fallback, preserving literal paths and code-looking text safely.92 offline/naming/chat-empty/help/Documents/pre-flight/assertion-guard tests pass in8.766s; node --check passes. No vendoring, network call or other audit cleanup.
+
+Daily-model follow-up approved: Opus will add a CLI default_model fallback after Hermes, then the entry-only AGY JSON option. Blank model uses the template default; explicit model wins; no configured default preserves native behavior. AGY daily template will default to gemini-3.8-flash-medium and suggest high/medium/low. PyYAML is already installed transitively; Opus is authorized to declare PyYAML>=6.0 explicitly for the Hermes adapter.
