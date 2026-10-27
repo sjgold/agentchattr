@@ -315,6 +315,6 @@ Full1936/13 explicit skips and focused112/independent112 checks stand. Live CLI1
 
 ## Nightly requested-seat handoff
 
-Five selected seats ready in isolated UAT: claude-opus-5-5, gpt-6.1-sol, deepseek-flash, muse-spark-1.3-contributor, glm-5.3. MiniMax omitted for missing key; agy deferred for model/global-MCP confirmation. No new product feature: configuration only after the two reviewed UI defects. Full details and preflight code references are in the Ticket20 seat artifact and STATUS morning note. No new model calls or21/22/cleanup/publication work after this handoff; instance remains up for Seth.
+Five selected seats ready in isolated UAT: claude-opus-5-5, gpt-6.1-sol, deepseek-flash, muse-spark-1.3-contributor, glm-5.3. MiniMax not used (Seth corrected the provider to Xiaomi MiMo). MiMo awaits key env var name, base URL and model slug; agy awaits model/global-MCP confirmation. No new product feature: configuration only after the two reviewed UI defects. Full details and preflight code references are in the Ticket20 seat artifact and STATUS morning note. No new model calls or21/22/cleanup/publication work after this handoff; instance remains up for Seth.
 
 Final nightly export scan: 33 files clean against available authorized credentials and owned session/registry tokens. Earlier seven-live-process inventory is historical, before the expanded team; current instance is left running, not cleanup-complete.

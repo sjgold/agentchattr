@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 night (two UI fixes cleared; five requested seats ready; MiniMax/agy deferred; morning handoff, work stopped)
+**Updated:** 2026-10-26 night (two UI fixes cleared; five requested seats ready; MiMo/agy pending; MiniMax not used; morning handoff, work stopped)
 
 ## Morning note for Seth
 
@@ -9,7 +9,7 @@
 - Claude claude-opus-5-5 and Codex gpt-6.1-sol: one OAuth hello each passed; managed seats ready. Codex needed one isolated MCP-config fix; global settings unchanged.
 - DeepSeek deepseek-flash: one hello passed. GLM glm-5.3: prior document check retained, no extra generation.1070 has no mapping in DeepSeek's model list.
 - Muse muse-spark-1.3-contributor: passed with512-token cap after32/128 caps;3 authorized calls total. No older-model substitution.
-- MiniMax MiniMax-M3 is configured but omitted: key line missing, latest unverified,0 generations. Antigravity4.8 is not listed (only3.8 Flash variants); global-MCP permission pending,0 generations.
+- MiMo seat pending Seth: key env var name, base URL, model slug. MiniMax not used (Seth corrected the provider name). Antigravity4.8 is not listed (only3.8 Flash variants); global-MCP permission pending,0 generations.
 - Preflight model/seat editing IS built; URLs/templates need config and CLI model flags must be declared. UAT mappings are wired; see the detailed seat report for file:line and exact evidence/call limits.
 - Stop via .audit-tmp/stop-ticket20-uat.ps1. Non-blocking UI notes (raw IDs, old duplicate labels, queue badge, departure lines) remain notes only.
 - Waiting for Seth: Ticket21 go, file-cleanup go, publication go. Work stops here; no new features, helpers, deletion or push.
@@ -30,7 +30,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | REVIEWER ACCEPTED atfaab835; activationcfcbdf1 reviewed. Both real-agent paths passed. Seth UAT remains open. |
 | Latest checks | Full1936 OK/13 disclosed skips; activated candidate112 focused/root and112 reviewer tests pass. Live CLI124B/API285B exact read-download matches. |
-| Next | Seth morning UAT on49949. Five ready seats; MiniMax key/agy model+global-MCP decisions pending.21/22, cleanup and publication await his go. Work stopped. |
+| Next | Seth morning UAT on49949. Five ready seats; MiMo connection details/agy model+global-MCP decisions pending.21/22, cleanup and publication await his go. Work stopped. |
 
 ## Initial two-path UAT handoff (historical; see morning note)
 
@@ -1293,7 +1293,8 @@ UAT: http://127.0.0.1:49949. Reload the page; open /preflight for the saved team
 |DeepSeek|deepseek-flash|Only advertised Flash alias; API-seat request helper returned OK and confirmed this model; managed API adapter ready.|1 API completion|
 |Muse|muse-spark-1.3-contributor|Latest contributor listed; final API-seat hello passed/confirmed at512-token cap (148 completion tokens, OK); adapter ready.|3 authorized bounded completions:32/128/512|
 |GLM|glm-5.3|Still latest main GLM listed; prior real document create/read/download passed,285B match; current adapter ready.|1 earlier document call;0 extra|
-|MiniMax|MiniMax-M3 (existing default, latest unverified)|MINIMAX_API_KEY line missing (rechecked including BOM/whitespace/export forms). Unauthenticated /models401. Configured but omitted; no further attempts.|0 completions|
+|MiMo|Pending Seth|Key env var name, base URL, model slug needed. No setup or credential search tonight.|0 completions|
+|MiniMax (historical)|Not used|Seth corrected the requested provider to Xiaomi MiMo; earlier missing-key check retained as history.|0 completions|
 |Antigravity|4.8 not found|agy models lists gemini-3.8-flash-high/medium/low only. Not wired or generated: model/level needs confirmation and global MCP merge needs explicit yes.|0 completions|
 
 Earlier real Haiku document and z.ai document-flow evidence remains retained. The new Opus/Sol checks are native single hellos plus managed startup, not new full document runs. CLI counts are native invocations; no Fable or helper agents were used. Opus reported one turn. Sol reported5 output tokens/zero reasoning-output/tool items; its standard CLI context was29,152 input tokens (12,416 cached), despite the tiny answer. No retry of either generation.
@@ -1313,7 +1314,7 @@ The runtime UI's provider-confirmed badge changes only after that running seat's
 ## Pending decisions
 
 - Seth: Ticket21 go, file-cleanup go, publication go. None started.
-- MiniMax: add the authorized key line before a future test; no further attempts tonight.
+- MiMo seat pending Seth: key env var name, base URL, model slug. MiniMax is not used; the earlier request named the wrong provider.
 - Antigravity: confirm the advertised3.8 Flash level or another available model, and explicitly approve any reversible/backup-first global MCP merge. No ~/.gemini MCP file was written.
 - Optional proposal only: promote sanitized provider-template blocks (environment-variable names, never values) into repository configuration after Seth's yes. Only the isolated root was configured tonight.
 
@@ -1321,6 +1322,6 @@ Stop only this instance from PowerShell:
 
 `& 'C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\stop-ticket20-uat.ps1'`
 
-A future owned reload (after an authorized key update) uses .audit-tmp/reload_live_uat.py; it reads only the four authorized key lines into child environment memory. Keep MiniMax omitted until its key and model are verified. Existing failed/cancelled/refused attempts and signed births are retained. No deletion, file cleanup, new feature, new browser harness, timing campaign or push.
+A future owned reload (after an authorized key update) uses .audit-tmp/reload_live_uat.py; it reads only the four authorized key lines into child environment memory. Keep MiniMax omitted. Do not read a MiMo credential until Seth names and authorizes that line. Existing failed/cancelled/refused attempts and signed births are retained. No deletion, file cleanup, new feature, new browser harness, timing campaign or push.
 
 Final handoff check: 33 public reports/config-reference/log files passed the available authorized API-key, UI-token and owned-registry token/nonce scan. Documentation diff reviewed; no product changes in this handoff. The running instance is intentionally not cleanup-complete.
