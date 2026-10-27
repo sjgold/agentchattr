@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 01:40 CDT. Pre-flight retry/Leave out fixes tested; reviewer pass requested before relying on ownership refresh.
+**Updated:** 2026-10-27 01:43 CDT. Pre-flight restart fixes reviewed; Hermes adapter delegated; multi-file proposal awaits scope confirmation.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -20,6 +20,8 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 
 - [ ] Decide later whether in-UI provider/template setup, credential entry, live model discovery belong in scope. These setup features are absent today; launch-and-go-chat is now implemented and exercised.
 
+- [ ] [Ticket23 multi-file proposal](docs/plans/2026-10-27-multi-file-packets.md): approve the bounded slice/checkpoint, starting aggregate capacity and file-id quote contract before code.
+
 ## Seats
 
 |Seat|Model|Current check/status|
@@ -35,8 +37,8 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 
 ## Next
 
-1. Fix pre-flight restart dead ends and forgotten Leave out choices, preserving ownership checks.
-2. Build/test Hermes YAML support on temporary homes. Reviewer approval before any real-home write, then one tiny request with the existing login.
+1. Pre-flight retry/Leave out fixes0251004 are reviewer-cleared; keep the running UAT instance available.
+2. Opus implements Hermes YAML support on temporary homes in its own worktree. Codex integrates its reviewed pin; explicit reviewer approval before any real-home write, then one tiny request with the existing login.
 3. Ticket23 MultiPackets plan only, then authorized Ticket21 and22.24-26 remain uncleared.
 4. Final activation review and regression before publication. Push requires Seth's explicit go-ahead.
 
@@ -58,7 +60,7 @@ The distinct Antigravity `agentchattr-uat` global MCP entry is currently active 
 - 2026-10-27 01:37 CDT: Seth: "so we dont split brain hermes use my normal home". Normal HERMES_HOME is authorized with a distinct agentchattr-uat YAML entry, backup, structural diff and exact-entry removal at stop. Adapter review precedes the first real write.
 - No push/publication without Seth's explicit go-ahead. No deletions. No Fable/helper calls. No new keys. Global writes require the approved backup/distinct-entry/structural-diff/removal protocol and Seth's permission.
 
-Next owner: Codex handles pre-flight restart defects, then the reviewed Hermes adapter. Focused regressions and reviewed real-home config changes are the completion criteria.
+Next owners: Opus prepares the Hermes adapter and fixture tests; reviewer checks the pinned diff; Codex integrates and operates the normal-home seat only after clearance. Ticket21 waits for Hermes to finish or be explicitly skipped.
 
 ## Verification and limits
 
@@ -109,3 +111,7 @@ Reviewed UI pin0078e74 is merged at0e985ad;69 focused tests passed in6.330s. The
 Observed reds: a cold manager forgot the saved CLI omission, and Retry rejected a CLI whose worker/client exit had become provable after startup. Explicit Launch/Retry now refreshes existing runtime reconciliation before applying the unchanged launch guard. Uncertain/live/missing evidence still blocks. This cannot make a truly unproven child exit safe; that case remains blocked for ownership recovery.
 
 Cold package status restores only saved omitted-seat checkbox choices for the exact current package revision. It restores no selection id, readiness, process handle or launch authority. Changed packages ignore old choices.61 package-launch/receipt/runtime-adoption/ownership/pre-flight UI tests pass in7.112s. No live seats restarted; ownership-related delta goes to reviewer before live use. Next: reviewed Hermes YAML adapter on temporary homes, real write only after explicit reviewer clearance.
+
+### 2026-10-27 01:43 CDT Review and multi-file proposal
+
+Reviewer cleared0251004 after reading the ownership delta and rerunning33 package/pre-flight tests. His approved split assigns Hermes wrapper.py/cli_seats.py/helper/temp-home tests to Opus, while Codex retains integration, STATUS and the Ticket23 plan. No real Hermes file has been written. The multi-file proposal is documentation only: existing512KiB source cap is a starting proposal, not a new settled gate. No23 product code, no new live calls, no push.
