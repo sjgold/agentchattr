@@ -1,8 +1,9 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:37 CDT. Both frozen UAT builds remain up. Integration adapter cleanup/provenance passes298 focused tests; publication note pending review.
+**Updated:** 2026-10-27 04:40 CDT. Both frozen builds are available. Integration cleanup/provenance passes298 focused tests; publication-readiness draft is with the reviewer, no push.
 
 **START HERE (Seth)**
+
 1. Open RC1: http://127.0.0.1:50010/preflight.
 2. Check the six-seat team, then click Launch team and open chat (reuse is fine).
 3. In chat, use Documents: pick a completed source session, request a short document, then Read/Download.
@@ -32,6 +33,8 @@ RC1 is available for comparison with RC0. Its final frozen discovery passed2164 
 RC0 is unchanged and retains Antigravity. Hermes stays deferred: the running-path guard is integrated, but the Windows.cmd Stop limitation, pending stale-backup fix and Seth's existing Hermes process still prevent a real-home run. No Hermes home write/call happened.
 
 ## Needs Seth
+
+- [ ] Hermes: keep it deferred or arrange a safe review of the existing normal-home process61816 before a managed test. No agent will stop it automatically. Real Hermes/AGY adapter checks remain off until the client-running conditions and explicit go are met.
 
 - [ ] Release limit: corrected restart of a multi-file review does not edit the file list; changed files are reselected in a new review.
 
@@ -312,3 +315,9 @@ RC1 handoff was independently accepted: reviewer checked both HTTP endpoints, li
 Reviewed every mcp_* setting read through cli_worker, wrapper and cli_seats for JSON/YAML launch. Nine consumed settings were found: mcp_inject, mcp_settings_path, mcp_http_key, mcp_transport, mcp_entry_name, mcp_env_var, mcp_flag, mcp_merge_project and mcp_proxy_flag_template. Only mcp_entry_name was missing from the explicit retained-provenance whitelist; added that key. URL ports remain in the separate frozen mcp object, and the loopback host is fixed by _get_server_url. YAML's entry name is a code constant; JSON uses the newly bound setting.
 
 Three tests observed2 real failures (missing key sweep, equal provenance fingerprints after an entry change) and1 existing tampered-snapshot refusal pass. After the one-key fix,298 adapter/worker/CLI/default/runtime/ownership/protocol/key/security-guard tests pass in7.015s. An entry edit changes provenance and requires deliberate restart; a tampered entry snapshot is refused before apply/birth. Default-model keys remain intact. No live adapter write or model call, and neither UAT build changed.
+
+### 2026-10-27 04:40 CDT Publication-readiness draft prepared
+
+Reviewer draft: docs/project/PUBLICATION-READINESS.md. It compares local main400d6de to codepinc662722:316 changed files,585564 added/1631 removed lines;543295 added lines are retained historical docs.605 files tracked at that code pin; all7 checked private/local categories ignored and0 private paths tracked. The new note/STATUS commit adds documentation after those measurements. No remote target freshness claim or push authorization.
+
+The note separates the tested RC1 from later integration adapter fixes, requires a final frozen full run before publishing a different code pin, lists deferred seats/post-launch scope, and spells out the exact approval/deployment steps. It is pending reviewer review before being presented as publication guidance. Both RC0 and RC1 stay running. Next owner: reviewer checks c662722 and this note; Codex applies only concrete review fixes, with no live calls or global writes.
