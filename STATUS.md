@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:40 CDT. Both frozen builds are available. Integration cleanup/provenance passes298 focused tests; publication-readiness draft is with the reviewer, no push.
+**Updated:** 2026-10-27 04:43 CDT. Integration adapter/provenance and publication note are reviewer-cleared. Both frozen UAT builds stay unchanged; waiting for Seth's RC1 verdict.
 
 **START HERE (Seth)**
 
@@ -18,7 +18,7 @@ RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI 
 
 **UAT RC1:** `fdc6c275edb8d81f387c782aaeaf27a4e216816a`, http://127.0.0.1:50010/preflight. **Frozen: no merges reach this build.** Adds multi-file packets, effective CLI model defaults and reviewed UI ideas. Six seats ready; Claude is Haiku5.5 for the bounded check, while RC0 keeps Opus.
 Stop only RC1: `.audit-tmp/artifact-ui-rc1-euo3av0q/checkout/.audit-tmp/stop-rc1.ps1` from this integration worktree.
-**RC1 has no Antigravity seat (RC0 has it); daily Antigravity needs the reviewed distinct-name adapter, in review.** Hermes is excluded. RC1 contains dormant Hermes YAML adapter code with the known stale-backup B2 flaw; no Hermes seat or yaml_settings_file template is present, so that path cannot run. The AGY JSON adapter is absent.
+**RC1 has no Antigravity seat (RC0 has it); daily Antigravity needs a separately authorized live check of the reviewed distinct-name adapter.** Hermes is excluded. RC1 contains dormant Hermes YAML adapter code with the known stale-backup B2 flaw; no Hermes seat or yaml_settings_file template is present, so that path cannot run. The AGY JSON adapter is absent.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -62,7 +62,7 @@ RC0 is unchanged and retains Antigravity. Hermes stays deferred: the running-pat
 ## Next
 
 1. Seth compares the frozen builds through Pre-flight and chat. RC1:50010 has the new UI/packets/defaults; RC0:49949 keeps the earlier build and AGY. Report defects in this handoff before any publication.
-2. Reviewer checks the RC1 operational results and export scan. No additional model calls are planned.
+2. RC1 handoff is accepted. After Seth's verdict, freeze the chosen publication tip for its final full discovery, remote-target comparison and explicit push decision. [Publication readiness](docs/project/PUBLICATION-READINESS.md) is reviewer-cleared; no push is authorized.
 3. Hermes and daily AGY injection remain deferred. The Windows owned process-tree Stop design and picker/source-label notes are in the post-launch list. No real YAML/JSON adapter write before its corrected pin is reviewed.
 4. [Post-launch scope](C:/Users/SJG/.traycer/epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/post-launch-scope/index.md) holds Tickets21/22/24-26 and later decisions. Keep9 transcript skips and retained history.
 5. Publication requires Seth's explicit go-ahead. No push or deletion is authorized.
@@ -85,7 +85,7 @@ The distinct Antigravity `agentchattr-uat` global MCP entry is currently active 
 - 2026-10-27 01:37 CDT: Seth: "so we dont split brain hermes use my normal home". Normal HERMES_HOME is authorized with a distinct agentchattr-uat YAML entry, backup, structural diff and exact-entry removal at stop. Adapter review precedes the first real write.
 - No push/publication without Seth's explicit go-ahead. No deletions. No Fable/helper calls. No new keys. Global writes require the approved backup/distinct-entry/structural-diff/removal protocol and Seth's permission.
 
-Next owners: Opus prepares the Hermes adapter and fixture tests; reviewer checks the pinned diff; Codex integrates and operates the normal-home seat only after clearance. Ticket21/22 are post-launch by Seth's latest decision;23 follows launch essentials, with Hermes parallel where files do not overlap.
+Next owners: Seth tries RC1 and gives his verdict; Codex preserves both builds and handles concrete UAT defects. A different publication tip needs final full discovery and review. Real-home adapter use, existing Hermes process decisions and publication still require their explicit go-aheads. Tickets21/22/24-26 remain post-launch.
 
 ## Verification and limits
 
@@ -321,3 +321,9 @@ Three tests observed2 real failures (missing key sweep, equal provenance fingerp
 Reviewer draft: docs/project/PUBLICATION-READINESS.md. It compares local main400d6de to codepinc662722:316 changed files,585564 added/1631 removed lines;543295 added lines are retained historical docs.605 files tracked at that code pin; all7 checked private/local categories ignored and0 private paths tracked. The new note/STATUS commit adds documentation after those measurements. No remote target freshness claim or push authorization.
 
 The note separates the tested RC1 from later integration adapter fixes, requires a final frozen full run before publishing a different code pin, lists deferred seats/post-launch scope, and spells out the exact approval/deployment steps. It is pending reviewer review before being presented as publication guidance. Both RC0 and RC1 stay running. Next owner: reviewer checks c662722 and this note; Codex applies only concrete review fixes, with no live calls or global writes.
+
+### 2026-10-27 04:43 CDT Integration and publication-note review closed
+
+Reviewer clearedc662722 after reading the one-key provenance delta and running217 related tests successfully with the trusted interpreter, no real-home writes. The285/298 broader focused sets remain builder evidence. Reviewer also cleared433f3e0's publication note and independently verified its local main base,316-file diff,605-at-code/606-at-note tracked counts, private-path boundary, no key-pattern matches outside ignored roots and clean tree. Updated the note's step2 from pending review to these clearances.
+
+Remaining publication gates: Seth's RC1 verdict, one full discovery on the exact final publication tip (later integration bytes are not covered by the RC1 full run), remote-target comparison and Seth's explicit push go. Both UAT builds remain frozen/running. No further model calls, global writes, cleanup or publication planned while waiting for Seth.

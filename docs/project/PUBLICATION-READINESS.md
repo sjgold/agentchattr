@@ -1,4 +1,4 @@
-# Publication readiness, reviewer draft
+# Publication readiness, reviewer-cleared note
 
 **No push is authorized.** This note describes the proposed source publication. It does not approve deployment, a release ZIP, copying local configuration, stopping either UAT build or changing the working Desktop installation.
 
@@ -9,7 +9,7 @@
 - Local comparison base: `main` at `400d6de808dafbaebe1d378b40099c2fead5edd6` (Ticket19 closure). This is a local ref, not a fresh check of the remote target.
 - Current frozen UAT: RC0 `99361d1` on49949; RC1 `fdc6c27` on50010. Neither checkout changes when integration advances.
 
-RC1 contains the accepted Documents flow, multi-file review packets, pre-flight/label/restart fixes, CLI model defaults and reviewed UI changes. Integration adds the reviewed JSON entry-only adapter and corrected YAML/JSON receipt handling at `5d89816`, then the entry-name provenance fix at `c662722`. These later changes have focused tests and are awaiting the final integration review. They are absent from the running RC1.
+RC1 contains the accepted Documents flow, multi-file review packets, pre-flight/label/restart fixes, CLI model defaults and reviewed UI changes. Integration adds the reviewed JSON entry-only adapter and corrected YAML/JSON receipt handling at `5d89816`, then the entry-name provenance fix at `c662722`. Reviewer cleared these later integration changes at c662722 and the note at433f3e0. A full run on the final publication tip remains required. They are absent from the running RC1.
 
 ## Size and tracked files
 
@@ -48,7 +48,7 @@ RC0 and RC1 stay running on separate roots/ports/registries. A fresh CLI workspa
 ## Exact approval path
 
 1. Seth tries RC1 through Pre-flight -> launch/reuse team -> chat -> Documents and multi-file preview, using RC0 separately for AGY. Record his verdict and any bounded defect fixes.
-2. Reviewer clears the integration adapter/provenance pin and this note. Freeze the exact publication tip. If it differs from the tested RC1, run one final full discovery on that frozen tip, disclose skips and obtain the activation-state review. Repeat only relevant checks if a real fix changes it.
+2. Integration adapter/provenance was reviewer-cleared at c662722 and this note at433f3e0. After Seth's UAT verdict, freeze the exact publication tip. If it differs from the tested RC1, run one final full discovery on that frozen tip, disclose skips and obtain the activation-state review. Repeat only relevant checks if a real fix changes it.
 3. Confirm the intended remote target and compare it with the local main base without rewriting history. Review the final source diff, tracked/private-file boundary, secret scan, Markdown links and STATUS together. Resolve an advanced/divergent target explicitly.
 4. Prepare the ordinary integration into the named publication branch, keeping STATUS in that same change. Do not force-push, delete branches/history, copy ignored roots or use build_release.py for a ZIP.
 5. Seth explicitly approves the exact branch/tip and says to push. A push triggers his deployment, so this is the deployment approval step. Until then, only local commits are permitted.
