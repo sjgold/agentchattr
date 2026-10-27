@@ -49,9 +49,11 @@ const document={body,getElementById:id=>nodes.get(id)||null,createElement:t=>new
  createTextNode:t=>{const n=new Element('#text');n.textContent=t;return n}};
 const PAGE_IDS=[['server-status','p'],['refresh','button'],['agents','div'],['checked-at','span'],['api-seat-status','p'],['api-package-select','select'],
  ['api-package-id','input'],['api-package-name','input'],['api-package-form','form'],['api-seat-editors','div'],['team-go','button'],['team-launch','button'],
- ['team-chat','button'],['team-launch-status','p'],['api-package-reload','button'],['api-package-new','button'],['api-seat-add','button']];
+ ['team-chat','button'],['team-launch-status','p'],['api-package-reload','button'],['api-package-new','button'],['api-seat-add','button'],
+ ['agents-details','details'],['agents-summary','summary']];
 const page={};
 for(const [id,tag] of PAGE_IDS){const e=new Element(tag);e.id=id;body.append(e);page[id]=e}
+page['agents-details'].open=true;
 const form=page['api-package-form'];form.reportValidity=()=>true;
 form.append(page['api-package-name'],page['api-package-id'],page['api-seat-editors']);
 page['team-go'].disabled=true;
@@ -152,6 +154,79 @@ assert.strictEqual(page['server-status'].textContent,'Server checks failed');
 assert(page['server-status'].classList.contains('error'));
 assert(page['agents'].textContent.includes('Checks failed.'));
 assert.strictEqual(page['refresh'].disabled,false);
+""")
+
+    # 1b. Agents summary + collapse, exited seats, wrapper launch commands ----
+    def test_agents_summary_counts_available_and_missing(self):
+        self.run_js(r"""
+const base=responder;
+const set=agents=>{responder=async call=>call.url==='/api/preflight'?response({checked_at:'2026-10-27T00:00:00Z',agents}):base(call)};
+set([{name:'api1',label:'Hosted API',client_type:'api',authentication:'unknown',ready:false},
+ {name:'cli1',label:'Local CLI',client_type:'cli',executable_found:false,authentication:'unknown',ready:false}]);
+await boot();
+await until(()=>page['agents'].querySelectorAll('.pf-agent').length===2,'agent cards');
+assert.strictEqual(page['agents-summary'].textContent,'Available agents: 2 \u00b7 1 not found');
+""")
+        self.run_js(r"""
+const base=responder;
+responder=async call=>call.url==='/api/preflight'?response({checked_at:'2026-10-27T00:00:00Z',agents:[
+ {name:'a',client_type:'api'},{name:'b',client_type:'cli',executable_found:true,executable:'C:/bin/b.exe'},{name:'c',client_type:'api'}]}):base(call);
+await boot();
+await until(()=>page['agents'].querySelectorAll('.pf-agent').length===3,'agent cards');
+assert.strictEqual(page['agents-summary'].textContent,'Available agents: 3');
+""")
+        self.run_js(r"""
+await boot();
+await until(()=>page['agents'].querySelector('.pf-empty'),'empty state');
+assert.strictEqual(page['agents-summary'].textContent,'No agents configured');
+""")
+
+    def test_agents_details_collapses_when_saved_team_autoloads(self):
+        self.run_js(r"""
+await boot();
+await until(()=>page['agents-summary'].textContent!=='','summary text');
+assert.strictEqual(page['agents-details'].open,false,'saved team present: agents section should collapse');
+""")
+
+    def test_agents_details_stays_open_without_saved_teams(self):
+        self.run_js(r"""
+const base=seatsSnapshot;seatsSnapshot=()=>({...base(),packages:[],package_revisions:{}});
+await boot();
+await until(()=>page['agents-summary'].textContent!=='','summary text');
+assert.strictEqual(page['agents-details'].open,true);
+""")
+
+    def test_exited_seat_chip_says_not_running_launch_again(self):
+        self.run_js(r"""
+const base=seatsSnapshot;
+seatsSnapshot=()=>({...base(),runtime:{'team/alpha':{state:'exited'}}});
+await boot();
+assert.strictEqual(seatCard('alpha').runtime.stateChip.textContent,'Not running (launch again)');
+""")
+        self.run_js(r"""
+launches.team={selection_id:'s1',ready:false,state:'action_required',omitted_seats:[],seats:{alpha:{state:'exited'},beta:{state:'ready'}}};
+await boot();
+assert.strictEqual(seatCard('alpha').runtime.stateChip.textContent,'Not running (launch again)');
+""")
+
+    def test_wrapper_launch_command_is_labelled_honestly(self):
+        self.run_js(r"""
+const base=responder;
+responder=async call=>call.url==='/api/preflight'?response({checked_at:'2026-10-27T00:00:00Z',agents:[
+ {name:'wrap1',label:'Wrapped',client_type:'cli',executable_found:true,executable:'C:/Tools/Python/python.exe',version:'3.12',authentication:'ok',ready:true},
+ {name:'real1',label:'Real',client_type:'cli',executable_found:true,executable:'C:/bin/claude.exe',version:'1.0',authentication:'ok',ready:true}]}):base(call);
+await boot();
+const cards=page['agents'].querySelectorAll('.pf-agent');
+assert.strictEqual(cards.length,2);
+const chips=card=>card.querySelectorAll('.pf-chip').map(c=>c.textContent);
+const dd=(card,name)=>{const l=card.querySelector('dl').children,i=l.findIndex(e=>e.tagName==='DT'&&e.textContent===name);return i<0?null:l[i+1].textContent};
+assert(chips(cards[0]).includes('Launch command: found (wrapper)'),chips(cards[0]).join('|'));
+assert(!chips(cards[0]).includes('Program: found'),chips(cards[0]).join('|'));
+assert.strictEqual(dd(cards[0],'Launch command (wrapper)'),'C:/Tools/Python/python.exe');
+assert.strictEqual(dd(cards[0],'Client'),'Wrapped (wrap1)');
+assert(chips(cards[1]).includes('Program: found'),chips(cards[1]).join('|'));
+assert.strictEqual(dd(cards[1],'Executable'),'C:/bin/claude.exe');
+assert.strictEqual(dd(cards[1],'Launch command (wrapper)'),null);
 """)
 
     # 2. Untrusted text -----------------------------------------------------
