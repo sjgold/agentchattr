@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 05:54 CDT. AGY real-file proof accepted and restored exactly. MiMo Pro passed. RC0 intentionally stopped; RC1 remains up. Hermes hello is deferred.
+**Updated:** 2026-10-27 05:58 CDT. AGY and MiMo proofs pass; Hermes restore passes but hello is excluded. RC0 stopped intentionally, RC1 up. Final exports and links checked; no push.
 
 **START HERE (Seth)**
 
@@ -352,3 +352,11 @@ Reviewer independently accepted the AGY proof, checked the restored file SHA,0 A
 Final independent file reads: Hermes config.yaml SHAe67afc743a36d8035c6f108227bf20e3c328571c8a1e57eace731680262fefa2; AGY mcp_config.json SHA62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d. Hermes YAML/MCP proof passed twice but hello exited2; excluded and no more retry/log read. Ops disclosed its first gateway-kill creation check was vacuous due to PowerShell variable case folding; reviewer accepted the independently identified target and the corrected check used for the second gateway. No memory-DB process was touched.
 
 Remaining gates unchanged: Seth's RC1 verdict, final full discovery on the exact publication tip, remote-target comparison and explicit push go. No push, no deletion, no more live calls.
+
+### 2026-10-27 05:58 CDT Final proof-window handoff checks
+
+RC0 signed inventory now reports0 live/0 uncertain and cleanup_complete true after the authorized native45760 stop. RC0, MiMo and AGY proof port blocks are closed; RC1 Pre-flight returns200. Both global files retain the accepted final hashes, and neither fork nor uat entry remains in AGY MCP settings. Seth's own pre-existing agentchattr entry is preserved. All backup/root/lock history is retained.
+
+Final available-value export scan:50 files clean,26 historical paths absent/excluded. It covers current authorized API/incident variable values, active RC1 UI token and retained registry tokens. RC0's retired UI token cannot be fetched after Stop; the earlier29-file scan covered it while live. Separate MiMo15-file and AGY18-file scans captured their UI tokens in memory before Stop. Private MCP backups are not exports and were not presented as sanitized files.127 tracked Markdown files have0 broken links. No application test rerun was needed for these documentation-only updates.
+
+Next owner: Seth tries RC1 when ready and chooses the eventual publication window. Codex will not restart RC0, run more models, touch global config or publish without the applicable go-ahead. Remaining release gates are unchanged.
