@@ -4,7 +4,7 @@
 
 ## Now
 
-Documentation cleanup:110 byte-identical moves committed; links, navigation and the full historical STATUS snapshot are in verification. Ticket20 remains reviewer-accepted. Five UAT seats are running; Antigravity's native login works but its managed launch needs an environment/config check.
+Documentation cleanup completed and reviewer-accepted on the retained full-run plus focused-correction evidence:110 byte-identical moves, repaired links and the full historical STATUS snapshot. Ticket20 remains reviewer-accepted. Five UAT seats are running; Antigravity's native login works but its managed launch needs an environment/config check.
 
 ## Needs Seth
 
@@ -25,12 +25,12 @@ Documentation cleanup:110 byte-identical moves committed; links, navigation and 
 
 ## Next
 
-1. Finish doc cleanup checks/full discovery and reviewer handoff.
-2. Compare native versus managed agy launch environment; small local fix if possible, otherwise explicit skip with cause.
-3. Time-box Hermes/OMP investigation and bring them up if easy, or record exact skips.
-4. Draft Ticket23 multi-file scope/reds/risks/smallest slice for Seth, docs only. No23 code before his scope confirmation.
-5. Ticket21 then22 are authorized after seats; send status before starting.24-26 remain uncleared.
-6. Final activation-state review, then publication only with Seth's explicit push go-ahead.
+1. Naming fix: use existing durable labels for chat, session cast/owner, Documents and join/leave; preserve routing IDs. Small red-first fix, then focused checks.
+2. Exercise real isolated start -> Pre-flight -> saved six-seat package -> launch -> Open chat. Diagnose managed agy environment within that flow; normal login is already confirmed by Seth.
+3. UI is part of the handoff and outranks Hermes/OMP: integrate the separate Opus UI branch only after reviewer clearance, then run focused UI checks. That agent owns Pre-flight/help/header-link layout; no overlapping edits here.
+4. Hermes/OMP CLI seats afterward if easy; otherwise explicit skip/cause. Existing logins only, time-boxed investigation first.
+5. Ticket23 MultiPackets plan only (scope confirmation before code), then authorized Ticket21 and22.24-26 remain uncleared.
+6. Final activation-state review and full regression before any publication; push requires Seth's explicit go-ahead.
 
 ## UAT
 
@@ -80,3 +80,5 @@ AGENTS.md names `status.md`, while the tracked entry is `STATUS.md`; casing rema
 Pure rename commit9fc6a4d contains exactly110 R100 entries. Baseline573 tracked files ->576, with only docs/README.md, historical STATUS snapshot and tools/check_markdown_links.py added. All215 fenced blocks unchanged;397 pre-existing code/tests/tools/static/AGENTS files byte-identical; zero case collisions; longest moved path143 characters; links0 broken before/after. Release build smoke includes README (archive output redirected into scratch). Localhost49949 still listening. Focused guide/backend, artifact selection and one full discovery are next on this frozen cleanup source; no result claimed yet.
 
 Cleanup regression update:88 focused tests pass. Artifact selection559 ran with9 explicit pending-transcript skips and one stale pre-activation expectation in test_artifact_capability_recovery (expected empty capabilities, actual reviewed artifact-v1). Product unchanged. Corrected that one test expectation in a separate test-only activation follow-up; retained all recovery/legacy assertions. Full discovery had not started, so the single full run follows this correction.
+
+Cleanup acceptance: full1939 ran404.096s with13 disclosed skips and4 subtest failures from one remaining pre-activation fresh-launch assertion. Corrected only that literal/comment; entire protocol-upgrade/capability/capability-recovery/workers/admission/operator core+routes80 PASS20.843s. Reviewer accepts combined evidence, no repeat full run now; final full run remains required before publication. Both failed runs remain recorded. Static sweep26 hits across10 files: remaining expectations are explicit disabled/denied/old/imported fixtures, plus historical browser harness source guards retained at their original pre-activation pin. Those tools are not current acceptance and were not weakened. No product code changed in the activation-test follow-ups.

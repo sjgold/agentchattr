@@ -103,14 +103,14 @@ class RuntimeProtocolUpgradeTests(unittest.TestCase):
                     process.terminate.assert_not_called()
                     process.kill.assert_not_called()
                     # A separate fresh seat really goes through manager.launch;
-                    # it gets the current source set while capability stays off.
+                    # it gets the current source set and reviewed activation policy.
                     fresh = next(item for item in case.package['seats'] if item['id'] == seat)
                     case.package['seats'].append({**fresh, 'id': seat + 'fresh', 'name': 'Fresh ' + seat})
                     case.store.save(case.package)
                     case.manager.launch('team', seat + 'fresh')
                     current = case.manager.attempts['team/' + seat + 'fresh']['effective']['wrapper_protocol']
                     self.assertEqual(set(current['sources']), set(protocol.SOURCE_FILES[adapter]))
-                    self.assertEqual(current['capabilities'], [])
+                    self.assertEqual(current['capabilities'], ['artifact-v1'])
 
     def test_structure_is_bounded_and_no_snapshot_filename_can_drive_source_reads(self):
         current = protocol.build_manifest(ROOT, 'cli')
