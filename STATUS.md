@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (attempt4 stopped at browser visibility override; cleanup verified; rendered acceptance incomplete)
+**Updated:** 2026-10-26 (final Electron fixture substitution ready for review;102 focused controls/tests pass; no fifth run)
 
 ## At a glance
 
@@ -18,7 +18,19 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer: rule on attempt4 browser-runtime blocker and the next supported browser mechanism. No automatic fifth attempt. Backend/UI components accepted; rendered acceptance, screen, transcript, packaging, activation and delivery cleanup remain pending. |
+| Next | Reviewer audits final Electron fixture-served visibility-read substitution and observed reds before authorizing fifth/LAST attempt. No new browser tooling. Backend/UI accepted; rendered acceptance incomplete. |
+
+## Final Electron mechanism: fixture-served visibility reads (review pending)
+
+Reviewer classified attempt4 as a harness-mechanism failure and the first clean RAW cleanup. Attempts1-4 remain retained. Chrome/Edge tooling is parked; it requires Seth's request. ONE fifth and LAST Electron attempt is the chosen mechanism, pending executable-delta clearance. A further browser-environment failure ends adaptation and returns the partial evidence/remaining coverage decision to Seth through the reviewer. No automatic rerun.
+
+Observer now only captures native hidden/visibilityState/hasFocus and POSTs them, without redefining document properties. It installs window.__artifactFixtureHidden(), returning false with --simulate-visibility and the native document.hidden otherwise. Only the exact fixture /static/artifacts.js response is substituted: the pinned original SHA25696020b32c44626e5c6fc6c66da7498874640211d19cdb9328e380363b32701ac must match and exactly3 document.hidden byte tokens are replaced with window.__artifactFixtureHidden(). Exact-byte controls prove the replacement is the entire difference. Every other static response and all product files on disk remain unchanged.
+
+The response writes records/served-artifacts.json with original_sha256, served_sha256 and replacement_count=3. Receipt and summary include this proof alongside the native values and visibility_simulated:true. Finish refuses a missing served-route record or differing hashes/count, missing native disclosure or incomplete cases. Required claim: "no native foreground/visibility parity; fixture-served artifacts.js with document.hidden reads replaced". The product hidden-page guard remains proven by the unchanged Node UI tests; the simulated browser run exercises the substituted reads. Native visibility and native saved-file parity remain outside the claim.
+
+The real-page VM now defines NON-configurable own hidden/visibilityState getters. Before the fix, the actual old observer failed with TypeError: Cannot redefine property: hidden; raw .audit-tmp/attempt5-nonconfigurable-observed-red.json. Afterward OFF/ON pass while both native getters remain untouched. Missing substitution, two-of-three substitution and extra bytes each kill the exact-byte test by one assertion, zero errors. OFF forced visible, ON disabled, native capture dropped and observer installed late each fail the actual-page VM. Seven raw reversion results: .audit-tmp/attempt5-served-substitution-reds.json.
+
+Verification:63 harness controls plus39 unchanged UI/restart tests,102 total OK5.555s; compile-only constructs no acceptance resources. No product/capability changes. No fifth listener/profile/browser has started. Next owner reviewer: rerun controls/reds with trusted Python and review this delta before authorizing ONE --run --simulate-visibility. Existing fresh baseline/root/distinct attempt5 output, per-case startup precondition, all12 cases, stop-on-first-failure, disclosure, token scans and birth-based cleanup conditions remain in force. No push; delivery cleanup remains last.
 
 ## Attempt4: browser runtime refused visibility simulation
 

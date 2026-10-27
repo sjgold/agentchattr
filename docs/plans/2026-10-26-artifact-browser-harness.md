@@ -1,6 +1,18 @@
 # Reduced20 guarded browser acceptance design
 
-Status: fixture-only visibility simulation mechanism APPROVED after partial attempt3; implementation and cleanup repairs now pass61 harness controls. New executable delta requires reviewer clearance before a fourth attempt. No whole-flow/native-foreground acceptance claim. Earlier design/run decisions and every invalid/partial attempt remain below.
+Status: fifth/LAST Electron mechanism implemented as fixture-served visibility-read substitution;63 harness controls and39 UI/restart tests pass. Executable delta requires reviewer clearance before a run. Attempt4 is a harness-mechanism failure with the first clean raw cleanup; all prior history retained. No whole-flow acceptance claim.
+
+## Final Electron mechanism: fixture-served visibility reads (review pending)
+
+Reviewer classified attempt4 as a harness-mechanism failure and the first clean RAW cleanup. Attempts1-4 remain retained. Chrome/Edge tooling is parked; it requires Seth's request. ONE fifth and LAST Electron attempt is the chosen mechanism, pending executable-delta clearance. A further browser-environment failure ends adaptation and returns the partial evidence/remaining coverage decision to Seth through the reviewer. No automatic rerun.
+
+Observer now only captures native hidden/visibilityState/hasFocus and POSTs them, without redefining document properties. It installs window.__artifactFixtureHidden(), returning false with --simulate-visibility and the native document.hidden otherwise. Only the exact fixture /static/artifacts.js response is substituted: the pinned original SHA25696020b32c44626e5c6fc6c66da7498874640211d19cdb9328e380363b32701ac must match and exactly3 document.hidden byte tokens are replaced with window.__artifactFixtureHidden(). Exact-byte controls prove the replacement is the entire difference. Every other static response and all product files on disk remain unchanged.
+
+The response writes records/served-artifacts.json with original_sha256, served_sha256 and replacement_count=3. Receipt and summary include this proof alongside the native values and visibility_simulated:true. Finish refuses a missing served-route record or differing hashes/count, missing native disclosure or incomplete cases. Required claim: "no native foreground/visibility parity; fixture-served artifacts.js with document.hidden reads replaced". The product hidden-page guard remains proven by the unchanged Node UI tests; the simulated browser run exercises the substituted reads. Native visibility and native saved-file parity remain outside the claim.
+
+The real-page VM now defines NON-configurable own hidden/visibilityState getters. Before the fix, the actual old observer failed with TypeError: Cannot redefine property: hidden; raw .audit-tmp/attempt5-nonconfigurable-observed-red.json. Afterward OFF/ON pass while both native getters remain untouched. Missing substitution, two-of-three substitution and extra bytes each kill the exact-byte test by one assertion, zero errors. OFF forced visible, ON disabled, native capture dropped and observer installed late each fail the actual-page VM. Seven raw reversion results: .audit-tmp/attempt5-served-substitution-reds.json.
+
+Verification:63 harness controls plus39 unchanged UI/restart tests,102 total OK5.555s; compile-only constructs no acceptance resources. No product/capability changes. No fifth listener/profile/browser has started. Next owner reviewer: rerun controls/reds with trusted Python and review this delta before authorizing ONE --run --simulate-visibility. Existing fresh baseline/root/distinct attempt5 output, per-case startup precondition, all12 cases, stop-on-first-failure, disclosure, token scans and birth-based cleanup conditions remain in force. No push; delivery cleanup remains last.
 
 ## Scope and deliverables
 
@@ -9,7 +21,7 @@ Status: fixture-only visibility simulation mechanism APPROVED after partial atte
 |tools/verify_artifact_ui.py|Parent fixture owner, generated server/local fake API responder/bootstrap, manifest, fixed controls, resource inventory/cleanup and receipts. --compile-only constructs no fixture/listener/process.|
 |tools/fake_artifact_client.py|Owned hidden fake CLI, genuine MCP client/tool calls and transport release, fixed canned Markdown. No model/LLM execution.|
 |tools/test_artifact_ui_harness_controls.py|Synthetic guard, capability, source/port/nonce, cleanup, lost-response and byte-verification controls. No real acceptance listeners/providers.|
-|tools/artifact_page_init_control.js|d4e9f3d3d8c3e079990f71b089bd6a026457fa9b923e2e9f8f0caf466b2ebc93|
+|tools/artifact_page_init_control.js|be599be131c894b934d2e63f809dca131faff51373ae298b1172891599d4649f|
 |Traycer browser controller|Own isolated Chromium session via the existing traycer-browser REPL, actual UI clicks/typing, snapshots, desktop/mobile screenshots and bounded read-only observation.|
 |Independent reviewer|Reviews executable tool/control/source hashes before the first run; separately drives/reproduces the bounded UI proof after root results.|
 
@@ -119,10 +131,10 @@ Frozen executable source SHA256s:
 
 |File|SHA256|
 |---|---|
-|tools/verify_artifact_ui.py|1fc1efcc1b9475ebe014ab70250804a8351efcaa1d17e9fcf9f6274a42666b27|
+|tools/verify_artifact_ui.py|e3a3afc223c5bedd352cc01c2109112f3b4b894229f9a721a257df66877e1676|
 |tools/fake_artifact_client.py|57f8232969d0456827b1f19577bb2a780bda0a6435786917d8c6b100b82f6895|
-|tools/test_artifact_ui_harness_controls.py|c98e608b46b08d61fdbbbf0cbb56e7f3bd04d26024883574b31d4eb529a16830|
-|tools/artifact_page_init_control.js|d4e9f3d3d8c3e079990f71b089bd6a026457fa9b923e2e9f8f0caf466b2ebc93|
+|tools/test_artifact_ui_harness_controls.py|bc10a2771e0b323dd95b9f6b8c55e3255eef8e93e2aecb0f33080b6dabdb00c1|
+|tools/artifact_page_init_control.js|be599be131c894b934d2e63f809dca131faff51373ae298b1172891599d4649f|
 |tools/channel_guard.py|76fde78539634a7f1c4ef687f59afcddc82bd12de0aeb4c5e01f73649b23a927|
 |runtime_protocol.py|b770452455bcd48b1f50c5f306469aca328e9946292e58b83cd3e9e5cde69b01|
 

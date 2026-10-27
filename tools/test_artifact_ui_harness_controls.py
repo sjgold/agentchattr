@@ -19,6 +19,31 @@ from tools import fake_artifact_client as client
 
 
 class ArtifactHarnessControls(unittest.TestCase):
+    def test_served_artifact_bytes_and_proof_are_exact(self):
+        original=(harness.ROOT/'static/artifacts.js').read_bytes()
+        served,proof=harness.fixture_artifacts_js()
+        self.assertEqual(original.count(b'document.hidden'),3)
+        self.assertEqual(served,original.replace(b'document.hidden',b'window.__artifactFixtureHidden()'))
+        self.assertEqual(harness.validate_served_artifacts(proof),proof)
+        for key,value in [('original_sha256','0'*64),('served_sha256','0'*64),('replacement_count',2)]:
+            bad=dict(proof);bad[key]=value
+            with self.assertRaises(ValueError):harness.validate_served_artifacts(bad)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'records').mkdir()
+            self.assertEqual(harness.served_artifacts_receipt(root),{'not_observed':True})
+            harness.write_json(root/'records/served-artifacts.json',proof)
+            self.assertEqual(harness.served_artifacts_receipt(root),proof)
+
+    def test_served_artifact_mutations_are_observed_red(self):
+        original=(harness.ROOT/'static/artifacts.js').read_bytes()
+        served,proof=harness.fixture_artifacts_js()
+        mutations={'missing_replacement':original,
+            'wrong_count':original.replace(b'document.hidden',b'window.__artifactFixtureHidden()',2),
+            'extra_bytes':served+b'\n// extra byte change'}
+        for name,changed in mutations.items():
+            with self.subTest(mutation=name), patch.object(harness,'fixture_artifacts_js',return_value=(changed,proof)):
+                with self.assertRaises(AssertionError):self.test_served_artifact_bytes_and_proof_are_exact()
+
     def test_read_only_terminal_probe_never_requests_terminate_rights_or_returns_handle(self):
         import process_identity as identity
         handle=Mock();handle.poll.return_value=0
@@ -48,7 +73,7 @@ class ArtifactHarnessControls(unittest.TestCase):
                 self.assertEqual(result['visibility']['native_visibilityState'],'hidden')
                 self.assertFalse(result['visibility']['native_hasFocus'])
                 self.assertTrue(result['visibilityBeforeProduct'])
-                if simulated:self.assertEqual(result['visibility']['claim'],'no native foreground/visibility parity')
+                if simulated:self.assertEqual(result['visibility']['claim'],'no native foreground/visibility parity; fixture-served artifacts.js with document.hidden reads replaced')
 
     def test_visibility_simulation_mutations_are_observed_red(self):
         cases=[('visibility_force_on',False,'visibility flag must control document.hidden'),
@@ -63,7 +88,7 @@ class ArtifactHarnessControls(unittest.TestCase):
 
     def test_visibility_receipt_cannot_omit_native_values_or_mode(self):
         value={'native_hidden':True,'native_visibilityState':'hidden','native_hasFocus':False,
-            'visibility_simulated':True,'claim':'no native foreground/visibility parity'}
+            'visibility_simulated':True,'claim':'no native foreground/visibility parity; fixture-served artifacts.js with document.hidden reads replaced'}
         self.assertEqual(harness.validate_visibility(value,simulated=True),value)
         for key in ('native_hidden','native_visibilityState','native_hasFocus','visibility_simulated'):
             bad=dict(value);bad.pop(key)

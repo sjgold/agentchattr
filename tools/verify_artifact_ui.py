@@ -410,13 +410,39 @@ def validate_observation(payload, secrets):
     return public_evidence(payload, secrets)
 
 
+ARTIFACT_JS_SHA256 = '96020b32c44626e5c6fc6c66da7498874640211d19cdb9328e380363b32701ac'
+
+
+def fixture_artifacts_js():
+    original=(ROOT/'static/artifacts.js').read_bytes()
+    if hashlib.sha256(original).hexdigest()!=ARTIFACT_JS_SHA256:
+        raise ValueError('Pinned artifacts.js changed')
+    token=b'document.hidden'
+    if original.count(token)!=3: raise ValueError('Visibility replacement count differs')
+    served=original.replace(token,b'window.__artifactFixtureHidden()')
+    proof={'original_sha256':hashlib.sha256(original).hexdigest(),
+        'served_sha256':hashlib.sha256(served).hexdigest(),'replacement_count':3}
+    return served,proof
+
+
+def validate_served_artifacts(payload):
+    served,expected=fixture_artifacts_js()
+    if payload!=expected: raise ValueError('Served artifacts.js proof differs')
+    return expected
+
+
+def served_artifacts_receipt(root):
+    path=root/'records/served-artifacts.json'
+    return validate_served_artifacts(read_json(path)) if path.exists() else {'not_observed':True}
+
+
 def validate_visibility(payload,*,simulated,secrets=()):
     fields={'native_hidden','native_visibilityState','native_hasFocus','visibility_simulated','claim'}
     if (not isinstance(payload,dict) or set(payload)!=fields
             or type(payload['native_hidden']) is not bool or type(payload['native_hasFocus']) is not bool
             or payload['native_visibilityState'] not in ('hidden','visible','prerender')
             or type(payload['visibility_simulated']) is not bool or payload['visibility_simulated']!=simulated
-            or payload['claim']!=('no native foreground/visibility parity' if simulated else 'native document values unmodified')):
+            or payload['claim']!=('no native foreground/visibility parity; fixture-served artifacts.js with document.hidden reads replaced' if simulated else 'native document values unmodified')):
         raise ValueError('Visibility disclosure differs from frozen fixture mode')
     return public_evidence(payload,secrets)
 
@@ -427,7 +453,7 @@ def visibility_receipt(root,*,simulated):
         return {**validate_visibility(read_json(path),simulated=simulated),'native_values_missing':False}
     return {'native_hidden':None,'native_visibilityState':None,'native_hasFocus':None,
         'visibility_simulated':simulated,'native_values_missing':True,
-        'claim':'no native foreground/visibility parity' if simulated else 'native document values unmodified'}
+        'claim':'no native foreground/visibility parity; fixture-served artifacts.js with document.hidden reads replaced' if simulated else 'native document values unmodified'}
 
 
 def missing_cases(rows):
@@ -482,11 +508,8 @@ def browser_observer(nonce,*,simulate_visibility=False):
 const nonce=NONCE, blobs=new Map(), evidence={clicks:[],revoked:[],errors:[]};
 const nativeVisibility={native_hidden:document.hidden,native_visibilityState:document.visibilityState,native_hasFocus:document.hasFocus()};
 const visibilitySimulated=SIMULATE_VISIBILITY;
-evidence.visibility={...nativeVisibility,visibility_simulated:visibilitySimulated,claim:visibilitySimulated?'no native foreground/visibility parity':'native document values unmodified'};
-if(visibilitySimulated) {
- Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});
- Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'visible'});
-}
+evidence.visibility={...nativeVisibility,visibility_simulated:visibilitySimulated,claim:visibilitySimulated?'no native foreground/visibility parity; fixture-served artifacts.js with document.hidden reads replaced':'native document values unmodified'};
+window.__artifactFixtureHidden=()=>visibilitySimulated ? false : document.hidden;
 fetch('/__artifact_fixture/visibility',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Session-Token':window.__SESSION_TOKEN__,'X-Fixture-Nonce':nonce},body:JSON.stringify(evidence.visibility)}).then(r=>{if(!r.ok)throw Error('Visibility receipt refused')}).catch(()=>evidence.errors.push('visibility_receipt_failed'));
 const create=URL.createObjectURL.bind(URL), revoke=URL.revokeObjectURL.bind(URL);
 URL.createObjectURL=b=>{const u=create(b);blobs.set(u,b);return u};
@@ -531,8 +554,8 @@ def page_init_control(*,mutation=None,simulate_visibility=False):
         html=html.replace(anchor,'',1)
     elif mutation=='observer':
         html=html.replace('window.__artifactFixtureEvidence=', 'window.__artifactFixtureEvidence=){',1)
-    elif mutation=='visibility_force_on':html=html.replace('if(visibilitySimulated) {','if(true) {',1)
-    elif mutation=='visibility_remove':html=html.replace('if(visibilitySimulated) {','if(false) {',1)
+    elif mutation=='visibility_force_on':html=html.replace('visibilitySimulated ? false : document.hidden','true ? false : document.hidden',1)
+    elif mutation=='visibility_remove':html=html.replace('visibilitySimulated ? false : document.hidden','false ? false : document.hidden',1)
     elif mutation=='visibility_drop_native':html=html.replace('...nativeVisibility,','',1)
     from html.parser import HTMLParser
     class Extract(HTMLParser):
@@ -550,7 +573,7 @@ def page_init_control(*,mutation=None,simulate_visibility=False):
                 if script['src']:
                     path=script['src'].split('?')[0]
                     if not path.startswith('/static/') or '..' in path.split('/'): raise ValueError('Nonlocal script in fixture HTML')
-                    code=(ROOT/path[1:]).read_text(encoding='utf-8');name=path[1:]
+                    code=(fixture_artifacts_js()[0].decode('utf-8') if path=='/static/artifacts.js' else (ROOT/path[1:]).read_text(encoding='utf-8'));name=path[1:]
                 else: code=''.join(script['chunks']);name='inline-'+str(len(self.scripts))
                 self.scripts.append({'name':name,'code':code,'observer':'window.__artifactFixtureEvidence' in code})
             for i in range(len(self.stack)-1,-1,-1):
@@ -727,6 +750,8 @@ def runtime_server(*,dry_startup=False):
         elif action == 'finish':
             # An operator completion marker is never evidence of all cases passing.
             if not (root/'records/visibility.json').exists():raise HTTPException(409,'Native visibility disclosure not observed')
+            if not (root/'records/served-artifacts.json').exists():raise HTTPException(409,'Substituted artifacts.js not observed')
+            validate_served_artifacts(read_json(root/'records/served-artifacts.json'))
             validate_visibility(read_json(root/'records/visibility.json'),simulated=private.get('visibility_simulated',False),secrets=(nonce,app.session_token))
             missing=missing_cases([read_json(path) for path in (root/'records').glob('observation-*.json')])
             if missing:
@@ -745,6 +770,10 @@ def runtime_server(*,dry_startup=False):
     @app.app.middleware('http')
     async def fixture_page(request, call_next):
         path = request.url.path
+        if path == '/static/artifacts.js':
+            served,proof=fixture_artifacts_js()
+            write_json(root/'records/served-artifacts.json',proof)
+            return Response(served,media_type='application/javascript',headers={'Cache-Control':'no-store'})
         if path == '/':
             html=fixture_html(app.session_token,nonce,simulate_visibility=private.get('visibility_simulated',False))
             origin = owned_origin('http://127.0.0.1:' + str(ports[0]), ports)
@@ -904,7 +933,7 @@ class Fixture:
         write_json(self.root / 'READY.json', {'url': self.base, 'root': str(self.root), 'pin': self.pin,
             'lease_seconds': 1200, 'status': 'fixture-ready-browser-not-yet-driven',
             'visibility_simulated':self.simulate_visibility,
-            'visibility_claim':'no native foreground/visibility parity' if self.simulate_visibility else 'native document values unmodified'})
+            'visibility_claim':'no native foreground/visibility parity; fixture-served artifacts.js with document.hidden reads replaced' if self.simulate_visibility else 'native document values unmodified'})
         print(json.dumps(read_json(self.root / 'READY.json')), flush=True)
 
     def close(self):
@@ -1126,13 +1155,14 @@ def main():
     finally:
         clean = fixture.close()
         receipt = {'pin': fixture.pin, 'hashes': fixture.hashes, 'observations': fixture.observations,
+            'served_artifacts':served_artifacts_receipt(fixture.root),
             'visibility':visibility_receipt(fixture.root,simulated=fixture.simulate_visibility),
             'visibility_records':[read_json(path) for path in (fixture.root/'records').glob('visibility-*.json')],
             'browser_observations': [read_json(path) for path in (fixture.root / 'records').glob('observation-*.json')],
             'controller_finished': success, 'cleanup': fixture.cleanup, 'acceptance_claim': False,
             'reason': 'reviewer must assess controller evidence and every required case; finish is not a pass'}
         write_json(fixture.root / 'receipt.json', public_evidence(receipt, (fixture.token, fixture.nonce)))
-        write_json(fixture.root/'summary.json',public_evidence({'pin':fixture.pin,'visibility':receipt['visibility'],
+        write_json(fixture.root/'summary.json',public_evidence({'pin':fixture.pin,'served_artifacts':receipt['served_artifacts'],'visibility':receipt['visibility'],
             'visibility_records':receipt['visibility_records'],'cleanup':fixture.cleanup,'controller_finished':success,
             'missing_cases':missing_cases(receipt['browser_observations']),'acceptance_claim':False},(fixture.token,fixture.nonce)))
         print(json.dumps({'receipt': str(fixture.root / 'receipt.json'), 'cleanup_ok': clean}), flush=True)

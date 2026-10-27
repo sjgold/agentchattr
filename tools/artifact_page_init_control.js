@@ -74,6 +74,8 @@ const document=events({hidden:true,visibilityState:'hidden',hasFocus:()=>false,r
     getElementById:id=>ids.get(id)||null,querySelector:s=>document.documentElement.querySelector(s),
     querySelectorAll:s=>document.documentElement.querySelectorAll(s),getElementsByClassName:s=>document.documentElement.getElementsByClassName(s),
     getSelection:()=>({removeAllRanges(){}})});
+Object.defineProperty(document,'hidden',{configurable:false,get:()=>true});
+Object.defineProperty(document,'visibilityState',{configurable:false,get:()=> 'hidden'});
 const built=input.nodes.map(row=>{const n=new Element(row.tag);for(const [k,v]of Object.entries(row.attrs))n.setAttribute(k,v??'');return n});
 for(let i=0;i<built.length;i++){const p=input.nodes[i].parent;if(p!==null)built[p].appendChild(built[i])}
 document.documentElement=built.find(n=>n.tagName==='HTML');document.body=built.find(n=>n.tagName==='BODY');document.head=built.find(n=>n.tagName==='HEAD');
@@ -116,9 +118,10 @@ async function flush(){for(let i=0;i<12;i++){while(tasks.length){const fn=tasks.
             assert.equal(visibility.native_visibilityState,'hidden','native visibility state must be recorded');
             assert.equal(visibility.native_hasFocus,false,'native focus must be recorded');
             assert.equal(visibility.visibility_simulated,!!input.simulateVisibility);
-            assert.equal(document.hidden,!input.simulateVisibility,'visibility flag must control document.hidden');
-            assert.equal(document.visibilityState,input.simulateVisibility?'visible':'hidden','visibility flag must control document.visibilityState');
-            assert.equal(typeof Object.getOwnPropertyDescriptor(document,'hidden').get,input.simulateVisibility?'function':'undefined','OFF must leave document instance untouched');
+            assert.equal(document.hidden,true,'native document.hidden stays untouched');
+            assert.equal(document.visibilityState,'hidden','native document.visibilityState stays untouched');
+            assert.equal(context.__artifactFixtureHidden(),!input.simulateVisibility,'visibility flag must control document.hidden');
+            assert.equal(Object.getOwnPropertyDescriptor(document,'hidden').configurable,false,'runtime own getter remains non-configurable');
             beforeProduct=true;
         }
         const compiled=new vm.Script(script.code,{filename:script.name});
