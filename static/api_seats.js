@@ -223,8 +223,10 @@
         fields.append(effects);
         function summarize() {
             const template = snapshot.providers.find(p => p.id === provider.value);
+            // Only CLI templates apply default_model; a blank API model is omitted (provider default).
+            const cliDefault = adapter.value === 'cli' && template?.default_model;
             const parts = [adapter.value === 'cli' ? 'CLI' : 'API', template ? template.name : 'no template chosen',
-                model.value ? `model ${model.value}` : 'provider default model'];
+                model.value ? `model ${model.value}` : cliDefault ? `default model ${cliDefault}` : 'provider default model'];
             if (reasoning.value) parts.push(`reasoning ${reasoning.value}`);
             if (adapter.value !== 'cli' && secret.value) parts.push(`key from ${secret.value}`);
             summaryLine.textContent = parts.join(' · ');

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:01 CDT. Ticket23 groups1-3 reviewer-cleared; small follow-ups pass179 tests. RC0 remains frozen. Hermes is deferred.
+**Updated:** 2026-10-27 04:04 CDT. Ticket23 slice is reviewer-cleared. RC1 model-default integration passes85 focused tests; RC0 stays unchanged.
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
@@ -236,3 +236,9 @@ Remaining before RC1: review this follow-up delta; integrate reviewed default_mo
 Windows Stop reproduction is a confirmed limitation, not fixed: a directly owned fake.cmd parent ended while its signed/birth-verified Python child survived. Both test handles exited during proof cleanup. Evidence: .audit-tmp/owned-cmd-stop-proof/result.json and .audit-tmp/reproduce_owned_cmd_stop.py. Reviewer ruled race-free Job Object ownership is post-launch work. Current UAT uses claude.exe, codex.exe, omp.exe and Python-shim-to-agy.exe, none.cmd/.bat. Hermes.cmd is explicitly deferred with the running-path guard and existing Hermes process decision. Spot leftovers through signed birth inventories and retained handles; never kill by name or port.
 
 RC0 still serves49949 from99361d1. This check scanned17 current exports clean against authorized credentials/owned tokens and the five incident-variable current values;27 old-root report paths were absent and excluded, not claimed scanned. No push or publication.
+
+### 2026-10-27 04:04 CDT RC1 default-model integration
+
+Merged reviewed4af9bc2. A blank CLI model now uses its template default, with an explicit seat model winning. Added default_model to managed client snapshots and provenance fingerprints; requested_model reports the effective value both before and after launch. Two managed-runtime tests observed real failures before the integration fix; they now verify frozen worker arguments and changed-default fingerprints without launching a client.85 CLI/default/runtime/worker/pre-flight/package/protocol/security-guard tests pass in6.208s. One test initially changed the original template instead of SeatStore's detached copy; corrected the fixture, then reran the full focused set.
+
+The daily Antigravity model proposal is in docs/guides/DAILY-SEAT-TEMPLATES.md. Injection remains pending corrected adapter review; no daily/global config applied. RC1 will run beside RC0 on its own free port block, not replace it. Hermes remains excluded; its real-home proof is deferred. Next: reviewed UI10ff7d0 and path guard48c6d36, then the corrected AGY adapter only if cleared, final frozen discovery and reviewer activation-state check.

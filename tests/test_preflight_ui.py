@@ -327,6 +327,22 @@ await until(()=>assigned.length>1,'second redirect');
 assert.deepStrictEqual(assigned,['/?package_launch=abc','/?package_launch=abc']);
 """)
 
+    def test_cli_seat_summary_names_the_template_default_model(self):
+        # A blank CLI model uses the template default_model; API blanks stay "provider default".
+        self.run_js(r"""
+const base=responder;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){const s=seatsSnapshot();
+  s.providers.push({id:'c1',name:'Agy',adapter:'cli',default_model:'m-medium',models:['m-high','m-medium'],supports_model:true,reasoning_efforts:[],secret_ref:''});
+  s.packages=[{...TEAM,seats:[{...TEAM.seats[0],provider:'c1',adapter:'cli',secret_ref:''},TEAM.seats[1]]}];return response(s)}
+ return base(call);
+};
+await boot();
+assert(seatCard('alpha').querySelector('.pf-seat-summary').textContent.includes('default model m-medium'),
+ seatCard('alpha').querySelector('.pf-seat-summary').textContent);
+assert(seatCard('beta').querySelector('.pf-seat-summary').textContent.includes('provider default model'));
+""")
+
     # 4. Failure path -------------------------------------------------------
     def test_failed_seat_blocks_chat_and_offers_retry_or_leave_out(self):
         self.run_js(r"""

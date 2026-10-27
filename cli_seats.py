@@ -46,8 +46,15 @@ def _setting_args(template, setting, value):
 
 def build_cli_args(seat, template):
     result = list(_arguments(template.get('cli_args', []), 'cli_args'))
+    if 'default_model' in template and template.get('cli_model_args') is None:
+        raise SeatError('A CLI default_model requires a declared cli_model_args contract.')
     for setting in ('model', 'reasoning'):
         value = seat[setting]
+        if setting == 'model' and value is None and 'default_model' in template:
+            # A blank seat model takes the template default; an explicit seat model always wins.
+            value = template['default_model']
+            if not isinstance(value, str):
+                raise SeatError('CLI default_model must be a model ID string.')
         if value is not None and (not isinstance(value, str) or not value.strip() or
                 len(value) > 256 or value.startswith('-') or any(ord(c) < 32 for c in value)):
             raise SeatError(f'CLI {setting} must be a nonempty value without leading dash or control characters.')

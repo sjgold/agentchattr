@@ -185,7 +185,7 @@ class SeatStore:
                     from cli_seats import validate_cli_seat
                     validate_cli_seat({'model': None, 'reasoning': None, 'launch_profile': 'standard', 'secret_ref': ''}, cfg)
                     result.append({'id': name, 'name': cfg.get('label', name), 'adapter': 'cli',
-                                   'default_model': None, 'models': [m for m in cfg.get('models', []) if isinstance(m, str)] if isinstance(cfg.get('models', []), list) else [],
+                                   'default_model': cfg.get('default_model'), 'models': [m for m in cfg.get('models', []) if isinstance(m, str)] if isinstance(cfg.get('models', []), list) else [],
                                    'reasoning_efforts': cfg.get('reasoning_efforts', []) if cfg.get('cli_reasoning_args') else [],
                                    'supports_model': bool(cfg.get('cli_model_args')), 'secret_ref': '',
                                    'configuration_effects': ('Launch merges MCP identity into ' + str(cfg.get('mcp_settings_path')) +

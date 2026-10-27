@@ -95,7 +95,7 @@ class SeatManager:
             from cli_seats import config_resource, validate_cli_seat
             validate_cli_seat(seat, original)
             client = {k: deepcopy(v) for k, v in original.items() if k in
-                      ('command', 'cwd', 'cli_args', 'cli_model_args', 'cli_reasoning_args',
+                      ('command', 'cwd', 'cli_args', 'cli_model_args', 'default_model', 'cli_reasoning_args',
                        'cli_version_args', 'reasoning_efforts', 'strip_env', 'inject_delay', 'enter_backend',
                        'cli_fresh_context_args', 'cli_fresh_context_verified')
                       or k.startswith('mcp_')}
@@ -262,7 +262,8 @@ class SeatManager:
 
     def _view(self, attempt):
         result = {'attempt': attempt['id'], 'state': attempt['state'], 'error': attempt['error'],
-                'name': attempt['name'], 'requested_model': attempt['seat']['model'],
+                'name': attempt['name'], 'requested_model': (attempt['seat']['model'] or
+                    (attempt['effective']['provider'].get('default_model') if attempt['seat']['adapter'] == 'cli' else None)),
                 'confirmed_model': attempt['confirmed_model'], 'authentication': attempt['authentication'],
                 'adapter_connected': attempt['adapter_connected'],
                 'ready_capability': 'chat_dispatch' if attempt['state'] == 'ready' else None,
@@ -353,7 +354,11 @@ class SeatManager:
                 observed = self._inventory_views().get(key)
                 if observed:
                     return observed
-                return {'state': 'not_started', 'requested_model': self.store.seat(package_id, seat_id)['model'],
+                seat = self.store.seat(package_id, seat_id)
+                model = seat['model']
+                if model is None and seat['adapter'] == 'cli':
+                    model = self.store.providers[seat['provider']].get('default_model')
+                return {'state': 'not_started', 'requested_model': model,
                         'confirmed_model': None, 'authentication': 'unknown', 'adapter_connected': False}
             return self._inspect(key)
 
@@ -428,7 +433,7 @@ class SeatManager:
         # Explicit launch fields only. Never snapshot registry tokens, resolved
         # credentials, arbitrary environment variables or unknown config keys.
         provider_fields = ('base_url', 'reasoning_efforts', 'temperature', 'api_key_env', 'system_prompt',
-            'context_messages', 'command', 'cwd', 'cli_args', 'cli_model_args', 'cli_reasoning_args',
+            'context_messages', 'command', 'cwd', 'cli_args', 'cli_model_args', 'default_model', 'cli_reasoning_args',
             'cli_version_args', 'strip_env', 'inject_delay', 'enter_backend', 'cli_fresh_context_args',
             'cli_fresh_context_verified', 'mcp_inject', 'mcp_flag', 'mcp_transport', 'mcp_merge_project',
             'mcp_env_var', 'mcp_proxy_flag_template', 'mcp_settings_path', 'mcp_http_key')
