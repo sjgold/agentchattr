@@ -258,5 +258,125 @@ class StopCleanupsSurviveKeyboardInterrupt(unittest.TestCase):
         resources.close.assert_called_once_with()
 
 
+class CompositeSpliceTamperIsRefused(Dir):
+    """Re-audit (1): the old-text span of two composed splices must not cover too much."""
+
+    def test_json_drop_empty_section_removal(self):
+        path = self.dir / 'mcp_config.json'
+        path.write_bytes(b'{\n  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 1\n}\n')
+        receipt = jm.apply(path, URL, TOKEN, log=quiet)
+        self.assertTrue(receipt.created_section)
+        edited = path.read_bytes().replace(b'\n}\n', b',\n  "tail": 1\n}\n')   # user adds a key after mcpServers
+        path.write_bytes(edited)
+        real, calls = jm._remove_member, []
+
+        def sloppy(*args, **kwargs):
+            text, region = real(*args, **kwargs)
+            calls.append(region)
+            if len(calls) == 2:                                    # the root-member (mcpServers) removal
+                text = text.replace('"tail": 1', '"tail" : 1')
+            return text, region
+        with patch.object(jm, '_remove_member', sloppy), self.assertRaises(jm.JsonSettingsError):
+            jm.remove_exact(path, receipt=receipt, log=quiet)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(path.read_bytes(), edited)
+
+    def test_yaml_refresh_with_a_sibling_after_our_entry(self):
+        path = self.dir / 'config.yaml'
+        original = ('# ' + 'x' * 60 + '\nmodel: x\nmcp_servers:\n'
+                    '  agentchattr-uat:\n    url: "http://127.0.0.1:1/mcp"\n'
+                    '  sibling:\n    url: "http://127.0.0.1:2/mcp"\n'
+                    'terminal:  # tail comment\n  backend: local\n').encode()
+        path.write_bytes(original)
+        real = ym._with_entry
+
+        def sloppy(*args, **kwargs):
+            text, created, region = real(*args, **kwargs)
+            return text.replace('# tail comment', '# TAIL comment'), created, region
+        with patch.object(ym, '_with_entry', sloppy), self.assertRaises(ym.YamlSettingsError):
+            ym.apply(path, URL, TOKEN, log=quiet)
+        self.assertEqual(path.read_bytes(), original)
+
+    def test_composed_span_maps_back_exactly(self):
+        # old 'abcdefghij': [2,4) -> 'XYZ' gives 'abXYZefghij'; then [6,8) ('fg') -> '' in that text.
+        for module in (jm, ym):
+            with self.subTest(module=module.__name__):
+                self.assertEqual(module._then((2, 4, 3), (6, 8, 0))[:2], (2, 7))
+
+
+class BackupFailureLeavesNoOrphan(Dir):
+    """Re-audit (3): a backup that fails after reserving its name is removed."""
+
+    def test_both_helpers(self):
+        for module, name, base in ((jm, 'mcp_config.json', JSON_BASE % ''), (ym, 'config.yaml', YAML_BASE % '')):
+            with self.subTest(module=module.__name__):
+                path = self.dir / name
+                path.write_bytes(base.encode())
+                with patch.object(module.shutil, 'copystat', side_effect=OSError('no stat')), \
+                        self.assertRaises(OSError):
+                    module.apply(path, URL, TOKEN, log=quiet)
+                self.assertEqual(list(self.dir.glob(name + '*.bak')), [])
+                self.assertEqual(path.read_bytes(), base.encode())
+
+
+class RaisingLogKeepsTheReceipt(Dir):
+    """Re-audit (5): the file is written, so the caller must still get (and store) a receipt."""
+
+    def test_both_helpers(self):
+        def broken(*_args):
+            raise UnicodeEncodeError('cp1252', 'x', 0, 1, 'unmappable')
+        for module, name, base in ((jm, 'mcp_config.json', JSON_BASE % ''), (ym, 'config.yaml', YAML_BASE % '')):
+            with self.subTest(module=module.__name__):
+                path = self.dir / name
+                path.write_bytes(base.encode())
+                receipt = module.apply(path, URL, TOKEN, log=broken)
+                self.assertIsNotNone(receipt.backup_path)
+                self.assertEqual(module.remove_exact(path, receipt=receipt, log=broken).status, 'restored-exact')
+                self.assertEqual(path.read_bytes(), base.encode())
+
+
+class ShutdownAlwaysCleansSettings(unittest.TestCase):
+    """Re-audit (2): an interrupt in the watcher join or deregister cannot skip settings cleanup."""
+
+    def run_shutdown(self, **steps):
+        import wrapper
+        resources = MagicMock()
+        with patch.object(wrapper, '_remove_yaml_mcp_entries') as yaml_cleanup, \
+                patch.object(wrapper, '_remove_json_mcp_entries') as json_cleanup, \
+                self.assertRaises(KeyboardInterrupt):
+            wrapper._shutdown_wrapper(resources, **steps)
+        yaml_cleanup.assert_called_once_with()
+        json_cleanup.assert_called_once_with()
+        resources.close.assert_called_once_with()
+
+    def test_interrupt_in_watcher_join(self):
+        watcher = MagicMock()
+        watcher.join.side_effect = KeyboardInterrupt
+        self.run_shutdown(queue_stop=MagicMock(), watcher=watcher, deregister=MagicMock(), proxy=None)
+
+    def test_interrupt_in_deregister(self):
+        self.run_shutdown(queue_stop=None, watcher=None, deregister=MagicMock(side_effect=KeyboardInterrupt), proxy=None)
+
+    def test_interrupt_in_proxy_stop(self):
+        proxy = MagicMock()
+        proxy.stop.side_effect = KeyboardInterrupt
+        self.run_shutdown(queue_stop=None, watcher=None, deregister=None, proxy=proxy)
+
+    def test_ordinary_deregister_errors_are_swallowed_and_steps_continue(self):
+        import wrapper
+        proxy, resources = MagicMock(), MagicMock()
+        with patch.object(wrapper, '_remove_yaml_mcp_entries'), patch.object(wrapper, '_remove_json_mcp_entries'):
+            wrapper._shutdown_wrapper(resources, queue_stop=None, watcher=None,
+                                      deregister=MagicMock(side_effect=OSError('refused')), proxy=proxy)
+        proxy.stop.assert_called_once_with()
+        resources.close.assert_called_once_with()
+
+    def test_main_uses_the_shutdown_helper(self):
+        import inspect
+        import wrapper
+        self.assertIn('_shutdown_wrapper(', inspect.getsource(wrapper.main))
+        self.assertNotIn('_watcher_thread.join', inspect.getsource(wrapper.main))
+
+
 if __name__ == '__main__':
     unittest.main()

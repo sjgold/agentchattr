@@ -217,8 +217,8 @@ def _merge_receipt(earlier, receipt):
     the file between our writes. Otherwise drop the backup (and the claim to have created the
     file) so stop does the checked structural delete instead of restoring stale bytes."""
     import dataclasses
-    if earlier is None or receipt.backup_path is not None:
-        return receipt
+    if earlier is None or receipt.backup_path is not None or receipt.created_file:
+        return receipt        # a fresh backup, or a file we (re)created ourselves: this write stands alone
     if earlier.written_sha256 == receipt.prior_sha256:
         return dataclasses.replace(earlier, written_sha256=receipt.written_sha256, prior_sha256=receipt.prior_sha256)
     return dataclasses.replace(earlier, backup_path=None, backup_sha256=None, created_file=False,
@@ -310,6 +310,26 @@ def _stop_settings_cleanups(resources) -> None:
                 print(f"  Warning: JSON settings cleanup failed: {type(error).__name__}")
     finally:
         resources.close()
+
+
+def _shutdown_wrapper(resources, *, queue_stop=None, watcher=None, deregister=None, proxy=None) -> None:
+    """main()'s stop sequence. The settings cleanup sits in the outer finally, so an interrupt
+    in the watcher join, the deregister call or proxy.stop() still takes our entries (and
+    token) back out, and resources.close() still runs last."""
+    try:
+        if queue_stop is not None:
+            queue_stop.set()
+            if watcher:
+                watcher.join(timeout=6)
+        if deregister is not None:
+            try:
+                deregister()
+            except Exception:
+                pass
+        if proxy is not None:
+            proxy.stop()
+    finally:
+        _stop_settings_cleanups(resources)
 
 
 def _provider_from_command(command: object) -> str:
@@ -1030,14 +1050,12 @@ def main():
         code = run_agent(**run_kwargs)
         return code if isinstance(code, int) else 1
     finally:
-        if "_queue_stop" in locals():
-            _queue_stop.set()
-            if _watcher_thread:
-                _watcher_thread.join(timeout=6)
-        try:
+        has_identity = 'get_identity' in locals()
+
+        def _deregister():
             current_name = registration['name']
             current_token = registration['token']
-            if 'get_identity' in locals():
+            if has_identity:
                 current_name, _ = get_identity()
                 current_token = get_token()
             dereg_req = urllib.request.Request(
@@ -1045,13 +1063,9 @@ def main():
                 method="POST", data=b"", headers=_auth_headers(current_token))
             with urllib.request.urlopen(dereg_req, timeout=5):
                 pass
-        except Exception:
-            pass
-        try:
-            if proxy is not None:
-                proxy.stop()
-        finally:
-            _stop_settings_cleanups(resources)
+
+        _shutdown_wrapper(resources, queue_stop=locals().get('_queue_stop'),
+                          watcher=locals().get('_watcher_thread'), deregister=_deregister, proxy=proxy)
 
     print("  Wrapper stopped.")
 

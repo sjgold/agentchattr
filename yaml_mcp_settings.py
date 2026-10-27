@@ -284,7 +284,7 @@ def _then(first, second):
         if x <= start:
             return x
         if x >= start + inserted:
-            return x - inserted + end
+            return x - (start + inserted) + end
         return start if low else end
     return min(start, back(a, True)), max(end, back(b, False)), None
 
@@ -405,13 +405,33 @@ def _backup(path: Path, raw: bytes) -> Path:
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     backup = path.with_name(f'{path.name}.{DEFAULT_ENTRY}-{stamp}-{secrets.token_hex(3)}.bak')
     with backup.open('xb') as handle:      # reserve the name; never overwrite an earlier backup
-        handle.write(raw)
-        handle.flush()
-        os.fsync(handle.fileno())
-    shutil.copystat(path, backup)
-    if backup.read_bytes() != raw:
-        raise YamlSettingsError(f'Backup of {path.name} could not be verified; nothing was changed.')
+        try:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        except BaseException:
+            handle.close()
+            backup.unlink(missing_ok=True)
+            raise
+    try:
+        shutil.copystat(path, backup)
+        if backup.read_bytes() != raw:
+            raise YamlSettingsError(f'Backup of {path.name} could not be verified; nothing was changed.')
+    except BaseException:
+        backup.unlink(missing_ok=True)     # never leave a half-made backup behind
+        raise
     return backup
+
+
+def _never_raises(log):
+    """The file may already be written when we log; a failing log (stdout encoding) must not
+    lose the receipt or the result."""
+    def safe(message):
+        try:
+            log(message)
+        except Exception:
+            pass
+    return safe
 
 
 def resolve_settings_path(raw, project_dir=None) -> Path:
@@ -444,15 +464,16 @@ def apply(path, url: str, token: str, *, entry: str = DEFAULT_ENTRY, log=print) 
     restores the original bytes when the file is unchanged since this write.
     If the file changes between reading and replacing it, the plan is redone once, then refused."""
     path = Path(path)
+    log = _never_raises(log)
     if not path.parent.is_dir():
         raise YamlSettingsError(f'{path.parent} does not exist; nothing was changed.')
     for attempt in range(2):
         raw = _current_bytes(path)
         plan = _plan_apply(path, raw, entry, url, token)
         backup = backup_sha = None
-        if raw is not None and not plan['had_entry']:
-            backup, backup_sha = _backup(path, raw), _sha256(raw)
         try:
+            if raw is not None and not plan['had_entry']:
+                backup, backup_sha = _backup(path, raw), _sha256(raw)
             _atomic_write(path, plan['data'], raw)
         except _ChangedUnderUs:
             if backup is not None:
@@ -508,6 +529,7 @@ def remove_exact(path, *, entry: str = DEFAULT_ENTRY, receipt: ApplyReceipt | No
     result is checked to differ from the current file by that entry alone. Either way the result
     is compared structurally with the backup and reported."""
     path = Path(path)
+    log = _never_raises(log)
     for attempt in range(2):
         try:
             return _remove_once(path, entry, receipt, log)

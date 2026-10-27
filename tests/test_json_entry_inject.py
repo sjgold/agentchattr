@@ -131,6 +131,30 @@ class WrapperLifecycleTests(AgyHome):
         self.assertEqual(json.loads(self.config.read_text('utf-8')).get('mine'), 1)
         self.assertNotIn(TOKEN.encode(), self.config.read_bytes())
 
+    def test_refresh_that_recreates_a_user_deleted_file_deletes_it_at_stop(self):
+        # Re-audit (4): the recreated file is ours alone; stop deletes it rather than leaving a stub.
+        import wrapper
+        self.config.write_bytes(ORIGINAL.encode('utf-8'))
+        self.apply()
+        self.config.unlink()
+        self.apply(token=TOKEN + 'refreshed')
+        self.assertEqual([r.status for r in wrapper._remove_json_mcp_entries()], ['deleted-created-file'])
+        self.assertFalse(self.config.exists())
+
+    def test_a_print_that_raises_cannot_lose_the_receipt(self):
+        # Re-audit (5): the file is written, so the wrapper must still hold a receipt and clean up.
+        import wrapper
+
+        class Unprintable(io.StringIO):
+            def write(self, _text):
+                raise UnicodeEncodeError('cp1252', 'x', 0, 1, 'unmappable')
+        self.config.write_bytes(ORIGINAL.encode('utf-8'))
+        with patch('sys.stdout', Unprintable()):
+            self.apply()
+        self.assertEqual(len(wrapper._JSON_RECEIPTS), 1)
+        wrapper._remove_json_mcp_entries()
+        self.assertEqual(self.config.read_bytes(), ORIGINAL.encode('utf-8'))
+
     def test_missing_file_is_created_then_deleted(self):
         import wrapper
         self.apply()
