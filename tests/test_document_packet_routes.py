@@ -63,6 +63,28 @@ class DocumentPacketRouteTests(unittest.TestCase):
                 self.assertEqual(client.post('/api/sessions/start',json={'source_file':packet},headers=headers).status_code,403)
         self.assertEqual(client.post('/api/sessions/start',content=b' '*(4*1024*1024+1),headers=self.case.fixture.headers).status_code,413)
 
+    def test_preview_zero_padded_length_and_strict_transport_cases(self):
+        import json
+        client=self.client();headers={**self.case.fixture.headers,'Content-Type':'application/json'}
+        body=json.dumps({'files':self.files()}).encode()
+        padded={**headers,'Content-Length':'000000000'+str(len(body))}
+        self.assertEqual(client.post('/api/documents/packet-preview',content=body,headers=padded).status_code,200)
+        for raw,status in ((b'{"files":[],"files":[]}',400),(b'{}',400)):
+            self.assertEqual(client.post('/api/documents/packet-preview',content=raw,headers=headers).status_code,status)
+        self.assertEqual(client.post('/api/documents/packet-preview',content=body,headers=self.case.fixture.headers).status_code,415)
+        corrupt=self.files();corrupt[0]['content_sha256']='0'*64
+        self.assertEqual(client.post('/api/documents/packet-preview',json={'files':corrupt},headers=self.case.fixture.headers).status_code,400)
+        self.assertEqual(client.post('/api/documents/packet-preview',content=iter([b' '*(4*1024*1024),b' ']),headers=headers).status_code,413)
+
+    def test_preview_disconnect_is_a_typed_refusal(self):
+        import asyncio
+        from starlette.requests import Request
+        async def disconnected():return {'type':'http.disconnect'}
+        request=Request({'type':'http','method':'POST','path':'/api/documents/packet-preview','query_string':b'',
+            'headers':[(b'content-type',b'application/json')],'state':{'auth_origin':'operator'}},disconnected)
+        response=asyncio.run(app.preview_document_packet(request))
+        self.assertEqual(response.status_code,400)
+
     def test_existing_session_start_threads_validated_packet_before_engine(self):
         client=self.case.client();packet=packet_fixture()
         with patch.object(app,'_start_session_sync',return_value=JSONResponse({'ok':True})) as start:

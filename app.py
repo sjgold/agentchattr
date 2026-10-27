@@ -3547,16 +3547,20 @@ async def preview_document_packet(request: Request):
         length = lengths[0]
         if len(lengths) != 1 or not length.isascii() or not length.isdecimal():
             return JSONResponse({'error': 'Invalid Content-Length.'}, status_code=400)
+        length = length.lstrip('0') or '0'
         if len(length) > 8 or int(length) > limit:
             return JSONResponse({'error': 'Packet preview exceeds the 4 MiB request limit.'}, status_code=413)
     if request.headers.get('content-type', '').split(';', 1)[0].strip().lower() != 'application/json':
         return JSONResponse({'error': 'Send packet preview as application/json.'}, status_code=415)
     raw = bytearray()
     try:
-        async for chunk in request.stream():
-            if len(raw) + len(chunk) > limit:
-                return JSONResponse({'error': 'Packet preview exceeds the 4 MiB request limit.'}, status_code=413)
-            raw.extend(chunk)
+        try:
+            async for chunk in request.stream():
+                if len(raw) + len(chunk) > limit:
+                    return JSONResponse({'error': 'Packet preview exceeds the 4 MiB request limit.'}, status_code=413)
+                raw.extend(chunk)
+        except Exception:
+            return JSONResponse({'error': 'The packet request could not be read completely.'}, status_code=400)
         def object_fields(pairs):
             result = {}
             for key, value in pairs:

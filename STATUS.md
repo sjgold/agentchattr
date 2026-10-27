@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 03:55 CDT. Ticket23 group3 passes175 focused tests; reviewer review pending. Frozen RC0 stays unchanged.
+**Updated:** 2026-10-27 04:01 CDT. Ticket23 groups1-3 reviewer-cleared; small follow-ups pass179 tests. RC0 remains frozen. Hermes is deferred.
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
@@ -16,7 +16,7 @@ RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI 
 
 Frozen RC0 runs from its own pinned checkout. Seven seats are ready; DeepSeek document read/download passed. Its Antigravity document request timed out and was cancelled. Earlier successful AGY evidence belongs to the old instance.
 
-Multi-file review core and delivery groups are reviewer-cleared. Route/picker group1d0ed71 passes175 focused tests and three targeted mutation checks, awaiting review. It is excluded from RC0. Hermes proof stopped before any write because an existing bundled Hermes Python process is running; that process is untouched.
+Multi-file review core and delivery groups are reviewer-cleared. Route/picker group1d0ed71+b36cebf is reviewer-cleared; its small review follow-ups pass179 focused tests. Three targeted mutation checks were killed. It is excluded from RC0. Hermes proof stopped before any write because an existing bundled Hermes Python process is running; that process is untouched.
 
 ## Needs Seth
 
@@ -45,8 +45,8 @@ Multi-file review core and delivery groups are reviewer-cleared. Route/picker gr
 
 ## Next
 
-1. Reviewer checks Ticket23 group3. Stop/report at the90-minute checkpoint; include23 in RC1 only when all three groups are green and reviewed.
-2. Fix or report Hermes executable-path detection and Windows .cmd descendant Stop defects before RC1. Existing Hermes process61816 stays untouched.
+1. Ticket23 groups1-3 are cleared. Stop/report this bounded slice before its90-minute checkpoint; reviewer checks the small follow-up pin. RC1 may include23 after final frozen verification.
+2. Hermes is excluded from RC1 unless Seth decides otherwise: path-based running guard, Windows .cmd child Stop limitation, and his existing process61816 remain blockers. The process stays untouched; Opus owns the path guard.
 3. Integrate reviewed default_model fallback with managed-runtime tests. Optional reviewed UI ideas enter only through RC1. RC0 stays frozen.
 4. Final frozen full discovery, activation-state review and file-state check precede publication. Tickets21/22/24-26 stay post-launch; preserve9 transcript skips.
 5. [Post-launch scope](C:/Users/SJG/.traycer/epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/post-launch-scope/index.md) holds the next-scoping list. Push/publication requires Seth's explicit go-ahead.
@@ -226,3 +226,13 @@ Operator-only packet-preview POST enforces a4MiB streamed-body limit and strict 
 175 focused document/brief/delivery/route/source/seal/outbox/protocol/naming/artifact-UI/environment-guard tests pass in9.949s. Node syntax and diff checks pass. Three in-memory mutants (aggregate guard, packet validation, stale selection) each fail one assertion with zero errors. An explicit untrusted-data preamble test was observed red before its wording fix. CLI guide records v2 JSON-prefix/fixed-boundary framing. No browser/live-provider check or RC0 change.
 
 Commit1d0ed71 landed before this STATUS update because the timestamp script failed on missing Windows tzdata; this follow-up uses Windows TimeZoneInfo. Hermes operations stopped before any real-home write: bundled Python61816 was present under HERMES_HOME although image checks missed it. Config unchanged and agentchattr-uat absent. Reviewer requested path detection and a signed fake.cmd Stop reproduction before RC1.
+
+### 2026-10-27 04:01 CDT Ticket23 review follow-ups and checkpoint report
+
+Reviewer cleared groups1/2/3. Four added regression tests observed3 assertion failures and1 disconnect error before the small fixes: normalize zero-padded Content-Length, return400 for disconnected request streams, identify the failing file by index/name, and reset the8-second deadline for each preview request. Duplicate fields, tampered members,415 and no-Content-Length chunked overflow are also covered.179 focused tests pass in13.431s; Node syntax is valid. No rendered multi-file or live multi-file provider claim.
+
+Remaining before RC1: review this follow-up delta; integrate reviewed default_model4af9bc2 plus managed-runtime snapshot/effective-model tests; optionally integrate reviewed UI10ff7d0 and AGY JSON adapter only after clearance; then freeze and run final full discovery/activation-state review. Ticket23 is included only after that verification. Early client-side file-count/metadata refusal remains a note; the authoritative server64KiB metadata cap already refuses oversized lists. No add-to-selection feature or source-view redesign added.
+
+Windows Stop reproduction is a confirmed limitation, not fixed: a directly owned fake.cmd parent ended while its signed/birth-verified Python child survived. Both test handles exited during proof cleanup. Evidence: .audit-tmp/owned-cmd-stop-proof/result.json and .audit-tmp/reproduce_owned_cmd_stop.py. Reviewer ruled race-free Job Object ownership is post-launch work. Current UAT uses claude.exe, codex.exe, omp.exe and Python-shim-to-agy.exe, none.cmd/.bat. Hermes.cmd is explicitly deferred with the running-path guard and existing Hermes process decision. Spot leftovers through signed birth inventories and retained handles; never kill by name or port.
+
+RC0 still serves49949 from99361d1. This check scanned17 current exports clean against authorized credentials/owned tokens and the five incident-variable current values;27 old-root report paths were absent and excluded, not claimed scanned. No push or publication.

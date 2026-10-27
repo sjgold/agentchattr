@@ -144,26 +144,31 @@
             controller = ownedController;
             let timedOut = false;
             const live = () => !disposed && epoch === current && editor.isConnected;
-            timer = setTimeout(() => {
-                if (!live()) return;
-                timedOut = true; ownedController.abort(); epoch++;
-                controller = null; timer = null; fail('File check timed out.');
-            }, 8000);
+            const deadline = () => {
+                if (timer !== null) clearTimeout(timer);
+                timer = setTimeout(() => {
+                    if (!live()) return;
+                    timedOut = true; ownedController.abort(); epoch++;
+                    controller = null; timer = null; fail('File check timed out.');
+                }, 8000);
+            };
             try {
                 const checked = alreadyChecked ? copy(alreadyChecked) : [];
-                if (files) for (const file of files) {
+                if (files) for (const [index, file] of files.entries()) {
+                    deadline();
                     const response = await fetch('/api/documents/preview?filename=' + encodeURIComponent(file.name), {
                         method: 'POST', headers: {'Content-Type': 'application/octet-stream', 'X-Session-Token': window.SESSION_TOKEN},
                         body: file, signal: ownedController.signal
                     });
                     const value = await response.json();
                     if (!live()) return;
-                    if (!response.ok) throw new FileCheckError(typeof value?.error === 'string' ? value.error : 'The file could not be checked.');
-                    if (!valid(value, file)) throw new FileCheckError('The file preview response was invalid.');
+                    if (!response.ok) throw new FileCheckError('File ' + (index + 1) + ' (' + file.name + '): ' + (typeof value?.error === 'string' ? value.error : 'The file could not be checked.'));
+                    if (!valid(value, file)) throw new FileCheckError('File ' + (index + 1) + ' (' + file.name + '): The file preview response was invalid.');
                     checked.push(copy(value));
                 }
                 let value = checked[0];
                 if (checked.length > 1) {
+                    deadline();
                     const response = await fetch('/api/documents/packet-preview', {
                         method: 'POST', headers: {'Content-Type': 'application/json', 'X-Session-Token': window.SESSION_TOKEN},
                         body: JSON.stringify({files: checked}), signal: ownedController.signal

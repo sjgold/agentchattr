@@ -67,6 +67,17 @@ assert.strictEqual(facade.requestFields().source_file.files[0].name,'<img src=x 
 facade.dispose();assert.strictEqual(timers.size,0);assert.throws(()=>facade.requestFields());
 ''',[preview_document('<img src=x onerror=alert(1)>.py',b'literal'),preview_document('b.py',b'b')])
 
+    def test_failed_file_names_its_position_and_name(self):
+        self.run_js(r"""
+const normal=context.fetch;
+context.fetch=async(url,options)=>url.includes('filename=b.py')?{ok:false,json:async()=>({error:'Invalid UTF-8'})}:normal(url,options);
+await selected();assert.strictEqual(facade.state,'error');
+assert(texts(editor).includes('File 2 (b.py): Invalid UTF-8'));
+""")
+
+    def test_each_preview_request_gets_its_own_deadline(self):
+        self.run_js("await selected();assert(tid>=3,'Two files plus packet need separate deadlines');assert.strictEqual(timers.size,0);")
+
     def test_remove_rebuilds_remaining_snapshot(self):
         self.run_js(r"""
 await selected();assert.strictEqual(facade.state,'file');
