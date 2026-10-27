@@ -18,7 +18,13 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Root: Ticket21 transcript, then22 packaging, reviewed activation and final file cleanup. No phone-width gate, numeric speed screen or browser-harness work. |
+| Next | Ticket21 ACTIVE: transcript contract and9 ROOT red tests committed for review; production next after clearance. Then22 packaging, reviewed activation and final cleanup. No speed screen or browser work. |
+
+## Ticket21 transcript: red checkpoint
+
+Small contract: docs/plans/2026-10-26-transcript-export.md. New tests/test_artifact_transcript.py exercised9 tests in0.934s:1 genuine missing-route FAIL and8 missing artifact_transcript module infrastructure ERRORs; follow-on assertions unobserved. Earlier26-test command accidentally discovered the imported core TestCase too; test module now imports fixture helpers through the module, and the retained final9 count is the transcript-only run. Raw .audit-tmp/ticket21-transcript-reds.txt.
+
+Coverage target: exact Unicode/CRLF, admission order over message IDs, linked continuation position, skip marker, missing/edited/duplicate projection refusal,8MiB UTF8 cap, single detached read, channel/run separation, attachment-detail omission, packet-cap independence and fixed download route. Production not implemented yet. Reviewer checks bounded contract/reds, then root implements source/export/operator/security route and UI button. No browser/speed tool. No push.
 
 ## Latest scope decision, 2026-10-26
 
