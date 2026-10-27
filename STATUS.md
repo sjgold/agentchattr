@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27. Six seats working; reviewed UI merged and tested; Hermes/OMP investigation next.
+**Updated:** 2026-10-27 01:37 CDT. Seven seats working; UI follow-up0078e74 merged as0e985ad (69 focused tests pass); pre-flight restart fixes next.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -10,15 +10,15 @@
 
 ## Now
 
-Documentation cleanup is accepted. All six seats are running. Antigravity's real managed document now passes63B read/download exact after clearing two first-run notices and switching the owned CLI from research-only Plan to Auto mode. Normal Google login was already present; the startup error log was not evidence of missing login.
+Documentation cleanup is accepted. Seven seats are running, including OMP (90B managed document read/download exact). Antigravity's real managed document now passes63B read/download exact after clearing two first-run notices and switching the owned CLI from research-only Plan to Auto mode. Normal Google login was already present; the startup error log was not evidence of missing login.
 
-The real Windows launcher reuse path, Pre-flight package editor/save/launch and Open chat path were exercised. Live sender labels are friendly (zero raw managed ids in sender elements). Reviewed UI commits08b1f0a/a8f624c/c6930b0 are integrated: visible Seats & launch link, clearer pre-flight flow, lighter help and usable menus.119 focused tests pass. Seth's own end-to-end acceptance remains open.
+The real Windows launcher reuse path, Pre-flight package editor/save/launch and Open chat path were exercised. Live sender labels are friendly (zero raw managed ids in sender elements). Reviewed UI commits08b1f0a/a8f624c/c6930b0 and0078e74 are integrated: visible Seats & launch link, clearer pre-flight flow, lighter help and usable menus.The first merge passed119 focused tests; the follow-up passed69. Launch team and open chat was exercised with7/7 ready seats. Seth's own end-to-end acceptance remains open.
 
 ## Needs Seth
 
-- [ ] Beyond the raw agent names, what else looked wrong on the main chat screen? Naming is implemented/tested and will appear after the owned server refresh.
+- [ ] Beyond the raw agent names, what else looked wrong on the main chat screen? Naming is implemented/tested and is visible on the running instance.
 
-- [ ] Decide later whether in-UI provider/template setup, credential entry, live model discovery and launch-and-go-chat belong in scope. They are absent today and are not being built tonight.
+- [ ] Decide later whether in-UI provider/template setup, credential entry, live model discovery belong in scope. These setup features are absent today; launch-and-go-chat is now implemented and exercised.
 
 ## Seats
 
@@ -30,16 +30,15 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 |DeepSeek|deepseek-flash|Running; Documents create/read/download100B exact.1070 not mapped by provider list|
 |GLM|glm-5.3|Running; earlier Documents285B exact, no extra call|
 |Muse|muse-spark-1.3-contributor|Running; Documents81B exact. Hello needed512-token probe cap; normal document path worked unchanged|
-|Hermes|Not investigated yet|Next after the six; existing-login/config-only investigation first|
-|OMP|Not investigated yet|Next after the six; existing-login/config-only investigation first|
+|Hermes|Normal HERMES_HOME authorized|YAML adapter needs temporary-fixture tests and review before any real-home write|
+|OMP|openai-codex/gpt-6.1-sol|Running; managed Documents90B read/download exact; model unverified in API metadata|
 
 ## Next
 
-1. Send integrated UI pin/results to reviewer; keep primary UAT49949 up for Seth.
-2. Time-box Hermes/OMP CLI-seat investigation next. Use existing logins, no new keys; easy local setup only, otherwise explicit skip/cause. Global writes require prior permission and the agreed backup/removal protocol.
-3. Review any later UI-agent commits separately; only the three pinned commits above are integrated.
-5. Ticket23 MultiPackets plan only (scope confirmation before code), then authorized Ticket21 and22.24-26 remain uncleared.
-6. Final activation-state review and full regression before any publication; push requires Seth's explicit go-ahead.
+1. Fix pre-flight restart dead ends and forgotten Leave out choices, preserving ownership checks.
+2. Build/test Hermes YAML support on temporary homes. Reviewer approval before any real-home write, then one tiny request with the existing login.
+3. Ticket23 MultiPackets plan only, then authorized Ticket21 and22.24-26 remain uncleared.
+4. Final activation review and regression before publication. Push requires Seth's explicit go-ahead.
 
 ## UAT
 
@@ -56,9 +55,10 @@ The distinct Antigravity `agentchattr-uat` global MCP entry is currently active 
 - "i do need doc cleanup tonight": execute the approved110-doc map, preserve everything, no deletions. It takes priority while in progress.
 - "Yes to 21 and 22 after Hermes/OMP. Keep 23 and 24-26 as separate decisions.": authorization is recorded; later priority moves MultiPackets planning ahead of21/22. Transcript has not been implemented.
 - MiMo: "leave out mimo this has some investigation i need to do and i cant do it right now". No MiMo credential search or setup.
+- 2026-10-27 01:37 CDT: Seth: "so we dont split brain hermes use my normal home". Normal HERMES_HOME is authorized with a distinct agentchattr-uat YAML entry, backup, structural diff and exact-entry removal at stop. Adapter review precedes the first real write.
 - No push/publication without Seth's explicit go-ahead. No deletions. No Fable/helper calls. No new keys. Global writes require the approved backup/distinct-entry/structural-diff/removal protocol and Seth's permission.
 
-Next owner: Codex finishes cleanup checks and sends the cleanup pins to the reviewer. Then read-only managed-agy environment comparison, followed by time-boxed Hermes/OMP investigation. Small launch/config fixes only; otherwise record exact skips. Send status before starting21.23 implementation and24-26 remain held.
+Next owner: Codex handles pre-flight restart defects, then the reviewed Hermes adapter. Focused regressions and reviewed real-home config changes are the completion criteria.
 
 ## Verification and limits
 
@@ -99,3 +99,7 @@ Naming review correction: reviewer found3 Request Changes onclick arguments had 
 Live handoff details: actual windows/start.bat with isolated data/uploads/MCP flags exited0 and returned /preflight by reusing the matching owned instance (not a new cold-server bootstrap). In the actual editor, selected the six-seat package, changed AGY display name, saved, included all six, launched/reused them and opened chat. MiniMax removed from isolated config and saved package; initial stale unused row caused one startup refusal and was backed up/repaired, not a product-data migration. Current native AGY console shows Google AI Pro, Gemini3.8 Flash(Medium); two onboarding notices were dismissed, current mode is Auto. One new document request fulfilled,63B exact, SHAea55a480c1dfc31ff396d8b5a82752935bc1002821dab72c88444fec973f1b3a; API correctly reports cli_model_unverified. No new Opus/Sol call.
 
 UI merge verification: exact reviewed tipc6930b0 (08b1f0a,a8f624c,c6930b0), auto-merged while preserving canonical-label fixes. Naming/preflight/help/artifact UI/restart/source-builder/identity/operator-route119 PASS7.430s. One previously noted HTTPError404 ResourceWarning remains. The separate UI worktree instance is http://127.0.0.1:49960/preflight; primary integrated handoff is49949/preflight. Later moving-branch commits are not included. No push.
+
+### 2026-10-27 01:37 CDT UI follow-up and dashboard correction
+
+Reviewed UI pin0078e74 is merged at0e985ad;69 focused tests passed in6.330s. The merge committed before its STATUS update because Python timezone data was unavailable. This follow-up records the result using the Windows Central timezone. No runtime/backend changes in the UI merge. No push.
