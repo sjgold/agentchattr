@@ -75,6 +75,54 @@ def local_request(request, timeout):
     return build_opener(ProxyHandler({})).open(request, timeout=timeout)
 
 
+def read_exit_status(pid):
+    """Read-only terminal check. NEVER grants identity/control authority."""
+    import process_identity as identity
+    raw=None;handle=None
+    try:
+        raw=identity._open_process(pid,identity._QUERY|identity._SYNCHRONIZE)
+        handle=identity.OwnedProcessHandle(raw,pid);raw=None
+        code=handle.poll()
+        return {'status':'exited' if code is not None else 'live','exit_code':code}
+    except (OSError,ValueError) as error:
+        if handle is None and raw is None and getattr(error,'winerror',None)==87:
+            return {'status':'absent'}
+        return {'status':'uncertain','reason':'read_only_exit_query_failed','error_code':getattr(error,'winerror',None)}
+    finally:
+        if handle:handle.close()
+        elif raw is not None:identity._api().CloseHandle(raw)
+
+
+def probe_cleanup_birth(birth,retained=None):
+    from process_identity import open_verified_process
+    if retained is not None:
+        recorded,handle=retained
+        if recorded!=birth or handle.pid!=birth['pid']:
+            return {'status':'mismatch','process':None,'reason':'retained_birth_differs'}
+        code=handle.poll()
+        return {'status':'live' if code is None else 'exited','process':handle,'exit_code':code,'proof':'retained_verified_kernel_handle'}
+    result=open_verified_process(birth)
+    if result['status']=='uncertain':
+        terminal=read_exit_status(birth['pid'])
+        if terminal['status'] in ('absent','exited'):
+            return {**terminal,'process':None,'proof':'read_only_terminal_check_no_control_authority'}
+    return result
+
+
+def request_fixture_shutdown(api,token,retained=None,launcher=None):
+    """Do not send HTTP to an owned process already proven terminal."""
+    from urllib.error import URLError
+    process=retained if retained is not None else launcher
+    def ended():return process is not None and process.poll() is not None
+    if not token:return 'not_ready'
+    if ended():return 'already_exited'
+    try:
+        api('shutdown');return 'requested'
+    except URLError:
+        if ended():return 'exited_during_shutdown'
+        raise
+
+
 def public_evidence(value, secrets):
     """Refuse rather than silently losing evidence. Never print a leaked string."""
     raw = json.dumps(value, ensure_ascii=True, allow_nan=False)
@@ -310,7 +358,8 @@ def install_fixture_guard():
     if ports != private['ports'] or os.environ['CHANNEL_FIXTURE_NONCE'] != private['nonce']:
         raise ValueError('Guard fixture binding mismatch')
     if (ports != manifest['ports'] or hash_bytes(private['nonce'].encode()) != manifest['nonce_sha256']
-            or hash_bytes(json.dumps(private['config'],sort_keys=True).encode()) != manifest['config_sha256']):
+            or hash_bytes(json.dumps(private['config'],sort_keys=True).encode()) != manifest['config_sha256']
+            or private.get('visibility_simulated',False)!=manifest.get('visibility_simulated',False)):
         raise ValueError('Private binding differs from creator manifest')
     # Pure negative test does not open a socket or leave a real guard violation.
     try:
@@ -361,6 +410,26 @@ def validate_observation(payload, secrets):
     return public_evidence(payload, secrets)
 
 
+def validate_visibility(payload,*,simulated,secrets=()):
+    fields={'native_hidden','native_visibilityState','native_hasFocus','visibility_simulated','claim'}
+    if (not isinstance(payload,dict) or set(payload)!=fields
+            or type(payload['native_hidden']) is not bool or type(payload['native_hasFocus']) is not bool
+            or payload['native_visibilityState'] not in ('hidden','visible','prerender')
+            or type(payload['visibility_simulated']) is not bool or payload['visibility_simulated']!=simulated
+            or payload['claim']!=('no native foreground/visibility parity' if simulated else 'native document values unmodified')):
+        raise ValueError('Visibility disclosure differs from frozen fixture mode')
+    return public_evidence(payload,secrets)
+
+
+def visibility_receipt(root,*,simulated):
+    path=root/'records/visibility.json'
+    if path.exists():
+        return {**validate_visibility(read_json(path),simulated=simulated),'native_values_missing':False}
+    return {'native_hidden':None,'native_visibilityState':None,'native_hasFocus':None,
+        'visibility_simulated':simulated,'native_values_missing':True,
+        'claim':'no native foreground/visibility parity' if simulated else 'native document values unmodified'}
+
+
 def missing_cases(rows):
     observed={row['case'] for row in rows if row.get('observations',{}).get('status')=='observed'}
     return sorted(EVIDENCE_CASES-observed)
@@ -407,10 +476,18 @@ def seed_session(app, owner, channel, state='complete'):
     return app.session_store._event_update(session['id'], lambda value: value.update(admitted_events=[event], state=state))
 
 
-def browser_observer(nonce):
+def browser_observer(nonce,*,simulate_visibility=False):
     """Fixture-only observer. Secret stays inside closure; exported proof is scanned."""
     return r'''(() => {
 const nonce=NONCE, blobs=new Map(), evidence={clicks:[],revoked:[],errors:[]};
+const nativeVisibility={native_hidden:document.hidden,native_visibilityState:document.visibilityState,native_hasFocus:document.hasFocus()};
+const visibilitySimulated=SIMULATE_VISIBILITY;
+evidence.visibility={...nativeVisibility,visibility_simulated:visibilitySimulated,claim:visibilitySimulated?'no native foreground/visibility parity':'native document values unmodified'};
+if(visibilitySimulated) {
+ Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});
+ Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'visible'});
+}
+fetch('/__artifact_fixture/visibility',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Session-Token':window.__SESSION_TOKEN__,'X-Fixture-Nonce':nonce},body:JSON.stringify(evidence.visibility)}).then(r=>{if(!r.ok)throw Error('Visibility receipt refused')}).catch(()=>evidence.errors.push('visibility_receipt_failed'));
 const create=URL.createObjectURL.bind(URL), revoke=URL.revokeObjectURL.bind(URL);
 URL.createObjectURL=b=>{const u=create(b);blobs.set(u,b);return u};
 URL.revokeObjectURL=u=>{evidence.revoked.push({at:performance.now()});blobs.delete(u);revoke(u)};
@@ -424,26 +501,26 @@ if(!response.ok)throw Error('Server Blob proof refused');Object.assign(entry,awa
 },true);
 window.__artifactFixtureEvidence=()=>JSON.parse(JSON.stringify(evidence));
 window.__artifactFixtureReport=async payload=>{const r=await fetch('/__artifact_fixture/evidence',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json','X-Session-Token':window.SESSION_TOKEN||window.__SESSION_TOKEN__,'X-Fixture-Nonce':nonce},body:JSON.stringify(payload)});if(!r.ok)throw Error('Observation refused');return {recorded:true}};
-})();'''.replace('NONCE', json.dumps(nonce))
+})();'''.replace('NONCE', json.dumps(nonce)).replace('SIMULATE_VISIBILITY','true' if simulate_visibility else 'false')
 
 
 def marked_shim():
     return 'window.marked={setOptions:()=>{},parse:s=>String(s).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")};'
 
 
-def fixture_html(token,nonce):
+def fixture_html(token,nonce,*,simulate_visibility=False):
     html=(ROOT/'static/index.html').read_text(encoding='utf-8')
     html,replacements=re.subn(r'<script[^>]+src="https://[^\"]+marked[^\"]*"[^>]*></script>',
         lambda _: '<script>'+marked_shim()+'</script>',html)
     if replacements!=1: raise RuntimeError('CDN shim anchor changed')
     script='<script>localStorage.setItem("help_seen","1");window.__SESSION_TOKEN__='+json.dumps(token)+';</script>'
-    return html.replace('</head>',script+'<script>'+browser_observer(nonce)+'</script></head>')
+    return html.replace('</head>',script+'<script>'+browser_observer(nonce,simulate_visibility=simulate_visibility)+'</script></head>')
 
 
-def page_init_control(*,mutation=None):
+def page_init_control(*,mutation=None,simulate_visibility=False):
     """Real script ordering/init in Node VM; no browser/network/layout claim."""
-    if mutation not in (None,'help_seed','shim','observer'): raise ValueError('Unknown in-process control mutation')
-    html=fixture_html('T','N')
+    if mutation not in (None,'help_seed','shim','observer','visibility_force_on','visibility_remove','visibility_drop_native','visibility_late'): raise ValueError('Unknown in-process control mutation')
+    html=fixture_html('T','N',simulate_visibility=simulate_visibility)
     if mutation=='help_seed':
         anchor='localStorage.setItem("help_seen","1");'
         if html.count(anchor)!=1: raise ValueError('Help seed mutation anchor differs')
@@ -454,6 +531,9 @@ def page_init_control(*,mutation=None):
         html=html.replace(anchor,'',1)
     elif mutation=='observer':
         html=html.replace('window.__artifactFixtureEvidence=', 'window.__artifactFixtureEvidence=){',1)
+    elif mutation=='visibility_force_on':html=html.replace('if(visibilitySimulated) {','if(true) {',1)
+    elif mutation=='visibility_remove':html=html.replace('if(visibilitySimulated) {','if(false) {',1)
+    elif mutation=='visibility_drop_native':html=html.replace('...nativeVisibility,','',1)
     from html.parser import HTMLParser
     class Extract(HTMLParser):
         def __init__(self):
@@ -478,10 +558,12 @@ def page_init_control(*,mutation=None):
         def handle_data(self,data):
             if self.script is not None:self.script['chunks'].append(data)
     extracted=Extract();extracted.feed(html)
+    if mutation=='visibility_late':
+        observer=next(s for s in extracted.scripts if s['observer']);extracted.scripts.remove(observer);extracted.scripts.append(observer)
     allowed={'PATH','SYSTEMROOT','WINDIR','COMSPEC','PATHEXT','SYSTEMDRIVE','PROCESSOR_ARCHITECTURE','NUMBER_OF_PROCESSORS'}
     env={k:v for k,v in os.environ.items() if k.upper() in allowed}
     result=subprocess.run(['node',str(ROOT/'tools/artifact_page_init_control.js')],
-        input=json.dumps({'nodes':extracted.nodes,'scripts':extracted.scripts}),text=True,
+        input=json.dumps({'nodes':extracted.nodes,'scripts':extracted.scripts,'simulateVisibility':simulate_visibility}),text=True,
         encoding='utf-8',capture_output=True,timeout=15,env=env,cwd=ROOT,
         creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
     if not result.stdout.strip(): raise ValueError('VM control did not emit a result: '+result.stderr[:500])
@@ -563,7 +645,8 @@ def runtime_server(*,dry_startup=False):
             workers = {key: {'attempt': item['id'], 'state': app.api_seat_manager._inspect(key)['state'],
                 'base': item['base']} for key, item in app.api_seat_manager.attempts.items()}
         value = {'sessions': state['sessions'], 'counts': counts, 'workers': workers,
-            'actions': state['actions'], 'finished': state['finished']}
+            'actions': state['actions'], 'finished': state['finished'],
+            'visibility':visibility_receipt(root,simulated=private.get('visibility_simulated',False))}
         return public_evidence(value, (nonce, app.session_token))
     @app.app.post(CONTROL_PREFIX + '/blob')
     async def blob(request: app.Request):
@@ -588,6 +671,16 @@ def runtime_server(*,dry_startup=False):
             raise HTTPException(400, 'Bounded observation refused') from None
         write_json(root / 'records' / ('observation-' + uuid.uuid4().hex + '.json'), value)
         return {'recorded': True}
+    @app.app.post(CONTROL_PREFIX + '/visibility')
+    async def visibility(request: app.Request):
+        auth(request)
+        raw=await request.body()
+        if len(raw)>2048:raise HTTPException(413)
+        try:value=validate_visibility(json.loads(raw),simulated=private.get('visibility_simulated',False),secrets=(nonce,app.session_token))
+        except ValueError:raise HTTPException(400,'Visibility disclosure refused') from None
+        write_json(root/'records/visibility.json',value)
+        write_json(root/'records'/('visibility-'+uuid.uuid4().hex+'.json'),{'received_at':time.time(),'observation':value})
+        return {'recorded':True}
     @app.app.post(CONTROL_PREFIX + '/control')
     async def control(request: app.Request):
         auth(request)
@@ -633,6 +726,8 @@ def runtime_server(*,dry_startup=False):
         elif action == 'poll_failure': fault['poll'] = True
         elif action == 'finish':
             # An operator completion marker is never evidence of all cases passing.
+            if not (root/'records/visibility.json').exists():raise HTTPException(409,'Native visibility disclosure not observed')
+            validate_visibility(read_json(root/'records/visibility.json'),simulated=private.get('visibility_simulated',False),secrets=(nonce,app.session_token))
             missing=missing_cases([read_json(path) for path in (root/'records').glob('observation-*.json')])
             if missing:
                 write_json(root/'records/missing-cases.json',{'not_observed':missing})
@@ -651,7 +746,7 @@ def runtime_server(*,dry_startup=False):
     async def fixture_page(request, call_next):
         path = request.url.path
         if path == '/':
-            html=fixture_html(app.session_token,nonce)
+            html=fixture_html(app.session_token,nonce,simulate_visibility=private.get('visibility_simulated',False))
             origin = owned_origin('http://127.0.0.1:' + str(ports[0]), ports)
             return HTMLResponse(html, headers={'Cache-Control': 'no-store',
                 'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src " + origin + ' ws://127.0.0.1:' + str(ports[0]) + "; object-src 'none'; base-uri 'none'"})
@@ -688,7 +783,7 @@ def runtime_server(*,dry_startup=False):
     except _DryStartupComplete:
         if not dry_startup: raise
         # Render construction shares the real route helper; no page is served.
-        fixture_html(app.session_token,nonce)
+        fixture_html(app.session_token,nonce,simulate_visibility=private.get('visibility_simulated',False))
         return True
     finally:
         gates['api'].set(); gates['create'].set()
@@ -699,7 +794,7 @@ def runtime_server(*,dry_startup=False):
 
 class Fixture:
     """Explicit construction only after executable review; import has no effects."""
-    def __init__(self):
+    def __init__(self,*,simulate_visibility=False):
         from tools.verify_channel_lifecycle import repository_head
         self.trusted = trusted_manifest()
         self.pin = repository_head()
@@ -712,6 +807,8 @@ class Fixture:
         self.started = time.monotonic(); self.deadline = self.started + 1200
         self.observations = []; self.cleanup = None
         self.nonce = uuid.uuid4().hex; self.token = ''
+        if type(simulate_visibility) is not bool:raise ValueError('Fixture visibility flag must be boolean')
+        self.simulate_visibility=simulate_visibility
         for directory in ('data', 'uploads', 'profiles', 'records', 'audit', 'downloads', 'bootstrap'):
             (self.root / directory).mkdir()
         handles = []
@@ -748,13 +845,14 @@ class Fixture:
             self.env = safe_env(os.environ, self.root, self.ports, self.nonce, policy)
             for key in ('HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'TEMP', 'TMP', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME'):
                 Path(self.env[key]).mkdir()
-            private={'nonce':self.nonce,'ports':self.ports,'config':literal_config(self.root,self.ports)}
+            private={'nonce':self.nonce,'ports':self.ports,'config':literal_config(self.root,self.ports),'visibility_simulated':simulate_visibility}
             write_json(self.root / 'private.json', private)
             (self.root / 'bootstrap/sitecustomize.py').write_text(bootstrap_source(), encoding='utf-8')
             from process_identity import capture_birth
             register_manifest(self.root, {'pin': self.pin, 'hashes': self.hashes,
                 'ports': self.ports, 'trusted_bootstrap': self.trusted, 'lease_seconds': 1200,
                 'parent_birth':capture_birth(),'expires_at':time.time()+1200,
+                'visibility_simulated':simulate_visibility,
                 'forbidden_ports':sorted(forbidden_ports), 'nonce_sha256':hash_bytes(self.nonce.encode()),
                 'config_sha256':hash_bytes(json.dumps(private['config'],sort_keys=True).encode()),
                 'native_download_default_intercepted': True})
@@ -804,14 +902,18 @@ class Fixture:
         else: raise TimeoutError('Real managed CLI/API readiness deadline')
         write_json(self.root / 'lease.json', {'expires_at': time.time() + max(0, self.deadline-time.monotonic())})
         write_json(self.root / 'READY.json', {'url': self.base, 'root': str(self.root), 'pin': self.pin,
-            'lease_seconds': 1200, 'status': 'fixture-ready-browser-not-yet-driven'})
+            'lease_seconds': 1200, 'status': 'fixture-ready-browser-not-yet-driven',
+            'visibility_simulated':self.simulate_visibility,
+            'visibility_claim':'no native foreground/visibility parity' if self.simulate_visibility else 'native document values unmodified'})
         print(json.dumps(read_json(self.root / 'READY.json')), flush=True)
 
     def close(self):
         unresolved = []
+        probes=[]
         cleanup_deadline = time.monotonic() + 90
+        shutdown='failed'
         try:
-            if self.token: self.api('shutdown')
+            shutdown=request_fixture_shutdown(self.api,self.token,self.handle,self.process)
         except Exception as error: unresolved.append({'stage': 'cooperative-shutdown', 'error': type(error).__name__})
         from process_identity import open_verified_process
         births = []; guarded_pids=set()
@@ -827,9 +929,12 @@ class Fixture:
         # Child first, server last. Each fresh open compares PID+creation+image.
         for birth in sorted(births, key=lambda row: row == self.birth):
             try:
-                value = open_verified_process(birth)
+                value = probe_cleanup_birth(birth,retained=(self.birth,self.handle) if self.handle and birth==self.birth else None)
+                probes.append({'pid':birth['pid'],**{k:value[k] for k in ('status','proof','reason','exit_code') if k in value}})
                 handle = value['process']
-                if value['status'] == 'absent': continue
+                if value['status'] in ('absent','exited'):
+                    if handle:handle.close()
+                    continue
                 if handle is None: raise ValueError('Owned process identity unresolved')
                 try:
                     if handle.poll() is None:
@@ -853,7 +958,7 @@ class Fixture:
             for name, digest in self.config_hashes.items():
                 if hash_bytes((ROOT / name).read_bytes()) != digest: raise ValueError('Repository config changed')
         except Exception as error: unresolved.append({'stage': 'evidence', 'error': type(error).__name__})
-        self.cleanup = {'unresolved': unresolved, 'births_visited': len(births), 'retained_root': str(self.root),
+        self.cleanup = {'unresolved': unresolved, 'probes':probes,'cooperative_shutdown':shutdown,'births_visited': len(births), 'retained_root': str(self.root),
             'browser_and_forwards': 'controller must separately record closed owned browser and forward ids'}
         write_json(self.root / 'cleanup.json', public_evidence(self.cleanup, (self.token, self.nonce)))
         return not unresolved
@@ -863,7 +968,7 @@ def standalone_cleanup(root):
     """Recover after parent loss, never control a PID from an unsigned record."""
     owned_manifest(root)
     from process_identity import open_verified_process
-    unresolved=[];visited=set();deadline=time.monotonic()+90
+    unresolved=[];visited=set();probes=[];deadline=time.monotonic()+90
     for pattern in ('spawn-*.json','artifact-bootstrap-*.json'):
         for path in (root/'audit').glob(pattern):
             try:
@@ -873,15 +978,18 @@ def standalone_cleanup(root):
                     continue
                 birth=record['birth'];key=(birth['pid'],birth['creation_filetime'])
                 if key in visited: continue
-                visited.add(key);result=open_verified_process(birth);handle=result['process']
-                if result['status']=='absent': continue
+                visited.add(key);result=probe_cleanup_birth(birth);handle=result['process']
+                probes.append({'pid':birth['pid'],**{k:result[k] for k in ('status','proof','reason','exit_code') if k in result}})
+                if result['status'] in ('absent','exited'):
+                    if handle:handle.close()
+                    continue
                 if handle is None: raise ValueError('Birth mismatch or uncertain process')
                 try:
                     if handle.poll() is None:
                         handle.terminate();handle.wait(timeout=min(10,max(0,deadline-time.monotonic())))
                 finally: handle.close()
             except Exception as error: unresolved.append({'record':path.name,'error':type(error).__name__})
-    result={'visited':len(visited),'unresolved':unresolved,'scope':'signed owned Python processes only; controller closes browser/forwards'}
+    result={'visited':len(visited),'unresolved':unresolved,'probes':probes,'scope':'signed owned Python processes only; controller closes browser/forwards'}
     write_json(root/'standalone-cleanup.json',result)
     return result
 
@@ -942,6 +1050,7 @@ print(json.dumps({'dry_pre_listener':ok,'no_listener_bind':not binds}))
         raise RuntimeError('Real bootstrap control timed out; owned child stopped') from None
     observed=json.loads(out.strip()) if out.strip() else None
     result={'returncode':process.returncode,'observed':observed,
+        'read_only_exit_status':read_exit_status(process.pid),
         'bootstrap_record':bool(list((root/'audit').glob('artifact-bootstrap-*.json'))),
         'stderr':err,'control_only':True,'retained_root':str(root)}
     public_evidence(result,(nonce,))
@@ -965,7 +1074,8 @@ def external_control(root, action):
         raise ValueError('Fixture lease expired')
     private = read_json(root / 'private.json')
     if (private['ports']!=manifest['ports'] or hash_bytes(private['nonce'].encode())!=manifest['nonce_sha256']
-            or hash_bytes(json.dumps(private['config'],sort_keys=True).encode())!=manifest['config_sha256']):
+            or hash_bytes(json.dumps(private['config'],sort_keys=True).encode())!=manifest['config_sha256']
+            or private.get('visibility_simulated',False)!=manifest.get('visibility_simulated',False)):
         raise ValueError('Control private binding mismatch')
     origin = owned_origin('http://127.0.0.1:' + str(private['ports'][0]), manifest['ports'])
     from urllib.request import Request
@@ -989,6 +1099,7 @@ def main():
     modes.add_argument('--serve', action='store_true', help=argparse.SUPPRESS)
     modes.add_argument('--control', choices=sorted(CONTROL_ACTIONS | {'state','cleanup','report'}))
     parser.add_argument('--fixture-root', type=Path)
+    parser.add_argument('--simulate-visibility',action='store_true',help='Reviewed fixture-only document visibility override; records native values')
     args = parser.parse_args()
     if args.compile_only:
         compile(bootstrap_source(), '<owned-sitecustomize>', 'exec')
@@ -1003,7 +1114,7 @@ def main():
     if args.control:
         if args.fixture_root is None: parser.error('--control requires --fixture-root')
         print(json.dumps(external_control(args.fixture_root, args.control))); return
-    fixture = Fixture()
+    fixture = Fixture(simulate_visibility=args.simulate_visibility)
     success = False
     try:
         fixture.start()
@@ -1015,10 +1126,15 @@ def main():
     finally:
         clean = fixture.close()
         receipt = {'pin': fixture.pin, 'hashes': fixture.hashes, 'observations': fixture.observations,
+            'visibility':visibility_receipt(fixture.root,simulated=fixture.simulate_visibility),
+            'visibility_records':[read_json(path) for path in (fixture.root/'records').glob('visibility-*.json')],
             'browser_observations': [read_json(path) for path in (fixture.root / 'records').glob('observation-*.json')],
             'controller_finished': success, 'cleanup': fixture.cleanup, 'acceptance_claim': False,
             'reason': 'reviewer must assess controller evidence and every required case; finish is not a pass'}
         write_json(fixture.root / 'receipt.json', public_evidence(receipt, (fixture.token, fixture.nonce)))
+        write_json(fixture.root/'summary.json',public_evidence({'pin':fixture.pin,'visibility':receipt['visibility'],
+            'visibility_records':receipt['visibility_records'],'cleanup':fixture.cleanup,'controller_finished':success,
+            'missing_cases':missing_cases(receipt['browser_observations']),'acceptance_claim':False},(fixture.token,fixture.nonce)))
         print(json.dumps({'receipt': str(fixture.root / 'receipt.json'), 'cleanup_ok': clean}), flush=True)
 
 

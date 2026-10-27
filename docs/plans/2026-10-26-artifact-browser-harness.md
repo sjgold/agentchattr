@@ -1,6 +1,6 @@
 # Reduced20 guarded browser acceptance design
 
-Status: DESIGN APPROVED for tools and synthetic controls only at7d962b07 review; H-1..H-6 and bounded download ruling folded below. Executable-pin review is required before any acceptance process/listener/profile starts. Executable tools are now implemented and compile/synthetic-tested only; no acceptance run is claimed. The accepted Ticket19 tools are patterns, not evidence for these new paths.
+Status: fixture-only visibility simulation mechanism APPROVED after partial attempt3; implementation and cleanup repairs now pass61 harness controls. New executable delta requires reviewer clearance before a fourth attempt. No whole-flow/native-foreground acceptance claim. Earlier design/run decisions and every invalid/partial attempt remain below.
 
 ## Scope and deliverables
 
@@ -9,7 +9,7 @@ Status: DESIGN APPROVED for tools and synthetic controls only at7d962b07 review;
 |tools/verify_artifact_ui.py|Parent fixture owner, generated server/local fake API responder/bootstrap, manifest, fixed controls, resource inventory/cleanup and receipts. --compile-only constructs no fixture/listener/process.|
 |tools/fake_artifact_client.py|Owned hidden fake CLI, genuine MCP client/tool calls and transport release, fixed canned Markdown. No model/LLM execution.|
 |tools/test_artifact_ui_harness_controls.py|Synthetic guard, capability, source/port/nonce, cleanup, lost-response and byte-verification controls. No real acceptance listeners/providers.|
-|tools/artifact_page_init_control.js|082b318902f3fe79008fd0570cd43723031bd102a411f0d4217f829d9617cad1|
+|tools/artifact_page_init_control.js|d4e9f3d3d8c3e079990f71b089bd6a026457fa9b923e2e9f8f0caf466b2ebc93|
 |Traycer browser controller|Own isolated Chromium session via the existing traycer-browser REPL, actual UI clicks/typing, snapshots, desktop/mobile screenshots and bounded read-only observation.|
 |Independent reviewer|Reviews executable tool/control/source hashes before the first run; separately drives/reproduces the bounded UI proof after root results.|
 
@@ -119,10 +119,10 @@ Frozen executable source SHA256s:
 
 |File|SHA256|
 |---|---|
-|tools/verify_artifact_ui.py|830d9aac576e69813b939fec056fadf041f6a1df8c32dbf969df835ed848ff12|
+|tools/verify_artifact_ui.py|1fc1efcc1b9475ebe014ab70250804a8351efcaa1d17e9fcf9f6274a42666b27|
 |tools/fake_artifact_client.py|57f8232969d0456827b1f19577bb2a780bda0a6435786917d8c6b100b82f6895|
-|tools/test_artifact_ui_harness_controls.py|73a03dcae047c567425c9c94b972bf26f5e0905658498d5e5ed00ad10a745be8|
-|tools/artifact_page_init_control.js|082b318902f3fe79008fd0570cd43723031bd102a411f0d4217f829d9617cad1|
+|tools/test_artifact_ui_harness_controls.py|c98e608b46b08d61fdbbbf0cbb56e7f3bd04d26024883574b31d4eb529a16830|
+|tools/artifact_page_init_control.js|d4e9f3d3d8c3e079990f71b089bd6a026457fa9b923e2e9f8f0caf466b2ebc93|
 |tools/channel_guard.py|76fde78539634a7f1c4ef687f59afcddc82bd12de0aeb4c5e01f73649b23a927|
 |runtime_protocol.py|b770452455bcd48b1f50c5f306469aca328e9946292e58b83cd3e9e5cde69b01|
 
@@ -224,3 +224,28 @@ Controller deviations retained: one exact channel-name role selector failed (fre
 Stopped and closed only the owned isolated session/tab, no forwards. Original receipt and cleanup warnings (offline cooperative shutdown + exited-handle probe errors) remain unchanged. Signed recovery visits8;7 primary birth probes show absent and PID44120 remains uncertain/process_probe_failed. Independent Win32_Process enumeration shows NONE of the8 recorded PIDs present, owned listeners0. Do not rewrite that uncertainty or declare cleanup.json clean: raw standalone cleanup retains the44120 unresolved row. All4 guard records have real_attempts=[], no unowned-port/watchdog/missing-case files. Original data, known listeners and full Python baseline are exactly unchanged for attempt3. Prior attempt2 PID58092 deviation remains historical. Receipt/summary token+nonce scan clean; browser tool observations were DOM-only and no source/outbound links were read/clicked. No retained-root export/deletion.
 
 Next owner reviewer: classify partial evidence/cleanup uncertainty and choose a supported visible browser route or authorize a bounded fixture-only visibility simulation before any fourth attempt. No automatic rerun. UI/backend component acceptance unchanged; rendered whole-flow acceptance still pending.
+
+## Visibility-simulation ruling and cleanup repairs (fourth run NOT yet cleared)
+
+Reviewer accepts attempt3 only as partial real CLI admission, not UI acceptance or product failure. Approved next mechanism: explicit --simulate-visibility flag, fixture observer only, product code untouched. Before any static product script, observer records native_hidden/native_visibilityState/native_hasFocus, then defines hidden=false and visibilityState=visible on the DOCUMENT INSTANCE when the flag is on. No prototype modification and no synthetic visibility events. Off leaves the instance untouched. Claim is exactly: no native foreground/visibility parity. The product hidden-guard proof stays in the existing Node UI tests, not a browser case under simulation. Closing the actual document panel and ordinary polling/backoff can still be exercised, with the simulation disclosed.
+
+Flag freezes into private/creator manifests and binding checks. READY/state expose the mode. Authenticated bounded POST /__artifact_fixture/visibility validates all native fields/mode/claim, saves the latest plus an append-only-per-document capture history. Receipt.json AND summary.json always include visibility, visibility_records and the claim. Before a browser observation exists, explicit null native fields/native_values_missing=true mark missing coverage; finish refuses missing/invalid disclosure. Reload captures fresh native values again before overriding. Token/nonce export scanning and native-save interception boundaries remain unchanged.
+
+Native/override controls execute the ACTUAL observer in the full-page VM, starting from hidden/hidden/no-focus native stubs. Off and on both pass; four specific in-process reversions fail:
+
+|Reversion|Observed red|
+|---|---|
+|Force override while flag off|document.hidden flag-control assertion|
+|Remove override while flag on|document.hidden flag-control assertion|
+|Omit native capture fields|native hidden must be recorded|
+|Move observer after first product script|visibility must be installed before first product script|
+
+Raw baseline/red results: .audit-tmp/artifact-visibility-control-results.json. This proves observer logic/order in VM, not native foreground parity.
+
+Cleanup diagnosis: PID44120 was the TRUE OWNED SERVER INTERPRETER birth, not a launcher. It is the initial/earliest signed bootstrap selected by Fixture.start before seed launches any worker; no signed spawn-44120 launcher file or worker/client birth maps to it. The parent retained its verified kernel handle but cleanup re-opened it by PID after exit, hitting image-query failure. Original attempt3 cleanup and uncertain/probe_failed records remain unchanged; a later primary check returned absent/error87. No retrospective clean/pass claim.
+
+Repairs are HARNESS ONLY (process_identity.py unchanged): server cleanup uses the retained verified handle with a full matching birth pair. A mismatched pair never gets authority. For other uncertain image probes, a separate query-only+synchronize handle reads terminal state; it NEVER requests terminate rights or returns an unverified handle. Only exited/absent becomes terminal; still-live unverified or mismatched remains unresolved, never killed. Every cleanup probe records its status/proof/exit code. Cooperative shutdown skips HTTP when its owned process is already exited, and clears a connection-refusal race only if a second owned-handle poll proves exit. A live failure remains unresolved. A failed query AFTER opening a handle does not become absence just from error87.
+
+Observed red: three cleanup controls first failed (3FAIL0.028s), then passed. In-process legacy probe/shutdown reversions also produce3 assertion failures/0 errors in .audit-tmp/artifact-cleanup-regression-reds.json. An earlier mutation wrapper captured an import before the test patch and produced1FAIL/2ERROR; retained as instrument-invalid in the separate -invalid.json, not counted as useful kills. A real guarded child exits normally and its read-only terminal query is exited/absent. No malformed/live/mismatched PID is controlled.
+
+Final61 harness controls OK3.442s; compile-only and Node syntax pass. Console .audit-tmp/browser-harness-controls-visibility-cleanup-final.txt. No fourth acceptance server/browser started. Old roots remain retained, no deletion/export. New pin and red proof go to reviewer for ONE-attempt authorization, using trusted Python/absolute PYTHONPATH plus --run --simulate-visibility, fresh baseline/root/distinct attempt4 logs. All12 cases still required; include the visibility disclosure in EVERY report. No native hidden/foreground parity or native-save claim, no activation/push.

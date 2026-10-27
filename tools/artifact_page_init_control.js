@@ -8,7 +8,8 @@ function events(object) {
     object.listeners = {};
     object.addEventListener = (kind, fn) => (object.listeners[kind] ||= []).push(fn);
     object.removeEventListener = (kind, fn) => object.listeners[kind] = (object.listeners[kind] || []).filter(f => f !== fn);
-    object.dispatchEvent = e => { for (const fn of [...(object.listeners[e.type] || [])]) fn(e); return true; };
+    object.dispatched=[];
+    object.dispatchEvent = e => {object.dispatched.push(e.type);for (const fn of [...(object.listeners[e.type] || [])]) fn(e);return true;};
     return object;
 }
 class Element {
@@ -67,7 +68,7 @@ class Element {
 }
 function attributes(source,node){for(const a of source.matchAll(/([\w:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g))node.setAttribute(a[1],a[2]??a[3]??a[4]??'')}
 function parseFragment(source,parent){const stack=[parent];for(const token of source.matchAll(/<\/?[\w-]+[^>]*>|[^<]+/g)){const s=token[0];if(s.startsWith('</')){if(stack.length>1)stack.pop();continue}if(s.startsWith('<')){const tag=s.match(/^<([\w-]+)/)[1];const n=new Element(tag);attributes(s.slice(tag.length+1,-1),n);stack.at(-1).appendChild(n);if(!/^(input|img|br|hr|meta|link)$/i.test(tag)&&!s.endsWith('/>'))stack.push(n)}else{const n=new Element('#text');n.textContent=s;stack.at(-1).appendChild(n)}}}
-const document=events({hidden:false,readyState:'loading',activeElement:null,
+const document=events({hidden:true,visibilityState:'hidden',hasFocus:()=>false,readyState:'loading',activeElement:null,
     createElement:t=>new Element(t),createElementNS:(_,t)=>new Element(t),
     createTextNode:t=>{const n=new Element('#text');n.textContent=t;return n},createDocumentFragment:()=>new Element('#fragment'),
     getElementById:id=>ids.get(id)||null,querySelector:s=>document.documentElement.querySelector(s),
@@ -105,9 +106,21 @@ const failures=[];
 process.on('unhandledRejection',e=>failures.push({file:activeFile,error:String(e.stack||e)}));
 async function flush(){for(let i=0;i<12;i++){while(tasks.length){const fn=tasks.shift();try{fn()}catch(e){failures.push({file:activeFile,error:e.stack})}}await new Promise(r=>setImmediate(r))}}
 (async()=>{
-    let observerSyntax=false;
+    let observerSyntax=false,beforeProduct=false;
     for(const script of input.scripts){
         activeFile=script.name;
+        if(script.name.startsWith('static/')&&!beforeProduct){
+            assert.equal(typeof context.__artifactFixtureEvidence,'function','visibility must be installed before first product script');
+            const visibility=context.__artifactFixtureEvidence().visibility;
+            assert.equal(visibility.native_hidden,true,'native hidden must be recorded');
+            assert.equal(visibility.native_visibilityState,'hidden','native visibility state must be recorded');
+            assert.equal(visibility.native_hasFocus,false,'native focus must be recorded');
+            assert.equal(visibility.visibility_simulated,!!input.simulateVisibility);
+            assert.equal(document.hidden,!input.simulateVisibility,'visibility flag must control document.hidden');
+            assert.equal(document.visibilityState,input.simulateVisibility?'visible':'hidden','visibility flag must control document.visibilityState');
+            assert.equal(typeof Object.getOwnPropertyDescriptor(document,'hidden').get,input.simulateVisibility?'function':'undefined','OFF must leave document instance untouched');
+            beforeProduct=true;
+        }
         const compiled=new vm.Script(script.code,{filename:script.name});
         if(script.observer)observerSyntax=true;
         compiled.runInContext(context,{timeout:1000});
@@ -130,6 +143,7 @@ async function flush(){for(let i=0;i<12;i++){while(tasks.length){const fn=tasks.
     assert(document.getElementById('loading-indicator').classList.contains('hidden'),'history loader not hidden');
     assert.equal(typeof document.getElementById('artifact-documents-open').onclick,'function','Documents not initialized');
     assert(observerSyntax,'observer not syntax-compiled');assert.deepEqual(failures,[],'script/async init errors');
+    assert(!document.dispatched.includes('visibilitychange'),'observer must not dispatch synthetic visibility events');
     assert.deepEqual(logs.filter(row=>row.level==='error'),[],'caught init errors');
-    process.stdout.write(JSON.stringify({pass:true,scripts:input.scripts.map(s=>s.name),optionsCalls,ws:sockets[0].url,fetches,loadingHidden:true,channelTabs:document.getElementById('channel-tabs').childElementCount,catalogAccepted:true,documentsClick:true,observerSyntax,helpSeed:true,uncaughtErrors:failures.length,errorLogs:logs.filter(row=>row.level==='error').length,claims:'init globals/throws only; no layout/CSP/focus/browser proof'})+'\n');
+    process.stdout.write(JSON.stringify({pass:true,scripts:input.scripts.map(s=>s.name),optionsCalls,ws:sockets[0].url,fetches,loadingHidden:true,channelTabs:document.getElementById('channel-tabs').childElementCount,catalogAccepted:true,documentsClick:true,observerSyntax,helpSeed:true,visibility:context.__artifactFixtureEvidence().visibility,visibilityBeforeProduct:beforeProduct,uncaughtErrors:failures.length,errorLogs:logs.filter(row=>row.level==='error').length,claims:'init globals/throws only; no layout/CSP/focus/browser proof'})+'\n');
 })().catch(e=>{process.stdout.write(JSON.stringify({pass:false,file:activeFile,error:e.stack,failures,logs,fetches})+'\n');process.exitCode=1});

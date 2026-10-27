@@ -19,6 +19,117 @@ from tools import fake_artifact_client as client
 
 
 class ArtifactHarnessControls(unittest.TestCase):
+    def test_read_only_terminal_probe_never_requests_terminate_rights_or_returns_handle(self):
+        import process_identity as identity
+        handle=Mock();handle.poll.return_value=0
+        with patch.object(identity,'_open_process',return_value=1234) as opened, \
+             patch.object(identity,'OwnedProcessHandle',return_value=handle):
+            result=harness.read_exit_status(123)
+        opened.assert_called_once_with(123,identity._QUERY|identity._SYNCHRONIZE)
+        self.assertEqual(result['status'],'exited');self.assertNotIn('process',result)
+        handle.terminate.assert_not_called();handle.close.assert_called_once()
+
+    def test_read_only_probe_failure_after_open_is_not_absence(self):
+        import process_identity as identity
+        error=OSError('query race');error.winerror=87
+        handle=Mock();handle.poll.side_effect=error
+        with patch.object(identity,'_open_process',return_value=1234), \
+             patch.object(identity,'OwnedProcessHandle',return_value=handle):
+            result=harness.read_exit_status(123)
+        self.assertEqual(result['status'],'uncertain');handle.close.assert_called_once()
+
+    def test_visibility_simulation_off_on_records_native_before_override(self):
+        for simulated in (False,True):
+            with self.subTest(simulated=simulated):
+                result=harness.page_init_control(simulate_visibility=simulated)
+                self.assertTrue(result['pass'],json.dumps(result))
+                self.assertEqual(result['visibility']['visibility_simulated'],simulated)
+                self.assertTrue(result['visibility']['native_hidden'])
+                self.assertEqual(result['visibility']['native_visibilityState'],'hidden')
+                self.assertFalse(result['visibility']['native_hasFocus'])
+                self.assertTrue(result['visibilityBeforeProduct'])
+                if simulated:self.assertEqual(result['visibility']['claim'],'no native foreground/visibility parity')
+
+    def test_visibility_simulation_mutations_are_observed_red(self):
+        cases=[('visibility_force_on',False,'visibility flag must control document.hidden'),
+            ('visibility_remove',True,'visibility flag must control document.hidden'),
+            ('visibility_drop_native',True,'native hidden must be recorded'),
+            ('visibility_late',True,'visibility must be installed before first product script')]
+        for mutation,mode,message in cases:
+            with self.subTest(mutation=mutation):
+                result=harness.page_init_control(mutation=mutation,simulate_visibility=mode)
+                self.assertFalse(result['pass'],json.dumps(result));self.assertEqual(result['returncode'],1)
+                self.assertIn(message,result['error'])
+
+    def test_visibility_receipt_cannot_omit_native_values_or_mode(self):
+        value={'native_hidden':True,'native_visibilityState':'hidden','native_hasFocus':False,
+            'visibility_simulated':True,'claim':'no native foreground/visibility parity'}
+        self.assertEqual(harness.validate_visibility(value,simulated=True),value)
+        for key in ('native_hidden','native_visibilityState','native_hasFocus','visibility_simulated'):
+            bad=dict(value);bad.pop(key)
+            with self.assertRaises(ValueError):harness.validate_visibility(bad,simulated=True)
+        with self.assertRaises(ValueError):harness.validate_visibility(value,simulated=False)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'records').mkdir()
+            missing=harness.visibility_receipt(root,simulated=True)
+            self.assertTrue(missing['native_values_missing']);self.assertIn('native_hidden',missing)
+            harness.write_json(root/'records/visibility.json',value)
+            receipt=harness.visibility_receipt(root,simulated=True)
+            self.assertFalse(receipt['native_values_missing']);self.assertEqual(receipt['native_hidden'],True)
+
+    def test_uncertain_live_or_mismatched_pid_never_gets_fallback_authority(self):
+        for status in ('uncertain','mismatch'):
+            with patch('process_identity.open_verified_process',return_value={'status':status,'process':None}), \
+                 patch.object(harness,'read_exit_status',return_value={'status':'live','exit_code':None}) as query:
+                result=harness.probe_cleanup_birth({'pid':123})
+            self.assertEqual(result['status'],status);self.assertIsNone(result['process'])
+            self.assertEqual(query.call_count,1 if status=='uncertain' else 0)
+
+    def test_retained_handle_rejects_different_birth_even_with_same_pid(self):
+        handle=Mock(pid=123)
+        result=harness.probe_cleanup_birth({'pid':123,'creation_filetime':'new'},retained=({'pid':123,'creation_filetime':'old'},handle))
+        self.assertEqual(result['status'],'mismatch');self.assertIsNone(result['process'])
+        handle.poll.assert_not_called();handle.terminate.assert_not_called()
+
+    def test_shutdown_connection_race_only_clears_if_owned_process_exited(self):
+        from urllib.error import URLError
+        handle=Mock();handle.poll.side_effect=[None,0]
+        api=Mock(side_effect=URLError('server exited'))
+        self.assertEqual(harness.request_fixture_shutdown(api,'token',handle),'exited_during_shutdown')
+        handle.poll.side_effect=None;handle.poll.return_value=None
+        with self.assertRaises(URLError):harness.request_fixture_shutdown(api,'token',handle)
+
+    def test_real_child_read_only_exit_query_is_terminal(self):
+        result=harness.run_bootstrap_control(guard_ok=True)
+        self.assertEqual(result['returncode'],0,result)
+        self.assertIn(result['read_only_exit_status']['status'],('absent','exited'),result)
+
+    def test_exited_cleanup_query_returns_terminal_without_authority(self):
+        with patch('process_identity.open_verified_process',return_value={'status':'uncertain','process':None}), \
+             patch.object(harness,'read_exit_status',return_value={'status':'exited','exit_code':0}):
+            result=harness.probe_cleanup_birth({'pid':123})
+        self.assertEqual(result['status'],'exited');self.assertIsNone(result['process'])
+
+    def test_retained_server_exit_does_not_requery_dead_image(self):
+        birth={'pid':123,'creation_filetime':'1','image_path':'owned'};handle=Mock(pid=123);handle.poll.return_value=0
+        with patch('process_identity.open_verified_process',side_effect=AssertionError('must use retained verified handle')):
+            result=harness.probe_cleanup_birth(birth,retained=(birth,handle))
+        self.assertEqual(result['status'],'exited')
+
+    def test_already_exited_server_does_not_make_offline_shutdown_request(self):
+        from urllib.error import URLError
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'audit').mkdir()
+            harness.write_json(root/'audit/guard-test.json',{'pid':1,'real_attempts':[]})
+            fixture=harness.Fixture.__new__(harness.Fixture)
+            fixture.root=root;fixture.token='token';fixture.nonce='nonce';fixture.birth=None
+            fixture.handle=Mock();fixture.handle.poll.return_value=0;fixture.process=Mock();fixture.hashes={};fixture.trusted={};fixture.config_hashes={}
+            fixture.api=Mock(side_effect=URLError('already stopped'))
+            with patch.object(harness,'PIN_FILES',()),patch.object(harness,'trusted_manifest',return_value={}):
+                fixture.close()
+            fixture.api.assert_not_called()
+            self.assertFalse(any(row.get('stage')=='cooperative-shutdown' for row in fixture.cleanup['unresolved']))
+
     def test_real_page_scripts_initialize_in_document_order(self):
         result=harness.page_init_control()
         self.assertTrue(result['pass'],json.dumps(result))
