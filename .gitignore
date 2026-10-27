@@ -28,6 +28,7 @@ docs/plans/*
 !docs/plans/2026-10-26-delivery-file-cleanup.md
 !docs/plans/2026-10-26-reduced-artifact-ui.md
 !docs/plans/2026-10-26-artifact-browser-harness.md
+!docs/plans/2026-10-26-transcript-export.md
 !docs/superpowers/
 docs/superpowers/*
 !docs/superpowers/plans/

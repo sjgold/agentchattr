@@ -1,5 +1,8 @@
 # D4 last complete-gate attempt:190 raw comparisons pass
 
+Current release rule, Seth2026-10-26/27:270ms and216ms were documentation/reviewer targets without a baseline derivation and are withdrawn as acceptance gates. Only the existing1.0s basic ceiling remains; import300ms is report-only. Old measurements/misses below remain unchanged historical evidence. No new timing campaign.
+
+
 Status: builder gate PASS at clean frozen f2a6e52700eb48ea47cc70ce580d0fca923d8a14, product unchanged4968e47. D4/R2 independent acceptance is STILL PENDING reviewer reruns/static production audit. No activation or push. All earlier real misses and harness failures stay in the record; this new result does not explain or erase them.
 
 ## Final executed sequence

@@ -8,6 +8,7 @@ from tests import test_artifact_operator_core as core
 accepted_source=core.accepted_source
 
 
+@unittest.skip("Seth: Ticket21 pending until Ticket20 acceptance, 2026-10-26/27")
 class ArtifactTranscriptTests(unittest.TestCase):
     # Use the existing actual-store fixture without inheriting unrelated tests.
     def context(self):

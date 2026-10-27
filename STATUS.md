@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (Seth drops phone-width and speed-screen work; no more harness work; Ticket21 next)
+**Updated:** 2026-10-26 (Ticket21/22 pending until20 acceptance; timing criteria corrected; frozen full regression next)
 
 ## At a glance
 
@@ -18,7 +18,7 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Ticket21 ACTIVE: transcript contract and9 ROOT red tests committed for review; production next after clearance. Then22 packaging, reviewed activation and final cleanup. No speed screen or browser work. |
+| Next | Root: frozen full Ticket20 test discovery, then separate activation for reviewer sign-off. Ticket21/22 pending; no new browser or timing campaign. |
 
 ## Ticket21 transcript: red checkpoint
 
@@ -1207,3 +1207,11 @@ Helper ONE unchanged corrective12 run at12a9425 PASS7.305s, no ResourceWarnings 
 Root bounded loopback callback adapter ArtifactHTTP: transport codec2 first missing-class ERROR0.001s, then2 PASS0.002s after implementation. Buffered opener doubles verify exact fixed127.0.0.1 paths, bearer placement, request bodies,10s deadline, closed successful/malformed response bodies, bounded reads, duplicate/nonfinite/invalidUTF8 rejection and validated path ids. No sockets or actual endpoints are exercised by these codec tests. Actual producer routes/MCP/factory and entry wiring remain pending.
 
 Root found and reproduced a source-manifest upgrade hazard: a valid prior13-file CLI v1 manifest now raises ValueError solely because the current closure has24 files. Sonnet ruled that metadata validation must accept structurally valid bounded prior maps while current capability/source matching remains exact. This protects old ownership/provenance/adoption/Stop evidence without granting new artifact support. No validator change yet; next is a SEPARATE red-first manifest-compatibility pin and its unchanged capability/runtime/cold-recovery checks before entry wiring continues. Production capability stays empty and no wrapper package acceptance is claimed.
+
+## Acceptance order and timing correction, 2026-10-26/27
+
+Seth: "pend 21 to after acceptance" (reviewer relay). Ticket21 and22 are pending until Ticket20 acceptance. Transcript contract/reds are preserved, with9 explicit pending skips; no transcript product code is implemented. Next: one frozen full Ticket20 discovery, separate activation commit for independent review/sign-off, then21/22, final cleanup and publication only after explicit push authorization.
+
+270ms/216ms were docs/reviewer targets without a derived baseline; reviewer withdraws them at Seth's request. Only the existing1.0s basic timing ceiling remains; import300ms is report-only. Standalone tools now use1.0s for timing failures; historical comparative values/misses remain. Safety/error/retry/ownership checks unchanged. No speed-screen tool or new timing campaign.
+
+Threshold-only verification:24 applicable checkpoint controls passed3.009s;9 transcript tests explicitly skipped pending Ticket20 acceptance. Running all31 historical tool controls exposed3 pre-existing frozen4968 product-hash assumptions; the unchanged historical verify_frozen_product guard was re-executed from HEAD and confirmed to reject the current post-Q/backend product too. Their failure record is retained, the guard is not weakened. These tools are not root discovery. Remaining4 tail controls passed in that31 run. Frozen root full discovery next, no measurement campaign.

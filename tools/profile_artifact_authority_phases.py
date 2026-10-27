@@ -499,14 +499,14 @@ def production_observe(case, action, *, persist=True, healthy=False, checkpoint=
     if peer_action is not None and not mutations:instrument_errors.append('Mutating peer was not observed')
     if persist and not healthy and peer_action is not None and not any(overlaps(m,b) for m in mutations for b in B):
         instrument_errors.append('Mutating peer did not overlap real diagnostic B')
-    for row in engine_holds:row['limit_seconds']=.216
-    gate_intervals=[{**row,'limit_seconds':.216,'kind':'boundary_hold'} for row in holds]
-    gate_intervals.extend({**row,'limit_seconds':.216,'kind':'boundary_peer'} for row in peers)
+    for row in engine_holds:row['limit_seconds']=1.0
+    gate_intervals=[{**row,'limit_seconds':1.0,'kind':'boundary_hold'} for row in holds]
+    gate_intervals.extend({**row,'limit_seconds':1.0,'kind':'boundary_peer'} for row in peers)
     gate_intervals.extend({**row,'kind':'engine_only_or_nested_hold'} for row in engine_holds)
     expected=outcome in (None,'ArtifactInputError','ArtifactUnavailable')
     base=expected and not errors and not instrument_errors and all(not any(row) for row in ownership)
-    hard=base and all(row['seconds']<=.270 for row in gate_intervals)
-    margin=base and all(row['seconds']<=.216 for row in gate_intervals)
+    hard=base and all(row['seconds']<=1.0 for row in gate_intervals)
+    margin=base and all(row['seconds']<=1.0 for row in gate_intervals)
     profile_summary={}
     for span in profile.rows:
         summary=profile_summary.setdefault(span['name'],{'count':0,'inclusive_seconds':0,'max_seconds':0})
@@ -564,7 +564,8 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
         'cache_disclosure': 'Warm after setup; structural report forces metadata reread. Cold restart tails unmeasured.',
         'phase_definition': 'Outermost acquired main-thread boundary holds; B and C identified by private production hooks. No guard-copy or hypothetical C probe.',
         'peer_definition': 'Real independent cancel/Stop/brief mutation once, repeated require_active across A/B/C. No B handshake; interval overlap verified. DESIGN attribution uses passive peer only.',
-        'limits': {'hard': .270, 'changed_hold_and_peer': .216, 'import': .300}}
+        'limits': {'hard': 1.0, 'changed_hold_and_peer': 1.0, 'import': 1.0},
+        'historical_targets_report_only': {'hard': .270, 'margin': .216, 'import': .300}}
     verify_frozen_product(result['source_sha256'])
     result.update(checkpoint_provenance(__file__))
     result['class_selector']=class_name

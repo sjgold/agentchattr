@@ -1,0 +1,13 @@
+# Ticket21: basic transcript export
+
+PENDING: Seth2026-10-26/27 defers Ticket21 until Ticket20 acceptance. This is a retained proposal/red checkpoint, not active production work.
+
+Scope: the reduced-release transcript section, with Seth's latest cuts. No phone-width check, numeric speed screen, browser harness, synthesis or advanced history selector. Existing safety tests remain.
+
+Implementation: artifact_transcript.export_session_transcript(session,run_id,channel,*,messages,max_bytes=8*1024*1024) returns deterministic UTF8 Markdown bytes from one detached MessageStore.snapshot_selected read. It validates accepted projections through the same event text/identity rules used by artifact_sources, without the document packet's2MiB/1000-message limits. Wrong channel/run or missing/edited/duplicate projections refuse; no reconstruction. Export assembly checks its8MiB safety cap and returns no partial result.
+
+Order: admitted_events list is authoritative admission order, never projected message ID order. Insert each continuation immediately after its matching admitted question. Place skipped-turn markers by their frozen phase/turn position relative to admitted turns, preserving recorded skip order. Refuse ambiguous/unmatched continuation links. Display stored message id/sender/timestamp, frozen phase/turn and exact text including Unicode/CRLF. Attachments get a fixed presence marker only. Header identifies session/run/channel/state, incomplete/stopped/missing output and default omission of abandoned/quarantined history. No journal/config/attachment paths leak.
+
+Wire through ArtifactOperator.transcript(session_id,channel,run_id) and GET/HEAD /api/artifacts/sessions/{session_id}/transcript?channel=...&run_id=... in the existing strict operator prefix. Reject duplicate/unknown query keys. Existing typed errors; transcript_too_large413. Fixed attachment filename transcript.md, text/markdown UTF8, no-store/nosniff, empty HEAD body. Add Download transcript beside the chosen session, authenticated fetch+Blob using existing lifecycle/stale-response safety; downloading a transcript requires no author/capability activation.
+
+Red scope: one new tests/test_artifact_transcript.py for actual fixtures, projection/order/bytes/omissions/cap/scoping and route security/headers. Existing route exact-set expectation changes only when the route is implemented. Add focused actual-JS tests for the new button/download/stale failure. Observe reds, then reviewer clears bounded production. No new measurement or browser campaign. Packaging22 follows after focused acceptance; activation separately reviewed and file cleanup last. No push.

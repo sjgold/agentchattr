@@ -1,5 +1,8 @@
 # D4 measurement revision after the first production MISS
 
+Current release rule, Seth2026-10-26/27:270ms and216ms were documentation/reviewer targets without a baseline derivation and are withdrawn as acceptance gates. Only the existing1.0s basic ceiling remains; import300ms is report-only. Old measurements/misses below remain unchanged historical evidence. No new timing campaign.
+
+
 Status: reviewer authorized harness-only revisions; product bytes remain4968e47. Reviewer CLEARED the freeze after H1-H6 harness edits; those edits and controls are now complete. The fixed-order run is authorized. Original110 samples, the1.166355s A miss, and the earlier1.103s facade miss remain unchanged and unattributed.
 
 ## Ordered work

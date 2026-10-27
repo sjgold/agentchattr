@@ -262,3 +262,9 @@ Recommendation relayed to Seth, decision pending:
 - Alternatives: accept partial with no visual gate, or build Chrome/Edge harness first. Ask Seth once. If he does not answer, follow the first recommendation; activation remains blocked until visual checking is done. This default is the reviewer recommendation, not a fabricated user decision.
 
 Next owner root: prepare the thin responsiveness screen under the existing reduced contract, then21/22. Retain all roots; no deletion, activation or push. No additional browser adaptation.
+
+## Acceptance order and timing correction, 2026-10-26/27
+
+Seth: "pend 21 to after acceptance" (reviewer relay). Ticket21 and22 are pending until Ticket20 acceptance. Transcript contract/reds are preserved, with9 explicit pending skips; no transcript product code is implemented. Next: one frozen full Ticket20 discovery, separate activation commit for independent review/sign-off, then21/22, final cleanup and publication only after explicit push authorization.
+
+270ms/216ms were docs/reviewer targets without a derived baseline; reviewer withdraws them at Seth's request. Only the existing1.0s basic timing ceiling remains; import300ms is report-only. Standalone tools now use1.0s for timing failures; historical comparative values/misses remain. Safety/error/retry/ownership checks unchanged. No speed-screen tool or new timing campaign.

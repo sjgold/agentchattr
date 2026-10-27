@@ -50,3 +50,9 @@ With no storage change, creation remains suitable only for small early stores an
 The wire work can be reviewed independently in [the operator contract](TICKET-20-OPERATOR-ROUTES.md). Earlier measurements remain in [the experiment log](TICKET-20-OPERATOR-CAPACITY-EXPERIMENTS.md). Next: review the concrete R1 field/numeric/observation contract, capture its behavioral reds and obtain review of that separate compatibility pin. R2/R3 schema contracts follow before their implementation; no repeat scope question is needed.
 
 [Visual decision memo](http://127.0.0.1:4387/session/c99a426ed6cd4630), local review surface using the existing agentchattr theme. The durable decision and numbers are in this file; the HTML adds no product behavior.
+
+## Acceptance order and timing correction, 2026-10-26/27
+
+Seth: "pend 21 to after acceptance" (reviewer relay). Ticket21 and22 are pending until Ticket20 acceptance. Transcript contract/reds are preserved, with9 explicit pending skips; no transcript product code is implemented. Next: one frozen full Ticket20 discovery, separate activation commit for independent review/sign-off, then21/22, final cleanup and publication only after explicit push authorization.
+
+270ms/216ms were docs/reviewer targets without a derived baseline; reviewer withdraws them at Seth's request. Only the existing1.0s basic timing ceiling remains; import300ms is report-only. Standalone tools now use1.0s for timing failures; historical comparative values/misses remain. Safety/error/retry/ownership checks unchanged. No speed-screen tool or new timing campaign.

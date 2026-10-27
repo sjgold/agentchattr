@@ -1,3 +1,4 @@
+# Historical216ms tail selection is descriptive only, not a release criterion (Seth2026-10-26).
 """DESIGN only: admit_saved30 sentinel-only then30 nested DESIGN10 samples."""
 from argparse import ArgumentParser
 from contextlib import contextmanager

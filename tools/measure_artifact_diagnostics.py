@@ -6,7 +6,7 @@ This harness does not implement R2 and is not a unit test or a passing gate.
 --design-checkpoint runs heavy/summary/structural on the shared authority fixture,
 without imports or acceptance booleans; incremental receipts retain errors.
 --full-gate includes structural reads and guarded4MiB imports with diagnostics
-full/held. Heavy-path clearance also requires20percent margin (max<=0.216s).
+full/held. Historical270/216ms targets are report-only; release basic ceiling is1.0s (Seth2026-10-26).
 """
 from argparse import ArgumentParser
 from contextlib import ExitStack
@@ -121,7 +121,7 @@ def measure(case, store, audit, phase, checkpoint=None):
             'exception_type': exception, 'peer_errors': failures, 'body_objects': len(files),
             'body_bytes': size, 'metadata_bytes': store.diagnostic_store.path.stat().st_size,
             'normal_pass': exception is None and not failures and retries[0] == 0
-                           and hold <= .270 and waits[0] <= .270}
+                           and hold <= 1.0 and waits[0] <= 1.0}
 
 
 def measure_action(case,owner,action,phase,limit,checkpoint=None):
@@ -172,7 +172,7 @@ def structural_read(case,store,checkpoint=None):
     if owner._fingerprint()==previous:
         info=owner.path.stat();storage.os.utime(owner.path,ns=(info.st_atime_ns,info.st_mtime_ns+1000000))
     assert owner._fingerprint()!=previous
-    row,report=measure_action(case,owner,lambda:store.diagnostics(limit=100),'structural_read',.270,checkpoint=checkpoint)
+    row,report=measure_action(case,owner,lambda:store.diagnostics(limit=100),'structural_read',1.0,checkpoint=checkpoint)
     if row['exception_type'] is None:
         assert report['detailed_count']==1024 and report['dispatch_group_count']==256
         assert report['owners']['authoring']['available'] and report['owners']['diagnostics']['available']
@@ -229,7 +229,7 @@ def import_gates(number,existing,large,mode,checkpoint=None):
                 stack.enter_context(patch.object(storage.ArtifactDiagnosticStore,name,
                     side_effect=AssertionError('Authoring called diagnostic '+name)))
             row,result=measure_action(case,store,lambda:store.import_lineage(prepared,channel='review'),
-                                      'import_'+mode,.300,checkpoint=checkpoint)
+                                      'import_'+mode,1.0,checkpoint=checkpoint)
         if row['exception_type'] is None:
             assert result['created_requests']==128 and result['created_versions']==128
         row.update(sample=number,fixture_identity=case.root.name,portable_envelope_bytes=4194304,existing_lineages=100,existing_versions=100,
@@ -303,7 +303,7 @@ def design_checkpoint(count):
                         attached = store.request_diagnostics(candidate['request_id'])
                         unattached = store.request_diagnostics(priors[0]['request_id'])
                         return attached, unattached
-                    row, projections = measure_action(case,store.diagnostic_store,read_requests,phase,.270,checkpoint=checkpoint)
+                    row, projections = measure_action(case,store.diagnostic_store,read_requests,phase,1.0,checkpoint=checkpoint)
                     if row['exception_type'] is None:
                         assert len(projections[0]['quarantine_ids'])==8 and projections[0]['overflow_count']==2
                         assert projections[1]['quarantine_ids']==[] and projections[1]['overflow_count']==0
@@ -388,7 +388,7 @@ def main():
             store, audit = setup(case)
             heavy = measure(case, store, audit, 'heavy')
             heavy['sample'] = index + 1
-            heavy['margin_pass'] = max(heavy['hold'],heavy['peer_wait']) <= .216
+            heavy['margin_pass'] = max(heavy['hold'],heavy['peer_wait']) <= 1.0
             samples.append(heavy)
             retain()
             print(json.dumps(heavy), flush=True)
@@ -418,8 +418,8 @@ def main():
     hard_pass=complete and all(row['normal_pass'] for row in samples)
     margin_pass=all(row['margin_pass'] for row in samples if row['phase']=='heavy')
     report = {'kind': 'R2 production full gate' if args.full_gate else 'R2 reachable heavy/summary measurement',
-              'samples': samples, 'fsync_mocked': False, 'limit_seconds': .270,
-              'full_gate':args.full_gate,'import_limit_seconds':.300,'heavy_clearance_limit_seconds':.216,
+              'samples': samples, 'fsync_mocked': False, 'limit_seconds': 1.0,
+              'full_gate':args.full_gate,'import_limit_seconds':1.0,'import_target_seconds':.300,'heavy_clearance_limit_seconds':1.0,
               'max_hold': max(row['hold'] for row in samples),
               'max_peer_wait': max(row['peer_wait'] for row in samples),
               'hard_pass':hard_pass,'heavy_margin_pass':margin_pass,'pass':hard_pass and margin_pass,

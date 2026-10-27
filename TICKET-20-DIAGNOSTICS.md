@@ -1,5 +1,8 @@
 # Ticket 20 R2: independent diagnostic ownership, frozen contract and first reds
 
+Current release rule, Seth2026-10-26/27:270ms and216ms were documentation/reviewer targets without a baseline derivation and are withdrawn as acceptance gates. Only the existing1.0s basic ceiling remains; import300ms is report-only. Old measurements/misses below remain unchanged historical evidence. No new timing campaign.
+
+
 Status: R2 exact owner payload freeze cleared at86dad152 and production authorized atbf89702, subject to additional tests and hard gates. Initial implementation plus D1/D2 is local and NOT accepted: the fresh full gate at7fe71f7 FAILED heavy and structural NORMAL samples. The reviewer selected [D4 service diagnostic phase-split DESIGN](TICKET-20-DIAGNOSTIC-PHASES.md), proposed now for review before any D4 reds/source/gates. [All 50 fresh samples](TICKET-20-DIAGNOSTICS-D1-D2-GATE.md) and the earlier misses/profile are retained. R1 is independently cleared; R3/operator/capacity/activation/push remain held; capability is empty.
 
 ## Outcome and governing choices
