@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 01:37 CDT. Seven seats working; UI follow-up0078e74 merged as0e985ad (69 focused tests pass); pre-flight restart fixes next.
+**Updated:** 2026-10-27 01:40 CDT. Pre-flight retry/Leave out fixes tested; reviewer pass requested before relying on ownership refresh.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -103,3 +103,9 @@ UI merge verification: exact reviewed tipc6930b0 (08b1f0a,a8f624c,c6930b0), auto
 ### 2026-10-27 01:37 CDT UI follow-up and dashboard correction
 
 Reviewed UI pin0078e74 is merged at0e985ad;69 focused tests passed in6.330s. The merge committed before its STATUS update because Python timezone data was unavailable. This follow-up records the result using the Windows Central timezone. No runtime/backend changes in the UI merge. No push.
+
+### 2026-10-27 01:40 CDT Pre-flight restart defects
+
+Observed reds: a cold manager forgot the saved CLI omission, and Retry rejected a CLI whose worker/client exit had become provable after startup. Explicit Launch/Retry now refreshes existing runtime reconciliation before applying the unchanged launch guard. Uncertain/live/missing evidence still blocks. This cannot make a truly unproven child exit safe; that case remains blocked for ownership recovery.
+
+Cold package status restores only saved omitted-seat checkbox choices for the exact current package revision. It restores no selection id, readiness, process handle or launch authority. Changed packages ignore old choices.61 package-launch/receipt/runtime-adoption/ownership/pre-flight UI tests pass in7.112s. No live seats restarted; ownership-related delta goes to reviewer before live use. Next: reviewed Hermes YAML adapter on temporary homes, real write only after explicit reviewer clearance.

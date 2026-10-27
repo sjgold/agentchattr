@@ -59,6 +59,31 @@ def launch_package(manager, package_id, revision, restart_seats=None, omitted_se
         return package_status(manager, package_id)
 
 
+def _saved_omissions(manager, package_id, revision, known):
+    """Recover checkbox choices only, never readiness or process authority."""
+    directory = manager.store.path.parent / 'package_selections'
+    try:
+        paths = sorted(directory.glob('*.json'),
+                       key=lambda path: (path.stat().st_mtime_ns, path.name), reverse=True)
+    except OSError:
+        return []
+    for path in paths:
+        try:
+            saved = json.loads(path.read_text(encoding='utf-8'))
+            if not isinstance(saved, dict) or not isinstance(saved.get('package'), dict):
+                continue
+            if saved['package'].get('id') != package_id:
+                continue
+            if (saved.get('revision') != revision
+                    or package_revision(saved['package']) != revision):
+                return []
+            omitted = _choices(saved.get('omitted_seats'), known, 'Omitted seats')
+            return omitted if known - set(omitted) else []
+        except (OSError, ValueError, KeyError, TypeError, SeatError):
+            continue
+    return []
+
+
 def package_status(manager, package_id):
     with manager.lock:
         current = manager.store.package(package_id)
@@ -67,7 +92,9 @@ def package_status(manager, package_id):
         if selection is None:
             return {'state': 'not_started', 'ready': False, 'selection_id': None,
                     'revision': current_revision, 'current_revision': current_revision,
-                    'omitted_seats': [], 'seats': {}, 'error': None}
+                    'omitted_seats': _saved_omissions(manager, package_id, current_revision,
+                                                     {seat['id'] for seat in current['seats']}),
+                    'seats': {}, 'error': None}
         views = {}
         for seat in selection['package']['seats']:
             seat_id = seat['id']

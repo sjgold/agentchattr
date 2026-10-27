@@ -150,6 +150,11 @@ class SeatManager:
             seat = self.store.seat(package_id, seat_id)
             effective = self._effective(seat)
             key = package_id + '/' + seat_id
+            from runtime_adoption import has_unverified_launch
+            if has_unverified_launch(self, key):
+                # Explicit Retry refreshes evidence; the launch guard below still
+                # refuses live, missing or ambiguous worker/client exit proof.
+                self.reconcile_runtime()
             return self._launch_effective(key, effective, restart)
 
     def _launch_effective(self, key, effective, restart=False, launch_metadata=None):

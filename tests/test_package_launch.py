@@ -74,6 +74,48 @@ class PackageLaunchTests(unittest.TestCase):
                     'authentication': 'unknown', 'confirmed_model': None,
                     'updated_at': time.time()})
 
+    def test_leave_out_survives_cold_manager_without_restoring_readiness(self):
+        self.launch_team(omitted_seats=['cli'])
+        cold = SeatManager(ROOT, self.manager.config, self.store,
+                           RuntimeRegistry(str(self.root)), monitor=False)
+        self.addCleanup(cold.shutdown)
+        before = self.spawn.call_count
+        state = cold.package_status('team')
+        self.assertEqual(state['omitted_seats'], ['cli'])
+        self.assertEqual(state['state'], 'not_started')
+        self.assertIsNone(state['selection_id'])
+        self.assertFalse(state['ready'])
+        self.assertEqual(self.spawn.call_count, before)
+        # A saved-package edit cannot reuse choices from an older revision.
+        changed = self.store.package('team')
+        changed['name'] = 'New team revision'
+        self.store.save(changed)
+        self.assertEqual(cold.package_status('team')['omitted_seats'], [])
+
+    def test_retry_rechecks_proven_cli_exit_but_never_uncertain_ownership(self):
+        self.manager.launch('team', 'cli')
+        old = self.manager.attempts['team/cli']
+        snapshot = json.loads(old['snapshot'].read_text(encoding='utf-8'))
+        birth = {'ownership': snapshot['ownership'], 'attempt': old['id'],
+                 'base': old['base'], 'worker_root': str(ROOT.resolve()),
+                 'pid': 123456, 'creation_filetime': '123456', 'image_path': sys.executable}
+        atomic_json(old['snapshot'].with_name('birth.json'), birth)
+        atomic_json(old['receipt'], {'attempt': old['id'], 'state': 'stopped', 'child_exit_code': 0})
+        cold = SeatManager(ROOT, self.manager.config, self.store,
+                           RuntimeRegistry(str(self.root)), monitor=False)
+        self.addCleanup(cold.shutdown)
+        before = self.spawn.call_count
+        with patch('runtime_adoption.open_verified_process', return_value={'status': 'uncertain'}):
+            with self.assertRaises(SeatError):
+                cold.launch('team', 'cli')
+        self.assertEqual(self.spawn.call_count, before)
+        # Exit becomes independently provable after startup. Retry must refresh it.
+        with patch('runtime_adoption.open_verified_process', return_value={'status': 'absent', 'error_code': 87}):
+            result = cold.launch('team', 'cli')
+        self.assertEqual(result['state'], 'starting')
+        self.assertEqual(self.spawn.call_count, before + 1)
+        self.assertIn(old['id'], cold.retired_attempts)
+
     def test_mixed_package_roundtrip_and_revision_are_canonical(self):
         saved = self.store.package('team')
         self.assertEqual(saved, self.package)
