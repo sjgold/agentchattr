@@ -3,9 +3,9 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pre-flight · agentchattr</title>
 <link rel="icon" href="/static/favicon.ico">
-<link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/preflight.css?v=3">
-<script src="/static/preflight.js?v=2" defer></script>
-<script src="/static/api_seats.js?v=3" defer></script>
+<link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/preflight.css?v=5">
+<script src="/static/preflight.js?v=3" defer></script>
+<script src="/static/api_seats.js?v=4" defer></script>
 </head><body class="preflight-page">
 <header class="pf-topbar">
 <div class="pf-brand"><img src="/static/logo.png" alt="" class="pf-logo"><span>agentchattr</span><span class="pf-crumb">Pre-flight</span></div>
@@ -21,8 +21,10 @@
 <section class="pf-step" aria-labelledby="agents-title">
 <div class="pf-step-head"><h2 id="agents-title"><span class="pf-num" aria-hidden="true">1</span>Available agents</h2>
 <div class="pf-step-tools"><span id="checked-at" class="pf-dim"></span><button id="refresh" type="button">Refresh checks</button></div></div>
+<details id="agents-details" class="pf-agents-details" open><summary id="agents-summary">Checking agents…</summary>
 <p class="pf-hint">These checks only look for programs. They do not start agents, install anything, sign in, or send model requests. Finding a program does not mean it is ready; unknown stays unknown until a launch shows more.</p>
 <div id="agents" class="pf-agent-list" aria-live="polite"></div>
+</details>
 </section>
 
 <section class="pf-step" aria-labelledby="api-seats-title">

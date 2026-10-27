@@ -31,6 +31,13 @@ function emptyState(text, hint) {
     }
     return box;
 }
+// A CLI launched through an interpreter (an MCP-safe wrapper script) resolves to
+// that interpreter, not the client program itself.
+const WRAPPER_COMMANDS = new Set(['python', 'python3', 'pythonw', 'py', 'node', 'pwsh', 'powershell', 'cmd', 'bash', 'sh']);
+function isWrapper(path) {
+    const base = String(path || '').split(/[\\/]/).pop().toLowerCase().replace(/\.exe$/, '');
+    return WRAPPER_COMMANDS.has(base);
+}
 function agentRow(agent) {
     const card = document.createElement('article');
     card.className = 'pf-agent';
@@ -44,7 +51,9 @@ function agentRow(agent) {
     head.append(title, kind);
     const chips = document.createElement('div');
     chips.className = 'pf-chips';
+    const wrapper = agent.client_type !== 'api' && agent.executable_found && isWrapper(agent.executable);
     if (agent.client_type === 'api') chip(chips, 'Program', 'not needed', 'neutral');
+    else if (wrapper) chip(chips, 'Launch command', 'found (wrapper)', 'good');
     else if (agent.executable_found) chip(chips, 'Program', 'found', 'good');
     else chip(chips, 'Program', 'not found on PATH', 'bad');
     chip(chips, 'Version', agent.version || 'unknown');
@@ -55,7 +64,10 @@ function agentRow(agent) {
     const summary = document.createElement('summary');
     summary.textContent = 'Details';
     const list = document.createElement('dl');
-    detail(list, 'Executable', agent.client_type === 'api' ? 'API agent · no executable required' :
+    if (wrapper) {
+        detail(list, 'Launch command (wrapper)', agent.executable);
+        detail(list, 'Client', `${agent.label || agent.name} (${agent.name})`);
+    } else detail(list, 'Executable', agent.client_type === 'api' ? 'API agent · no executable required' :
         (agent.executable_found ? agent.executable : 'Not found on PATH'));
     detail(list, 'Version', agent.version || 'Unknown');
     detail(list, 'Startup', agent.startup_checked ? 'Checked' : 'Not checked');
@@ -79,6 +91,10 @@ async function refreshChecks() {
         if (!response.ok) throw new Error(`Server returned ${response.status}. Reload this page to refresh your session.`);
         const snapshot = await response.json();
         agentsNode.replaceChildren(...snapshot.agents.map(agentRow));
+        const missing = snapshot.agents.filter(a => a.client_type !== 'api' && !a.executable_found).length;
+        const summary = document.getElementById('agents-summary');
+        if (summary) summary.textContent = !snapshot.agents.length ? 'No agents configured' :
+            `Available agents: ${snapshot.agents.length}` + (missing ? ` · ${missing} not found` : '');
         if (!snapshot.agents.length) agentsNode.replaceChildren(emptyState('No agents configured yet.',
             'Add them under [agents] in config.toml (or config.local.toml), restart the server, then press Refresh checks.'));
         statusNode.textContent = 'Local server running';

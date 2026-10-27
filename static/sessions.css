@@ -5,7 +5,9 @@
     border-bottom: 1px solid var(--border);
     max-height: 42vh;
     overflow: auto;
-    flex-shrink: 0;
+    /* Shares leftover height with other panels so the composer stays on screen. */
+    flex-shrink: 1;
+    min-height: 96px;
     font-size: 14px;
     overflow-wrap: anywhere;
 }
@@ -155,7 +157,7 @@
 }
 
 .session-info .session-template {
-    color: var(--accent);
+    color: var(--user-color);
     font-weight: var(--fw-semibold);
     white-space: nowrap;
 }
@@ -361,6 +363,11 @@
     border-color: var(--accent);
     background: var(--bg-elevated);
 }
+.session-tmpl-card:focus-visible {
+    outline: 2px solid var(--user-color);
+    outline-offset: 2px;
+    background: var(--bg-elevated);
+}
 
 .session-tmpl-name {
     font-size: var(--fs-base);
@@ -424,11 +431,11 @@
 }
 
 .session-role-pill {
-    font-size: 10px;
+    font-size: 11px;
     padding: 1px 6px;
     border-radius: var(--radius-sm);
     background: var(--accent-soft);
-    color: var(--accent);
+    color: var(--user-color);
     border: 1px solid rgba(124, 58, 237, 0.25);
 }
 
@@ -498,7 +505,7 @@
 }
 
 .session-cast-phase-num {
-    color: var(--accent);
+    color: var(--user-color);
     font-weight: var(--fw-bold);
 }
 
@@ -522,7 +529,7 @@
 
 .session-cast-role {
     font-size: var(--fs-md);
-    color: var(--accent);
+    color: var(--user-color);
     font-weight: var(--fw-semibold);
     min-width: 0;
     flex: 0 1 38%;
@@ -587,7 +594,7 @@
 
 .session-output-link {
     font-size: var(--fs-sm);
-    color: var(--accent);
+    color: var(--user-color);
     cursor: pointer;
     margin-left: var(--space-sm);
     text-decoration: underline;
@@ -623,7 +630,7 @@
 }
 
 .session-draft-meta {
-    font-size: 10px;
+    font-size: 11px;
     color: color-mix(in srgb, var(--text-dim) 88%, transparent);
     margin-left: auto;
     white-space: nowrap;
@@ -677,7 +684,7 @@
 
 .session-draft-btn-save.saved {
     background: rgba(124, 58, 237, 0.14);
-    color: var(--accent);
+    color: var(--user-color);
     border-color: rgba(124, 58, 237, 0.35);
     cursor: default;
 }
@@ -701,7 +708,7 @@
     flex: 0 0 22px;
     font-size: var(--fs-xs);
     font-weight: var(--fw-bold);
-    color: var(--accent);
+    color: var(--user-color);
     line-height: 1.8;
 }
 
@@ -738,7 +745,7 @@
     align-items: center;
     padding: 1px 7px;
     border-radius: var(--radius-full);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: var(--fw-medium);
     color: var(--text-muted);
     background: var(--white-06);
@@ -839,6 +846,12 @@
     margin: 12px 0;
 }
 
+/* Short windows: a smaller source box keeps the template list in view. */
+@media (max-height: 820px) {
+    .session-launcher-dialog { max-height: 94vh; }
+    .session-launcher-dialog .session-source-editor textarea { min-height: 0; height: 80px; }
+}
+
 /* In the launcher the limits are reference text, not the first thing to read. */
 .session-launcher-dialog > .session-capacity-note {
     margin: 0 var(--space-lg) var(--space-md);
@@ -870,7 +883,7 @@
 .document-actions button:disabled { opacity:.55; cursor:wait; }
 .document-input textarea { font-size:14px; max-height:320px; overflow:auto; white-space:pre; }
 .document-input p { font-size:14px; color:var(--text); overflow-wrap:anywhere; }
-.document-input textarea::placeholder { color:var(--text-muted); }
+.document-input textarea::placeholder { color:var(--text-dim); }
 .document-input .document-error, .document-input .document-start-error { color:var(--text); }
 .document-metadata { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px 12px; font-size:14px; line-height:1.5; margin:12px 0 0; }
 .document-metadata dt { color:var(--text-muted); }

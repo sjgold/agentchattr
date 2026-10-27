@@ -77,6 +77,8 @@ window.ArtifactDocuments = (() => {
             failed: 'Document could not be completed', quarantined: 'Response rejected'}[row.state] || 'Status unavailable';
     }
     function errorText(data) {
+        if (data?.code === 'no_author_available' && data?.cause === 'no_live_instance')
+            return 'The agent that ran this session is no longer running. Start a new session with your current team to write from it.';
         let text = typeof data?.error === 'string' ? data.error : ERRORS[data?.code] || ERRORS.unexpected_failure;
         if (data?.cause === 'capability_off') text = CAUSES.capability_off;
         else if (CAUSES[data?.cause]) text += ' ' + CAUSES[data.cause];
@@ -135,7 +137,7 @@ window.ArtifactDocuments = (() => {
         text(n.error, s.error || '');
         text(n.submit, s.submitting ? 'Saving request...' : s.known?.unknown ? 'Retry same request' : row ? 'Request another document' : 'Request document');
         n.submit.disabled = s.submitting || !writable(s) || (!s.selected && !s.known?.unknown);
-        n.select.disabled = s.submitting || s.known?.unknown === true;
+        n.select.disabled = s.submitting || s.known?.unknown === true || s.sessions.size === 0;
         n.cancel.hidden = !row || !LIVE.has(row.state); n.cancel.disabled = s.cancelling;
         n.refresh.disabled = !s.known || s.refreshing || s.cancelling;
         const ready = hex(row?.version_id) && ['fulfilled', 'imported'].includes(row.state);
@@ -179,13 +181,19 @@ window.ArtifactDocuments = (() => {
             for (const item of value.sessions || []) {
                 if (s.sessions.has(item.session_id)) continue;
                 s.sessions.set(item.session_id, item);
-                const option = node('option', null, item.title + ' (' + item.state + ')'); option.value = String(item.session_id);
+                // The start time tells apart sessions that share a template title.
+                const started = new Date(item.started_at * 1000).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+                const option = node('option', null, item.title + ' (' + item.state + ') · ' + started); option.value = String(item.session_id);
                 s.nodes.select.appendChild(option);
             }
             s.offset = offset + 20; s.nodes.more.hidden = value.has_more !== true;
             const preferred = s.sessions.get(s.known?.session_id) || [...s.sessions.values()][0];
             if (!s.selected && preferred) { s.selected = preferred; s.nodes.select.value = String(preferred.session_id); }
-            if (!preferred) s.error = 'No saved sessions in this channel yet. Complete a session, then return here.';
+            if (!preferred) {
+                s.error = 'No saved sessions in this channel yet. Complete a session, then return here.';
+                const placeholder = node('option', null, 'No finished sessions yet'); placeholder.value = '';
+                s.nodes.select.replaceChildren(placeholder);
+            }
         } catch (error) { if (active(s)) { s.error = errorText(error.data); s.listFailure = true; s.nodes.more.hidden = false; text(s.nodes.more, 'Retry sessions'); } }
         finally { s.listBusy = false; if (active(s)) { s.nodes.more.disabled = false; render(s); } }
     }
@@ -261,6 +269,7 @@ window.ArtifactDocuments = (() => {
             if (!active(s) || s.known?.request_id !== id || serial !== s.readSerial) return;
             if (typeof value.markdown !== 'string') throw new Error('Document text unavailable');
             s.nodes.reader.textContent = value.markdown; s.nodes.reader.hidden = false; s.error = '';
+            s.nodes.reader.scrollIntoView?.({block: 'nearest'});
         } catch (error) {
             if (active(s) && serial === s.readSerial) { s.nodes.reader.hidden = true; s.error = errorText(error.data); }
         } finally { s.reading = false; if (active(s)) render(s); }

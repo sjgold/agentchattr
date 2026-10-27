@@ -320,7 +320,9 @@ for(const code of ['source_unavailable','source_too_large','request_too_large','
 }
 for(const cause of ['capability_off','no_live_instance','no_agent_role','not_supported','unmanaged','binding_changed','runtime_unverified','ambiguous','producer_unavailable']){
  responder=async()=>response({code:'no_author_available',cause,error:'No author available',author_name:'<img author>',examined_roles:2,durability:'not_recorded'},409);await submit();
- assert(element('artifact-error').textContent.includes(cause==='capability_off'?'Artifact authoring is not enabled':'No author available'));
+ // no_live_instance uses the approved plain-language sentence instead of the server text.
+ assert(element('artifact-error').textContent.includes(cause==='capability_off'?'Artifact authoring is not enabled':
+  cause==='no_live_instance'?'The agent that ran this session is no longer running.':'No author available'));
 }
 responder=async()=>response({code:'request_conflict',cause:'packet_exists',error:'Submit with a new request_id',durability:'not_recorded'},409);await submit();assert(element('artifact-error').textContent.includes('new request_id'));
 responder=async()=>({ok:false,status:502,json:async()=>{throw Error('<html>PRIVATE_PROXY</html>')}});await submit();
@@ -551,4 +553,61 @@ await open();await submit();current={...current,state:'fulfilled',version_id:'c'
 const original=responder;let fail;responder=async(url,options)=>url.endsWith('/download')?new Promise((resolve,reject)=>{fail=()=>reject(Error('OLD_DOWNLOAD_ERROR'))}):original(url,options);
 const older=element('artifact-download').click();await flush();current={...current,state:'queued',version_id:null,label:'queued'};await submit();
 const before=element('artifact-error').textContent;fail();await older;assert.strictEqual(element('artifact-error').textContent,before);
+""")
+
+    def test_session_options_include_start_time_so_same_titles_differ(self):
+        self.run_js(r"""
+const original=responder;
+responder=async(url,options)=>url.includes('/sessions?')?response({sessions:[
+ {...session,session_id:1,title:'Debate',state:'complete',started_at:1700000000},
+ {...session,session_id:2,run_id:'d'.repeat(32),title:'Debate',state:'complete',started_at:1700086400}],offset:0,has_more:false}):original(url,options);
+await open();
+const texts=element('artifact-session-select').children.map(o=>o.textContent);
+assert.strictEqual(texts.length,2);
+assert.notStrictEqual(texts[0],texts[1],texts.join('|'));
+const stamp=s=>new Date(s*1000).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+assert.strictEqual(texts[0],'Debate (complete) · '+stamp(1700000000));
+assert.strictEqual(texts[1],'Debate (complete) · '+stamp(1700086400));
+""")
+
+    def test_no_live_author_error_uses_plain_language(self):
+        self.run_js(r"""
+const original=responder;
+responder=async(url,options)=>url.endsWith('/requests')&&options.method==='POST'?response({code:'no_author_available',cause:'no_live_instance',
+ durability:'not_recorded',examined_roles:4,author_name:'x'},409):original(url,options);
+await open();await submit();
+assert.strictEqual(element('artifact-error').textContent,
+ 'The agent that ran this session is no longer running. Start a new session with your current team to write from it.');
+""")
+
+    def test_other_errors_keep_existing_suffixes(self):
+        self.run_js(r"""
+const original=responder;
+responder=async(url,options)=>url.endsWith('/requests')&&options.method==='POST'?response({code:'invalid_request',durability:'not_recorded',examined_roles:2},400):original(url,options);
+await open();await submit();
+const text=element('artifact-error').textContent;
+assert(text.includes('Agent roles checked: 2.')&&text.includes('Effect: not_recorded.'),text);
+""")
+
+    def test_read_document_scrolls_reader_into_view_once(self):
+        self.run_js(r"""
+await open();await submit();current={...current,state:'fulfilled',label:'ready',version_id:'c'.repeat(32)};await activate('artifact-refresh');
+const scrolls=[];element('artifact-reader').scrollIntoView=arg=>scrolls.push(arg);
+await activate('artifact-read');
+assert.strictEqual(element('artifact-reader').textContent,markdown);
+// The argument object comes from the vm realm, so compare by value.
+assert.strictEqual(JSON.stringify(scrolls),JSON.stringify([{block:'nearest'}]));
+""")
+
+    def test_empty_session_list_shows_disabled_placeholder(self):
+        self.run_js(r"""
+const original=responder;
+responder=async(url,options)=>url.includes('/sessions?')?response({sessions:[],offset:0,has_more:false}):original(url,options);
+await open();
+const select=element('artifact-session-select');
+assert.strictEqual(select.disabled,true);
+assert.strictEqual(select.children.length,1);
+assert.strictEqual(select.children[0].textContent,'No finished sessions yet');
+assert.strictEqual(select.children[0].value,'');
+assert.strictEqual(element('artifact-submit').disabled,true);
 """)

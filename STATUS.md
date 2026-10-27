@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 01:59 CDT. Ticket23 approved;21/22/24-26 moved post-launch. Cold-launch essentials and child-only key loading come first.
+**Updated:** 2026-10-27 02:00 CDT. Reviewed UI polish58aedb4 integrated;149 focused tests pass. Cold-launch setup next.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -134,3 +134,7 @@ Seth: "24-26 are going to come in post launch" and "to be honest im fine with sl
 Seth approved daily-use key loading like the old launchers: only referenced api_key_env/secret_ref NAME= lines, first match, existing env wins, quote pair stripped, server-child env only, missing file/name harmless, no value in output/argv/errors. Temp-profile reds precede the fix. No real .env read for this source audit. README legacy-first/stale-ticket guidance and LAUNCHER entry flow were corrected.
 
 Cold-start preparation is approved in one fresh pinned clone under the isolated UAT area, with its own .venv-windows and pip cache/temp paths. requirements.txt installs from PyPI only; no existing environment, global install, junction or interpreter monkeypatch. The directory is retained. Existing UAT49949 remains untouched.
+
+### 2026-10-27 02:00 CDT Final reviewed UI polish
+
+Merged pinned58aedb484763a73ae9ebccaa5cba0b046fa2ab23 (12 reviewed commits after0078e74), preserving the naming/canonical-id changes.149 naming/identity/package/pre-flight/help/Documents/restart/readability/chat-empty/layout tests passed in9.118s. The first command named a nonexistent test_identity_registry and had one loader error; corrected to test_identity_contract and reran the full intended selection. The existing HTTPError404 ResourceWarning remains. No backend or model calls in this merge. Opus can base Hermes on this merged integration pin.

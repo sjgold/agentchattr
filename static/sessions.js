@@ -1793,7 +1793,7 @@ function showSessionLauncher() {
     closeSessionLauncherOnEscape(modal);
 
     let templateOptions = sessionTemplates.map(t =>
-        `<div class="session-tmpl-card" onclick="showCastPreview('${window.escapeHtml(t.id)}')" title="${window.escapeHtml(t.description || '')}">
+        `<div class="session-tmpl-card" onclick="showCastPreview('${window.escapeHtml(t.id)}')" tabindex="0" role="button" onkeydown="if (event.target === this && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); this.click(); }" title="${window.escapeHtml(t.description || '')}">
             ${t.is_custom ? `<span class="session-tmpl-delete-wrap"><button class="session-tmpl-delete" onclick="toggleDeleteSessionTemplateConfirm(this, '${window.escapeHtml(t.id)}', event)" title="Delete custom template">Delete</button></span>` : ''}
             <div class="session-tmpl-name">${window.escapeHtml(t.name)}</div>
             <div class="session-tmpl-desc">${window.escapeHtml(t.description || '')}</div>
@@ -1820,7 +1820,7 @@ function showSessionLauncher() {
     modal.innerHTML = `
         <div class="session-launcher-dialog">
             <div class="session-launcher-header">
-                <span>Start a Session</span>
+                <span>Start a session</span>
                 <button onclick="closeSessionLauncher(this.closest('.session-launcher-overlay'))">&times;</button>
             </div>
             <div class="session-launcher-goal">
@@ -1886,7 +1886,7 @@ function showCastPreview(templateId) {
     castStep.innerHTML = `
         <div class="session-cast-header">
             <button class="session-back-btn" onclick="sessionCastBack()">&larr;</button>
-            <span>${window.escapeHtml(tmpl.name)} -- Cast</span>
+            <span>${window.escapeHtml(tmpl.name)} · Cast</span>
         </div>
         <div class="session-cast-list">${roleRows}</div>
         <button class="session-start-btn" onclick="launchSessionWithCast('${window.escapeHtml(templateId)}')">Start Session</button>
@@ -2039,7 +2039,7 @@ function showDraftCastPreview(tmpl, draftMsgId) {
     modal.innerHTML = `
         <div class="session-launcher-dialog">
             <div class="session-launcher-header">
-                <span>${window.escapeHtml(tmpl.name || '?')} -- Cast</span>
+                <span>${window.escapeHtml(tmpl.name || '?')} · Cast</span>
                 <button onclick="closeSessionLauncher(this.closest('.session-launcher-overlay'))">&times;</button>
             </div>
             <div class="session-launcher-goal">
