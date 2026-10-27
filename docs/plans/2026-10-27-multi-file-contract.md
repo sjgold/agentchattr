@@ -1,6 +1,6 @@
 # Ticket23 implementation contract and red-first plan
 
-**State:** frozen for reviewer evaluation before product implementation. Seth approved the a441a2d shape, raw512KiB aggregate and order-sensitive revision; reviewer may clear contract/reds while Seth is away. No24-26 or21/22 work. This contract narrows implementation details without changing the approved user flow.
+**State:** approved contract; groups1/2 reviewer-cleared, group3 implemented and focused-tested, awaiting review. Seth approved the a441a2d shape, raw512KiB aggregate and order-sensitive revision; reviewer may clear contract/reds while Seth is away. No24-26 or21/22 work. This contract narrows implementation details without changing the approved user flow.
 
 **Goal:** choose multiple UTF-8 files in the existing source editor, preview their names/ids/raw sizes, freeze one packet for all selected reviewers, and check literal quotes against an explicit file id/revision.
 
@@ -95,3 +95,7 @@ Canonical source stays in saved briefs and internal HTTP get_delivery. The API m
 Tool-output consumer search: ten fake CLI tools (result recovery, corrected restart, document, recipient, participant recovery, runtime crash, review, session event, session stop, turn recovery) and verify_result_outbox now share tools/fake_cli_decode.py. The helper is test-tool-only. Native wrappers only inject the tool prompt and do not parse the response. test_result_brief_seal's v1 json.loads remains unchanged and passes. Leading JSON plus exact boundary is decoded; the tail is literal and never stripped. Ordinary v1 still uses whole-response json.loads, including its trailing-junk refusal.
 
 A malformed/uppercase packet_revision is invalid_citation; a well-shaped unequal revision is packet_revision_mismatch. Whitespace-only quotes are invalid_citation; other quotes match literally without trimming. Encoded1114112-byte cap is defensive: once the raw and metadata caps hold, it cannot be exceeded under this canonical serializer.
+
+## Group3 verification boundary
+
+Operator packet preview and the actual source-picker JavaScript pass focused tests, including removal, stale results, disposal and timeout. Three targeted UI mutants are killed. Controls use a small DOM fixture; rendered multi-file layout and live multi-file model calls have not been exercised. Frozen RC0 excludes Ticket23. The90-minute checkpoint and reviewed RC1 gate remain in force.

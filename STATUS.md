@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 03:39 CDT. Frozen RC0 remains up; Ticket23 group2 consumers pass100 focused tests. Route/picker group3 pending.
+**Updated:** 2026-10-27 03:55 CDT. Ticket23 group3 passes175 focused tests; reviewer review pending. Frozen RC0 stays unchanged.
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
@@ -14,9 +14,9 @@ RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI 
 
 ## Now
 
-Documentation cleanup is accepted. Seven seats are running, including OMP (90B managed document read/download exact). Antigravity's real managed document now passes63B read/download exact after clearing two first-run notices and switching the owned CLI from research-only Plan to Auto mode. Normal Google login was already present; the startup error log was not evidence of missing login.
+Frozen RC0 runs from its own pinned checkout. Seven seats are ready; DeepSeek document read/download passed. Its Antigravity document request timed out and was cancelled. Earlier successful AGY evidence belongs to the old instance.
 
-The real Windows launcher reuse path, Pre-flight package editor/save/launch and Open chat path were exercised. Live sender labels are friendly (zero raw managed ids in sender elements). Reviewed UI commits08b1f0a/a8f624c/c6930b0 and0078e74 are integrated: visible Seats & launch link, clearer pre-flight flow, lighter help and usable menus.The first merge passed119 focused tests; the follow-up passed69. Launch team and open chat was exercised with7/7 ready seats. Seth's own end-to-end acceptance remains open.
+Multi-file review core and delivery groups are reviewer-cleared. Route/picker group1d0ed71 passes175 focused tests and three targeted mutation checks, awaiting review. It is excluded from RC0. Hermes proof stopped before any write because an existing bundled Hermes Python process is running; that process is untouched.
 
 ## Needs Seth
 
@@ -40,16 +40,16 @@ The real Windows launcher reuse path, Pre-flight package editor/save/launch and 
 |DeepSeek|deepseek-flash|RC0 ready; fresh Documents99B read/download exact. Earlier100B retained.1070 not mapped|
 |GLM|glm-5.3|Running; earlier Documents285B exact, no extra call|
 |Muse|muse-spark-1.3-contributor|Running; Documents81B exact. Hello needed512-token probe cap; normal document path worked unchanged|
-|Hermes|Normal HERMES_HOME authorized|YAML adapter needs temporary-fixture tests and review before any real-home write|
+|Hermes|grok-4.7, existing xai-oauth|Adapter integrated/tested. Real proof deferred: existing bundled Python process; no home write or model call|
 |OMP|openai-codex/gpt-6.1-sol|Running; managed Documents90B read/download exact; model unverified in API metadata|
 
 ## Next
 
-1. Pre-flight retry/Leave out fixes0251004 are reviewer-cleared; keep the running UAT instance available.
-2. Opus implements Hermes YAML support on temporary homes in its own worktree. Codex integrates its reviewed pin; explicit reviewer approval before any real-home write, then one tiny request with the existing login.
-3. Cold-start verification and the approved named-key child-environment fix; then freeze Ticket23 contract/observed reds, review, implement within its90-minute agent-time checkpoint.
-4. [Post-launch scope](C:/Users/SJG/.traycer/epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/post-launch-scope/index.md) is the shared next-scoping list. Tickets21/22/24-26 are post-launch; preserve transcript plan and9 dated skipped reds. Final full discovery, activation review and file-state check precede any publication.
-5. Push/publication requires Seth's explicit go-ahead.
+1. Reviewer checks Ticket23 group3. Stop/report at the90-minute checkpoint; include23 in RC1 only when all three groups are green and reviewed.
+2. Fix or report Hermes executable-path detection and Windows .cmd descendant Stop defects before RC1. Existing Hermes process61816 stays untouched.
+3. Integrate reviewed default_model fallback with managed-runtime tests. Optional reviewed UI ideas enter only through RC1. RC0 stays frozen.
+4. Final frozen full discovery, activation-state review and file-state check precede publication. Tickets21/22/24-26 stay post-launch; preserve9 transcript skips.
+5. [Post-launch scope](C:/Users/SJG/.traycer/epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/post-launch-scope/index.md) holds the next-scoping list. Push/publication requires Seth's explicit go-ahead.
 
 ## UAT
 
@@ -218,3 +218,11 @@ Validated v2 source uses its encoded allowance through freeze and BriefStore; v1
 All ten fake CLI tools and verify_result_outbox use one test-only framing decoder (4 initial tests/9 missing-helper subtest errors observed). Product imports no test codec. Native wrappers do not parse tool output.100 core/delivery/codec/real-session-HTTP/v1/brief/seal/source/import/protocol/assertion tests passed in7.145s. Real HTTP serializer accepts raw512KiB worst-case quoted/backslash input under4MiB; unauthenticated/agent starts remain403. No route/picker green claim yet.
 
 Group1 asks included: whitespace-only quote red then refusal, versionTrue/2.0/string dispatch guards, inner manifest id gap/reorder tamper, hand-crafted raw/metadata excess through validation, non-dict/str-subclass citation guards, and forged markers using real byte_length/sha fields. check_quote still validates the whole packet on each call; optimization is post-launch only. No migration, no live model generation or UAT checkout edit in this group.
+
+### 2026-10-27 03:55 CDT Ticket23 group3 verification
+
+Operator-only packet-preview POST enforces a4MiB streamed-body limit and strict JSON shape. The existing source picker accepts multiple UTF-8 files, lists ordered ids/names/raw sizes, freezes the validated packet and supports removal. Single-file selection still uses v1; pasted text stays unchanged. Stale selection, disposal and timeout cannot restore late results or enable Start. Text remains literal; source bodies are not put in browser storage.
+
+175 focused document/brief/delivery/route/source/seal/outbox/protocol/naming/artifact-UI/environment-guard tests pass in9.949s. Node syntax and diff checks pass. Three in-memory mutants (aggregate guard, packet validation, stale selection) each fail one assertion with zero errors. An explicit untrusted-data preamble test was observed red before its wording fix. CLI guide records v2 JSON-prefix/fixed-boundary framing. No browser/live-provider check or RC0 change.
+
+Commit1d0ed71 landed before this STATUS update because the timestamp script failed on missing Windows tzdata; this follow-up uses Windows TimeZoneInfo. Hermes operations stopped before any real-home write: bundled Python61816 was present under HERMES_HOME although image checks missed it. Config unchanged and agentchattr-uat absent. Reviewer requested path detection and a signed fake.cmd Stop reproduction before RC1.
