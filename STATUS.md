@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 02:26 CDT. Seven UAT seats refreshed with CLI key isolation; offline chat fallback tested. Ticket23 contract/reds next.
+**Updated:** 2026-10-27 02:37 CDT. Ticket23 contract and22 observed reds ready for reviewer; no23 product implementation yet.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -166,3 +166,9 @@ Security fix51a53b6 cleared by reviewer (51 focused reviewer tests). Owned UAT c
 Offline CDN defect: init and renderMarkdown threw ReferenceError when marked was absent. After correcting one Node test argv-fixture error,2 genuine reds were observed and the normal-parser control passed. Added a guard around marked setup and an early escaped-plain-text/line-break fallback, preserving literal paths and code-looking text safely.92 offline/naming/chat-empty/help/Documents/pre-flight/assertion-guard tests pass in8.766s; node --check passes. No vendoring, network call or other audit cleanup.
 
 Daily-model follow-up approved: Opus will add a CLI default_model fallback after Hermes, then the entry-only AGY JSON option. Blank model uses the template default; explicit model wins; no configured default preserves native behavior. AGY daily template will default to gemini-3.8-flash-medium and suggest high/medium/low. PyYAML is already installed transitively; Opus is authorized to declare PyYAML>=6.0 explicitly for the Hermes adapter.
+
+### 2026-10-27 02:37 CDT Ticket23 frozen contract and reds
+
+[Frozen contract](docs/plans/2026-10-27-multi-file-contract.md) pins v2 file_packet fields, f1/f2 ids, canonical UTF-8 manifest/revision,524288 raw aggregate,65536 metadata allowance and1114112 encoded-text allowance, preview/auth, compatibility and every identified consumer. Old v1/paste formats stay unchanged. Existing corrected-paste restart remains explicit; changed files can be reselected in a new review rather than inventing a linked packet-editing workflow. Artifact authoring's2MiB cap stays independent.
+
+Observed22 tests:9FAIL+12ERROR+1PASS (0.571s);8 missing-seam infrastructure errors and4 existing-validator behavioral errors. One actual opaque-packet store/export/import roundtrip already passes. No23 production code;90-minute active implementation/verification clock starts on clearance. No new browser harness or provider call.21/22/24-26 stay post-launch, including9 dated transcript skips. Next owner: reviewer clears contract/reds, Codex implements the bounded slice.

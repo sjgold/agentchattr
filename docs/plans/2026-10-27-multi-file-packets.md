@@ -1,6 +1,6 @@
 # Ticket23: multi-file packets, proposal for Seth
 
-State: planning only. Seth authorized this proposal, not Ticket23 product code. Approval and an effort budget are required before implementation. Tickets24-26 remain outside scope.
+State: Seth approved this shape,512KiB raw aggregate, order-sensitive revision and90-minute agent-time checkpoint on2026-10-27. The [frozen contract and observed reds](2026-10-27-multi-file-contract.md) await reviewer production clearance. Tickets21/22/24-26 are post-launch; no work on them for this release.
 
 ## Purpose and budget
 
@@ -52,10 +52,10 @@ This is a source-schema change across more than one module, not a picker-only tw
 
 Ticket23 delivers ONLY a membership helper: {packet_revision, file_id, quote} -> verified/not verified plus reason. It parses no reviewer findings, adds no reviewer UI, and produces no synthesis. Author-reported filenames alone are insufficient. The eventual Ticket25 review flow can consume this helper later. The exact wire format remains proposed until the contract is frozen.
 
-## Decisions waiting for Seth
+## Decisions resolved by Seth (2026-10-27)
 
-- Approve this bounded shape and90-minute agent-time checkpoint (stop and report), or redirect.
-- Keep512KiB raw-member aggregate initially, or name the capacity needed for real use.
-- Confirm the helper-only file-id/revision contract. Default: order is part of the packet and reordering creates a new revision; choose otherwise if preferred.
+- Approved: this shape and90-minute agent-time implementation/verification checkpoint, then stop and report.
+- Approved:512KiB raw-member aggregate initially.
+- Approved: helper-only contract; order is part of the packet and reordering creates a new revision.
 
-Next owner: Codex records Seth's decisions and sends the frozen contract/observed reds for review. No Ticket23 product implementation until scope confirmation.
+Next owner: reviewer checks the frozen contract/observed reds; Codex implements only after that clearance. Earlier proposal wording above is retained as design context; the frozen contract pins the exact fields/caps.
