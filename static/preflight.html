@@ -2,32 +2,59 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Pre-flight · agentchattr</title>
-<link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/preflight.css">
-<script src="/static/preflight.js" defer></script>
-<script src="/static/api_seats.js" defer></script>
-</head><body class="preflight-page"><main>
-<header><p class="eyebrow">agentchattr</p><h1>Pre-flight</h1><p>Check your environment before opening chat.</p></header>
-<section aria-labelledby="server-title"><h2 id="server-title">Local server</h2>
-<p id="server-status" role="status">Checking connection…</p><p id="checked-at"></p>
-<div class="actions"><button id="refresh" type="button">Refresh checks</button><a class="open-chat" href="/">Open chat directly</a></div></section>
-<section aria-labelledby="agents-title"><h2 id="agents-title">Configured agents</h2>
-<p>These checks only find executables. They do not start agents, install software, sign in, or send model requests.</p>
-<p>Authentication and connection remain unknown until checked. Finding a command does not mean an agent is ready.</p>
-<div id="agents" class="agent-grid"></div></section>
-<section aria-labelledby="api-seats-title"><h2 id="api-seats-title">Your agent team</h2>
-<p>Save a team of API and interactive CLI seats. API launch starts a chat adapter; CLI launch opens the configured client in a Windows console or an owned tmux session. Sending instructions can consume provider usage.</p>
-<p>Templates come from configured agents. CLI model and reasoning controls require an explicit argument contract. Manual model IDs are unverified. Saved edits apply on the next launch; a running seat requires an explicit restart.</p>
-<p>CLI Launch writes MCP identity settings and keeps backups of intentional file edits. Native logins are reused. A client with a fixed shared settings file can run one owned seat at a time; conflicting seats require an isolated client profile.</p>
+<link rel="icon" href="/static/favicon.ico">
+<link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/preflight.css?v=2">
+<script src="/static/preflight.js?v=2" defer></script>
+<script src="/static/api_seats.js?v=2" defer></script>
+</head><body class="preflight-page">
+<header class="pf-topbar">
+<div class="pf-brand"><img src="/static/logo.png" alt="" class="pf-logo"><span>agentchattr</span><span class="pf-crumb">Pre-flight</span></div>
+<p id="server-status" class="pf-server" role="status">Checking connection…</p>
+<a id="back-to-chat" class="pf-back" href="/">&larr; Back to chat</a>
+</header>
+<main>
+<section class="pf-intro">
+<h1>Pick your team, then go to chat</h1>
+<ol class="pf-steps-guide"><li>See which agents are available</li><li>Choose and configure your team</li><li>Launch it and open chat</li></ol>
+</section>
+
+<section class="pf-step" aria-labelledby="agents-title">
+<div class="pf-step-head"><h2 id="agents-title"><span class="pf-num" aria-hidden="true">1</span>Available agents</h2>
+<div class="pf-step-tools"><span id="checked-at" class="pf-dim"></span><button id="refresh" type="button">Refresh checks</button></div></div>
+<p class="pf-hint">These checks only look for programs. They do not start agents, install anything, sign in, or send model requests. Finding a program does not mean it is ready; unknown stays unknown until a launch shows more.</p>
+<div id="agents" class="pf-agent-list" aria-live="polite"></div>
+</section>
+
+<section class="pf-step" aria-labelledby="api-seats-title">
+<div class="pf-step-head"><h2 id="api-seats-title"><span class="pf-num" aria-hidden="true">2</span>Choose your team</h2>
+<div class="pf-step-tools"><label class="pf-inline">Saved team <select id="api-package-select"><option value="">New team</option></select></label>
+<button id="api-package-new" type="button">New team</button><button id="api-package-reload" type="button">Reload saved team</button></div></div>
 <p id="api-seat-status" role="status"></p>
-<div class="actions"><label>Saved package <select id="api-package-select"><option value="">New package</option></select></label><button id="api-package-new" type="button">New package</button><button id="api-package-reload" type="button">Reload saved team</button></div>
-<form id="api-package-form">
-<div class="seat-fields"><label>Package ID <input id="api-package-id" required pattern="[a-z][a-z0-9-]{0,47}" maxlength="48" placeholder="daily-team"></label><label>Package name <input id="api-package-name" required maxlength="100" placeholder="Daily team"></label></div>
-<div id="api-seat-editors"></div>
-<div class="actions"><button id="api-seat-add" type="button">Add agent seat</button><button type="submit">Save package</button></div>
+<form id="api-package-form" novalidate>
+<div class="seat-fields pf-team-fields"><label>Team name <input id="api-package-name" required maxlength="100" placeholder="Daily team"></label>
+<label>Team ID <input id="api-package-id" required pattern="[a-z][a-z0-9\-]{0,47}" maxlength="48" placeholder="daily-team"><small>filled from the name; lowercase letters, digits and dashes</small></label></div>
+<div id="api-seat-editors" class="pf-seat-list"></div>
+<div class="actions"><button id="api-seat-add" type="button">+ Add a seat</button><button id="api-package-save" type="submit">Save team</button></div>
 </form>
-<div class="actions"><button id="team-launch" type="button" disabled>Launch / reuse selected team</button><button id="team-chat" type="button" disabled>Open chat with this team</button></div>
-<p id="team-launch-status" role="status">Save or select your team to launch it.</p>
-<p>Leave a seat out for this launch to continue with the others. Its saved settings stay in the package; an already running seat keeps running until you stop it. Opening chat creates no review session or rounds.</p>
-<div id="api-seat-runtime" class="agent-grid"></div>
+<details class="pf-notes"><summary>How seats, launches and settings work</summary>
+<p>A team mixes API seats and interactive CLI seats. API launch starts a chat adapter; CLI launch opens the configured client in a Windows console or an owned tmux session. Sending instructions can consume provider usage.</p>
+<p>Templates come from configured agents. CLI model and reasoning controls require an explicit argument contract. Typed model IDs are unverified. Saved edits apply on the next launch; a running seat needs an explicit restart.</p>
+<p>CLI launch writes MCP identity settings and keeps backups of intentional file edits. Native logins are reused. A client with a fixed shared settings file can run one owned seat at a time; conflicting seats require an isolated client profile.</p>
+<p>Unticking <strong>Use</strong> leaves a seat out of this launch only. Its saved settings stay in the team, and an already running seat keeps running until you stop it.</p>
+</details>
+</section>
+
+<section class="pf-step pf-launchbar" aria-labelledby="launch-title">
+<div class="pf-launch-text"><h2 id="launch-title"><span class="pf-num" aria-hidden="true">3</span>Launch and go</h2>
+<p id="team-launch-status" role="status" aria-live="polite">Save or select your team to launch it.</p></div>
+<div class="pf-launch-actions">
+<button id="team-go" class="pf-primary" type="button" disabled>Launch team and open chat</button>
+<a class="open-chat" href="/" title="Skips the team check">Open chat directly</a>
+<details class="pf-more"><summary>More</summary><div class="pf-more-menu">
+<button id="team-launch" type="button" disabled>Launch / reuse only (stay here)</button>
+<button id="team-chat" type="button" disabled>Open chat with this team</button>
+<p class="pf-dim">Open chat directly skips the team check. Opening chat creates no review session or rounds.</p>
+</div></details>
+</div>
 </section>
 </main></body></html>
