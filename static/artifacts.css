@@ -6,7 +6,7 @@
 .artifact-documents[hidden], .artifact-documents [hidden] { display: none !important; }
 .artifact-heading, .artifact-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .artifact-heading { justify-content: space-between; }
-.artifact-heading h2 { margin: 0; font-size: 18px; line-height: 1.4; }
+.artifact-heading h2 { margin: 0; font-size: 18px; line-height: 1.4; color: var(--text-muted); }
 .artifact-heading { max-width: 72ch; }
 .artifact-heading #artifact-close { min-height: 32px; padding: 4px 12px; font-size: 13px; }
 .artifact-documents p { margin: 10px 0; max-width: 72ch; line-height: 1.5; }
@@ -34,4 +34,5 @@
 .session-artifact-warning { overflow-wrap: anywhere; }
 @media (max-width: 480px) { .artifact-documents { padding: 14px 12px; } #artifact-documents-open { padding: 0 5px; font-size: 12px; } }
 
-.artifact-documents textarea::placeholder { color: var(--text); opacity: 1; }
+/* Dim (AA 5:1 on inputs) so an empty box does not look already filled in. */
+.artifact-documents textarea::placeholder { color: var(--text-dim); opacity: 1; }

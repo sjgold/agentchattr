@@ -878,7 +878,7 @@
 .document-actions button:disabled { opacity:.55; cursor:wait; }
 .document-input textarea { font-size:14px; max-height:320px; overflow:auto; white-space:pre; }
 .document-input p { font-size:14px; color:var(--text); overflow-wrap:anywhere; }
-.document-input textarea::placeholder { color:var(--text-muted); }
+.document-input textarea::placeholder { color:var(--text-dim); }
 .document-input .document-error, .document-input .document-start-error { color:var(--text); }
 .document-metadata { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px 12px; font-size:14px; line-height:1.5; margin:12px 0 0; }
 .document-metadata dt { color:var(--text-muted); }

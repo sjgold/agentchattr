@@ -135,5 +135,21 @@ class SessionsReadabilityTests(unittest.TestCase):
         self.assertNotIn(' -- Cast', js)
 
 
+class DocumentsReadabilityTests(unittest.TestCase):
+    def test_placeholders_look_like_placeholders_and_still_meet_aa(self):
+        # The Documents instruction box and the review-source box painted their
+        # example text in full body colour, so an empty box looked filled in. They
+        # used body colour only because the old dim token failed AA; it passes now.
+        t = tokens()
+        self.assertGreaterEqual(contrast(t['text-dim'], t['bg-input']), 4.5)
+        for name, selector in (('artifacts.css', '.artifact-documents textarea::placeholder'),
+                               ('sessions.css', '.document-input textarea::placeholder')):
+            with self.subTest(selector=selector):
+                self.assertRegex(rule(sheet(name), selector), r'color:\s*var\(--text-dim\)')
+
+    def test_documents_heading_matches_preflight_hierarchy(self):
+        self.assertRegex(rule(sheet('artifacts.css'), '.artifact-heading h2'), r'color:\s*var\(--text-muted\)')
+
+
 if __name__ == '__main__':
     unittest.main()
