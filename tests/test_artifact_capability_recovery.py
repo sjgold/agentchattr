@@ -28,7 +28,7 @@ class ArtifactCapabilityRecoveryTests(unittest.TestCase):
         attempt = case.manager.attempts['team/cli']
         snapshot = json.loads(attempt['snapshot'].read_text(encoding='utf-8'))
         self.assertIn('wrapper_protocol', snapshot)
-        self.assertEqual(snapshot['wrapper_protocol']['capabilities'], [])
+        self.assertEqual(snapshot['wrapper_protocol']['capabilities'], ['artifact-v1'])
         process = attempt['process']
         process.pid = 45000
         observed = {'platform': 'win32', 'pid': process.pid, 'creation_filetime': '456789012',

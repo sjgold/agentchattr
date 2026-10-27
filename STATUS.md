@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 night. Documentation cleanup in verification; UAT remains running.
+**Updated:** 2026-10-27. Documentation cleanup in verification; UAT remains running.
 
 ## Now
 
@@ -8,7 +8,7 @@ Documentation cleanup:110 byte-identical moves committed; links, navigation and 
 
 ## Needs Seth
 
-None right now. Any steering needed will be listed here before proceeding.
+- [ ] Beyond the raw agent names, what else looked wrong on the main chat screen? Naming is already queued as a small defect fix after the cleanup run.
 
 ## Seats
 
@@ -78,3 +78,5 @@ AGENTS.md names `status.md`, while the tracked entry is `STATUS.md`; casing rema
 ## Cleanup verification
 
 Pure rename commit9fc6a4d contains exactly110 R100 entries. Baseline573 tracked files ->576, with only docs/README.md, historical STATUS snapshot and tools/check_markdown_links.py added. All215 fenced blocks unchanged;397 pre-existing code/tests/tools/static/AGENTS files byte-identical; zero case collisions; longest moved path143 characters; links0 broken before/after. Release build smoke includes README (archive output redirected into scratch). Localhost49949 still listening. Focused guide/backend, artifact selection and one full discovery are next on this frozen cleanup source; no result claimed yet.
+
+Cleanup regression update:88 focused tests pass. Artifact selection559 ran with9 explicit pending-transcript skips and one stale pre-activation expectation in test_artifact_capability_recovery (expected empty capabilities, actual reviewed artifact-v1). Product unchanged. Corrected that one test expectation in a separate test-only activation follow-up; retained all recovery/legacy assertions. Full discovery had not started, so the single full run follows this correction.
