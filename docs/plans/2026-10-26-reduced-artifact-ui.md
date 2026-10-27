@@ -1,5 +1,13 @@
 # Reduced Ticket 20 UI contract and implementation plan
 
+## Latest scope decision, 2026-10-26
+
+Seth's words, relayed verbatim by the reviewer: "id never needed phone width this is an internal only tool... speed is open as well as long as agents are not taking forever it should be fine".
+
+This supersedes the earlier phone-width, numeric responsiveness-screen and pre-activation visual requirements. Drop the390px/mobile gate, all new numeric speed gates and tools/screen_artifact_release.py (never created). No more browser-harness work or measurement campaign. Existing correctness/security/provenance/idempotency/Stop/durability and regression tests stay. Speed is the stated practical requirement that agents are not taking forever. Browser evidence remains partial and its receipts remain false/incomplete; no visual acceptance is invented. A desktop look by Seth is optional, not a blocker.
+
+Next order: Ticket21 transcript ->22 packaging -> separate activation commit for reviewer -> final approved file cleanup -> publication only with Seth's explicit push authorization. No deletion without his explicit yes. Historical timings, attempt records and superseded proposals remain as history; their old gates no longer apply to this release.
+
 > Execute inline with superpowers:executing-plans. Product scope is already approved in TICKET-20-22-REDUCED-RELEASE.md. This technical UI contract and ROOT reds require reviewer clearance before production UI edits.
 
 Goal: request a document from a current or completed session, follow its real status, cancel, read verified Markdown literally and download the exact bytes.
@@ -10,7 +18,7 @@ Architecture: a small static/artifacts.js module owns the document panel and its
 
 - Operate/read inside the incumbent application: a Documents button next to the existing session launcher opens a section below the session bar. It stays reachable when no active session exists. A bounded20-item session select includes completed runs, More pages by20, and source-so-far is explicit for unfinished runs.
 - Use one labeled instruction textarea, Request document, a live status/source/author card, Refresh/Cancel, and Read/Download once ready. The verified reader is a wrapping pre block with literal text, never rendered HTML. Empty/loading/refusal text explains the next available action. Closing returns focus to Documents; channel changes close the panel, cancel timers and ignore old replies.
-- Reuse existing --bg-header/--bg-input/--text/--border/--accent/--radius-sm and focus-visible treatment. At390px, controls wrap and source/Markdown long lines wrap; no new visual world or typography. One embedded panel is the routine proposed implementation choice. A full modal adds focus machinery; a separate dashboard adds deferred navigation. Neither is needed for the approved flow.
+- Reuse existing --bg-header/--bg-input/--text/--border/--accent/--radius-sm and focus-visible treatment. Controls and long source/Markdown lines wrap; no new visual world or typography. One embedded panel is the routine proposed implementation choice. A full modal adds focus machinery; a separate dashboard adds deferred navigation. Neither is needed for the approved flow.
 
 ## Files and frozen client seams
 
@@ -53,14 +61,14 @@ Rendered acceptance remains required even after vm green; no accessibility/layou
 
 Extend/reuse tools/channel_guard.py and the reviewed verify_channel_lifecycle bootstrap controls, with a new task-local fixture/nonce and source/tool hashes. Validate the trusted interpreter manifest first. Initialize real catalog/session/message/queue/artifact owners in a disposable root; no production paths/settings/history, real credentials or provider egress. Fixture-only capability patch, no runtime_protocol flag edit. Use a local fake API responder and fake CLI client with the REAL MCP artifact calls, genuine service/worker completion, retained receipts and counted cleanup. These are synthetic transports, not live-provider/Omarchy/Desktop evidence.
 
-Use a Traycer-isolated rendered Chromium surface under the task's existing browser mechanism, not Seth's personal profile. Prove: completed-session create -> queued/working -> ready -> literal read and exact downloaded bytes; no duplicate POST on double activation; cancellation/Stop warning repaint; global capability-off refusal; 409/503/lost-response handling without duplicate create; reload-known-ID GET; archived/held channel behavior and peer channel unaffected; focus return/keyboard labels and390px fit/long lines. Screenshot desktop+mobile in one batched inspection, one correction pass if needed. Preserve all attempts/errors. Guard records must show no forbidden attempts, and cleanup must enumerate all servers/workers/clients/browsers/model processes with unresolved=[]; no live model usage.
+Use a Traycer-isolated rendered Chromium surface under the task's existing browser mechanism, not Seth's personal profile. Prove: completed-session create -> queued/working -> ready -> literal read and exact downloaded bytes; no duplicate POST on double activation; cancellation/Stop warning repaint; global capability-off refusal; 409/503/lost-response handling without duplicate create; reload-known-ID GET; archived/held channel behavior and peer channel unaffected; focus return/keyboard labels and long lines. Historical browser proposal, superseded by the latest scope decision above. Preserve all attempts/errors. Guard records must show no forbidden attempts, and cleanup must enumerate all servers/workers/clients/browsers/model processes with unresolved=[]; no live model usage.
 
 ## Ordered execution and proof
 
 - [ ] Freeze contract and one ROOT red file, execute/record infrastructure vs behavioral reds and reachability; reviewer clears production.
 - [ ] Implement only artifacts module/style and narrow index/session hooks; ROOT UI tests green with actual JS, mutation-check stale-reply/ID/auth/text/clock guards. Check existing session/restart/channel UI tests.
-- [ ] Build/verify the isolated browser harness controls before use. Execute real desktop/mobile flow and both fixture transport paths under guard, retain raw receipts and cleanup.
-- [ ] Independent UI review/rerun plus affected/full discovery as required for the final source. No open-ended timing campaign; the separately scoped responsiveness screen follows.
+- [ ] Build/verify the isolated browser harness controls before use. Prior partial browser evidence and raw receipts/cleanup are retained; no new browser runs.
+- [ ] Independent UI review/rerun plus affected/full discovery as required for the final source. No open-ended timing campaign; the proposed responsiveness screen is withdrawn.
 - [ ] Then transcript21, packaging22, reviewed activation, authorized cleanup last. Push remains gated.
 
 

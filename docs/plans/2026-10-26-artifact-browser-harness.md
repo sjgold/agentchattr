@@ -1,5 +1,13 @@
 # Reduced20 guarded browser acceptance design
 
+## Latest scope decision, 2026-10-26
+
+Seth's words, relayed verbatim by the reviewer: "id never needed phone width this is an internal only tool... speed is open as well as long as agents are not taking forever it should be fine".
+
+This supersedes the earlier phone-width, numeric responsiveness-screen and pre-activation visual requirements. Drop the390px/mobile gate, all new numeric speed gates and tools/screen_artifact_release.py (never created). No more browser-harness work or measurement campaign. Existing correctness/security/provenance/idempotency/Stop/durability and regression tests stay. Speed is the stated practical requirement that agents are not taking forever. Browser evidence remains partial and its receipts remain false/incomplete; no visual acceptance is invented. A desktop look by Seth is optional, not a blocker.
+
+Next order: Ticket21 transcript ->22 packaging -> separate activation commit for reviewer -> final approved file cleanup -> publication only with Seth's explicit push authorization. No deletion without his explicit yes. Historical timings, attempt records and superseded proposals remain as history; their old gates no longer apply to this release.
+
 Status: FINAL attempt5 stopped at screenshot host failure after real CLI polling/read/exact Blob proof. Cleanup unresolved=[]; original files/known ports unchanged, one unrelated-to-owned-birth Python baseline addition retained. Full12-case acceptance incomplete. No further adaptation; reviewer disposition pending.
 
 ## Final Electron mechanism: fixture-served visibility reads (review pending)

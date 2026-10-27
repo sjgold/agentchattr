@@ -1,6 +1,14 @@
 # Reduced release: tickets 20-22, then multi-file 23
 
-Status: reduced20-22 scope approved; backend/UI components independently accepted. FINAL attempt5 at1ab0589 proved CLI create/poll/Refresh/Read and exact99-byte Blob download under disclosed substituted visibility reads. Screenshot host produced no frame; root stopped. Full12-case browser acceptance remains incomplete, receipt false. Cleanup unresolved=[]; no owned processes/listeners; original files/known ports unchanged, one Python baseline addition retained. Browser adaptation ends; reviewer disposition for Seth pending. Screen/transcript21/packaging22/activation/cleanup remain later. No push.
+Status: backend/UI components accepted; partial browser evidence retained. Seth has dropped phone-width checks, new numeric speed screening and further browser-harness work. Ticket21 then22 are next; activation is separately reviewed, desktop look optional, final cleanup required. No push.
+
+## Latest scope decision, 2026-10-26
+
+Seth's words, relayed verbatim by the reviewer: "id never needed phone width this is an internal only tool... speed is open as well as long as agents are not taking forever it should be fine".
+
+This supersedes the earlier phone-width, numeric responsiveness-screen and pre-activation visual requirements. Drop the390px/mobile gate, all new numeric speed gates and tools/screen_artifact_release.py (never created). No more browser-harness work or measurement campaign. Existing correctness/security/provenance/idempotency/Stop/durability and regression tests stay. Speed is the stated practical requirement that agents are not taking forever. Browser evidence remains partial and its receipts remain false/incomplete; no visual acceptance is invented. A desktop look by Seth is optional, not a blocker.
+
+Next order: Ticket21 transcript ->22 packaging -> separate activation commit for reviewer -> final approved file cleanup -> publication only with Seth's explicit push authorization. No deletion without his explicit yes. Historical timings, attempt records and superseded proposals remain as history; their old gates no longer apply to this release.
 
 ## Authority and priority
 
@@ -143,13 +151,9 @@ Unchanged: authorization and secret protection; no cross-channel scope; exact so
 
 Changed: first-release acceptance no longer requires every storage/shared-boundary operation at all maximum populations to stay<=0.270s with20percent margin. The withdrawn128-request/512KiB installation quota remains withdrawn. No R3, new schema, migration tool, capacity reservation or R4 is included in20-22. Accepted4MiB import tests and existing limits remain regression checks, not a reason to start a fresh unrelated benchmark campaign for each docs/test edit.
 
-### Proposed numeric responsiveness screen (not a tail guarantee)
+### Speed requirement, superseding the proposed numeric screen
 
-Run ONE bounded real-files screening pass on the frozen integrated release, no overlapping suites. Retain tool/product/fixture hashes, actual values, sentinel and retry observations using the existing harness. The existing tools cannot run this screen directly: they have no typical create fixture, enforce10 samples and the old limits. NEW thin tools/screen_artifact_release.py is in scope, reusing shared sentinel/retry/receipt mechanics but using ONLY these four observations. Include fixture/tool hashes, actual create/hold/peer timing and all errors; no new framework. Typical fixture:10 prior requests, current session up to50 accepted messages and<=64KiB packet, instruction<=4KiB, result<=64KiB, no parent. Three fresh typical samples: each create service call (excluding model generation) <=2.0s; each shared-boundary hold and concurrent peer wait <=1.0s. Record the actual run; an exceedance is a reported responsiveness finding for review, never a silently repeated sample.
-
-One maximum-source sample:2MiB/1000 refs with32KiB instruction and512KiB result, using the accepted129/130-request fixture. Record call time, holds, peer wait and UI busy/refusal behavior. Maximum shape has no new worst-case latency promise; a captured slow operation is disclosed. It must still finish with a genuine result or typed refusal, without lost data, fabricated success or frozen event-loop work. The request UI shows a pending state rather than hiding work behind a spinner with no status. This is four screening samples, not another190-row timing campaign. Functional race/Stop/auth/durability regressions still run where relevant.
-
-These numeric fixture thresholds are a reviewer-facing proposal chosen to make basic responsiveness testable. Seth approved replacing the strict old guarantee, not these specific numbers. Reviewer must accept or revise this small screen before implementation tests. Any material new work beyond a reproduced integration issue returns to Seth with its user-visible need and smallest alternative, rather than adding another storage redesign automatically.
+Seth accepts practical speed as long as agents are not taking forever. No new numeric screen, screen tool, threshold, retained-row timing campaign or class-repeat campaign will be built. Existing regression tests stay. Earlier measured values remain historical observations, not new acceptance promises.
 
 ## Finite capacity and evidence disclosure
 
@@ -161,7 +165,7 @@ Accepted evidence remains scoped: final max-source service A phases were roughly
 
 This amendment changes documentation only. R2+D4 is independently FINAL ACCEPTED at220f3400: reviewer170 focused OK47.5s; builder437 artifact and1817 full (4 skips) pass;17 mutants assertion-killed; prior gate190 retained. No reduced operator/UI/transcript code has been implemented or accepted by this edit. Old R3 sidecar proposal196666c and reviewer no-sidecar/no-conversion ruling are preserved as historical/deferred material, not an active red-work instruction.
 
-Next order after independent docs clearance: Ticket20 backend reds (resolver/snapshot/create-replay/status/read/download/cancel/middleware), then UI/plaintext reader, then the thin four-observation responsiveness script, then Ticket21 transcript, then Ticket22 packaging. Relevant safety regressions and one final full discovery on the frozen integrated product, with rendered acceptance, remain required. Stop on a real screen miss and report it; no resampling campaign. Reviewer decides disposition on retained numbers. Review the activation commit last before publication. No new agent creation, provider spend, external issue edit, deploy, activation or push is authorized by this documentation request.
+Next order after independent docs clearance: Ticket20 backend reds (resolver/snapshot/create-replay/status/read/download/cancel/middleware), then UI/plaintext reader, then Ticket21 transcript, then Ticket22 packaging. Relevant safety regressions and one final full discovery on the frozen integrated product, with rendered acceptance, remain required. Stop on a real screen miss and report it; no resampling campaign. Reviewer decides disposition on retained numbers. Review the activation commit last before publication. No new agent creation, provider spend, external issue edit, deploy, activation or push is authorized by this documentation request.
 
 ## Activation and the release22 finish line (E9)
 
