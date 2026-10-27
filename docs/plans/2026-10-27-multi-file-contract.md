@@ -40,7 +40,7 @@ Use existing DocumentInputError / DocumentTooLarge and BriefError boundaries. No
 
 ## Public seams and preview
 
-New pure module document_packets.py exports preview_packet(files), validate_packet(snapshot), and check_quote(snapshot,citation). preview_packet accepts a nonempty list of existing validated version1 snapshots and returns the version2 snapshot. validate_document_snapshot remains the public version-dispatch seam and delegates version2 to validate_packet; old callers stay compatible.
+New pure module document_packets.py exports preview_packet(files), validate_packet(snapshot), check_quote(snapshot,citation), and render_delivery(snapshot). The last validates first and returns the same deterministic readable projection for CLI/API: revision and ordered id/name/byte-length index, then verbatim member contents in length-bound BEGIN/END blocks. Content may contain fake markers; lengths/index carry authority. Canonical source remains stored/validated; it is not duplicated in the final agent-readable payload. preview_packet accepts a nonempty list of existing validated version1 snapshots and returns the version2 snapshot. validate_document_snapshot remains the public version-dispatch seam and delegates version2 to validate_packet; old callers stay compatible.
 
 POST /api/documents/packet-preview accepts exactly {files:[version1 snapshots...]}, returns the packet snapshot (200), rejects malformed/unknown body or query fields (400), overflow (413), and agent/unauthenticated access (403) using the existing operator middleware rules. It performs no filesystem input read or persistence. Single-file preview keeps its route, auth and response unchanged.
 
@@ -62,7 +62,7 @@ check_quote(snapshot,citation) accepts exactly {packet_revision,file_id,quote}. 
 |archive.py|Channel history does not currently add full SessionStore export;23 does not add session backup. Existing artifact packet export/import is the compatibility proof|
 |app.py packet-preview + session-start|Operator-only preview,4MiB body bounds; actual start passes canonical v2 through existing source_file seam|
 |static/document-inputs.js + sessions.js consumers|List/aggregate/removal, stale/abort/dispose safe; source labels understand v2 rather than showing undefined filename|
-|runtime_protocol.py SOURCE_FILES|Declare new pure module in both adapter closures; old source hashes are not rewritten. Existing live seats need a deliberate refresh before relying on new manifests|
+|runtime_protocol.py SOURCE_FILES|Declare the new pure module in the actual API-worker import closure; CLI rendering occurs in the server-side MCP handler, not the CLI worker. Preserve the fixed-set closure test (no unreachable stale modules); old source hashes are not rewritten. Existing live seats need a deliberate refresh before relying on new manifests|
 |wrapper_api.py + MCP brief delivery + managed seats|Consume the existing frozen envelope unchanged; tests compare exact packet/revision on both paths; no live provider generation required|
 
 No store migration, source repair or current-record rewriting. If that proves impossible, stop for steering rather than reinterpret old records.

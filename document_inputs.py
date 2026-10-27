@@ -62,6 +62,9 @@ def preview_document(filename, content: bytes):
 
 def validate_document_snapshot(snapshot):
     """Recompute every field, accepting self-consistent snapshots without a ticket."""
+    if type(snapshot) is dict and type(snapshot.get('version')) is int and snapshot['version'] == 2:
+        from document_packets import validate_packet
+        return validate_packet(snapshot)
     if (type(snapshot) is not dict or snapshot.keys() != _FIELDS
             or type(snapshot.get('version')) is not int or snapshot['version'] != 1
             or type(snapshot.get('byte_length')) is not int

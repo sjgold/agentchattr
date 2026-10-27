@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 02:37 CDT. Ticket23 contract and22 observed reds ready for reviewer; no23 product implementation yet.
+**Updated:** 2026-10-27 02:45 CDT. Ticket23 group1 core validated; consumers and picker pending within the checkpoint.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -15,6 +15,8 @@ Documentation cleanup is accepted. Seven seats are running, including OMP (90B m
 The real Windows launcher reuse path, Pre-flight package editor/save/launch and Open chat path were exercised. Live sender labels are friendly (zero raw managed ids in sender elements). Reviewed UI commits08b1f0a/a8f624c/c6930b0 and0078e74 are integrated: visible Seats & launch link, clearer pre-flight flow, lighter help and usable menus.The first merge passed119 focused tests; the follow-up passed69. Launch team and open chat was exercised with7/7 ready seats. Seth's own end-to-end acceptance remains open.
 
 ## Needs Seth
+
+- [ ] Release limit: corrected restart of a multi-file review does not edit the file list; changed files are reselected in a new review.
 
 - [ ] 2026-10-27 02:19 CDT Security note: a test failure on2026-10-27 printed this machine's ambient environment into the Codex agent's tool output (visible to the model provider and stored in the local Traycer transcript). Credential-like variable NAMES visible: RESEND_API_KEY, STITCH_API_KEY, WIKI_LINT_API_KEY, TRAYCER_A2A_MCP_TOKEN (plus STARSHIP_SESSION_KEY). Values are not in any repo file. Consider rotating those that matter. No agent changed or rotated credentials.
 
@@ -172,3 +174,11 @@ Daily-model follow-up approved: Opus will add a CLI default_model fallback after
 [Frozen contract](docs/plans/2026-10-27-multi-file-contract.md) pins v2 file_packet fields, f1/f2 ids, canonical UTF-8 manifest/revision,524288 raw aggregate,65536 metadata allowance and1114112 encoded-text allowance, preview/auth, compatibility and every identified consumer. Old v1/paste formats stay unchanged. Existing corrected-paste restart remains explicit; changed files can be reselected in a new review rather than inventing a linked packet-editing workflow. Artifact authoring's2MiB cap stays independent.
 
 Observed22 tests:9FAIL+12ERROR+1PASS (0.571s);8 missing-seam infrastructure errors and4 existing-validator behavioral errors. One actual opaque-packet store/export/import roundtrip already passes. No23 production code;90-minute active implementation/verification clock starts on clearance. No new browser harness or provider call.21/22/24-26 stay post-launch, including9 dated transcript skips. Next owner: reviewer clears contract/reds, Codex implements the bounded slice.
+
+### 2026-10-27 02:45 CDT Ticket23 group1: core
+
+Reviewer cleared production at662558f with deterministic readable delivery shared by CLI/API. Added pure document_packets validation, caps, order-sensitive revisions, file-bound quote membership and render_delivery. The readable projection keeps BOM/CRLF/content verbatim, uses an authoritative ordered index and byte lengths, and warns about fake delimiters. Added a new missing-module red for that projection before code, plus a genuine outer-metadata bool-as-int red found during implementation and fixed with canonical typed comparison.
+
+27 focused core/v1/protocol tests pass in1.208s. Three in-memory mutants (raw cap off by one, cross-file quote acceptance, ignore file order) each failed one assertion with0 errors. Group2's large encoded-source consumer is still red because the old brief source cap has not been widened for validated v2. Route/picker reds remain pending; no full green claim. API worker closure now declares document_packets; declaring it in the CLI worker set produced an unreachable-module failure, so that set remains accurate. CLI delivery rendering belongs to the server-side MCP handler. No old manifest edited.
+
+Budget tracking uses the662558f red-pin wall clock as a conservative upper bound on active agent time (includes review wait). The90-minute checkpoint remains a stop/report boundary, not a performance gate. Hermes merge/run and consumer integration are next;23 product work stops at the checkpoint if incomplete.
