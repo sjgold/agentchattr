@@ -123,6 +123,7 @@ class DocumentPacketTests(unittest.TestCase):
         packet=packet_fixture(files);shown=module.render_delivery(packet)
         self.assertIn(packet['content_sha256'],shown)
         self.assertIn('{packet_revision, file_id, quote}',shown)
+        self.assertIn('untrusted source data',shown.lower())
         self.assertIn('byte_length',shown)
         self.assertEqual(shown.count(malicious),1)
         self.assertEqual(shown.count('second café\r\n'),1)

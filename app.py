@@ -3533,6 +3533,50 @@ async def preview_document_input(request: Request):
     return JSONResponse(snapshot, headers={'Cache-Control': 'no-store'})
 
 
+@app.post('/api/documents/packet-preview')
+async def preview_document_packet(request: Request):
+    from document_inputs import DocumentInputError, DocumentTooLarge
+    from document_packets import preview_packet
+    if getattr(request.state, 'auth_origin', None) != 'operator':
+        return JSONResponse({'error': 'Operator authentication is required.'}, status_code=403)
+    if request.query_params:
+        return JSONResponse({'error': 'Packet preview takes no query parameters.'}, status_code=400)
+    limit = 4 * 1024 * 1024
+    lengths = request.headers.getlist('content-length')
+    if lengths:
+        length = lengths[0]
+        if len(lengths) != 1 or not length.isascii() or not length.isdecimal():
+            return JSONResponse({'error': 'Invalid Content-Length.'}, status_code=400)
+        if len(length) > 8 or int(length) > limit:
+            return JSONResponse({'error': 'Packet preview exceeds the 4 MiB request limit.'}, status_code=413)
+    if request.headers.get('content-type', '').split(';', 1)[0].strip().lower() != 'application/json':
+        return JSONResponse({'error': 'Send packet preview as application/json.'}, status_code=415)
+    raw = bytearray()
+    try:
+        async for chunk in request.stream():
+            if len(raw) + len(chunk) > limit:
+                return JSONResponse({'error': 'Packet preview exceeds the 4 MiB request limit.'}, status_code=413)
+            raw.extend(chunk)
+        def object_fields(pairs):
+            result = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError('Duplicate JSON field.')
+                result[key] = value
+            return result
+        body = json.loads(raw, object_pairs_hook=object_fields)
+        if type(body) is not dict or body.keys() != {'files'}:
+            raise DocumentInputError('Packet preview requires exactly the files field.')
+        snapshot = preview_packet(body['files'])
+    except DocumentTooLarge as exc:
+        return JSONResponse({'error': str(exc)}, status_code=413)
+    except DocumentInputError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+    except (ValueError, UnicodeError, RecursionError):
+        return JSONResponse({'error': 'Packet preview requires valid JSON.'}, status_code=400)
+    return JSONResponse(snapshot, headers={'Cache-Control': 'no-store'})
+
+
 def _require_session_channel(policy, channel):
     from turn_events import EventValidationError
     try:

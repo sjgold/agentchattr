@@ -46,3 +46,7 @@ Routine verification uses fake clients and isolated loopback servers. Native Lin
 ## Wrapper source changes and reuse
 
 Managed launches freeze the wrapper source manifest along with their effective settings. After an app upgrade or an edit to a listed source file, **Launch** may require an explicit **Restart** for an already-running seat. Source changes also close artifact eligibility until a supported managed launch is restarted. Artifact authoring remains disabled while its wrapper implementation is being completed.
+
+## Multi-file review briefs
+
+For a multi-file packet, `chat_review_brief` returns one complete JSON context object, then the fixed line `--- packet ---`, then the readable source packet verbatim. The context includes `source_follows` and the packet revision. This version2 response is not a single JSON object. Read the ordered file index and byte lengths, and cite quotes with `{packet_revision, file_id, quote}`. Existing pasted and single-file brief responses keep their original JSON format.

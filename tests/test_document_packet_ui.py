@@ -105,5 +105,27 @@ release({ok:true,json:async()=>members[0]});await pending;
 assert.throws(()=>facade.requestFields());
 """)
 
+    def test_new_selection_wins_over_late_old_file_response(self):
+        self.run_js(r"""
+const normal=context.fetch;let release,first=true;
+context.fetch=(url,options)=>{if(first){first=false;return new Promise(r=>release=r)}return normal(url,options)};
+picker.files=members.map(row=>({name:row.name,size:row.byte_length}));const old=picker.listeners.change[0]();
+picker.files=[{name:members[1].name,size:members[1].byte_length}];await picker.listeners.change[0]();
+assert.strictEqual(facade.requestFields().source_file.name,'b.py');
+release({ok:true,json:async()=>members[0]});await old;
+assert.strictEqual(facade.requestFields().source_file.name,'b.py');assert.strictEqual(timers.size,0);
+""")
+
+    def test_timed_out_packet_response_cannot_enable_start_later(self):
+        self.run_js(r"""
+const normal=context.fetch;let release;
+context.fetch=(url,options)=>url==='/api/documents/packet-preview'?new Promise(r=>release=r):normal(url,options);
+const pending=selected();for(let i=0;i<15&&!release;i++)await Promise.resolve();assert(release);
+const [id,fire]=[...timers][0];timers.delete(id);fire();
+assert.strictEqual(facade.state,'error');assert.throws(()=>facade.requestFields());
+release({ok:true,json:async()=>expectedPacket});await pending;
+assert.strictEqual(facade.state,'error');assert.throws(()=>facade.requestFields());
+""")
+
 
 if __name__=='__main__':unittest.main()
