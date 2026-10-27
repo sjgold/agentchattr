@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 02:45 CDT. Ticket23 group1 core validated; consumers and picker pending within the checkpoint.
+**Updated:** 2026-10-27 02:49 CDT. Hermes adapter merged with managed Stop cleanup fix; no real-home write before renewed clearance.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -182,3 +182,9 @@ Reviewer cleared production at662558f with deterministic readable delivery share
 27 focused core/v1/protocol tests pass in1.208s. Three in-memory mutants (raw cap off by one, cross-file quote acceptance, ignore file order) each failed one assertion with0 errors. Group2's large encoded-source consumer is still red because the old brief source cap has not been widened for validated v2. Route/picker reds remain pending; no full green claim. API worker closure now declares document_packets; declaring it in the CLI worker set produced an unreachable-module failure, so that set remains accurate. CLI delivery rendering belongs to the server-side MCP handler. No old manifest edited.
 
 Budget tracking uses the662558f red-pin wall clock as a conservative upper bound on active agent time (includes review wait). The90-minute checkpoint remains a stop/report boundary, not a performance gate. Hermes merge/run and consumer integration are next;23 product work stops at the checkpoint if incomplete.
+
+### 2026-10-27 02:49 CDT Hermes adapter integration and managed-path fix
+
+Merged pinnedca2c80b, preserving the security strip changes and both new YAML/API packet source dependencies. PyYAML>=6.0 is declared explicitly. Before a real write, source tracing found the legacy wrapper finally had cleanup but managed cli_worker.run did not. Two temp-HERMES_HOME tests observed genuine failures: cooperative managed Stop and startup failure after apply both left the entry. A YAML-only ExitStack callback now registers before apply and runs while the lifetime settings lock is held; both tests assert exact original bytes and no temporary file.109 YAML/CLI/key/package/protocol/assertion-guard tests pass in4.939s.
+
+Forced worker termination on Windows skips Python finally and can leave the entry/token. No new server-side global-file recovery was added: the supervised real run must verify removal after Stop and explicitly check for leftover entry/tmp files; if proof/cleanup fails, stop and report. The normal-home run is held until reviewer checks this corrected integration pin. No real HERMES_HOME config read/write has happened in these tests.

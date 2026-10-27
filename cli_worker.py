@@ -13,7 +13,7 @@ from api_seats import Receipt, SeatError, validate_seat
 from cli_seats import build_cli_args, config_resource, probe_version
 from launcher import LaunchError, startup_lock, strip_environment
 from wrapper import (_auth_headers, _build_provider_launch, _get_server_url, _queue_watcher,
-                     _register_instance, _resolve_mcp_inject, ROOT)
+                     _register_instance, _resolve_mcp_inject, _remove_yaml_mcp_entries, ROOT)
 
 
 def run(snapshot_path):
@@ -119,6 +119,9 @@ def run(snapshot_path):
             mode = _resolve_mcp_inject('', client)
             if not mode:
                 raise SeatError('This client has no declared MCP identity injection contract. Configure a supported adapter before launch.')
+            if mode.get('mcp_inject') == 'yaml_settings_file':
+                # Registered before apply; runs before ExitStack releases the lifetime lock.
+                stack.callback(_remove_yaml_mcp_entries)
             identity.update(_register_instance(port, base, seat['name']))
             receipt.update(identity_id=identity.get('identity_id'))
             if not identity.get('name') or not identity.get('token'):
