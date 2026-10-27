@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (final Electron fixture substitution ready for review;102 focused controls/tests pass; no fifth run)
+**Updated:** 2026-10-26 (final browser attempt partial: CLI polling/read/exact Blob proved; screenshot host failure; cleanup verified; reviewer disposition pending)
 
 ## At a glance
 
@@ -18,7 +18,21 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer audits final Electron fixture-served visibility-read substitution and observed reds before authorizing fifth/LAST attempt. No new browser tooling. Backend/UI accepted; rendered acceptance incomplete. |
+| Next | Reviewer assesses FINAL attempt5 partial evidence and remaining coverage decision for Seth. Browser adaptation stopped. No sixth run/new tooling. Components accepted; full rendered acceptance incomplete. |
+
+## Attempt5 FINAL: CLI polling/read/Blob evidence, screenshot runtime failure
+
+Reviewer authorized ONE final Electron run at1ab0589 with --simulate-visibility. Root .audit-tmp/artifact-ui-cc5qedbl reached READY. Served-route proof was checked first: original SHA25696020b32c44626e5c6fc6c66da7498874640211d19cdb9328e380363b32701ac, served SHA256ec02a269d4eb65a7ee3c2b65fedb3b3c3d7c02c66dc3876945455da417ac17a3, replacement_count=3. Native hidden=true, visibilityState=hidden, hasFocus=false were POSTed and retained with simulation=true and the full substituted-read claim. Loader hidden,6 tabs,help absent passed before the cases.
+
+Positive bounded browser evidence: completed-session CLI form -> Queued -> real MCP brief/submit/release -> automatic Ready; manual Refresh retained Ready. Request999000fc25fc4cd190b22a7a7be717d3. Read document showed the canned HTML/script/javascript-link content literally in PRE and window.BAD remained absent. Download Markdown produced a99-byte Blob, browser/server SHA256c0422b95ed2987c2af066dee02169cd73f4773939684a9f9985d18e32f84e744, fixed filename document.md, native default intercepted, native_save_claim=false; object URL revocation observed about1.017s later. Observer errors empty. CLI and read-download observations were recorded; no native-save or foreground parity claim.
+
+Desktop screenshot at1280x850 then timed out after15000ms: browser tool reports reachable DOM but no frame. Root STOPPED at that first browser-environment failure, without a screenshot retry or more scenarios. Mobile/keyboard, API generation, lost-create, refusal, cancellation/Stop, lifecycle, backoff/reload/stale-response and complete12-case acceptance remain unproven in this run. Screenshot bytes do not exist; no hash/visual-layout claim. Receipt acceptance_claim=false, controller_finished=false; viewport-keyboard explicitly not_observed. No sixth run or Chrome/Edge tooling is authorized. Adaptation ends per reviewer ruling; the reviewer must now advise Seth on accepting bounded partial harness evidence plus existing component/Node tests, or seeking a separately requested browser follow-up.
+
+Controller deviation retained: first waitFor used40000ms, rejected locally because the browser tool caps it at30000ms; corrected to30000ms before any actual wait, which found Read document immediately. This is not a product timeout or hidden extra attempt. Initial postcheck used PowerShell JSON property order and null-array count, falsely flagging tree changes/one guard attempt; its raw result is preserved as postcheck-first-property-order-invalid.json. Independent structural JSON comparison corrects those two fields.
+
+Raw cleanup.json unresolved=[], births_visited=8, cooperative_shutdown=already_exited. Six probes absent; PID48040 exited/query-only proof exit0; PID6308 exited/retained verified kernel handle exit0. Independent Win32_Process query lists none of the8 PIDs; all4 owned listeners0. Four guards real_attempts=[], no unowned-port/watchdog/missing-case files. Owned isolated browser/session closed, no forwards. Original data/uploads/.agentchattr manifests and known listeners unchanged. FULL Python baseline is NOT unchanged: one added pythonw.exe PID56240 start2026-10-27T01:00:01.2962040Z, no removals; it is outside all8 owned births, cause unassigned, untouched. Prior PID58092 deviation remains separate. Receipt/summary/postcheck exports pass token/nonce scan; retained root is not exported or deleted.
+
+Next owner reviewer: assess this final partial evidence and recommend the remaining-coverage decision to Seth. Root does not restart or adapt the browser. Backend/UI component acceptance remains unchanged. Screen/transcript21/packaging22/activation and final file-structure cleanup remain pending. No push.
 
 ## Final Electron mechanism: fixture-served visibility reads (review pending)
 
