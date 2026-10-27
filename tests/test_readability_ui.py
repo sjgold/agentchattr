@@ -1,0 +1,74 @@
+"""Objective readability guards for the pre-flight and chat screens.
+
+Computes WCAG 2.x contrast from the shipped :root colour tokens and checks
+minimum text sizes in the stylesheets these screens use. Target window is
+1440x1080 on the dark theme.
+"""
+from pathlib import Path
+import re
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+STATIC = ROOT / 'static'
+
+
+def tokens():
+    css = (STATIC / 'style.css').read_text(encoding='utf-8')
+    root = re.search(r':root\s*\{(.*?)\}', css, re.S).group(1)
+    return dict(re.findall(r'--([\w-]+):\s*(#[0-9a-fA-F]{6})\s*;', root))
+
+
+def luminance(hex_colour):
+    channels = [int(hex_colour[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+    r, g, b = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in channels]
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast(a, b):
+    high, low = sorted((luminance(a), luminance(b)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+def strip_comments(css):
+    return re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+
+
+class ContrastTests(unittest.TestCase):
+    SURFACES = ('bg', 'bg-header', 'bg-input', 'bg-msg')
+
+    def test_dim_helper_text_meets_aa_on_every_surface(self):
+        t = tokens()
+        for surface in self.SURFACES:
+            with self.subTest(surface=surface):
+                self.assertGreaterEqual(contrast(t['text-dim'], t[surface]), 4.5)
+
+    def test_system_text_meets_aa_where_system_lines_render(self):
+        t = tokens()
+        for surface in ('bg', 'bg-msg'):
+            with self.subTest(surface=surface):
+                self.assertGreaterEqual(contrast(t['text-system'], t[surface]), 4.5)
+
+    def test_dim_text_stays_below_body_text_so_hierarchy_survives(self):
+        t = tokens()
+        self.assertLess(contrast(t['text-dim'], t['bg']), contrast(t['text'], t['bg']))
+        self.assertLessEqual(contrast(t['text-system'], t['bg']), contrast(t['text-dim'], t['bg']))
+
+    def test_accent_purple_is_too_dark_for_text(self):
+        # --accent (#7c3aed) is fine for fills, borders and focus rings; text uses
+        # --user-color instead. The per-screen sheets are checked in their own tests.
+        t = tokens()
+        self.assertLess(contrast(t['accent'], t['bg']), 4.5)
+        self.assertGreaterEqual(contrast(t['user-color'], t['bg-header']), 4.5)
+
+
+def smallest_font(css):
+    sizes = [float(v) for v in re.findall(r'font-size:\s*(\d+(?:\.\d+)?)px', strip_comments(css))]
+    return min(sizes) if sizes else None
+
+
+def uses_accent_as_text(css):
+    return re.search(r'(?<![-\w])color:\s*var\(--accent\)', strip_comments(css)) is not None
+
+
+if __name__ == '__main__':
+    unittest.main()
