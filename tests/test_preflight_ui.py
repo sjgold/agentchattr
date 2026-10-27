@@ -276,6 +276,30 @@ assert.deepStrictEqual(launches[1].body.omitted_seats,['beta']);
 assert.deepStrictEqual(calls.find(c=>c.url.endsWith('/chat')).body,{selection_id:'s2'});
 """)
 
+    def test_seat_chips_keep_updating_after_launch_stops_on_a_problem(self):
+        # Regression: a seat still 'starting' when launch-and-go stopped kept showing
+        # 'Starting…' until the page was reloaded.
+        self.run_js(r"""
+const stopped={selection_id:'s1',ready:false,state:'action_required',omitted_seats:[],
+ seats:{alpha:{state:'starting'},beta:{state:'failed',error:'Beta could not start'}}};
+launchReply=()=>stopped;
+await boot();
+await goButton().click();
+await until(()=>!seatCard('beta').runtime.problem.hidden,'beta problem card');
+assert.strictEqual(seatCard('alpha').runtime.stateChip.textContent,'Starting…');
+launches.team={...stopped,seats:{alpha:{state:'ready'},beta:stopped.seats.beta}};
+await until(()=>seatCard('alpha').runtime.stateChip.textContent==='Ready for chat','alpha chip to settle without a reload');
+""")
+
+    def test_sticky_bars_reserve_scroll_padding_for_keyboard_focus(self):
+        # Regression: at 1280x720, Tab focus landed on controls hidden under the
+        # sticky launch bar. scroll-padding keeps focused controls in view.
+        css = (ROOT / 'static/preflight.css').read_text(encoding='utf-8')
+        rule = re.search(r'html:has\(\.preflight-page\)\s*\{([^}]*)\}', css)
+        self.assertIsNotNone(rule, 'preflight.css must set scroll padding on the scrolling element')
+        self.assertRegex(rule.group(1), r'scroll-padding-bottom:\s*\d+px')
+        self.assertRegex(rule.group(1), r'scroll-padding-top:\s*\d+px')
+
     # 5. Draft dirty --------------------------------------------------------
     def test_dirty_draft_saves_before_launch_and_sends_only_secret_ref(self):
         self.run_js(r"""

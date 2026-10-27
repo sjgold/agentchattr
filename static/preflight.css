@@ -1,3 +1,5 @@
+/* Sticky top bar and launch bar: keep keyboard-focused controls out from under them. */
+html:has(.preflight-page) { scroll-padding-top:72px; scroll-padding-bottom:140px; }
 .preflight-page { display:block; height:auto; min-height:100vh; overflow:auto; background:var(--bg); color:var(--text); }
 .preflight-page [hidden] { display:none !important; }
 .preflight-page main { max-width:1040px; margin:0 auto; padding:28px 24px 0; }
