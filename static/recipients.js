@@ -29,7 +29,7 @@
         function idle() {
             body.replaceChildren();
             line(body, 'Addressed agents', 'recipient-heading');
-            line(body, 'Choose recipients or write @names. Unaddressed messages stay in the shared conversation.');
+            line(body, 'Choose recipients or write @names. Unaddressed messages stay in the shared conversation.', 'recipient-idle');
             announce('');
         }
         function error(text = FAILURE) {

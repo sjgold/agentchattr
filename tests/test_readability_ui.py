@@ -172,6 +172,17 @@ class ManageChannelsReadabilityTests(unittest.TestCase):
         self.assertRegex(body, r'box-shadow:\s*none')
 
 
+class AddressedAgentsIdleTests(unittest.TestCase):
+    def test_idle_hint_is_one_compact_line(self):
+        # Idea 7: with nothing addressed, the box is one short line instead of a 70px block.
+        js = (STATIC / 'recipients.js').read_text(encoding='utf-8')
+        idle = js[js.index('function idle()'):js.index('function error(')]
+        self.assertIn("'recipient-idle'", idle)
+        css = sheet('recipients.css')
+        self.assertIn('.recipient-preview:has(.recipient-idle)', css)
+        self.assertRegex(rule(css, '.recipient-preview:has(.recipient-idle) p'), r'display:\s*inline')
+
+
 class SessionLauncherOrderTests(unittest.TestCase):
     def test_templates_come_before_the_source_and_the_cast_after_it(self):
         # Idea 5: choose the kind of session first, then the source, then who plays which role.
