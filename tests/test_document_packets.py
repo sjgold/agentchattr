@@ -183,8 +183,8 @@ class DocumentPacketTests(unittest.TestCase):
         self.assertEqual((cli['source'],cli['source_document']),(packet['text'],metadata))
         self.assertEqual(api['input_revision'],cli['input_revision'])
         messages=review_brief.brief_messages(api,[],'api-seat')
-        source=json.loads(messages[1]['content'])
-        self.assertEqual(source['text'],cli['source']);self.assertEqual(source['source_document'],metadata)
+        self.assertEqual(messages[1]['content'],self.module().render_delivery(packet))
+        self.assertEqual(api['source_document'],metadata)
         with tempfile.TemporaryDirectory() as tmp:
             store=review_brief.BriefStore(tmp);store.put(cli)
             self.assertEqual(review_brief.BriefStore(tmp).get(cli['brief_id'],operator=True),cli)

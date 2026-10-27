@@ -1,4 +1,9 @@
 """Record real console input continuously; emit controlled late MCP output."""
+try:
+    from tools.fake_cli_decode import decode_brief
+except ModuleNotFoundError:
+    from fake_cli_decode import decode_brief
+
 import asyncio
 import json
 import os
@@ -41,7 +46,7 @@ def main():
             try:
                 brief_id = re.search(r"chat_review_brief\(brief_id='([a-f0-9]{32})'\)", prompt).group(1)
                 dispatch_id = re.search(r"chat_queue_release\(dispatch_id='([a-f0-9]{32})'\)", prompt).group(1)
-                envelope = json.loads(asyncio.run(tool(settings, 'chat_review_brief', {'brief_id': brief_id})))
+                envelope = decode_brief(asyncio.run(tool(settings, 'chat_review_brief', {'brief_id': brief_id})))
                 with lock:
                     record.update(envelope=envelope, dispatch_id=dispatch_id)
                     save()

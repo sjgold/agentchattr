@@ -1,4 +1,9 @@
 """Local hidden console: self-birth, exact scoped brief, gated typed result and release."""
+try:
+    from tools.fake_cli_decode import decode_brief
+except ModuleNotFoundError:
+    from fake_cli_decode import decode_brief
+
 import argparse
 import asyncio
 import ctypes
@@ -65,7 +70,7 @@ def main():
             try:
                 brief=re.search(r"chat_review_brief\(brief_id='([a-f0-9]{32})'\)",prompt).group(1)
                 dispatch=re.search(r"chat_queue_release\(dispatch_id='([a-f0-9]{32})'\)",prompt).group(1)
-                envelope=json.loads(asyncio.run(call(settings,'chat_review_brief',{'brief_id':brief})))
+                envelope=decode_brief(asyncio.run(call(settings,'chat_review_brief',{'brief_id':brief})))
                 with lock:
                     record['turns'][index].update(envelope=envelope,dispatch_id=dispatch)
                     save()

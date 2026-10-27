@@ -48,6 +48,21 @@ class DocumentPacketRouteTests(unittest.TestCase):
         self.assertEqual(client.post('/api/documents/packet-preview',json={'files':files},headers=headers).status_code,413)
         self.assertEqual(self.case.files(),before)
 
+    def test_session_start_real_serializer_worst_case_and_operator_only(self):
+        from document_inputs import preview_document
+        client=self.case.client()
+        files=[preview_document('a',b'\\'*262144),preview_document('b',b'"'*262144)]
+        packet=packet_fixture(files)
+        with patch.object(app,'_start_session_sync',return_value=JSONResponse({'ok':True})) as start:
+            response=client.post('/api/sessions/start',json={'source_file':packet},headers=self.case.fixture.headers)
+            self.assertEqual(response.status_code,200)
+            self.assertLessEqual(len(response.request.content),4*1024*1024)
+            self.assertEqual(start.call_args.args[1],packet)
+        for headers in ({},{'Authorization':'Bearer '+self.case.fixture.f.owner['token']}):
+            with patch.object(app,'_start_session_sync',side_effect=AssertionError('Seat must not start packet review')):
+                self.assertEqual(client.post('/api/sessions/start',json={'source_file':packet},headers=headers).status_code,403)
+        self.assertEqual(client.post('/api/sessions/start',content=b' '*(4*1024*1024+1),headers=self.case.fixture.headers).status_code,413)
+
     def test_existing_session_start_threads_validated_packet_before_engine(self):
         client=self.case.client();packet=packet_fixture()
         with patch.object(app,'_start_session_sync',return_value=JSONResponse({'ok':True})) as start:

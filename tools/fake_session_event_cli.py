@@ -1,4 +1,9 @@
 """Fake CLI retrieves frozen context and submits a typed event through real MCP."""
+try:
+    from tools.fake_cli_decode import decode_brief
+except ModuleNotFoundError:
+    from fake_cli_decode import decode_brief
+
 import asyncio
 import json
 import os
@@ -51,7 +56,7 @@ def main():
             dispatch_id = re.search(r"chat_queue_release\(dispatch_id='([a-f0-9]{32})'\)", prompt).group(1)
             assert 'chat_session_event' in prompt, 'CLI was not instructed to use typed completion'
             record['dispatch_id'] = dispatch_id
-            record['envelope'] = json.loads(asyncio.run(call(settings, 'chat_review_brief', {'brief_id': brief_id})))
+            record['envelope'] = decode_brief(asyncio.run(call(settings, 'chat_review_brief', {'brief_id': brief_id})))
             save()
             wait_for_marker('submit-cli')
             arguments = {'brief_id': brief_id, 'kind': 'final', 'content': 'CLI accepted final, exact café.'}

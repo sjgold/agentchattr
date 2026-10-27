@@ -28,5 +28,18 @@ class FakeCliDecodeTests(unittest.TestCase):
     def test_v1_trailing_junk_is_not_treated_as_source(self):
         with self.assertRaises(ValueError):self.decode('{"source":"old"}\n--- packet ---\nextra')
 
+    def test_tools_share_codec_and_product_does_not_import_it(self):
+        from pathlib import Path
+        root=Path(__file__).resolve().parents[1]
+        names=('fake_cli_result_recovery','fake_corrected_restart_cli','fake_document_client',
+               'fake_recipient_client','fake_participant_recovery','fake_runtime_crash_cli',
+               'fake_review_cli','fake_session_event_cli','fake_session_stop_cli','fake_turn_recovery_cli',
+               'verify_result_outbox')
+        for name in names:
+            source=(root/'tools'/(name+'.py')).read_text(encoding='utf-8')
+            self.assertIn('fake_cli_decode import decode_brief',source,name)
+        for path in root.glob('*.py'):
+            self.assertFalse('fake_cli_decode' in path.read_text(encoding='utf-8-sig'),path.name)
+
 
 if __name__=='__main__':unittest.main()

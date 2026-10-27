@@ -1,4 +1,9 @@
 """Actual generic console fixture for same-source retry, no clean-context claim."""
+try:
+    from tools.fake_cli_decode import decode_brief
+except ModuleNotFoundError:
+    from fake_cli_decode import decode_brief
+
 import argparse
 import asyncio
 import json
@@ -53,7 +58,7 @@ def main():
             try:
                 brief_id = re.search(r"chat_review_brief\(brief_id='([a-f0-9]{32})'\)", prompt).group(1)
                 dispatch_id = re.search(r"chat_queue_release\(dispatch_id='([a-f0-9]{32})'\)", prompt).group(1)
-                envelope = json.loads(asyncio.run(call(settings, 'chat_review_brief', {'brief_id': brief_id})))
+                envelope = decode_brief(asyncio.run(call(settings, 'chat_review_brief', {'brief_id': brief_id})))
                 control = json.loads((root / 'control.json').read_text('utf-8'))
                 with lock:
                     record.update(envelope=envelope, dispatch_id=dispatch_id)

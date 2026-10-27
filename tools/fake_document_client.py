@@ -1,4 +1,9 @@
 """Local hidden CLI: gate BEFORE real MCP brief read, then authenticated final/release."""
+try:
+    from tools.fake_cli_decode import decode_brief
+except ModuleNotFoundError:
+    from fake_cli_decode import decode_brief
+
 import asyncio
 import ctypes
 import json
@@ -64,7 +69,7 @@ def main():
                     record['turns'][index].update(brief_id=brief, dispatch_id=dispatch, held_before_brief=True)
                     save()
                 gate(index)
-                envelope = json.loads(asyncio.run(call(settings, 'chat_review_brief', {'brief_id': brief})))
+                envelope = decode_brief(asyncio.run(call(settings, 'chat_review_brief', {'brief_id': brief})))
                 with lock:
                     record['turns'][index].update(envelope=envelope, brief_received_at=time.time())
                     save()

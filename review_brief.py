@@ -60,6 +60,14 @@ def _validated_document(metadata, text):
     return {key: value for key, value in canonical.items() if key != 'text'}
 
 
+def _source_maximum(document):
+    if (type(document) is dict and type(document.get('version')) is int
+            and document['version'] == 2):
+        from document_packets import MAX_PACKET_TEXT_BYTES
+        return MAX_PACKET_TEXT_BYTES
+    return MAX_INPUT_BYTES
+
+
 def freeze_inputs(template, goal='', input_text='', rules=None, capacity_policy=None, *, source_file=None):
     from session_store import validate_session_template
     from session_capacity import capacity_policy as validate_capacity
@@ -77,7 +85,7 @@ def freeze_inputs(template, goal='', input_text='', rules=None, capacity_policy=
         canonical = _file_snapshot(source_file, input_text)
         input_text = canonical['text']
         document = {key: value for key, value in canonical.items() if key != 'text'}
-    source = _text(input_text, MAX_INPUT_BYTES, 'Pasted source')
+    source = _text(input_text, _source_maximum(document), 'Pasted source')
     rules = deepcopy(rules if rules is not None else {'epoch': 0, 'rules': []})
     if (not isinstance(rules, dict) or not isinstance(rules.get('rules', []), list)
             or any(not isinstance(rule, str) for rule in rules.get('rules', []))):
@@ -143,8 +151,13 @@ def brief_messages(envelope, recent_messages, agent_name, system_prompt=''):
                      'input_revision': envelope['input_revision'], 'text': envelope['source']}
     if 'source_document' in envelope:
         source_packet['source_document'] = _validated_document(envelope['source_document'], envelope['source'])
+    source_content = json.dumps(source_packet, ensure_ascii=False)
+    document = source_packet.get('source_document')
+    if type(document) is dict and document.get('version') == 2:
+        from document_packets import render_delivery
+        source_content = render_delivery({**document, 'text': envelope['source']})
     messages = [{'role': 'system', 'content': system},
-                {'role': 'user', 'content': json.dumps(source_packet, ensure_ascii=False)},
+                {'role': 'user', 'content': source_content},
                 {'role': 'user', 'content': json.dumps({'kind': 'prior_review_results',
                     'results': envelope['prior_results']}, ensure_ascii=False)}]
     if recent_messages and envelope.get('completion_protocol') != 1:
@@ -171,7 +184,7 @@ class BriefStore:
                 or not isinstance(value.get('phase'), dict) or not isinstance(value.get('rules'), dict)
                 or not isinstance(value.get('prior_results'), list)):
             raise BriefError('Review brief is malformed; no context fallback is permitted.')
-        source = _text(value['source'], MAX_INPUT_BYTES, 'Pasted source')
+        source = _text(value['source'], _source_maximum(value.get('source_document')), 'Pasted source')
         if hashlib.sha256(source).hexdigest() != value['input_revision']:
             raise BriefError('Review source revision does not match its saved text.')
         if 'source_document' in value:

@@ -1102,7 +1102,14 @@ def chat_review_brief(brief_id: str, ctx: Context | None = None) -> str:
     if not instance or review_briefs is None:
         return 'Error: authenticated seat and frozen review context are required.'
     try:
-        return json.dumps(review_briefs.get(brief_id, instance), ensure_ascii=False)
+        value = review_briefs.get(brief_id, instance)
+        document = value.get('source_document')
+        if type(document) is dict and document.get('version') == 2:
+            from document_packets import render_delivery
+            shown = render_delivery({**document, 'text': value.pop('source')})
+            value['source_follows'] = "after the line '--- packet ---'"
+            return json.dumps(value, ensure_ascii=False) + '\n--- packet ---\n' + shown
+        return json.dumps(value, ensure_ascii=False)
     except BriefError:
         return 'Error: review brief unavailable for this seat; do not fall back to chat-only context.'
 

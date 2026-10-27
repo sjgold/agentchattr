@@ -281,6 +281,8 @@ def check(fixture):
     principal = {key:value for key,value in instances[owner['name']].items() if key!='token'}
     public = BriefStore(fixture.data).get(invocation['brief_id'],operator=True)
     mcp = asyncio.run(asyncio.wait_for(public_mcp_brief(fixture.ports[1],instances[owner['name']]['token'],invocation['brief_id']),20))
+    from tools.fake_cli_decode import decode_brief
+    assert decode_brief(mcp)['brief_id'] == invocation['brief_id']
     assert all(key not in mcp for key in keys) and 'seal_secret' not in mcp and '_result_seal' not in mcp
     assert BriefStore(fixture.data).get(invocation['brief_id'],principal)==public
     for value in (saved,box.get_ack(prior_event['event_id']),after,fixture.captures,public,fixture.api('/api/status')):

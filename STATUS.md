@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 03:31 CDT. UAT RC0 is frozen at99361d1 on49949;7 seats ready. API document verified; AGY document smoke remains unverified.
+**Updated:** 2026-10-27 03:39 CDT. Frozen RC0 remains up; Ticket23 group2 consumers pass100 focused tests. Route/picker group3 pending.
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
@@ -210,3 +210,11 @@ Cooperative old Stop removed its AGY entry and stopped server/workers. Full sign
 RC0 Pre-flight loads with7 editable model fields and saved choices retained on reload. AGY suggestions are high/medium/low and saved model is explicitlymedium; blank-default fallback is absent inRC0. Fresh smoke: DeepSeek99B exact; AGY1 request accepted202 but timed out180s and was cancelled, with no automatic retry. Native console flags: Medium, no Plan/notice/trust/permission prompt, no artifact tool text visible. The durable queue has a cancelling transport record; no conclusion about cause. Earlier original-UAT CLI passes stay historical.
 
 Next: group2 packet consumers within the checkpoint; Hermes proof uses a separate integration-owned instance or RC1, never editsRC0. The currently running AGY shim/merge and server bootstrap are frozen ignored control files insideRC0. All later UI/product merges remain integration-only. No push/publication.
+
+### 2026-10-27 03:39 CDT Ticket23 group2: consumers
+
+Validated v2 source uses its encoded allowance through freeze and BriefStore; v1/paste keep the old cap and exact message bytes. Stored/internal HTTP source remains canonical and validated. Both actual agent boundaries use render_delivery: API source message directly; CLI MCP gets one JSON context prefix, exact --- packet --- boundary, then the same verbatim body. No duplicated canonical source/model content; IDs/revision/seal authority are unchanged. Five boundary tests observed1 genuine failure+1 missing source_follows behavioral error before code; old byte controls passed. Pre-change v1/paste API payload digests remain pinned.
+
+All ten fake CLI tools and verify_result_outbox use one test-only framing decoder (4 initial tests/9 missing-helper subtest errors observed). Product imports no test codec. Native wrappers do not parse tool output.100 core/delivery/codec/real-session-HTTP/v1/brief/seal/source/import/protocol/assertion tests passed in7.145s. Real HTTP serializer accepts raw512KiB worst-case quoted/backslash input under4MiB; unauthenticated/agent starts remain403. No route/picker green claim yet.
+
+Group1 asks included: whitespace-only quote red then refusal, versionTrue/2.0/string dispatch guards, inner manifest id gap/reorder tamper, hand-crafted raw/metadata excess through validation, non-dict/str-subclass citation guards, and forged markers using real byte_length/sha fields. check_quote still validates the whole packet on each call; optimization is post-launch only. No migration, no live model generation or UAT checkout edit in this group.

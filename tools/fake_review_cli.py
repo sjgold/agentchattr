@@ -1,4 +1,9 @@
 """Local fake CLI: receive actual console instructions and retrieve an MCP brief."""
+try:
+    from tools.fake_cli_decode import decode_brief
+except ModuleNotFoundError:
+    from fake_cli_decode import decode_brief
+
 import asyncio
 import json
 import os
@@ -18,7 +23,7 @@ async def fetch_brief(settings, brief_id):
             await session.initialize()
             result = await session.call_tool('chat_review_brief', {'brief_id': brief_id})
             assert not result.isError, 'MCP brief tool returned an error'
-            return json.loads(''.join(item.text for item in result.content if item.type == 'text'))
+            return decode_brief(''.join(item.text for item in result.content if item.type == 'text'))
 
 
 def main():

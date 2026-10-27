@@ -80,6 +80,7 @@ def check_quote(snapshot, citation):
     if (type(citation) is not dict or citation.keys() != {'packet_revision','file_id','quote'}
             or any(type(citation.get(key)) is not str or not citation[key]
                    for key in ('packet_revision','file_id','quote'))
+            or not citation['quote'].strip()
             or not re.fullmatch('[0-9a-f]{64}',citation['packet_revision'])):
         return {'verified':False,'reason':'invalid_citation'}
     if citation['packet_revision'] != packet['content_sha256']:

@@ -1,4 +1,9 @@
 """Local hidden CLI fixture: real MCP early release, gated finals and manual release."""
+try:
+    from tools.fake_cli_decode import decode_brief
+except ModuleNotFoundError:
+    from fake_cli_decode import decode_brief
+
 import asyncio
 import ctypes
 import json
@@ -62,7 +67,7 @@ def main():
                 entry = {'dispatch_id': dispatch, 'kind': 'review' if match else 'manual'}
                 if match:
                     brief = match.group(1)
-                    envelope = json.loads(asyncio.run(call(settings, 'chat_review_brief', {'brief_id': brief})))
+                    envelope = decode_brief(asyncio.run(call(settings, 'chat_review_brief', {'brief_id': brief})))
                     entry['envelope'] = envelope
                     # Real early release proves transport delivery, never logical completion.
                     entry['release_reply'] = json.loads(asyncio.run(call(settings, 'chat_queue_release', {'dispatch_id': dispatch})))
