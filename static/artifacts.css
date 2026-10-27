@@ -13,7 +13,7 @@
 .artifact-documents label { display: block; margin: 14px 0 6px; font-weight: 600; }
 .artifact-documents textarea, .artifact-documents select {
     box-sizing: border-box; display: block; width: 100%; max-width: 72ch; min-width: 0;
-    color: var(--text); background: var(--bg-input); border: 1px solid var(--border-strong);
+    color: var(--text); background: var(--bg-input); border: 1px solid var(--border-input);
     border-radius: var(--radius-sm); font: inherit; padding: 10px; accent-color: var(--accent);
 }
 .artifact-documents textarea { resize: vertical; min-height: 88px; caret-color: var(--text); }

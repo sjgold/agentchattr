@@ -46,7 +46,7 @@
 .channel-manager button:disabled { opacity: .55; cursor: default; }
 /* Utility action: quieter than Create channel and the per-channel actions. */
 .channel-manager > button:not(:hover) { background: transparent; border-style: dashed; }
-.channel-manager input { display: block; width: 100%; margin: 6px 0 16px; caret-color: var(--user-color); }
+.channel-manager input { display: block; width: 100%; margin: 6px 0 16px; caret-color: var(--user-color); border-color: var(--border-input); }
 .channel-manager label { display: block; margin-top: 16px; font-weight: 600; }
 .channel-manager :focus-visible, .channel-state-banner :focus-visible, .channel-manager-entry:focus-visible { outline: 2px solid var(--user-color); outline-offset: 3px; }
 .channel-manager-status, .channel-manager-blocker { color: var(--warning); }

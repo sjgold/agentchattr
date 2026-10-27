@@ -172,5 +172,27 @@ class ManageChannelsReadabilityTests(unittest.TestCase):
         self.assertRegex(body, r'box-shadow:\s*none')
 
 
+class InputBorderTests(unittest.TestCase):
+    """Idea 1: text boxes need a visible edge (WCAG 1.4.11 asks 3:1 for field boundaries)."""
+    FIELDS = (('preflight.css', '.preflight-page input, .preflight-page select'),
+              ('artifacts.css', '.artifact-documents textarea, .artifact-documents select'),
+              ('sessions.css', '.session-launcher-goal input'),
+              ('sessions.css', '.session-source-editor textarea'),
+              ('sessions.css', '.session-cast-select'),
+              ('channel-lifecycle.css', '.channel-manager input'),
+              ('style.css', '#input'))
+
+    def test_input_border_token_reaches_3_to_1(self):
+        t = tokens()
+        for surface in ('bg', 'bg-header', 'bg-input'):
+            with self.subTest(surface=surface):
+                self.assertGreaterEqual(contrast(t['border-input'], t[surface]), 3.0)
+
+    def test_fields_on_the_reviewed_screens_use_it(self):
+        for name, selector in self.FIELDS:
+            with self.subTest(selector=selector):
+                self.assertIn('var(--border-input)', rule(sheet(name), selector))
+
+
 if __name__ == '__main__':
     unittest.main()
