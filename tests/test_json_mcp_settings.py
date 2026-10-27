@@ -1126,7 +1126,9 @@ class AgyRunningTests(unittest.TestCase):
             if error:
                 raise error
             return SimpleNamespace(stdout=output)
-        with patch.object(jm.sys, 'platform', platform), patch.object(jm.subprocess, 'run', side_effect=fake) as run:
+        kwargs.setdefault('install_root', os.path.join(os.sep, 'fake', 'agy', 'bin'))
+        with patch.object(jm.sys, 'platform', platform), patch.object(jm.subprocess, 'run', side_effect=fake) as run, \
+                patch.object(jm, '_windows_executable_paths', return_value=[]):   # never touch real processes
             result = jm.agy_running(**kwargs)
         return result, run
 
@@ -1211,6 +1213,76 @@ class AgyRunningTests(unittest.TestCase):
             result, run = self.run_with('win32', '"agy.exe","1","Console","1","1 K"\n')
         self.assertIs(result, True)
         self.assertEqual(run.call_args.args[0][0], os.path.join(r'D:\WinRoot', 'System32', 'tasklist.exe'))
+
+
+class AgyRunningByPathTests(unittest.TestCase):
+    """Executable-path detection, with fake process lists only (no real process access)."""
+
+    def setUp(self):
+        self.root = os.path.join(tempfile.gettempdir(), 'fake-localappdata', 'agy', 'bin')
+
+    def running(self, *processes, **kwargs):
+        kwargs.setdefault('install_root', self.root)
+        return jm.agy_running(lister=lambda: list(processes), **kwargs)
+
+    def test_renamed_executable_under_the_root_is_detected(self):
+        self.assertIs(self.running(('svchost.exe', None), ('agy-cli.exe', os.path.join(self.root, 'agy-cli.exe'))), True)
+        self.assertIs(self.running(('x.exe', os.path.join(self.root, 'nested', 'x.exe'))), True)
+
+    def test_other_paths_are_not_detected(self):
+        self.assertIs(self.running(('node.exe', os.path.join(os.sep, 'tools', 'node.exe')), ('svchost.exe', None)), False)
+
+    def test_sibling_prefix_is_not_under_the_root(self):
+        self.assertIs(self.running(('x.exe', self.root + '2' + os.sep + 'x.exe'),
+                                   ('y.exe', os.path.dirname(self.root) + os.sep + 'binary.exe')), False)
+
+    @unittest.skipUnless(sys.platform == 'win32', 'normcase folds case and slashes only on Windows')
+    def test_case_and_slash_variants_are_detected(self):
+        variant = os.path.join(self.root.upper(), 'x.exe').replace('\\', '/')
+        self.assertIs(self.running(('x.exe', variant)), True)
+        self.assertIs(self.running(('x.exe', os.path.join(self.root, '.', 'sub', '..', 'x.exe'))), True)
+        self.assertIs(jm.agy_running(lister=lambda: [('x.exe', os.path.join(self.root, 'x.exe'))],
+                                     install_root=self.root.replace('\\', '/') + '/'), True)
+
+    def test_image_name_match_still_counts_without_a_path(self):
+        self.assertIs(self.running(('AGY.EXE', None)), True)
+
+    def test_lister_failure_is_none(self):
+        for error in (OSError('denied'), ValueError('empty'), subprocess.TimeoutExpired('tasklist', 15)):
+            def broken(error=error):
+                raise error
+            with self.subTest(error=type(error).__name__):
+                self.assertIsNone(jm.agy_running(lister=broken, install_root=self.root))
+
+    def test_empty_list_is_none(self):
+        self.assertIsNone(self.running())
+
+    def test_no_known_install_root_is_none_unless_a_name_matches(self):
+        with patch.object(jm, '_default_install_root', return_value=None):
+            self.assertIsNone(jm.agy_running(lister=lambda: [('node.exe', os.path.join(os.sep, 'n.exe'))]))
+            self.assertIs(jm.agy_running(lister=lambda: [('agy.exe', None)]), True)
+
+    def test_default_root_is_localappdata_agy_bin(self):
+        with patch.object(jm.sys, 'platform', 'win32'), patch.dict(os.environ, {'LOCALAPPDATA': self.root}):
+            self.assertEqual(jm._default_install_root(), os.path.join(self.root, 'agy', 'bin'))
+        with patch.object(jm.sys, 'platform', 'win32'), patch.dict(os.environ, {'LOCALAPPDATA': ''}):
+            self.assertIsNone(jm._default_install_root())
+        with patch.object(jm.sys, 'platform', 'linux'):
+            self.assertIsNone(jm._default_install_root())
+
+    def test_windows_default_lister_combines_tasklist_names_and_ctypes_paths(self):
+        exe = os.path.join(self.root, 'renamed.exe')
+        with patch.object(jm.sys, 'platform', 'win32'), \
+                patch.object(jm.subprocess, 'run', return_value=SimpleNamespace(stdout='"System","4"\n')), \
+                patch.object(jm, '_windows_executable_paths', return_value=[exe]) as paths:
+            self.assertIs(jm.agy_running(install_root=self.root), True)
+        paths.assert_called_once_with()
+
+    def test_ctypes_failure_gives_none(self):
+        with patch.object(jm.sys, 'platform', 'win32'), \
+                patch.object(jm.subprocess, 'run', return_value=SimpleNamespace(stdout='"System","4"\n')), \
+                patch.object(jm, '_windows_executable_paths', side_effect=OSError('EnumProcesses failed')):
+            self.assertIsNone(jm.agy_running(install_root=self.root))
 
 
 if __name__ == '__main__':

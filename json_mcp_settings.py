@@ -594,21 +594,98 @@ def _text(output) -> str:
     return output.decode('utf-8', errors='replace') if isinstance(output, bytes) else (output or '')
 
 
-def agy_running(image_names=('agy.exe', 'agy')) -> bool | None:
-    """Read-only check by process image name only (never command lines).
+def _windows_executable_paths() -> list:
+    """Full image paths of the processes this user may query (EnumProcesses +
+    OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION) + QueryFullProcessImageNameW).
+    Executable paths only: no command lines, arguments or environment are read."""
+    import ctypes
+    from ctypes import wintypes
+    psapi = ctypes.WinDLL('psapi', use_last_error=True)
+    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+    psapi.EnumProcesses.argtypes = [ctypes.POINTER(wintypes.DWORD), wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+    psapi.EnumProcesses.restype = wintypes.BOOL
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.QueryFullProcessImageNameW.argtypes = [wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR,
+                                                    ctypes.POINTER(wintypes.DWORD)]
+    kernel32.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    size = 1024
+    while True:
+        pids = (wintypes.DWORD * size)()
+        needed = wintypes.DWORD()
+        if not psapi.EnumProcesses(pids, ctypes.sizeof(pids), ctypes.byref(needed)):
+            raise OSError('EnumProcesses failed')
+        if needed.value < ctypes.sizeof(pids):
+            break
+        size *= 2
+    paths = []
+    for pid in pids[:needed.value // ctypes.sizeof(wintypes.DWORD)]:
+        handle = kernel32.OpenProcess(0x1000, False, pid) if pid else None   # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            continue                       # system or other users' processes; the image-name check still sees them
+        try:
+            buffer = ctypes.create_unicode_buffer(32768)
+            length = wintypes.DWORD(len(buffer))
+            if kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(length)):
+                paths.append(buffer.value)
+        finally:
+            kernel32.CloseHandle(handle)
+    return paths
 
-    Returns True/False, or None when the process list could not be read. An agy started
-    through an interpreter (node.exe) is not visible by image name; pass its launcher image."""
+
+def _list_processes() -> list:
+    """(image name, executable path or None) per process. Raises when the list cannot be read."""
+    if sys.platform == 'win32':
+        tasklist = os.path.join(os.environ.get('SystemRoot') or r'C:\Windows', 'System32', 'tasklist.exe')
+        output = _text(subprocess.run([tasklist, '/FO', 'CSV', '/NH'], capture_output=True, timeout=15,
+                                      creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout)
+        names = [line.split('","', 1)[0].strip('"') for line in output.splitlines() if line.startswith('"')]
+        if not names:
+            raise ValueError('tasklist listed no processes')
+        return [(name, None) for name in names] + [(os.path.basename(p), p) for p in _windows_executable_paths()]
+    output = _text(subprocess.run(['ps', '-A', '-o', 'comm='], capture_output=True, timeout=15).stdout)
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError('ps listed no processes')
+    return [(Path(line).name, line if os.path.isabs(line) else None) for line in lines]
+
+
+def _default_install_root():
+    if sys.platform == 'win32' and os.environ.get('LOCALAPPDATA', '').strip():
+        return os.path.join(os.environ['LOCALAPPDATA'], 'agy', 'bin')
+    return None
+
+
+def _normalised_path(raw: str) -> str:
+    return os.path.normcase(os.path.normpath(os.path.realpath(raw)))
+
+
+def _is_under(path: str, root: str) -> bool:
+    return path == root or path.startswith(root.rstrip('\\/') + os.sep)
+
+
+def agy_running(image_names=('agy.exe', 'agy'), install_root=None, lister=None) -> bool | None:
+    """Read-only check: is agy running? Matches by image name OR by an executable path under
+    agy's install root (default %LOCALAPPDATA%\\agy\\bin; resolved, normcase/normpath, prefix
+    match on a separator boundary). Lists image names and executable paths only, never
+    command lines, arguments or environment.
+
+    True if either check matches; None when the process list could not be read or no install
+    root is known (POSIX without install_root, or LOCALAPPDATA unset); False only when both
+    checks ran and found nothing. ``lister`` returns (image name, path or None) pairs; tests
+    inject a fake one. Limitation: an agy copied or started from outside its install root
+    under another image name (or through node.exe) is not detected."""
     wanted = {name.lower() for name in image_names}
+    root = install_root if install_root is not None else _default_install_root()
     try:
-        if sys.platform == 'win32':
-            tasklist = os.path.join(os.environ.get('SystemRoot') or r'C:\Windows', 'System32', 'tasklist.exe')
-            output = _text(subprocess.run([tasklist, '/FO', 'CSV', '/NH'], capture_output=True, timeout=15,
-                                          creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout)
-            images = {line.split('","', 1)[0].strip('"').lower() for line in output.splitlines() if line.startswith('"')}
-        else:
-            output = _text(subprocess.run(['ps', '-A', '-o', 'comm='], capture_output=True, timeout=15).stdout)
-            images = {Path(line.strip()).name.lower() for line in output.splitlines() if line.strip()}
+        processes = list((lister or _list_processes)())
+        root = _normalised_path(root) if root else None
+        for name, path in processes:
+            if name and name.lower() in wanted:
+                return True
+            if path and root and _is_under(_normalised_path(path), root):
+                return True
     except (OSError, ValueError, subprocess.SubprocessError):
         return None
-    return bool(images & wanted) if images else None
+    return False if processes and root else None
