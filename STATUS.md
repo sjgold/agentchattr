@@ -1,10 +1,12 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 04:06 CDT. RC1 UI/defaults/path-guard merges pass focused checks. RC0 stays frozen; Hermes and daily AGY writes remain deferred.
+**Updated:** 2026-10-27 04:09 CDT. Frozen RC1 fdc6c27 is in its final full discovery. RC0 stays available; RC1 launch waits for review.
 
 **UAT RC0:** `99361d1776187571a63ba9feb4af140fb629ff8a`, http://127.0.0.1:49949/preflight. **Frozen: no merges reach this build.**
 Stop only RC0: `.audit-tmp/artifact-ui-rc0-_om1o8fc/checkout/.audit-tmp/stop-rc0.ps1` from this integration worktree.
 RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI ideas and daily AGY injection. They remain integration/RC1 work.
+
+**RC1 candidate:** `fdc6c275edb8d81f387c782aaeaf27a4e216816a`, final full discovery running; not launched, URL/stop command pending. Includes multi-file packets, model defaults and reviewed UI ideas. **RC1 has no Antigravity seat (RC0 has it); daily Antigravity needs the reviewed distinct-name adapter, in review.** Hermes is excluded.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -16,7 +18,7 @@ RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI 
 
 Frozen RC0 runs from its own pinned checkout. Seven seats are ready; DeepSeek document read/download passed. Its Antigravity document request timed out and was cancelled. Earlier successful AGY evidence belongs to the old instance.
 
-Multi-file review core and delivery groups are reviewer-cleared. Route/picker group1d0ed71+b36cebf is reviewer-cleared; its small review follow-ups pass179 focused tests. Three targeted mutation checks were killed. It is excluded from RC0. Hermes proof stopped before any write because an existing bundled Hermes Python process is running; that process is untouched.
+Multi-file review core and delivery groups are reviewer-cleared. Route/picker group1d0ed71+b36cebf and follow-up9a751cd are reviewer-cleared;179 focused tests pass. Three targeted mutation checks were killed. It is excluded from RC0. Hermes proof stopped before any write because an existing bundled Hermes Python process is running; that process is untouched.
 
 ## Needs Seth
 
@@ -252,3 +254,24 @@ Merged pinned10ff7d0: clearer text-field edges, side-by-side seat toggles, wider
 Merged pinned48c6d36 without conflict. Hermes detection now checks executable paths beneath the resolved home as well as image names; unknown probes stay unknown.102 YAML/temp-home/CLI/default/protocol/environment-guard tests pass in3.310s. No real home, live process or global config was changed. Hermes stays excluded from RC1. The separate stale-backup receipt correction is still under Opus/reviewer review; no real YAML/JSON adapter write is permitted before that corrected pin.
 
 RC1 freeze proposal includes cleared multi-file work, model defaults, UI10ff7d0 and path guard48c6d36. The AGY JSON adapter remains excluded unless cleared with managed cleanup tests first. A sibling instance must not replace RC0's distinct global AGY MCP entry; concurrent AGY launch needs an explicit safe plan or omission. Final full discovery has not yet run on these merged bytes.
+
+## Pre-flight model editing, release check
+
+The seven RC0 model fields were editable and retained their saved values after reload. Defaults are suggestions, not live model discovery. Hermes has not been launched.
+
+|Seat|Editable|Suggestions in tested config|How launch uses it|Effort|
+|---|---|---|---|---|
+|Claude|Yes|claude-opus-5-5|--model value|No declared effort override|
+|Codex|Yes|gpt-6.1-sol|--model value|No declared effort override|
+|Antigravity|Yes, RC0|gemini-3.8-flash-high/medium/low|--model value; explicit medium saved in RC0|RC0 also declares --effort medium; daily proposal uses model variant|
+|OMP|Yes|openai-codex/gpt-6.1-sol|--model value|--thinking minimal|
+|Hermes|Not live-verified|Not wired for RC1|Deferred, no model/launch claim|Existing normal-home setup stays untouched|
+|DeepSeek|Yes|deepseek-flash|API request model field|No configured effort choices|
+|GLM|Yes|glm-5.3, glm-5.3-flash, glm-5.3-flashx|API request model field|No configured effort choices|
+|Muse|Yes|muse-spark-1.3-contributor|API request model field|No configured effort choices|
+
+RC1 tests verify a blank CLI seat uses the template default in the frozen worker arguments; an explicit value wins. The daily agy default is medium, and the proposal carries all three variants. No global/default login setting was changed.
+
+### 2026-10-27 04:09 CDT Frozen RC1 discovery started
+
+Candidate pin: fdc6c275edb8d81f387c782aaeaf27a4e216816a. Fresh clone: C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\artifact-ui-rc1-euo3av0q\checkout. Exact full-discovery log: C:\Users\SJG\.traycer\worktrees\sjgold__agentchattr\codex-ticket-20-r2-on-a1\.audit-tmp\artifact-ui-rc1-euo3av0q\full-discovery.log. Own environment setup succeeded; the single full root discovery is running. No server or model calls in this window. RC1 has separate future runtime/ownership/ports and leaves AGY out; no RC0 shim/global entry is copied. Expected skip disclosure is9 post-launch transcript plus existing skips; actual counts/result will replace this pending note.
