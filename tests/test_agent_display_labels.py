@@ -76,5 +76,35 @@ assert(artifacts.includes('agentDisplayName(row.author_name)'));
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
+    def test_node_request_changes_click_routes_to_canonical_proposer(self):
+        script = r"""
+const fs=require('fs'),vm=require('vm'),assert=require('assert');global.window=global;
+const source=fs.readFileSync(process.argv[1]+'/static/sessions.js','utf8');
+const start=source.indexOf('function requestDraftChanges('),end=source.indexOf('function dismissDraft(',start);
+global.channelMessageWritable=()=>true;global.agentDisplayName=()=> 'Agy Friendly';
+global.escapeHtml=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+global.WebSocket={OPEN:1};const sent=[];global.ws={readyState:1,send(v){sent.push(JSON.parse(v))}};
+global.username='Seth';global.activeChannel='general';let input;
+const textarea={value:'Shorter please',focus(){},addEventListener(){}};
+const actions={after(row){input=row}};
+const card={dataset:{draftTemplate:'{}',proposedBy:'cli-1234abcd-old'},querySelectorAll(){return []},querySelector(sel){return sel==='.draft-changes-input'?input:actions}};
+global.document={querySelector(){return card},createElement(){return {querySelector(){return textarea},remove(){}}}};
+vm.runInThisContext(source.slice(start,end));
+global.draftId='example';global.proposedBy='cli-1234abcd-old';global.msg={id:7};
+const buttons=source.split('\n').filter(line=>line.includes('onclick="requestDraftChanges('));
+assert.equal(buttons.length,2);
+for(const line of buttons){
+ const rendered=vm.runInThisContext('`'+line+'`');
+ vm.runInThisContext(rendered.match(/onclick="([^"]+)"/)[1]);
+ const sendClick=input.innerHTML.match(/onclick="(submitDraftChanges[^"]+)"/)[1];
+ vm.runInThisContext(sendClick);
+ assert(sent.at(-1).text.startsWith('@cli-1234abcd-old '),sent.at(-1).text);
+ assert.equal(card.dataset.proposedBy,'cli-1234abcd-old');
+}
+"""
+        result = subprocess.run(['node', '-e', script, str(ROOT)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+
 if __name__ == '__main__':
     unittest.main()

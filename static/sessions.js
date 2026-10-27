@@ -137,7 +137,7 @@ window._messageRenderers['session_draft'] = function (el, msg) {
                 </details>
                 <div class="proposal-actions">
                     <button class="proposal-request-changes" onclick="recheckSessionDraft(${msg.id}, this)">Check current limits</button>
-                    <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(window.agentDisplayName?.(proposedBy) || proposedBy)}', ${msg.id})">Request Changes</button>
+                    <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(proposedBy)}', ${msg.id})">Request Changes</button>
                     <button class="proposal-dismiss" onclick="dismissDraft(${msg.id})">Dismiss</button>
                 </div>
             </div>`;
@@ -178,7 +178,7 @@ window._messageRenderers['session_draft'] = function (el, msg) {
                 <div class="proposal-actions">
                     <button class="proposal-accept" onclick="runDraft(${msg.id})">Run</button>
                     <button class="proposal-request-changes session-draft-btn-save" onclick="saveDraft(${msg.id}, this)">Save Template</button>
-                    <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(window.agentDisplayName?.(proposedBy) || proposedBy)}', ${msg.id})">Request Changes</button>
+                    <button class="proposal-request-changes" onclick="requestDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(proposedBy)}', ${msg.id})">Request Changes</button>
                     <button class="proposal-dismiss" onclick="dismissDraft(${msg.id})">Dismiss</button>
                 </div>
             </div>`;
@@ -2166,7 +2166,7 @@ function requestDraftChanges(draftId, proposedBy, msgId) {
     inputRow.innerHTML = `
         <textarea class="draft-changes-textarea" rows="2" placeholder="What changes do you want?"></textarea>
         <div class="draft-changes-btns">
-            <button class="session-draft-btn run" onclick="submitDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(window.agentDisplayName?.(proposedBy) || proposedBy)}', ${msgId})">Send</button>
+            <button class="session-draft-btn run" onclick="submitDraftChanges('${window.escapeHtml(draftId)}', '${window.escapeHtml(proposedBy)}', ${msgId})">Send</button>
             <button class="session-draft-btn dismiss" onclick="dismissDraftChanges(this)">Cancel</button>
         </div>
     `;
