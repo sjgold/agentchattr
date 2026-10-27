@@ -56,10 +56,10 @@ const form=page['api-package-form'];form.reportValidity=()=>true;
 form.append(page['api-package-name'],page['api-package-id'],page['api-seat-editors']);
 page['team-go'].disabled=true;
 const later=(fn,ms)=>{timers.set(++timerID,{fn,ms});return timerID};
-const window={__SESSION_TOKEN__:'TOKEN-123',location:{assign:u=>assigned.push(u)}};
+const window={__SESSION_TOKEN__:'TOKEN-123',location:{origin:'http://127.0.0.1:49960',assign:u=>assigned.push(u)}};
 const localStorage={getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v)),removeItem:k=>store.delete(k)};
 const response=(data,status=200)=>({ok:status>=200&&status<300,status,json:async()=>JSON.parse(JSON.stringify(data))});
-const context=vm.createContext({window,document,localStorage,console,crypto:require('crypto').webcrypto,AbortSignal,Promise,Date,Object,JSON,Set,
+const context=vm.createContext({window,document,localStorage,console,crypto:require('crypto').webcrypto,AbortSignal,Promise,Date,Object,JSON,Set,URL,
  setTimeout:later,clearTimeout:id=>timers.delete(id),
  fetch:async(url,options={})=>{url=String(url);const call={url,method:options.method||'GET',headers:options.headers||{},
   body:options.body===undefined?undefined:JSON.parse(options.body)};calls.push(call);return responder(call)}});
@@ -207,6 +207,49 @@ assert.deepStrictEqual(chat.body,{selection_id:'s1'});
 assert.deepStrictEqual(assigned,['/chat/team']);
 assert(calls.indexOf(launch)<calls.indexOf(chat));
 assert.strictEqual(posts().filter(c=>c.url==='/api/preflight/packages').length,0,'clean draft must not re-save');
+""")
+
+    # 3b. Chat handoff URL must be a same-origin relative path ----------------
+    HOSTILE_URLS = ['javascript:alert(1)', '//evil.example/', 'https://evil.example/', '/\\evil.example/']
+
+    def test_launch_and_go_refuses_non_relative_chat_url(self):
+        for url in self.HOSTILE_URLS:
+            with self.subTest(url=url):
+                self.run_js(r"""
+launchReply=()=>readyState('s1');
+chatReply={url:%s};
+await boot();
+goButton().click();
+await until(()=>page['api-seat-status'].textContent.includes('unexpected address'),'refusal message');
+assert.deepStrictEqual(assigned,[]);
+assert.strictEqual(page['api-seat-status'].textContent,'Could not open chat: unexpected address');
+""" % json.dumps(url))
+
+    def test_open_chat_with_team_refuses_non_relative_chat_url(self):
+        for url in self.HOSTILE_URLS:
+            with self.subTest(url=url):
+                self.run_js(r"""
+launches.team=readyState('s1');
+chatReply={url:%s};
+await boot();
+await until(()=>page['team-chat'].disabled===false,'team-chat enabled');
+page['team-chat'].click();
+await until(()=>page['api-seat-status'].textContent.includes('unexpected address'),'refusal message');
+assert.deepStrictEqual(assigned,[]);
+""" % json.dumps(url))
+
+    def test_relative_chat_url_navigates_on_both_paths(self):
+        self.run_js(r"""
+launchReply=()=>readyState('s1');
+chatReply={url:'/?package_launch=abc'};
+await boot();
+goButton().click();
+await until(()=>assigned.length>0,'redirect');
+assert.deepStrictEqual(assigned,['/?package_launch=abc']);
+await until(()=>page['team-chat'].disabled===false,'team-chat enabled');
+page['team-chat'].click();
+await until(()=>assigned.length>1,'second redirect');
+assert.deepStrictEqual(assigned,['/?package_launch=abc','/?package_launch=abc']);
 """)
 
     # 4. Failure path -------------------------------------------------------

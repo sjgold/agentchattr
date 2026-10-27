@@ -432,6 +432,22 @@
         selectionDirty = false;
         return result;
     }
+    // Chat handoff accepts only a same-origin relative path from the server reply.
+    function openChat(url) {
+        let target = null;
+        if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\')) {
+            try {
+                const resolved = new URL(url, window.location.origin);
+                if (resolved.origin === window.location.origin) target = resolved.pathname + resolved.search + resolved.hash;
+            } catch (_) { target = null; }
+        }
+        if (!target) {
+            message('Could not open chat: unexpected address', true);
+            return false;
+        }
+        window.location.assign(target);
+        return true;
+    }
     const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     async function go() {
         const current = savedPackage();
@@ -455,8 +471,8 @@
                     goProgress = `All ${seats.length} seats ready. Opening chat…`;
                     renderTeam();
                     const result = await request(`/api/preflight/packages/${encodeURIComponent(id)}/chat`, {selection_id: state.selection_id});
-                    window.location.assign(result.url);
-                    return;
+                    if (openChat(result.url)) return;
+                    break;
                 }
                 if (state.error || state.state === 'action_required') {
                     const stuck = seats.filter(seat => seat.state !== 'ready' && seat.state !== 'starting').length;
@@ -526,7 +542,7 @@
         renderTeam();
         try {
             const result = await request(`/api/preflight/packages/${encodeURIComponent(id)}/chat`, {selection_id: state.selection_id});
-            window.location.assign(result.url);
+            openChat(result.url);
         } catch (error) { message(error.message, true); }
         finally { teamPending = false; await refresh(false); }
     });
