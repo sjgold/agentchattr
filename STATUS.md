@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27 05:38 CDT. RC0 stopped at Seth's request; RC1 remains up. MiMo Pro proof passed; Hermes file restore passed but hello failed. AGY proof window is open.
+**Updated:** 2026-10-27 05:54 CDT. AGY real-file proof accepted and restored exactly. MiMo Pro passed. RC0 intentionally stopped; RC1 remains up. Hermes hello is deferred.
 
 **START HERE (Seth)**
 
@@ -8,7 +8,7 @@
 2. Check the six-seat team, then click Launch team and open chat (reuse is fine).
 3. In chat, use Documents: pick a completed source session, request a short document, then Read/Download.
 4. Try Start a session -> Choose UTF-8 files for the multi-file preview; starting a review uses the selected agents.
-5. RC0 is STOPPED for the authorized AGY proof window. RC1 stays up and leaves AGY/Hermes out.
+5. AGY adapter proof passed, then stopped. RC0 remains STOPPED on purpose; RC1 leaves AGY/Hermes out.
 6. Hermes remains deferred after its hello failure; rotations are scheduled by Seth; the app continues to start at Pre-flight.
 
 
@@ -18,7 +18,7 @@ RC0 excludes Hermes adapter, default_model fallback, Ticket23, the seven new UI 
 
 **UAT RC1:** `fdc6c275edb8d81f387c782aaeaf27a4e216816a`, http://127.0.0.1:50010/preflight. **Frozen: no merges reach this build.** Adds multi-file packets, effective CLI model defaults and reviewed UI ideas. Six seats ready; Claude is Haiku5.5 for the bounded check, while RC0 keeps Opus.
 Stop only RC1: `.audit-tmp/artifact-ui-rc1-euo3av0q/checkout/.audit-tmp/stop-rc1.ps1` from this integration worktree.
-**RC1 has no Antigravity seat (RC0 has it); daily Antigravity needs a separately authorized live check of the reviewed distinct-name adapter.** Hermes is excluded. RC1 contains dormant Hermes YAML adapter code with the known stale-backup B2 flaw; no Hermes seat or yaml_settings_file template is present, so that path cannot run. The AGY JSON adapter is absent.
+**RC1 has no Antigravity seat (RC0 has it); daily Antigravity's distinct-name adapter passed its authorized real-file proof; it is not installed into this frozen build.** Hermes is excluded. RC1 contains dormant Hermes YAML adapter code with the known stale-backup B2 flaw; no Hermes seat or yaml_settings_file template is present, so that path cannot run. The AGY JSON adapter is absent.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -30,7 +30,7 @@ Stop only RC1: `.audit-tmp/artifact-ui-rc1-euo3av0q/checkout/.audit-tmp/stop-rc1
 
 RC1 is available for comparison with RC0. Its final frozen discovery passed2164 tests with13 skips (9 post-launch transcript,4 existing). Reviewer cleared the exact pin and unchanged artifact-v1 activation. Six included seats are ready. One Claude Haiku document109B and one DeepSeek document73B each passed Read/Download byte equality. The browser picker checked two tiny files,31 raw bytes, with the expected packet revision. No multi-file agent review or screenshot acceptance is claimed.
 
-RC0 is now stopped at Seth's explicit request, with its shim entry removed. RC1 remains frozen and running. Hermes real-home writes/restores passed twice, but its injected hello failed with exit2; it remains excluded. MiMo Pro passed one24B managed document check and its temporary instance is stopped. AGY is being checked in the authorized window, at most3 launch/verify/Stop cycles.
+RC0 is now stopped at Seth's explicit request, with its shim entry removed. RC1 remains frozen and running. Hermes real-home writes/restores passed twice, but its injected hello failed with exit2; it remains excluded. MiMo Pro passed one24B managed document check and its temporary instance is stopped. AGY's authorized real-file proof passed:34B document/read/download exact, entry removed and original file restored. All AGY proof processes are stopped; no third attempt is needed.
 
 ## Needs Seth
 
@@ -52,7 +52,7 @@ RC0 is now stopped at Seth's explicit request, with its shim entry removed. RC1 
 |---|---|---|
 |Claude|claude-opus-5-5|Running; native OAuth hello passed. Earlier Haiku document124B exact; no Opus document loop|
 |Codex|gpt-6.1-sol|Running; native OAuth hello passed; isolated MCP launch fixed. No Sol document loop|
-|Antigravity|gemini-3.8-flash-medium|RC0 ready; document smoke timed out/cancelled. Earlier UAT63B success retained, not claimed forRC0. High/medium/low suggestions editable|
+|Antigravity|gemini-3.8-flash-medium|Real distinct-name JSON adapter proof34B read/download exact; medium displayed, CLI metadata unverified. Exact global restore, all stopped. Not in RC1|
 |DeepSeek|deepseek-flash|RC0 ready; fresh Documents99B read/download exact. Earlier100B retained.1070 not mapped|
 |GLM|glm-5.3|Running; earlier Documents285B exact, no extra call|
 |Muse|muse-spark-1.3-contributor|Running; Documents81B exact. Hello needed512-token probe cap; normal document path worked unchanged|
@@ -62,9 +62,9 @@ RC0 is now stopped at Seth's explicit request, with its shim entry removed. RC1 
 
 ## Next
 
-1. Seth compares the frozen builds through Pre-flight and chat. RC1:50010 has the new UI/packets/defaults; RC0:49949 keeps the earlier build and AGY. Report defects in this handoff before any publication.
+1. Seth tries RC1:50010 through Pre-flight and chat when ready. RC0 is intentionally stopped after his AGY proof window; no automatic relaunch. Its retained start path is available when he requests it.
 2. RC1 handoff is accepted. After Seth's verdict, freeze the chosen publication tip for its final full discovery, remote-target comparison and explicit push decision. [Publication readiness](docs/project/PUBLICATION-READINESS.md) is reviewer-cleared; no push is authorized.
-3. Hermes and daily AGY injection remain deferred. The Windows owned process-tree Stop design and picker/source-label notes are in the post-launch list. No real YAML/JSON adapter write before its corrected pin is reviewed.
+3. Hermes hello remains deferred. AGY JSON and Hermes YAML write/restore proofs are complete; AGY hello passed. MiMo Pro is configured/tested only in ignored integration-local config. A later reviewed build/config decision brings those seats into daily use; neither frozen UAT build is changed.
 4. [Post-launch scope](C:/Users/SJG/.traycer/epics/6e815a47-c25b-4900-9e83-1be98cead36f/artifacts/post-launch-scope/index.md) holds Tickets21/22/24-26 and later decisions. Keep9 transcript skips and retained history.
 5. Publication requires Seth's explicit go-ahead. No push or deletion is authorized.
 
@@ -338,3 +338,17 @@ MiMo was unparked and changed to Pro by Seth. Integration config.local.toml cont
 Seth then explicitly opened a whole-RC0-stop window for AGY. Its own stop script ended server/workers and removed agentchattr-uat;49949-49951 closed, private merge record gone. One native45760 survived; signed birth/image plus live log-root verified, then ended by PID under his widened grant. Old natives55868/40428/50376 were ended after each signed creation time, exact renamed-image suffix and live old-UAT log path recheck; no product authority relaxed. Global MCP SHA before RC0stop bf43981e902ed1dd20fdb7a49b040dde015df8caf4f5d37c31f5469c170f5e4f; after shim removal62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d. AGY guard is now false. RC0 must remain stopped after the proof, no relaunch while Seth is away; RC1 stays up.
 
 Next: one supervised AGY attempt against the reviewed c662722 JSON adapter, entry agentchattr-fork only, backup/hash/diff-minus-entry and exact restore. Budget3 launch/verify/Stop cycles; stop/report on ownership or restore surprise. No push, no deletion, no unrelated global write.
+
+### 2026-10-27 05:54 CDT AGY real-file proof completed and accepted
+
+At reviewedc662722, physical cycle1 added only agentchattr-fork, pre/backup SHA62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d, live SHAed22c7d24ed812a5bcdf8b069648bf9d9a6311c2ab299cf2295997415f32ea6a. Before any generation, the tracked launcher was unexpectedly rerun (host marked it user; actor unknown), rotating the root's signing key and starting an address-in-use server. Product Stop restored the exact original SHA and removed the entry. Reviewer classified it instrumentation-invalid and excluded it from the3-cycle budget. No product failure or generation occurred. Subsequent launch used an untracked detached owned process and refused a second registration; the generation checker also refuses repeats.
+
+Physical cycle2 is the only counted attempt. Independent process/path check and agy_running were clear before product launch. A private pre-write backup and the adapter backup mcp_config.json.agentchattr-fork-20261027T104450Z-43e89e.bak both hash to62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d. Only agentchattr-fork was added; structural diff excluding that key was empty. Apply SHA4d8e8a7edf11e1c6263fb582325820946a3b45ef9aa4526d041c1e97f23082b0. Accepted the selected Yes, I trust this folder only for the owned empty workspace through its console. Medium was visible; Auto was requested by the tested launch flag.
+
+Exactly one tiny AGY document request fulfilled:34B SHA2561db916a67bcd188966ad88480b6483dcb71aef49a4876709fe691f0d5b650e47, Read/Download200 and equal. CLI metadata cannot independently confirm the model. Product Stop200/stopped removed the entry; restored SHA62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d equals the original byte-for-byte.5 signed owned resources ended,0 unresolved;18 proof exports clean. No further attempt or model call. Root/backup retained under .audit-tmp/artifact-ui-agy-proof-7qspy0yp/checkout/.audit-tmp/artifact-ui-agy-attempt2.
+
+Reviewer independently accepted the AGY proof, checked the restored file SHA,0 AGY processes,49949 closed,50010 listening, and two adapter backups plus the by-design lock retained. The original pre-existing agentchattr entry remains; neither agentchattr-fork nor agentchattr-uat remains. No unrelated key or setting was changed. RC0 is STOPPED deliberately at Seth's request and will not be relaunched automatically; RC1 is untouched and remains up.
+
+Final independent file reads: Hermes config.yaml SHAe67afc743a36d8035c6f108227bf20e3c328571c8a1e57eace731680262fefa2; AGY mcp_config.json SHA62cf138cda089ffc9d971e888adaf2cb3256dfc4ca48caf0e29feafbcde2198d. Hermes YAML/MCP proof passed twice but hello exited2; excluded and no more retry/log read. Ops disclosed its first gateway-kill creation check was vacuous due to PowerShell variable case folding; reviewer accepted the independently identified target and the corrected check used for the second gateway. No memory-DB process was touched.
+
+Remaining gates unchanged: Seth's RC1 verdict, final full discovery on the exact publication tip, remote-target comparison and explicit push go. No push, no deletion, no more live calls.
