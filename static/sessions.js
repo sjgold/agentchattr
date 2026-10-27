@@ -1714,6 +1714,12 @@ function closeSessionLauncher(modal = document.getElementById('session-launcher-
     if (modal._documentStateListener) modal.removeEventListener('document-input-state', modal._documentStateListener);
     modal.remove();
 }
+// Escape closes the launcher, the same as its x button or a click outside it.
+// tabIndex keeps focus inside the overlay after clicks on non-focusable cards.
+function closeSessionLauncherOnEscape(modal) {
+    modal.tabIndex = -1;
+    modal.onkeydown = (event) => { if (event.key === 'Escape') closeSessionLauncher(modal); };
+}
 
 function sessionStartError(modal, message) {
     let error = modal.querySelector('.document-start-error');
@@ -1784,6 +1790,7 @@ function showSessionLauncher() {
     modal.id = 'session-launcher-modal';
     modal.className = 'session-launcher-overlay';
     modal.onclick = (e) => { if (e.target === modal) closeSessionLauncher(modal); };
+    closeSessionLauncherOnEscape(modal);
 
     let templateOptions = sessionTemplates.map(t =>
         `<div class="session-tmpl-card" onclick="showCastPreview('${window.escapeHtml(t.id)}')" title="${window.escapeHtml(t.description || '')}">
@@ -1885,6 +1892,8 @@ function showCastPreview(templateId) {
         <button class="session-start-btn" onclick="launchSessionWithCast('${window.escapeHtml(templateId)}')">Start Session</button>
     `;
     updateDocumentStart(document.getElementById('session-launcher-modal'));
+    // The cast sits below the source editor; bring it into view so the next step is visible.
+    castStep.scrollIntoView?.({block: 'start', behavior: 'smooth'});
 }
 
 function sessionCastBack() {
@@ -2023,6 +2032,7 @@ function showDraftCastPreview(tmpl, draftMsgId) {
     modal.id = 'session-launcher-modal';
     modal.className = 'session-launcher-overlay';
     modal.onclick = (e) => { if (e.target === modal) closeSessionLauncher(modal); };
+    closeSessionLauncherOnEscape(modal);
 
     const roleRows = buildSessionCastEditor(tmpl, cast, assignees);
 

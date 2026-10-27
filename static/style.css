@@ -4488,3 +4488,92 @@ footer {
     50% { box-shadow: 0 0 8px 2px var(--accent); }
 }
 .help-pulse { animation: helpPulse 1s ease 3; }
+
+/* --- Header link to pre-flight (Seats & launch) --- */
+.preflight-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    background: var(--accent-soft);
+    font-size: 13px;
+    font-weight: var(--fw-medium);
+    text-decoration: none;
+    white-space: nowrap;
+}
+.preflight-link::before { content: '\25B6'; font-size: 9px; color: var(--user-color); }
+.preflight-link:hover { background: var(--accent); color: var(--text-on-accent); }
+.preflight-link:focus-visible { outline: 2px solid var(--user-color); outline-offset: 2px; }
+
+/* --- Help guide: docked panel and first-visit welcome card (no backdrop) --- */
+.help-guide--panel, .help-guide--welcome {
+    inset: auto;
+    pointer-events: auto;
+    background: var(--bg-header);
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--shadow-lg);
+    color: var(--text);
+}
+.help-guide--panel {
+    top: 56px;
+    right: 12px;
+    bottom: 12px;
+    width: min(380px, calc(100vw - 24px));
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+    overflow: hidden;
+}
+.help-guide--panel .hg-modal-header { position: static; background: transparent; }
+.help-guide--panel .hg-modal-title { font-size: 14px; color: var(--text); }
+.help-guide--panel .hg-content {
+    max-width: none;
+    max-height: none;
+    flex: 1;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    animation: none;
+}
+.help-guide--panel .hg-dismiss-hint {
+    position: static;
+    transform: none;
+    padding: 12px 16px 16px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-dim);
+}
+.help-guide .hg-modal-close { font-size: 22px; min-width: 32px; min-height: 32px; border-radius: var(--radius-md); }
+.help-guide .hg-modal-close:hover { background: var(--bg-input); }
+.help-guide .hg-modal-close:focus-visible { outline: 2px solid var(--user-color); }
+.hg-link { color: var(--user-color); font-weight: var(--fw-semibold); }
+#hg-preflight { background: var(--accent-soft); }
+.help-guide--welcome {
+    right: 16px;
+    bottom: 96px;
+    width: min(340px, calc(100vw - 32px));
+    padding: 14px 16px 16px;
+    border-radius: 12px;
+    animation: hgCardIn 0.3s ease both;
+}
+.hg-welcome-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.hg-welcome-head strong { font-size: 14px; }
+.help-guide--welcome p { margin: 6px 0 12px; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.hg-welcome-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.hg-welcome-actions a, .hg-welcome-actions button {
+    padding: 7px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--bg-input);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.hg-welcome-actions .hg-welcome-primary { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }

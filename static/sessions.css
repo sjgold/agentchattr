@@ -285,9 +285,9 @@
     background: var(--bg-header);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
-    width: 420px;
-    max-width: 90vw;
-    max-height: 80vh;
+    width: 620px;
+    max-width: 92vw;
+    max-height: 88vh;
     overflow-y: auto;
     box-shadow: var(--shadow-lg);
 }
@@ -837,6 +837,15 @@
 
 .session-draft-card .session-capacity-note {
     margin: 12px 0;
+}
+
+/* In the launcher the limits are reference text, not the first thing to read. */
+.session-launcher-dialog > .session-capacity-note {
+    margin: 0 var(--space-lg) var(--space-md);
+    padding: 8px 12px;
+    border-left: 2px solid var(--border-strong);
+    color: var(--text-dim);
+    font-size: 12px;
 }
 
 .session-invalid-design { margin: 12px 0; font-size: 14px; }

@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-27. Documentation cleanup in verification; UAT remains running.
+**Updated:** 2026-10-27. Six seats working; reviewed UI merged and tested; Hermes/OMP investigation next.
 
 **North Star, Seth's words:** "my initial scope was to remove the need to launch and maintain a ton of batch files that a screen for pre-flight to choose what agents could be used select the configuation and then it went to the chat page".
 
@@ -10,7 +10,9 @@
 
 ## Now
 
-Documentation cleanup completed and reviewer-accepted on the retained full-run plus focused-correction evidence:110 byte-identical moves, repaired links and the full historical STATUS snapshot. Ticket20 remains reviewer-accepted. Naming correction implemented/tested, awaiting live server refresh. Five UAT seats are running; Antigravity's native login works but its managed launch needs an environment/config check.
+Documentation cleanup is accepted. All six seats are running. Antigravity's real managed document now passes63B read/download exact after clearing two first-run notices and switching the owned CLI from research-only Plan to Auto mode. Normal Google login was already present; the startup error log was not evidence of missing login.
+
+The real Windows launcher reuse path, Pre-flight package editor/save/launch and Open chat path were exercised. Live sender labels are friendly (zero raw managed ids in sender elements). Reviewed UI commits08b1f0a/a8f624c/c6930b0 are integrated: visible Seats & launch link, clearer pre-flight flow, lighter help and usable menus.119 focused tests pass. Seth's own end-to-end acceptance remains open.
 
 ## Needs Seth
 
@@ -24,7 +26,7 @@ Documentation cleanup completed and reviewer-accepted on the retained full-run p
 |---|---|---|
 |Claude|claude-opus-5-5|Running; native OAuth hello passed. Earlier Haiku document124B exact; no Opus document loop|
 |Codex|gpt-6.1-sol|Running; native OAuth hello passed; isolated MCP launch fixed. No Sol document loop|
-|Antigravity|gemini-3.8-flash-medium, effort medium|Native hellos pass; managed document timed out/cancelled. Seat stopped; env/config investigation next, normal login confirmed by Seth|
+|Antigravity|gemini-3.8-flash-medium, effort medium|Running; managed Documents63B read/download exact. Prior timeout/cancellation retained; CLI model remains unverified in API metadata|
 |DeepSeek|deepseek-flash|Running; Documents create/read/download100B exact.1070 not mapped by provider list|
 |GLM|glm-5.3|Running; earlier Documents285B exact, no extra call|
 |Muse|muse-spark-1.3-contributor|Running; Documents81B exact. Hello needed512-token probe cap; normal document path worked unchanged|
@@ -33,10 +35,9 @@ Documentation cleanup completed and reviewer-accepted on the retained full-run p
 
 ## Next
 
-1. Live-check the tested naming correction after the owned server refresh; canonical routing IDs remain unchanged.
-2. Exercise real isolated start -> Pre-flight -> saved six-seat package -> launch -> Open chat. Diagnose managed agy environment within that flow; normal login is already confirmed by Seth.
-3. UI is part of the handoff and outranks Hermes/OMP: integrate the separate Opus UI branch only after reviewer clearance, then run focused UI checks. That agent owns Pre-flight/help/header-link layout; no overlapping edits here.
-4. Hermes/OMP CLI seats afterward if easy; otherwise explicit skip/cause. Existing logins only, time-boxed investigation first.
+1. Send integrated UI pin/results to reviewer; keep primary UAT49949 up for Seth.
+2. Time-box Hermes/OMP CLI-seat investigation next. Use existing logins, no new keys; easy local setup only, otherwise explicit skip/cause. Global writes require prior permission and the agreed backup/removal protocol.
+3. Review any later UI-agent commits separately; only the three pinned commits above are integrated.
 5. Ticket23 MultiPackets plan only (scope confirmation before code), then authorized Ticket21 and22.24-26 remain uncleared.
 6. Final activation-state review and full regression before any publication; push requires Seth's explicit go-ahead.
 
@@ -44,7 +45,7 @@ Documentation cleanup completed and reviewer-accepted on the retained full-run p
 
 Chat: http://127.0.0.1:49949. Direct Pre-flight: http://127.0.0.1:49949/preflight. Stop only this instance from the active worktree with `.audit-tmp/stop-ticket20-uat.ps1`.
 
-The distinct Antigravity `agentchattr-uat` global MCP entry was backed up, added alone, then removed; remaining structure equals backup. Global trustedFolders was untouched. Exact backup hash/path and restore/removal instructions are in the [historical handoff](docs/history/STATUS-2026-10-26.md#requested-seats-final-nightly-verification) and private `.audit-tmp/ticket20-seat-morning.md`. MiMo parked; MiniMax not used.
+The distinct Antigravity `agentchattr-uat` global MCP entry is currently active for the running seat. It was backed up and structurally verified as the only new entry; the stop hook removes it and checks the remaining structure against the backup. Earlier removal was exercised successfully. Global trustedFolders was untouched. Exact backup hash/path and restore/removal instructions are in the [historical handoff](docs/history/STATUS-2026-10-26.md#requested-seats-final-nightly-verification) and private `.audit-tmp/ticket20-seat-morning.md`. MiMo parked; MiniMax not used.
 
 ## Seth's decisions and execution order
 
@@ -94,3 +95,7 @@ Cleanup acceptance: full1939 ran404.096s with13 disclosed skips and4 subtest fai
 Naming fix: durable retained-identity labels plus saved-package family aliases are exposed as display-only WebSocket metadata. Chat/join/leave, session cast/design/owner/proposer and Documents author text use the label; role/action values retain canonical IDs. Three new tests first showed missing-seam/Node reds, then passed; the raw-render mutation produces a genuine assertion failure. Focused naming/UI/restart/identity/operator-route86 PASS5.968s; UI mutation63/63 killed; Node syntax checks pass. One existing HTTPError404 ResourceWarning appeared in the identity suite and is retained, not silently fixed. Product change is display-only; no authority/queue/store invariant change.
 
 Naming review correction: reviewer found3 Request Changes onclick arguments had received display labels. A new Node test executes Request Changes -> Send for both draft-card variants; observed red sent @Agy Friendly instead of the canonical id. Restored canonical proposedBy in all3 action sites while keeping visible labels and card.dataset.proposedBy. Naming/UI/restart45 PASS2.918s; Node syntax passes. The initial regression is retained here rather than described as unchanged routing throughout. Live server refresh still pending the isolated launch flow.
+
+Live handoff details: actual windows/start.bat with isolated data/uploads/MCP flags exited0 and returned /preflight by reusing the matching owned instance (not a new cold-server bootstrap). In the actual editor, selected the six-seat package, changed AGY display name, saved, included all six, launched/reused them and opened chat. MiniMax removed from isolated config and saved package; initial stale unused row caused one startup refusal and was backed up/repaired, not a product-data migration. Current native AGY console shows Google AI Pro, Gemini3.8 Flash(Medium); two onboarding notices were dismissed, current mode is Auto. One new document request fulfilled,63B exact, SHAea55a480c1dfc31ff396d8b5a82752935bc1002821dab72c88444fec973f1b3a; API correctly reports cli_model_unverified. No new Opus/Sol call.
+
+UI merge verification: exact reviewed tipc6930b0 (08b1f0a,a8f624c,c6930b0), auto-merged while preserving canonical-label fixes. Naming/preflight/help/artifact UI/restart/source-builder/identity/operator-route119 PASS7.430s. One previously noted HTTPError404 ResourceWarning remains. The separate UI worktree instance is http://127.0.0.1:49960/preflight; primary integrated handoff is49949/preflight. Later moving-branch commits are not included. No push.

@@ -2,6 +2,8 @@
     box-sizing: border-box;
     width: min(960px, calc(100vw - 24px));
     max-height: calc(100dvh - 24px);
+    /* The global '* { margin: 0 }' reset pinned the modal to the top-left corner. */
+    margin: auto;
     padding: 20px;
     border: 1px solid var(--border-strong);
     border-radius: 10px;
