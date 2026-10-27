@@ -1792,7 +1792,7 @@ function showSessionLauncher() {
     closeSessionLauncherOnEscape(modal);
 
     let templateOptions = sessionTemplates.map(t =>
-        `<div class="session-tmpl-card" onclick="showCastPreview('${window.escapeHtml(t.id)}')" title="${window.escapeHtml(t.description || '')}">
+        `<div class="session-tmpl-card" onclick="showCastPreview('${window.escapeHtml(t.id)}')" tabindex="0" role="button" onkeydown="if (event.target === this && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); this.click(); }" title="${window.escapeHtml(t.description || '')}">
             ${t.is_custom ? `<span class="session-tmpl-delete-wrap"><button class="session-tmpl-delete" onclick="toggleDeleteSessionTemplateConfirm(this, '${window.escapeHtml(t.id)}', event)" title="Delete custom template">Delete</button></span>` : ''}
             <div class="session-tmpl-name">${window.escapeHtml(t.name)}</div>
             <div class="session-tmpl-desc">${window.escapeHtml(t.description || '')}</div>

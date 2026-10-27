@@ -363,6 +363,11 @@
     border-color: var(--accent);
     background: var(--bg-elevated);
 }
+.session-tmpl-card:focus-visible {
+    outline: 2px solid var(--user-color);
+    outline-offset: 2px;
+    background: var(--bg-elevated);
+}
 
 .session-tmpl-name {
     font-size: var(--fs-base);

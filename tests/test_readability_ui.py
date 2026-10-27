@@ -135,6 +135,18 @@ class SessionsReadabilityTests(unittest.TestCase):
         self.assertNotIn(' -- Cast', js)
 
 
+class SessionTemplateKeyboardTests(unittest.TestCase):
+    def test_template_cards_are_reachable_and_operable_by_keyboard(self):
+        # The cards were plain clickable divs: Tab skipped them, so a keyboard user
+        # could not choose a template at all.
+        js = (STATIC / 'sessions.js').read_text(encoding='utf-8')
+        card = re.search(r'<div class="session-tmpl-card" onclick="showCastPreview[^>]*>', js).group(0)
+        self.assertIn('tabindex="0"', card)
+        self.assertIn('role="button"', card)
+        self.assertRegex(card, r'onkeydown="[^"]*Enter')
+        self.assertRegex(rule(sheet('sessions.css'), '.session-tmpl-card:focus-visible'), r'outline:')
+
+
 class DocumentsReadabilityTests(unittest.TestCase):
     def test_placeholders_look_like_placeholders_and_still_meet_aa(self):
         # The Documents instruction box and the review-source box painted their
