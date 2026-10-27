@@ -285,3 +285,17 @@ Controller deviation retained: first waitFor used40000ms, rejected locally becau
 Raw cleanup.json unresolved=[], births_visited=8, cooperative_shutdown=already_exited. Six probes absent; PID48040 exited/query-only proof exit0; PID6308 exited/retained verified kernel handle exit0. Independent Win32_Process query lists none of the8 PIDs; all4 owned listeners0. Four guards real_attempts=[], no unowned-port/watchdog/missing-case files. Owned isolated browser/session closed, no forwards. Original data/uploads/.agentchattr manifests and known listeners unchanged. FULL Python baseline is NOT unchanged: one added pythonw.exe PID56240 start2026-10-27T01:00:01.2962040Z, no removals; it is outside all8 owned births, cause unassigned, untouched. Prior PID58092 deviation remains separate. Receipt/summary/postcheck exports pass token/nonce scan; retained root is not exported or deleted.
 
 Next owner reviewer: assess this final partial evidence and recommend the remaining-coverage decision to Seth. Root does not restart or adapt the browser. Backend/UI component acceptance remains unchanged. Screen/transcript21/packaging22/activation and final file-structure cleanup remain pending. No push.
+
+## Reviewer disposition after final browser attempt, 2026-10-26
+
+Reviewer classifies attempt5's screenshot timeout as the host's inability to render frames, not a product failure. No sixth attempt or unprompted Chrome/Edge work. Positive real-browser DOM evidence is accepted for startup, create/Queued, real MCP brief/submit/release, automatic Ready, manual Refresh, literal PRE reading and byte-exact99B Blob/download intent/revocation, served script proof and raw cleanup. This is PARTIAL browser evidence, never UI acceptance. The12-case gate remains incomplete and acceptance_claim=false. Viewport/keyboard/mobile/API/lost-create/refusal/cancel/lifecycle/backoff/reload/stale and every visual/layout check rely on existing component, Node-vm UI and mutation tests; they are not browser-proven.
+
+Baseline correction from reviewer's read-only Win32_Process query: added PID56240 pythonw.exe start2026-10-27T01:00:01.296Z is a Task Scheduler child of svchost.exe running C:/Users/SJG/miniconda3/pythonw.exe -m hotin refresh --quiet. Timestamp matches root's baseline addition. Record as added unrelated scheduled process, identified, outside all owned births; no fixture-caused baseline violation is established. Original baseline and raw deviation remain retained; PID58092 stays a separate historical miss. No unrelated process was changed.
+
+Recommendation relayed to Seth, decision pending:
+
+- Accept PARTIAL browser harness for20-22 and proceed to responsiveness screen,21 and22, because capability remains off until a separate activation commit.
+- Add a pre-ACTIVATION real visual check of the Documents panel at desktop and390px, by Seth looking at it, or an optional separately owned Chrome/Edge follow-up if he requests automation. This precedes activation, not21/22 work.
+- Alternatives: accept partial with no visual gate, or build Chrome/Edge harness first. Ask Seth once. If he does not answer, follow the first recommendation; activation remains blocked until visual checking is done. This default is the reviewer recommendation, not a fabricated user decision.
+
+Next owner root: prepare the thin responsiveness screen under the existing reduced contract, then21/22. Retain all roots; no deletion, activation or push. No additional browser adaptation.

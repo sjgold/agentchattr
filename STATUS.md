@@ -1,6 +1,6 @@
 # STATUS - AGENTCHATTR
 
-**Updated:** 2026-10-26 (final browser attempt partial: CLI polling/read/exact Blob proved; screenshot host failure; cleanup verified; reviewer disposition pending)
+**Updated:** 2026-10-26 (reviewer accepts partial browser evidence; identified scheduled baseline addition; screen next, activation visual gate recommended)
 
 ## At a glance
 
@@ -18,7 +18,21 @@
 | Issue 19 | Closed/completed2026-10-25T02:02:50Z, reread through explicit-repo wrapper and GitHub API |
 | Ticket20 | Foundation, wrappers and lifecycle/backup through slice4 independently COMPONENT-cleared; R1 and A1 cleared; R2 D4 implementation authorized after independently observed reds. R2 + D4 FINAL ACCEPTANCE at220f3400, prior misses retained. No whole-ticket acceptance or activation. |
 | Latest checks | Backend independently accepted with D8 focused91/52 mutants; full1888 baseline retained. UI Y follow-ups39 actual-JS/restart cases OK2.453s;61 assertion-only mutations; JS syntax/diff clean. Browser/UI acceptance pending. |
-| Next | Reviewer assesses FINAL attempt5 partial evidence and remaining coverage decision for Seth. Browser adaptation stopped. No sixth run/new tooling. Components accepted; full rendered acceptance incomplete. |
+| Next | Root: responsiveness screen, then21/22 under reviewer partial-browser recommendation. Seth may choose an alternative; activation remains blocked for visual checking by default. No more browser adaptation. |
+
+## Reviewer disposition after final browser attempt, 2026-10-26
+
+Reviewer classifies attempt5's screenshot timeout as the host's inability to render frames, not a product failure. No sixth attempt or unprompted Chrome/Edge work. Positive real-browser DOM evidence is accepted for startup, create/Queued, real MCP brief/submit/release, automatic Ready, manual Refresh, literal PRE reading and byte-exact99B Blob/download intent/revocation, served script proof and raw cleanup. This is PARTIAL browser evidence, never UI acceptance. The12-case gate remains incomplete and acceptance_claim=false. Viewport/keyboard/mobile/API/lost-create/refusal/cancel/lifecycle/backoff/reload/stale and every visual/layout check rely on existing component, Node-vm UI and mutation tests; they are not browser-proven.
+
+Baseline correction from reviewer's read-only Win32_Process query: added PID56240 pythonw.exe start2026-10-27T01:00:01.296Z is a Task Scheduler child of svchost.exe running C:/Users/SJG/miniconda3/pythonw.exe -m hotin refresh --quiet. Timestamp matches root's baseline addition. Record as added unrelated scheduled process, identified, outside all owned births; no fixture-caused baseline violation is established. Original baseline and raw deviation remain retained; PID58092 stays a separate historical miss. No unrelated process was changed.
+
+Recommendation relayed to Seth, decision pending:
+
+- Accept PARTIAL browser harness for20-22 and proceed to responsiveness screen,21 and22, because capability remains off until a separate activation commit.
+- Add a pre-ACTIVATION real visual check of the Documents panel at desktop and390px, by Seth looking at it, or an optional separately owned Chrome/Edge follow-up if he requests automation. This precedes activation, not21/22 work.
+- Alternatives: accept partial with no visual gate, or build Chrome/Edge harness first. Ask Seth once. If he does not answer, follow the first recommendation; activation remains blocked until visual checking is done. This default is the reviewer recommendation, not a fabricated user decision.
+
+Next owner root: prepare the thin responsiveness screen under the existing reduced contract, then21/22. Retain all roots; no deletion, activation or push. No additional browser adaptation.
 
 ## Attempt5 FINAL: CLI polling/read/Blob evidence, screenshot runtime failure
 
