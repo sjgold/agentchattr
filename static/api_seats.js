@@ -23,6 +23,12 @@
     let loadedRevision = null;
     let packageIdTouched = false;
     const omitted = new Set();
+    const modelRefreshPending = new Set();
+    const modelRefreshErrors = new Map();
+    let modelCatalogRequestVersion = 0;
+    let modelCatalogRefreshStarted = false;
+    let modelCatalogPollTimer = null;
+    let modelCatalogPolls = 0;
     let pollsLeft = 0;
     let timer;
     const pending = new Set();
@@ -109,6 +115,71 @@
         node.value = value;
         node.textContent = name;
         select.append(node);
+        return node;
+    }
+    function catalogDate(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleString();
+    }
+    function catalogStatus(provider) {
+        const catalog = provider?.model_catalog;
+        const key = provider?.id || '';
+        const refreshing = modelRefreshPending.has('*') || modelRefreshPending.has(key) || catalog?.refreshing;
+        const source = catalog?.source || 'client model catalog';
+        const latest = catalogDate(catalog?.catalog_fetched_at || catalog?.checked_at);
+        const lastGood = catalog?.authoritative ? catalogDate(catalog?.catalog_fetched_at) : '';
+        const error = modelRefreshErrors.get(key) || modelRefreshErrors.get('*') || catalog?.error;
+        const configuredFallback = catalog?.dynamic && !catalog?.models?.length && catalog?.configured_models?.length;
+        const fallbackNote = configuredFallback ? ' Configured model choices are shown as fallback; discovery is unavailable.' : '';
+        if (refreshing && error) return (lastGood ? `Checking ${source}. Last refresh failed: ${error}. Last complete catalog: ${lastGood}.` : `Checking ${source}. Last refresh failed: ${error}. No complete catalog yet.`) + fallbackNote;
+        if (refreshing) return (latest ? `Checking ${source}. Last catalog: ${latest}.` : `Checking ${source}…`) +
+            (configuredFallback ? ' Configured model choices remain available as fallback.' : '');
+        if (error) return (lastGood ? `${source} refresh failed: ${error}. Last complete catalog: ${lastGood}.` : `${source} refresh failed: ${error}. No complete catalog yet.`) + fallbackNote;
+        if (catalog?.complete) return `${source} · refreshed ${latest || 'time unavailable'}.`;
+        if (catalog?.models?.length) return `Partial ${source}${latest ? ` · checked ${latest}` : ''}.`;
+        if (configuredFallback) return `${source} has no successful catalog. Configured model choices are shown as fallback.`;
+        if (catalog?.dynamic) return `No model catalog yet. ${latest ? `Last check: ${latest}. ` : ''}Provider default remains available.`;
+        return '';
+    }
+    function updateModelCatalogProviders(providers) {
+        if (!Array.isArray(providers)) return;
+        snapshot = {...snapshot, providers};
+        for (const editor of seatEditors()) editor.refreshModelCatalog?.();
+    }
+    function scheduleModelCatalogPoll() {
+        if (modelCatalogPollTimer || modelCatalogPolls >= 120) return;
+        modelCatalogPollTimer = setTimeout(async () => {
+            modelCatalogPollTimer = null;
+            modelCatalogPolls++;
+            await refresh(false);
+        }, 1000);
+    }
+    async function refreshModelCatalog(providerId) {
+        const key = providerId || '*';
+        if (modelRefreshPending.has('*') || modelRefreshPending.has(key)) return;
+        const requestVersion = ++modelCatalogRequestVersion;
+        modelRefreshPending.add(key);
+        if (providerId) modelRefreshErrors.delete(providerId);
+        for (const editor of seatEditors()) editor.refreshModelCatalog?.();
+        try {
+            const result = await request('/api/preflight/models/refresh', providerId ? {provider: providerId} : {});
+            if (Array.isArray(result.providers)) {
+                if (requestVersion === modelCatalogRequestVersion) {
+                    modelRefreshErrors.delete('*');
+                    result.providers.forEach(item => modelRefreshErrors.delete(item.id));
+                    updateModelCatalogProviders(result.providers);
+                    if (result.providers.some(item => item.model_catalog?.refreshing)) scheduleModelCatalogPoll();
+                    else modelCatalogPolls = 0;
+                }
+            }
+        } catch (error) {
+            modelRefreshErrors.set(key, error.message);
+            for (const editor of seatEditors()) editor.refreshModelCatalog?.();
+        } finally {
+            modelRefreshPending.delete(key);
+            for (const editor of seatEditors()) editor.refreshModelCatalog?.();
+        }
     }
     function field(parent, name, control, hint) {
         const label = document.createElement('label');
@@ -198,22 +269,38 @@
         option(adapter, 'openai-compatible', 'Direct API');
         option(adapter, 'cli', 'Interactive CLI');
         adapter.value = seat.adapter || 'openai-compatible';
-        const provider = field(fields, 'Agent template', element('select'), 'from configured agents');
+        const provider = field(fields, 'Client configuration', element('select'),
+            'Choose the launch client/provider preset. Choose the model separately below.');
         provider.required = true;
-        function templates() {
+        function templates(desiredProvider = seat.provider || '') {
             provider.replaceChildren();
             const usable = snapshot.providers.filter(item => !item.error && item.adapter === adapter.value);
             option(provider, '', usable.length ? 'Choose a template' : 'No configured templates for this type');
-            for (const item of usable) option(provider, item.id, item.name);
+            const primary = usable.filter(item => adapter.value !== 'cli' || item.supports_model);
+            const defaultOnly = usable.filter(item => adapter.value === 'cli' && !item.supports_model);
+            for (const item of primary) option(provider, item.id, item.name);
+            if (defaultOnly.length) {
+                const group = element('optgroup');
+                group.label = 'Legacy/default-only clients';
+                for (const item of defaultOnly) option(group, item.id, `${item.name} (native default only)`);
+                provider.append(group);
+            }
+            if (desiredProvider && !usable.some(item => item.id === desiredProvider)) {
+                const selectedProvider = snapshot.providers.find(item => item.id === desiredProvider);
+                const saved = savedSeat && desiredProvider === seat.provider;
+                option(provider, desiredProvider, `${selectedProvider?.name || desiredProvider} (${saved ? 'saved, unavailable' : 'unavailable'})`);
+            }
+            provider.value = desiredProvider;
         }
         templates();
-        provider.value = seat.provider || '';
-        const model = input(fields, 'Model', seat.model, false, 'blank = provider default; typed IDs are unverified');
-        const suggestions = element('datalist');
-        suggestions.id = `models-${crypto.randomUUID()}`;
-        model.setAttribute('list', suggestions.id);
-        fields.append(suggestions);
-        const reasoning = field(fields, 'Reasoning effort', element('select'));
+        const model = field(fields, 'Model', element('select'), 'Choose a discovered model or Provider default.');
+        const modelActions = element('div', 'actions');
+        const refreshModelsButton = button(modelActions, 'Refresh models', () => refreshModelCatalog(provider.value));
+        const modelStatus = element('p', 'pf-dim');
+        modelStatus.setAttribute('role', 'status');
+        const modelSelectionNote = element('p', 'pf-dim');
+        fields.append(modelActions, modelStatus, modelSelectionNote);
+        const reasoning = field(fields, 'Reasoning effort', element('select'), 'Choices depend on the selected model.');
         const secret = input(fields, 'Credential variable name', seat.secret_ref, false, 'environment variable NAME only, never the key');
         secret.maxLength = 128;
         secret.pattern = '[A-Za-z_][A-Za-z0-9_]{0,127}';
@@ -231,32 +318,89 @@
             if (adapter.value !== 'cli' && secret.value) parts.push(`key from ${secret.value}`);
             summaryLine.textContent = parts.join(' · ');
         }
-        function capabilities(reset) {
+        function capabilities(reset, preserveSelection = false, modelChanged = false) {
             const selected = snapshot.providers.find(p => p.id === provider.value);
-            suggestions.replaceChildren();
-            const models = new Set([...(selected?.models || []), selected?.default_model].filter(Boolean));
-            for (const modelId of models) option(suggestions, modelId, modelId);
+            const catalog = selected?.model_catalog;
+            const catalogModels = Array.isArray(catalog?.models) ? catalog.models : [];
+            const modelEntries = new Map(catalogModels.filter(item => item && typeof item.id === 'string')
+                .map(item => [item.id, item]));
+            const models = new Set(catalogModels.filter(item => item?.available !== false).map(item => item.id));
+            const configuredFallback = !!catalog?.dynamic && !catalogModels.length && Array.isArray(catalog.configured_models)
+                ? catalog.configured_models : [];
+            if (catalog?.dynamic && !catalogModels.length) {
+                for (const modelId of configuredFallback) models.add(modelId);
+            } else if (!catalog?.dynamic) {
+                for (const modelId of Array.isArray(selected?.models) ? selected.models : []) models.add(modelId);
+            }
+            if (!catalog?.dynamic && typeof selected?.default_model === 'string' && selected.default_model) {
+                models.add(selected.default_model);
+            }
+            const desiredModel = preserveSelection ? model.value : (seat.model || '');
+            const desiredEffort = preserveSelection ? reasoning.value : (seat.reasoning || '');
+            model.replaceChildren();
+            option(model, '', 'Provider default');
+            const baseLabels = [...models].map(modelId => configuredFallback.includes(modelId)
+                ? `${modelId} (configured fallback)` : (modelEntries.get(modelId)?.name || modelId));
+            const labelCounts = new Map();
+            for (const label of baseLabels) labelCounts.set(label, (labelCounts.get(label) || 0) + 1);
+            for (const modelId of models) {
+                const entry = modelEntries.get(modelId);
+                const baseLabel = configuredFallback.includes(modelId) ? `${modelId} (configured fallback)` : (entry?.name || modelId);
+                const label = labelCounts.get(baseLabel) > 1 && !configuredFallback.includes(modelId)
+                    ? `${baseLabel} (${modelId})` : baseLabel;
+                const node = option(model, modelId, entry?.available === false ? `${label} (unavailable)` : label);
+                if (entry?.available === false) node.disabled = true;
+            }
+            const catalogEntry = modelEntries.get(desiredModel);
+            const dynamicMissing = !!desiredModel && catalog?.dynamic && !catalogEntry;
+            if (!reset && desiredModel && !models.has(desiredModel)) {
+                const authoritative = catalog?.retirement_authoritative === true && catalog?.complete === true;
+                const unavailable = catalogEntry?.available === false || (dynamicMissing && authoritative);
+                option(model, desiredModel, unavailable ? `${desiredModel} (unavailable)` : `${desiredModel} (saved, unverified)`);
+            }
             reasoning.replaceChildren();
             option(reasoning, '', 'Provider default');
-            for (const effort of selected?.reasoning_efforts || []) option(reasoning, effort, effort);
-            reasoning.disabled = !(selected?.reasoning_efforts || []).length;
-            if (!reset && seat.reasoning) reasoning.value = seat.reasoning;
+            let efforts = [];
+            let reasoningKnown = false;
+            const effortModel = desiredModel || selected?.default_model || '';
+            const effortEntry = modelEntries.get(effortModel);
+            if (effortEntry?.reasoning_known) {
+                efforts = Array.isArray(effortEntry.reasoning_efforts) ? effortEntry.reasoning_efforts : [];
+                reasoningKnown = true;
+            } else if (!catalog?.dynamic) {
+                efforts = Array.isArray(selected?.reasoning_efforts) ? selected.reasoning_efforts : [];
+                reasoningKnown = efforts.length > 0;
+            }
+            for (const effort of efforts) option(reasoning, effort, effort);
+            if (!reset && !modelChanged && desiredEffort && !efforts.includes(desiredEffort)) {
+                const label = reasoningKnown ? `${desiredEffort} (unavailable for this model)` : `${desiredEffort} (saved, unverified)`;
+                option(reasoning, desiredEffort, label);
+            }
+            reasoning.disabled = !efforts.length;
+            reasoning.value = reset || (!modelChanged && !desiredEffort) || (modelChanged && !efforts.includes(desiredEffort))
+                ? '' : desiredEffort;
             const cli = adapter.value === 'cli';
             secret.disabled = cli;
             secret.closest('label').hidden = cli;
             if (reset || cli) secret.value = selected?.secret_ref || '';
             model.disabled = cli && !selected?.supports_model;
-            if (model.disabled || reset) model.value = '';
-            model.placeholder = model.disabled ? 'This client has no model setting' : (selected?.default_model || 'Provider default');
+            model.value = reset ? '' : desiredModel;
             effects.textContent = cli ? (selected?.configuration_effects || 'Choose a CLI template to see what launch changes.') : '';
+            modelActions.hidden = selected?.model_catalog?.dynamic !== true || (cli && !selected?.supports_model);
+            refreshModelsButton.disabled = !selected || modelRefreshPending.has('*') ||
+                modelRefreshPending.has(selected.id) || !!selected.model_catalog?.refreshing;
+            modelStatus.textContent = catalogStatus(selected);
+            modelSelectionNote.textContent = selected?.model_selection_note || '';
+            modelSelectionNote.hidden = !modelSelectionNote.textContent;
             summarize();
         }
-        adapter.addEventListener('change', () => { templates(); capabilities(true); });
+        adapter.addEventListener('change', () => { templates(''); capabilities(true); });
         provider.addEventListener('change', () => capabilities(true));
-        model.addEventListener('input', summarize);
+        model.addEventListener('change', () => capabilities(false, true, true));
         reasoning.addEventListener('change', summarize);
         secret.addEventListener('input', summarize);
         capabilities(false);
+        editor.refreshModelCatalog = () => { templates(provider.value); capabilities(false, true); };
         const configActions = element('div', 'actions');
         button(configActions, 'Remove from team', () => { editor.remove(); markDraft(); }, 'pf-danger-quiet');
         config.append(fields, configActions);
@@ -382,7 +526,9 @@
     async function refresh(packages = true) {
         clearTimeout(timer);
         try {
-            snapshot = await request('/api/preflight/seats');
+            const catalogVersion = modelCatalogRequestVersion;
+            const refreshed = await request('/api/preflight/seats');
+            snapshot = catalogVersion === modelCatalogRequestVersion ? refreshed : {...refreshed, providers: snapshot.providers};
             checksAvailable = true;
             if (packages) {
                 const selected = packageSelect.value;
@@ -404,9 +550,21 @@
                 }
             }
             if (!editors.children.length) addEditor();
+            for (const editor of seatEditors()) editor.refreshModelCatalog?.();
             renderRuntime();
             renderTeam();
             if (!snapshot.providers.some(p => !p.error)) message('No usable agent templates yet. Configure an API provider or CLI client in config.toml, then refresh.', true);
+            if (!modelCatalogRefreshStarted) {
+                modelCatalogRefreshStarted = true;
+                if (snapshot.providers.some(item => item.model_catalog?.dynamic)) {
+                    if (snapshot.providers.some(item => item.model_catalog?.refreshing)) scheduleModelCatalogPoll();
+                    else void refreshModelCatalog();
+                }
+            } else if (snapshot.providers.some(item => item.model_catalog?.refreshing)) {
+                scheduleModelCatalogPoll();
+            } else {
+                modelCatalogPolls = 0;
+            }
             if (pollsLeft-- > 0) timer = setTimeout(() => refresh(false), 1000);
         } catch (error) {
             checksAvailable = false;

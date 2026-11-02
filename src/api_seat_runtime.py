@@ -89,15 +89,24 @@ class SeatManager:
             effective['wrapper_protocol'] = manifest
         return effective
 
-    def _effective(self, seat):
-        original = self.store.providers[seat['provider']]
+    def _effective(self, seat, retained_provider=None):
+        if retained_provider is None:
+            original = self.store.catalog.provider_for_seat(seat, preserve_unknown=True)
+        else:
+            original = deepcopy(self.store.providers[seat['provider']])
+            # Operational comparison uses the attempt's immutable capability evidence;
+            # current commands, operator settings and source manifest are still rebuilt.
+            for field in ('_catalog_dynamic', '_catalog_model'):
+                original.pop(field, None)
+                if field in retained_provider:
+                    original[field] = deepcopy(retained_provider[field])
         if seat['adapter'] == 'cli':
             from cli_seats import config_resource, validate_cli_seat
             validate_cli_seat(seat, original)
             client = {k: deepcopy(v) for k, v in original.items() if k in
                       ('command', 'cwd', 'cli_args', 'cli_model_args', 'default_model', 'cli_reasoning_args',
                        'cli_version_args', 'reasoning_efforts', 'strip_env', 'inject_delay', 'enter_backend',
-                       'cli_fresh_context_args', 'cli_fresh_context_verified')
+                       'cli_fresh_context_args', 'cli_fresh_context_verified', '_catalog_dynamic', '_catalog_model')
                       or k.startswith('mcp_')}
             client['cwd'] = str((self.root / client.get('cwd', '.')).resolve())
             if not Path(client['cwd']).is_dir():
@@ -114,13 +123,18 @@ class SeatManager:
                     'mcp': deepcopy(self.config.get('mcp', {})),
                     'config_resource': config_resource(client, client['cwd'])})
         provider = {k: deepcopy(original[k]) for k in ('base_url', 'reasoning_efforts', 'temperature',
-                    'api_key_env', 'system_prompt', 'context_messages') if k in original}
+                    'api_key_env', 'system_prompt', 'context_messages', '_catalog_dynamic', '_catalog_model') if k in original}
         server = deepcopy(self.config.get('server', {}))
         server['data_dir'] = str(self.store.path.parent.resolve())
         if server.get('host', '127.0.0.1') not in ('127.0.0.1', 'localhost'):
             raise SeatError('API wrapper currently requires a server listening on IPv4 loopback.')
         return self._with_wrapper_protocol({'seat': seat, 'provider': provider, 'server': server,
                 'mcp': deepcopy(self.config.get('mcp', {}))})
+
+    def _effective_for_running(self, seat, attempt):
+        if attempt and attempt.get('seat') == seat:
+            return self._effective(seat, retained_provider=attempt['effective']['provider'])
+        return self._effective(seat)
 
     def save(self, package):
         package = validate_package(package, self.store.providers)
@@ -151,8 +165,10 @@ class SeatManager:
             if self.closed.is_set():
                 raise SeatError('Server is shutting down; no new seats can launch.')
             seat = self.store.seat(package_id, seat_id)
-            effective = self._effective(seat)
             key = package_id + '/' + seat_id
+            previous = self.attempts.get(key)
+            running = previous and previous.get('process') and previous['process'].poll() is None
+            effective = self._effective_for_running(seat, previous) if running and not restart else self._effective(seat)
             from runtime_adoption import has_unverified_launch
             if has_unverified_launch(self, key):
                 # Explicit Retry refreshes evidence; the launch guard below still

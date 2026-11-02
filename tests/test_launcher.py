@@ -62,6 +62,31 @@ class LauncherTests(unittest.TestCase):
             with self.assertRaisesRegex(self.launcher.LaunchError, '17.*server.log'):
                 self.launcher.ensure_server(self.root, self.cfg, timeout=1)
 
+    def test_owned_startup_waits_for_http_after_listener_appears(self):
+        process = Mock()
+        process.poll.return_value = None
+        with patch.object(self.launcher, 'probe_health', side_effect=['absent', 'pending', 'matching']), \
+             patch.object(self.launcher, 'ensure_environment', return_value=Path(sys.executable)), \
+             patch.object(self.launcher, 'spawn_server', return_value=process):
+            self.assertEqual(self.launcher.ensure_server(self.root, self.cfg, timeout=1),
+                             'http://127.0.0.1:18300/preflight')
+        process.terminate.assert_not_called()
+
+    def test_existing_pending_listener_is_a_conflict(self):
+        with patch.object(self.launcher, 'probe_health', return_value='pending'), \
+             patch.object(self.launcher, 'spawn_server') as spawn:
+            with self.assertRaisesRegex(self.launcher.LaunchError, '18300.*occupied'):
+                self.launcher.ensure_server(self.root, self.cfg, timeout=1)
+        spawn.assert_not_called()
+
+    def test_tcp_listener_without_http_response_is_pending(self):
+        import urllib.error
+        opener = Mock()
+        opener.open.side_effect = urllib.error.URLError(ConnectionRefusedError())
+        with patch.object(self.launcher.urllib.request, 'build_opener', return_value=opener), \
+             patch.object(self.launcher.socket, 'create_connection'):
+            self.assertEqual(self.launcher.probe_health('http://127.0.0.1:18300', 'id'), 'pending')
+
     def test_timeout_stops_only_owned_child(self):
         process = Mock()
         process.poll.return_value = None

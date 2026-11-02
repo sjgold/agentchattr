@@ -522,6 +522,12 @@ def _build_provider_launch(
         inject_cfg, instance_name, data_dir, proxy_url,
         token=token, mcp_cfg=mcp_cfg, project_dir=project_dir,
     )
+    if (inject_cfg.get('mcp_inject') == 'proxy_flag' and proxy_url
+            and (agent == 'codex' or _provider_from_command(agent_cfg.get('command')) == 'codex')):
+        # The operator launched this authenticated local chat adapter. Codex's
+        # unattended policy otherwise rejects even chat_read/chat_send. Scope
+        # approval to this injected server; keep filesystem approval unchanged.
+        mcp_args += ['-c', f'mcp_servers.{SERVER_NAME}.default_tools_approval_mode="approve"']
 
     launch_args = [*mcp_args, *extra_args]
     launch_env = dict(env)
@@ -617,7 +623,7 @@ def _report_rule_sync(server_port: int, agent_name: str, epoch: int, token: str 
 def _queue_watcher(get_identity_fn, inject_fn, *, is_multi_instance: bool = False, trigger_flag=None,
                    server_port: int = 8300, agent_name: str = "", get_token_fn=None,
                    refresh_interval: int = 10, stop_event=None,
-                   artifact_runtime=None, artifact_manifest=None, artifact_status=None):
+                   artifact_runtime=None, artifact_manifest=None, artifact_status=None, client_exited=None):
     """Claim one immutable dispatch; silence never releases terminal ownership."""
     from queue_client import QueueClient, CliConsumer
     client = QueueClient(server_port, get_token_fn or (lambda: ''))
@@ -690,7 +696,10 @@ def _queue_watcher(get_identity_fn, inject_fn, *, is_multi_instance: bool = Fals
                 time.sleep(1)
     finally:
         try:
-            consumer.close()
+            if client_exited is None:
+                consumer.close()
+            else:
+                consumer.close(local_ended=client_exited())
         except Exception:
             print('  Queue ownership remains held after watcher exit; no automatic replay.')
 
@@ -983,6 +992,8 @@ def main():
                     continue
                 try:
                     active = _activity_checker()
+                    if active is None:
+                        continue  # Unknown screen state lets the active lease expire.
                     now = time.time()
                     # Send on state change, periodically while active (refresh lease),
                     # or periodically while idle (keep presence alive)

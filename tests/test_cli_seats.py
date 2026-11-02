@@ -37,6 +37,38 @@ class CliSeatTests(unittest.TestCase):
         value.update(model=None, reasoning=None)
         self.assertEqual(build_cli_args(value, self.template), [])
 
+    def test_verified_claude_and_codex_efforts_reach_cli_args(self):
+        """Effort values were checked against installed help/model metadata and official docs."""
+        from cli_seats import build_cli_args
+        claude_efforts = ['low', 'medium', 'high', 'xhigh', 'max']
+        codex_efforts = [*claude_efforts, 'ultra']
+        base = {**self.template, 'cli_model_args': ['--model', '{model}']}
+        templates = {
+            'claude': {**base, 'models': ['claude-opus-5-5', 'claude-haiku-5-5', 'claude-sonnet-5-5'],
+                       'cli_reasoning_args': ['--effort', '{reasoning}'],
+                       'reasoning_efforts': claude_efforts},
+            'codex': {**base, 'models': ['gpt-6.1-sol'],
+                      'cli_reasoning_args': ['-c', 'model_reasoning_effort="{reasoning}"'],
+                      'reasoning_efforts': codex_efforts},
+        }
+        claude = {'id': 'claude', 'name': 'Claude', 'adapter': 'cli', 'provider': 'claude',
+                  'model': 'claude-sonnet-5-5', 'reasoning': 'high',
+                  'launch_profile': 'standard', 'secret_ref': ''}
+        codex = {'id': 'codex', 'name': 'Codex', 'adapter': 'cli', 'provider': 'codex',
+                 'model': 'gpt-6.1-sol', 'reasoning': 'ultra',
+                 'launch_profile': 'standard', 'secret_ref': ''}
+
+        validate_seat(claude, templates)
+        validate_seat(codex, templates)
+        self.assertEqual(build_cli_args(claude, templates['claude']),
+                         ['--model', 'claude-sonnet-5-5', '--effort', 'high'])
+        self.assertEqual(build_cli_args(codex, templates['codex']),
+                         ['--model', 'gpt-6.1-sol', '-c', 'model_reasoning_effort="ultra"'])
+        with tempfile.TemporaryDirectory() as directory:
+            described = {item['id']: item for item in SeatStore(directory, templates).describe_providers()}
+        self.assertEqual(described['claude']['reasoning_efforts'], claude_efforts)
+        self.assertEqual(described['codex']['reasoning_efforts'], codex_efforts)
+
     def test_unsupported_setting_fails_instead_of_being_ignored(self):
         for removed in ('cli_model_args', 'cli_reasoning_args', 'reasoning_efforts'):
             cfg = {k: v for k, v in self.template.items() if k != removed}

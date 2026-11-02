@@ -109,7 +109,7 @@ def package_status(manager, package_id):
                 elif not attempt or attempt['id'] != selection['attempts'].get(seat_id):
                     view = {**view, 'state': 'action_required', 'error': 'This seat has a different launch attempt. Launch the team again to check it.'}
                 else:
-                    effective = manager._effective(seat)
+                    effective = manager._effective_for_running(seat, attempt)
                     fingerprint = hashlib.sha256(json.dumps(effective, sort_keys=True).encode()).hexdigest()
                     if attempt['fingerprint'] != fingerprint:
                         view = {**view, 'state': 'action_required', 'error': 'Running settings changed. Choose explicit restart for this seat.'}

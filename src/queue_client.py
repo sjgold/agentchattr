@@ -161,6 +161,15 @@ class CliConsumer:
             self.client.uncertain(dispatch_id)
             raise
 
-    def close(self):
+    def close(self, *, local_ended=False):
         if self.last_injected_dispatch_id:
+            if local_ended:
+                record = self.client.inspect(self.last_injected_dispatch_id)
+                if record['state'] in ('released', 'failed', 'cancelled', 'settled_recovered'):
+                    return
+                envelope = record['envelope']
+                if record['state'] != 'cancelling' and 'run_id' not in envelope and 'purpose' not in envelope:
+                    self.client.release(self.last_injected_dispatch_id, failed=True,
+                                        error_category='local_delivery_failure')
+                    return
             self.client.uncertain(self.last_injected_dispatch_id)

@@ -83,8 +83,13 @@ def validate_seat(seat, providers):
                               or any(ord(c) < 32 for c in model)):
         raise SeatError('Model must be a nonempty model ID or null for Provider default.')
     reasoning = seat['reasoning']
-    if reasoning is not None and (not isinstance(reasoning, str) or reasoning not in provider.get('reasoning_efforts', [])):
+    if reasoning is not None and (not isinstance(reasoning, str) or not reasoning or len(reasoning) > 40
+            or any(ord(c) < 32 for c in reasoning)
+            or (not provider.get('_catalog_dynamic') and reasoning not in provider.get('reasoning_efforts', []))):
         raise SeatError('This provider template does not declare support for the selected reasoning effort.')
+    if provider.get('_catalog_dynamic'):
+        from model_catalog import validate_frozen_effort
+        validate_frozen_effort(seat, provider)
     ref = seat['secret_ref']
     if not isinstance(ref, str) or (ref and not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]{0,127}', ref)):
         raise SeatError('Secret reference must be an environment-variable name or empty for no authentication.')
@@ -137,6 +142,11 @@ class SeatStore:
     def __init__(self, data_dir, providers):
         self.path = Path(data_dir) / 'api_seats.json'
         self.providers = deepcopy(providers)
+        from model_catalog import ModelCatalog, discovery_kind
+        for provider in self.providers.values():
+            if discovery_kind(provider):
+                provider['_catalog_dynamic'] = True
+        self.catalog = ModelCatalog(data_dir, self.providers)
 
     def list(self):
         if not self.path.exists():
@@ -158,6 +168,12 @@ class SeatStore:
         package = validate_package(package, self.providers)
         with startup_lock(self.path.with_suffix('.lock'), time.monotonic() + 10):
             packages = self.list()
+            previous = next((p for p in packages if p['id'] == package['id']), {'seats': []})
+            fields = ('id', 'adapter', 'provider', 'model', 'reasoning', 'secret_ref', 'launch_profile')
+            for seat in package['seats']:
+                unchanged = any(all(old.get(k) == seat.get(k) for k in fields) for old in previous['seats'])
+                if not unchanged:
+                    self.catalog.provider_for_seat(seat)
             updated = [p for p in packages if p['id'] != package['id']] + [package]
             if self.path.exists():
                 shutil.copy2(self.path, self.path.with_name('api_seats.' + uuid.uuid4().hex + '.bak'))
@@ -213,6 +229,14 @@ class SeatStore:
                                'secret_ref': cfg.get('api_key_env', '')})
             except (SeatError, ValueError):
                 result.append({'id': name, 'name': name, 'error': 'Provider template requires configuration repair.'})
+        for item in result:
+            catalog = self.catalog.snapshot(item['id'])
+            item['model_catalog'] = catalog
+            if catalog['dynamic']:
+                item['models'] = [model['id'] for model in catalog['models']]
+                item['reasoning_efforts'] = []
+                if item.get('adapter') == 'cli' and not item.get('supports_model'):
+                    item['model_selection_note'] = 'This preset uses the native client default. Choose a model-enabled preset to set a model.'
         return result
 
 

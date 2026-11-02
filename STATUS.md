@@ -1,34 +1,34 @@
-# Agentchattr release candidate
+# Agentchattr status
 
-Updated: 2026-11-01. Owner: Codex recovery lead.
+Updated: 2026-11-01. Recovery lead: Codex. Implementation delegated to Sol and Luna; independent reviews by Claude Sonnet 5.5.
 
-Canonical directory: `C:\Users\SJG\Documents\CodePlayground\agentchattr`.
-Entry point: `Start Agentchattr.bat`. Python application code lives in `src/`.
-Local main contains reviewed RC2 `05a16095` and source-layout commit `567b9a6`.
-Canonical Pre-flight is running at http://127.0.0.1:8300/preflight.
-Final verification and independent review passed. Canonical main is published to GitHub.
-All nine external worktrees and their nested side-builds are retired. Eleven obsolete side-build branch refs were removed. Their recoverable private archives are in data/recovery-evidence.
-One empty Orca halibut directory remains locked by another process; it contains no application and is no longer a Git worktree.
+## Open the application
 
-## Verification
+Canonical directory: `C:\Users\SJG\Documents\CodePlayground\agentchattr`, branch `main`.
+Run **Start Agentchattr.bat**, or open http://127.0.0.1:8300/preflight.
+Python lives in `src/`. Only the canonical Git worktree remains. External side-builds were retired with private recovery archives; one empty Orca directory remains process-locked.
 
-- Before and after relocation: real provider-free startup, two launcher reuses, authentication enforcement and owned server cleanup passed.
-- Configuration overrides: 17 passed. Runtime source manifest closure: 2 passed.
-- Launcher tests: all 16 passed with loopback access. The earlier sandbox run failed its loopback health check.
-- Extracted release boots with SHA256-identical Python sources and no repository PYTHONPATH fallback.
-- Real local fake API and native fake CLI lifecycle checks passed: distinct models/identities, delivery, restart, retry, targeted Stop and CLI exit code 23 surfaced as failed.
-- Claude Sonnet 5.5 independently cleared production layout and the frozen verification changes by source review. [Initial review](docs/testing/2026-11-01-release-layout-review.md), [follow-up](docs/testing/2026-11-01-release-layout-final-review.md).
-- Final full pass: 2331 tests, 13 skips, no failures, 477.237 seconds. Skips retain the nine deferred transcript checks and four existing platform/optional cases. First pass had eight stale path-fixture failures; the corrected affected 48-test selection passed before the final full run.
+## Proven this session
 
-## Release blockers
+- One normal-UI message, ID **32**, produced exactly six authenticated replies: DeepSeek **33**, Claude **34**, Muse **35**, Codex **36**, GLM **38**, Antigravity **39**.
+- All six dispatches released; all seats returned idle/available; zero queued or active work. Two earlier Codex failures remain separate historical records.
+- Fixed mixed browser-asset generations, console delivery checks, CLI activity reporting, local Stop independence, Codex TERM/connection approval, and ordinary exited-worker dispatch settlement.
+- Dynamic model probes populate real dropdowns. Live catalogs: Claude 17 alias/resolved entries, Codex 8, Antigravity 6, GLM 11, Muse 9, DeepSeek 2.
+- Live UI: Claude/Codex efforts enabled; selecting Codex Luna removes ultra; refreshing preserves an unsaved effort selection. Saved six-seat models and default efforts stayed unchanged.
+- Catalog refresh does not change an unchanged running team's launch settings. The final controlled reload launched six fresh workers successfully; all remain ready.
+- Final combined focused selection: **135 tests passed** in 7.838s. Earlier runtime selection: 64 passed; catalog backend: 96 passed; catalog UI: 37 passed. Different-family source reviews and corrective rechecks passed. No repeated full-suite reassurance run.
 
-- Sends advance read cursors and limited unread reads discard oldest messages. Both confirmed losses remain for the separately bounded repair assignment.
-- The canonical saved team contains exactly the six requested seats, all included. Three CLI executables and three API credential references resolve. Browser and screenshot checks confirm the rendered team. No real chat-provider seat has been launched during recovery.
-- Claude, Codex, Antigravity, GLM, Muse and DeepSeek must demonstrate a real review, document/task visibility, Stop and corrected restart in an agreed live window.
-- Stakeholder acceptance is pending.
+## Limits still open
+
+- The six-provider send/reply check is proven; full document-review, Stop/corrected-restart stakeholder acceptance is not.
+- Two earlier unread-cursor defects remain open: sends advance read cursors; limited unread reads take the newest slice. Do not claim general message-loss recovery is complete.
+- Browser local-storage channel names still share the localhost origin with the older installation. Back to general unblocked the stale radar-review selection; permanent storage isolation remains pending.
+- The inherited operator name "must not change" still needs cleanup. The working Desktop installation and history remain unchanged.
+- Native catalogs are picker lists, not exhaustive retirement authority. Missing effort/capability metadata remains unknown; Muse/GLM catalog membership alone does not prove chat compatibility.
+- Styling warnings were audited and left unchanged, without ignores, at Seth's direction.
 
 ## Next
 
-Next owner: Seth, RC2 end-to-end acceptance. Open Start Agentchattr.bat, launch the saved Six-agent review team, and assess a small review plus document/task visibility, Stop and corrected restart. Record observed failures before expanding scope. The Desktop installation and its history remain preserved. This candidate is not yet stakeholder-accepted; the known unread defects above remain open.
+Seth reviews the repaired basic chat and dynamic Pre-flight controls. Recovery lead handles observed defects only; no automatic backlog continuation. Model/effort edits apply on the next explicit seat restart. Preserve current history and failed-attempt evidence.
 
-Evidence: [RC2 handoff](docs/history/STATUS-RC2-2026-10-27.md), [earlier history](docs/history/STATUS-2026-10-26.md), [specification](docs/agentchattr-fork-spec.md), [cutover plan](docs/superpowers/plans/2026-11-01-canonical-cutover.md).
+Evidence: [six-seat proof](docs/testing/2026-11-01-six-seat-recovery.md), [catalog review](docs/testing/2026-11-01-model-catalog-review.md), [catalog plan](docs/plans/2026-11-01-dynamic-model-catalog.md), [style audit](docs/testing/2026-11-01-ui-warning-audit.md), [cleanup](docs/testing/2026-11-01-cleanup-receipt.md).

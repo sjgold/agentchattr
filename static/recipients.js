@@ -56,7 +56,7 @@
             line(body, 'Addressed agents', 'recipient-heading');
             const label = {explicit: 'Explicit addresses', selected: 'Selected recipients', none: 'Shared note'}[data.mode];
             line(body, label, 'recipient-source');
-            line(body, data.recipients.length ? data.recipients.map(r => '@' + r.name).join(', ')
+            line(body, data.recipients.length ? data.recipients.map(r => '@' + agentDisplayName(r.name)).join(', ')
                 : 'No agents addressed. This stays in the shared conversation.', 'recipient-audience');
             if (data.mode === 'explicit' && request.selected_recipients.length)
                 line(body, 'Explicit @mentions replace the selected buttons for this message.');
@@ -82,7 +82,7 @@
             }
             // Text edits with the same audience do not repeat live announcements.
             const comparison = JSON.stringify({label, recipients: data.recipients, warnings: data.warnings, ignored: data.ignored, waiting: data.waiting});
-            announce(label + '. ' + (data.recipients.length ? data.recipients.map(r => '@' + r.name).join(', ') : 'No agents addressed.')
+            announce(label + '. ' + (data.recipients.length ? data.recipients.map(r => '@' + agentDisplayName(r.name)).join(', ') : 'No agents addressed.')
                 + (data.warnings.length ? ' Address warnings: ' + data.warnings.map(w => w.kind + ' @' + w.token).join(', ') + '.' : '')
                 + (data.ignored.length ? ' Ignored addresses: ' + data.ignored.map(i => '@' + i.token + ' in ' + i.reason).join(', ') + '.' : '')
                 + (data.waiting.length ? ' Waits for an earlier review turn.' : ''), comparison);
@@ -131,7 +131,7 @@
         const row = target.querySelector('.recipient-receipt') || document.createElement('p');
         row.className = 'recipient-receipt';
         row.textContent = 'Resolved audience: ' + (receipt.recipients.length
-            ? receipt.recipients.map(r => '@' + r.name).join(', ') : 'No agents addressed. Shared conversation.');
+            ? receipt.recipients.map(r => '@' + agentDisplayName(r.name)).join(', ') : 'No agents addressed. Shared conversation.');
         const actions = target.querySelector('.msg-actions');
         target.insertBefore(row, actions?.parentNode === target ? actions : null);
     }

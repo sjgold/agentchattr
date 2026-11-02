@@ -307,7 +307,10 @@ def _install_security_middleware(token: str, cfg: dict):
             # The index page injects the token client-side via same-origin script.
             # Uploads use random filenames and have path-traversal protection.
             if path in ("/", "/preflight") or path.startswith(("/static/", "/uploads/", "/api/roles")):
-                return await call_next(request)
+                response = await call_next(request)
+                if path.startswith('/static/'):
+                    response.headers['Cache-Control'] = 'no-store'
+                return response
 
             # Agent registration/heartbeat: loopback only (no remote agent minting).
             if path.startswith(("/api/register", "/api/deregister/", "/api/heartbeat/")):
@@ -413,6 +416,24 @@ async def _seat_body(request):
     if not isinstance(body, dict):
         raise SeatError('Request must be a JSON object.')
     return body
+
+
+@app.post('/api/preflight/models/refresh')
+async def refresh_seat_models(request: Request):
+    from api_seats import SeatError
+    from model_catalog import CatalogError
+    if api_seat_store is None:
+        return JSONResponse({'error': 'Seat storage unavailable.'}, status_code=503)
+    try:
+        body = await _seat_body(request)
+        if set(body) - {'provider'} or ('provider' in body and not isinstance(body['provider'], str)):
+            raise SeatError('Model refresh accepts only an optional provider ID.')
+        api_seat_store.catalog.refresh(body.get('provider'))
+        return JSONResponse({'providers': api_seat_store.describe_providers()}, status_code=202,
+                            headers={'Cache-Control': 'no-store'})
+    except (SeatError, CatalogError) as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400,
+                            headers={'Cache-Control': 'no-store'})
 
 
 @app.post('/api/preflight/packages')

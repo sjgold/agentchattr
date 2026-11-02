@@ -35,17 +35,31 @@ def run(snapshot_path):
     data = Path(server['data_dir'])
     proxy = None
     outcome = 1
+    activity_checker = None
+    child_pid = [None]
+    trigger_flag = [False]
+    client_ended = threading.Event()
+    watcher_stop = threading.Event()
+    watchers = []
 
     def request(path):
         body = {'runtime_ownership': heartbeat_payload(birth, observed_boot[0])} if path.startswith('/api/heartbeat/') else {}
+        if path.startswith('/api/heartbeat/') and activity_checker is not None:
+            try:
+                active = activity_checker()
+                if active is not None:
+                    body['active'] = bool(active)
+            except OSError:
+                pass  # Unknown activity must not interrupt the ownership heartbeat.
         req = urllib.request.Request(f'http://127.0.0.1:{port}' + path, data=json.dumps(body).encode(), method='POST',
                                      headers=_auth_headers(identity['token'], include_json=True))
         with urllib.request.urlopen(req, timeout=2) as response:
             return json.loads(response.read())
 
-    def heartbeat():
-        last_success = time.monotonic()
-        while not stop.wait(0.5):
+    def watch_local_stop():
+        # Stop must work while an in-flight heartbeat waits on the server's
+        # seat-manager lock. Its local control path cannot share that request.
+        while not stop.wait(0.1):
             try:
                 control = json.loads(snapshot_path.with_name('stop.json').read_text(encoding='utf-8'))
                 if control.get('attempt') == snapshot['attempt']:
@@ -54,6 +68,10 @@ def run(snapshot_path):
                     break
             except (OSError, ValueError, AttributeError):
                 pass
+
+    def heartbeat():
+        last_success = time.monotonic()
+        while not stop.wait(0.5):
             try:
                 response = request('/api/heartbeat/' + identity['name'])
                 proof = response.get('runtime_ownership', {})
@@ -100,13 +118,17 @@ def run(snapshot_path):
         def get_identity():
             name = identity['name']
             return name, data / (name + '_queue.jsonl')
-        threading.Thread(target=_queue_watcher, args=(get_identity, inject),
+        watcher = threading.Thread(target=_queue_watcher, args=(get_identity, inject),
                          kwargs={'is_multi_instance': True, 'server_port': port, 'agent_name': base,
-                                 'get_token_fn': lambda: identity['token'], 'stop_event': stop,
+                                 'trigger_flag': trigger_flag,
+                                 'client_exited': client_ended.is_set,
+                                 'get_token_fn': lambda: identity['token'], 'stop_event': watcher_stop,
                                  'artifact_runtime': snapshot_path.parent,
                                  'artifact_manifest': birth.get('wrapper_protocol'),
                                  'artifact_status': artifact_status},
-                         daemon=True).start()
+                         daemon=True)
+        watchers.append(watcher)
+        watcher.start()
 
     try:
         with ExitStack() as stack:
@@ -144,25 +166,33 @@ def run(snapshot_path):
                 proxy_url = proxy.url + parsed.path
             strip = {'CLAUDECODE'} | set(client.get('strip_env', []))
             environment = strip_environment(os.environ, strip)
+            if sys.platform == 'win32' and environment.get('TERM', '').lower() == 'dumb':
+                # The worker owns a native console. An inherited automation TERM
+                # otherwise leaves Codex waiting for an invisible startup answer.
+                environment['TERM'] = 'xterm-256color'
             arguments, environment, inject_env, _ = _build_provider_launch(
                 seat['provider'], client, identity['name'], data, proxy_url,
                 build_cli_args(seat, client), environment, token=identity['token'],
                 mcp_cfg=snapshot.get('mcp', {}), project_dir=Path(client['cwd']))
             version = probe_version(client['command'], client.get('cli_version_args'))
             receipt.update(name=identity['name'], version=version)
-            threading.Thread(target=heartbeat, daemon=True).start()
             kwargs = dict(command=client['command'], extra_args=arguments, cwd=client['cwd'],
                           env=environment, queue_file=data / (identity['name'] + '_queue.jsonl'),
                           agent=seat['provider'], no_restart=True, start_watcher=start_watcher,
                           strip_env=list(strip), inject_env=inject_env, stop_event=stop,
                           inject_delay=client.get('inject_delay', 0.3))
             if sys.platform == 'win32':
-                from wrapper_windows import run_agent
+                from wrapper_windows import run_agent, get_activity_checker
+                activity_checker = get_activity_checker(child_pid, agent_name=identity['name'], trigger_flag=trigger_flag)
+                kwargs['pid_holder'] = child_pid
                 kwargs['enter_backend'] = client.get('enter_backend', 'console_input')
             else:
                 from wrapper_unix import run_agent
                 kwargs.update(session_name='agentchattr-' + base, managed=True)
+            threading.Thread(target=watch_local_stop, daemon=True).start()
+            threading.Thread(target=heartbeat, daemon=True).start()
             outcome = run_agent(**kwargs)
+            client_ended.set()
             requested_stop = stop_reason['requested']
             stop.set()
             receipt.update(state='stopped' if requested_stop or outcome == 0 else 'failed',
@@ -173,6 +203,9 @@ def run(snapshot_path):
                        error='CLI launch could not complete. Check executable, client settings, shared-file ownership and local server, then retry.')
     finally:
         stop.set()
+        watcher_stop.set()
+        for watcher in watchers:
+            watcher.join(timeout=12)
         if identity.get('token'):
             try:
                 request('/api/deregister/' + identity['name'])

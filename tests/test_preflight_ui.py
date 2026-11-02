@@ -18,7 +18,7 @@ let timerID=0, responder;
 const store=new Map();
 class Element {
  constructor(tag){this.tagName=tag.toUpperCase();this.children=[];this.dataset={};this.style={};this.attrs={};this.hidden=false;this.disabled=false;
-  this.value='';this.checked=false;this.open=false;this._text='';this.listeners={};this.className='';this.parentElement=null;
+  this._value='';this._selected=false;this.checked=false;this.open=false;this._text='';this.listeners={};this.className='';this.parentElement=null;
   this.classList={contains:n=>this.className.split(/\s+/).includes(n),add:(...n)=>{this.className=(this.className+' '+n.join(' ')).trim()},
    remove:(...n)=>{this.className=this.className.split(/\s+/).filter(c=>c&&!n.includes(c)).join(' ')},
    toggle:(n,f)=>{const has=this.classList.contains(n),want=f===undefined?!has:!!f;if(want&&!has)this.classList.add(n);if(!want&&has)this.classList.remove(n);return want}};}
@@ -26,7 +26,11 @@ class Element {
  set textContent(v){for(const c of this.children)c.parentElement=null;this.children=[];this._text=String(v)}
  get textContent(){return this._text+this.children.map(c=>c.textContent).join('')}
  set innerHTML(v){throw Error('pre-flight UI must use textContent/DOM nodes, never innerHTML')}
- append(...items){for(const c of items){this.children.push(c);c.parentElement=this}}
+ get value(){if(this.tagName==='SELECT')return this.querySelectorAll('option').find(option=>option._selected)?.value||'';return this._value}
+ set value(value){const next=String(value);if(this.tagName==='SELECT'){let matched=false;for(const option of this.querySelectorAll('option')){
+   option._selected=!matched&&option.value===next;if(option._selected)matched=true}}else this._value=next}
+ append(...items){for(const c of items){this.children.push(c);c.parentElement=this;const select=this.tagName==='SELECT'?this:this.closest('select');
+   if(select&&!select.querySelectorAll('option').some(option=>option._selected)){const first=select.querySelector('option');if(first)first._selected=true}}}
  appendChild(c){this.append(c);return c}
  replaceChildren(...items){for(const c of this.children)c.parentElement=null;this.children=[];this._text='';this.append(...items)}
  remove(){if(this.parentElement)this.parentElement.children=this.parentElement.children.filter(c=>c!==this);this.parentElement=null;
@@ -86,6 +90,7 @@ function resetFixture(){
  responder=async call=>{
   if(call.url==='/api/preflight')return response({checked_at:'2026-10-27T00:00:00Z',agents:[]});
   if(call.url==='/api/preflight/seats')return response(seatsSnapshot());
+  if(call.url==='/api/preflight/models/refresh')return response({providers:seatsSnapshot().providers});
   if(call.url==='/api/preflight/packages')return response({id:'team'});
   if(call.url==='/api/preflight/packages/team/launch'){launches.team=launchReply(call.body);return response(launches.team)}
   if(call.url==='/api/preflight/packages/team/status'){launches.team=statusReply();return response(launches.team)}
@@ -343,6 +348,403 @@ assert(seatCard('alpha').querySelector('.pf-seat-summary').textContent.includes(
 assert(seatCard('beta').querySelector('.pf-seat-summary').textContent.includes('provider default model'));
 """)
 
+    def test_model_dropdown_options_save_the_selected_model_id(self):
+        self.run_js(r"""
+const base=responder;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:['m1','m2'],default_model:'m1'};
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?{...seat,model:'m1'}:seat)}];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/packages'){
+  TEAM.seats[0].model=call.body.seats[0].model;
+  return response({id:'team'});
+ }
+ return base(call);
+};
+launchReply=()=>readyState('s1');
+await boot();
+const model=seatCard('alpha').querySelectorAll('select')[2];
+assert.strictEqual(model.tagName,'SELECT');
+assert.deepStrictEqual(model.children.map(option=>option.value),['','m1','m2']);
+const configurationLabel=seatCard('alpha').querySelectorAll('label').find(label=>label.textContent.includes('Client configuration'));
+assert(configurationLabel&&configurationLabel.textContent.includes('Choose the launch client/provider preset'));
+model.value='m2';
+await model.dispatch('change');
+await goButton().click();
+await until(()=>assigned.length>0,'redirect');
+const saved=posts().find(call=>call.url==='/api/preflight/packages');
+assert.strictEqual(saved.body.seats[0].model,'m2','the selected model ID must be saved unchanged');
+""")
+
+    def test_dynamic_catalog_uses_friendly_names_and_model_specific_efforts(self):
+        self.run_js(r"""
+const base=responder;
+const catalog={dynamic:true,source:'Codex local model catalog',checked_at:'2026-11-01T12:00:00Z',
+ catalog_fetched_at:'2026-11-01T12:00:00Z',complete:true,authoritative:true,refreshing:false,error:null,
+ models:[
+  {id:'gpt-6.1-sol',name:'GPT-6.1-Sol',available:true,reasoning_known:true,
+   reasoning_efforts:['low','medium','high','xhigh','max','ultra']},
+  {id:'gpt-6-luna',name:'GPT-6-Luna',available:true,reasoning_known:true,
+   reasoning_efforts:['low','medium','high','xhigh','max']}
+ ]};
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:['stale-config-only'],reasoning_efforts:['ultra'],model_catalog:catalog};
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?
+   {...seat,model:'gpt-6.1-sol',reasoning:'ultra'}:seat)}];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh')return response({providers:[{...seatsSnapshot().providers[0],
+  adapter:'openai-compatible',name:'Prov One',models:['stale-config-only'],model_catalog:catalog}]});
+ return base(call);
+};
+await boot();
+await until(()=>posts().some(call=>call.url==='/api/preflight/models/refresh'),'automatic catalog refresh');
+const alpha=seatCard('alpha');
+const model=alpha.querySelectorAll('select')[2], effort=alpha.querySelectorAll('select')[3];
+assert.deepStrictEqual(model.children.map(option=>option.value),['','gpt-6.1-sol','gpt-6-luna'],
+ 'a dynamic catalog must replace, not union with, stale configured model IDs');
+assert.strictEqual(model.children[1].textContent,'GPT-6.1-Sol');
+assert.strictEqual(model.value,'gpt-6.1-sol','catalog labels must not replace saved slug values');
+assert.deepStrictEqual(effort.children.map(option=>option.value),['','low','medium','high','xhigh','max','ultra']);
+model.value='gpt-6-luna';
+await model.dispatch('change');
+assert.deepStrictEqual(effort.children.map(option=>option.value),['','low','medium','high','xhigh','max']);
+assert.strictEqual(effort.value,'','ultra must not carry to a model that does not declare it');
+""")
+
+    def test_duplicate_catalog_display_names_keep_ids_distinguishable(self):
+        self.run_js(r"""
+const base=responder;
+const catalog={dynamic:true,source:'claude-native-initialize',complete:true,authoritative:true,
+ refreshing:false,error:null,models:[
+  {id:'sonnet',name:'Current',available:true,reasoning_known:true,reasoning_efforts:['low','high']},
+  {id:'model-current',name:'Current',available:true,reasoning_known:true,reasoning_efforts:['low','high']},
+  {id:'small',name:'small',available:true,reasoning_known:true,reasoning_efforts:[]}
+ ]};
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:[],model_catalog:catalog};
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?{...seat,model:'model-current'}:seat)}];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh')return response({providers:[{...seatsSnapshot().providers[0],
+  adapter:'openai-compatible',name:'Claude',models:[],model_catalog:catalog}]});
+ return base(call);
+};
+await boot();
+const model=seatCard('alpha').querySelectorAll('select')[2];
+assert.deepStrictEqual(model.children.map(option=>option.value),['','sonnet','model-current','small']);
+assert.strictEqual(model.children[1].textContent,'Current (sonnet)');
+assert.strictEqual(model.children[2].textContent,'Current (model-current)');
+assert.strictEqual(model.value,'model-current','display labels must not rewrite saved catalog IDs');
+""")
+
+    def test_catalog_rerender_preserves_saved_and_in_progress_reasoning_effort(self):
+        self.run_js(r"""
+const base=responder;
+const catalog={dynamic:true,source:'Codex local model catalog',checked_at:'2026-11-01T12:00:00Z',
+ catalog_fetched_at:'2026-11-01T12:00:00Z',complete:true,authoritative:true,refreshing:false,error:null,
+ models:[{id:'gpt-6.1-sol',name:'GPT-6.1-Sol',available:true,reasoning_known:true,
+  reasoning_efforts:['low','medium','high']}]};
+let refreshCount=0;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:[],model_catalog:catalog};
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?
+   {...seat,model:'gpt-6.1-sol',reasoning:'high'}:seat)}];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh'){
+  refreshCount++;
+  return response({providers:[{...seatsSnapshot().providers[0],model_catalog:catalog}]});
+ }
+ return base(call);
+};
+await boot();
+await until(()=>refreshCount===1,'automatic catalog refresh');
+const alpha=seatCard('alpha'), effort=alpha.querySelectorAll('select')[3];
+assert.strictEqual(effort.value,'high','catalog refresh must retain a saved reasoning effort');
+effort.value='low';
+const refresh=alpha.querySelectorAll('button').find(button=>button.textContent==='Refresh models');
+await refresh.click();
+await until(()=>refreshCount===2,'manual catalog refresh');
+assert.strictEqual(effort.value,'low','catalog refresh must retain an in-progress reasoning edit');
+""")
+
+    def test_saved_provider_that_disappears_keeps_an_unavailable_option(self):
+        self.run_js(r"""
+const base=responder;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers=[];
+  s.packages=[TEAM];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/packages')return response({id:'team'});
+ return base(call);
+};
+launchReply=()=>readyState('s1');
+await boot();
+const alpha=seatCard('alpha'), provider=alpha.querySelectorAll('select')[1];
+assert.strictEqual(provider.value,'p1','a missing saved provider must remain selected');
+assert(provider.children.some(option=>option.value==='p1'&&option.textContent.includes('saved, unavailable')),
+ 'the missing provider should be visibly labeled');
+const [name]=textInputs(alpha);
+name.value='Edited team';
+await name.dispatch('input');
+await goButton().click();
+await until(()=>posts().some(call=>call.url==='/api/preflight/packages'),'save of edited team');
+assert.strictEqual(posts().find(call=>call.url==='/api/preflight/packages').body.seats[0].provider,'p1',
+ 'saving another field must preserve the unavailable provider ID');
+""")
+
+    def test_stale_seat_get_does_not_replace_newer_catalog_refresh(self):
+        self.run_js(r"""
+const base=responder;
+const oldCatalog={dynamic:true,source:'Codex local model catalog',complete:true,authoritative:true,
+ retirement_authoritative:true,refreshing:false,error:null,models:[{id:'old-model',name:'Old',available:true,
+ reasoning_known:true,reasoning_efforts:['low']}]};
+const newCatalog={...oldCatalog,models:[{id:'new-model',name:'New',available:true,
+ reasoning_known:true,reasoning_efforts:['high']}]};
+let releaseStaleSeats, holdNextSeats=false;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:[],model_catalog:oldCatalog};
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?{...seat,model:'new-model'}:seat)}];
+  if(holdNextSeats){holdNextSeats=false;return await new Promise(resolve=>{releaseStaleSeats=()=>{
+   releaseStaleSeats=null;resolve(response(s))}})}
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh')return response({providers:[{...seatsSnapshot().providers[0],
+  model_catalog:newCatalog}]});
+ return base(call);
+};
+await boot();
+await until(()=>posts().some(call=>call.url==='/api/preflight/models/refresh'),'initial catalog refresh');
+let release;
+holdNextSeats=true;
+page['refresh'].click();
+await until(()=>typeof releaseStaleSeats==='function','stale seats request start');
+release=releaseStaleSeats;
+const alpha=seatCard('alpha'),refresh=alpha.querySelectorAll('button').find(button=>button.textContent==='Refresh models');
+await refresh.click();
+assert(alpha.querySelectorAll('select')[2].children.some(option=>option.value==='new-model'),
+ 'the newer catalog response should be visible before the older GET completes');
+release();
+await until(()=>!releaseStaleSeats,'stale seats request completion');
+assert(alpha.querySelectorAll('select')[2].children.some(option=>option.value==='new-model'),
+ 'a GET started before the catalog refresh must not overwrite newer provider catalog data');
+""")
+
+    def test_successful_provider_refresh_clears_prior_wildcard_error(self):
+        self.run_js(r"""
+const base=responder;
+const catalog={dynamic:true,source:'Codex local model catalog',complete:true,authoritative:true,
+ retirement_authoritative:true,refreshing:false,error:null,models:[{id:'m1',name:'Model 1',available:true,
+ reasoning_known:true,reasoning_efforts:['low']}]};
+let refreshCount=0;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:[],model_catalog:catalog};
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh'){
+  refreshCount++;
+  if(refreshCount===1)throw Error('temporary fetch error');
+  return response({providers:[{...seatsSnapshot().providers[0],model_catalog:catalog}]});
+ }
+ return base(call);
+};
+await boot();
+await until(()=>refreshCount===1&&seatCard('alpha').querySelector('.pf-dim').textContent.includes('temporary fetch error'),
+ 'initial catalog error');
+const alpha=seatCard('alpha'),refresh=alpha.querySelectorAll('button').find(button=>button.textContent==='Refresh models');
+await refresh.click();
+await until(()=>refreshCount===2,'successful provider refresh');
+assert(!alpha.querySelector('.pf-dim').textContent.includes('temporary fetch error'),
+ 'a successful refresh must clear the previous wildcard error');
+""")
+
+    def test_manual_catalog_refresh_preserves_form_edits_and_last_good_model(self):
+        self.run_js(r"""
+const base=responder;
+const first={dynamic:true,source:'Codex local model catalog',checked_at:'2026-11-01T12:00:00Z',
+ catalog_fetched_at:'2026-11-01T12:00:00Z',complete:true,authoritative:true,retirement_authoritative:true,refreshing:false,error:null,
+ models:[{id:'gpt-6.1-sol',name:'GPT-6.1-Sol',available:true,reasoning_known:true,
+  reasoning_efforts:['low','medium','high','xhigh','max','ultra']}]};
+const failed={...first,source:'Codex local model catalog',checked_at:'2026-11-01T12:01:00Z',
+ complete:false,authoritative:true,refreshing:false,error:'catalog command exited 1'};
+let refreshCount=0;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:['stale-config-only'],reasoning_efforts:['ultra'],model_catalog:first};
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?{...seat,model:'removed-model',reasoning:'ultra'}:seat)}];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh'){
+  refreshCount++;
+  const catalog=refreshCount===1?first:failed;
+  return response({providers:[{...seatsSnapshot().providers[0],adapter:'openai-compatible',name:'Prov One',
+   model_catalog:catalog}]});
+ }
+ return base(call);
+};
+await boot();
+await until(()=>refreshCount===1,'one automatic model refresh');
+const alpha=seatCard('alpha');
+const model=alpha.querySelectorAll('select')[2];
+const effort=alpha.querySelectorAll('select')[3];
+assert(model.children.some(option=>option.value==='removed-model'&&option.textContent.includes('unavailable')),
+ 'only an authoritative complete catalog may label a saved missing model unavailable');
+assert.strictEqual(model.value,'removed-model');
+assert.deepStrictEqual(effort.children.map(option=>option.value),['','ultra']);
+assert(effort.children[1].textContent.includes('saved, unverified'));
+assert(effort.disabled,'an unknown model must not inherit template-wide effort choices');
+const [name]=textInputs(alpha);
+name.value='Draft edit survives catalog refresh';
+await name.dispatch('input');
+const refreshButton=alpha.querySelectorAll('button').find(button=>button.textContent==='Refresh models');
+assert(refreshButton&&!refreshButton.disabled);
+await refreshButton.click();
+await until(()=>refreshCount===2&&alpha.querySelector('.pf-dim').textContent.includes('catalog command exited 1'),
+ 'failed refresh status');
+assert.strictEqual(name.value,'Draft edit survives catalog refresh');
+assert.strictEqual(model.value,'removed-model','failed refresh must retain the selected saved model');
+assert(model.children.some(option=>option.value==='removed-model'&&option.textContent.includes('saved, unverified')),
+ 'a failed refresh cannot newly retire a saved model');
+assert(alpha.querySelector('.pf-dim').textContent.includes('Last complete catalog'));
+assert.strictEqual(refreshCount,2,'catalog refresh must be once on entry plus the explicit click');
+""")
+
+    def test_first_use_dynamic_catalog_shows_loading_without_fabricated_models(self):
+        self.run_js(r"""
+const base=responder;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:['must-not-appear'],model_catalog:{dynamic:true,
+   source:'Codex local model catalog',models:[],complete:false,authoritative:false,refreshing:true,error:null}};
+  return response(s);
+ }
+ return base(call);
+};
+await boot();
+const alpha=seatCard('alpha');
+const model=alpha.querySelectorAll('select')[2];
+const refresh=alpha.querySelectorAll('button').find(button=>button.textContent==='Refresh models');
+assert.deepStrictEqual(model.children.map(option=>option.value),[''],'first-use must not expose static guesses as discovered models');
+assert(alpha.querySelector('.pf-dim').textContent.includes('Checking'));
+assert(refresh.disabled,'avoid starting a duplicate scan while the catalog is already refreshing');
+assert.strictEqual(posts().filter(call=>call.url==='/api/preflight/models/refresh').length,0);
+""")
+
+    def test_dynamic_discovery_failure_uses_explicit_configured_model_fallback(self):
+        self.run_js(r"""
+const base=responder;
+const catalog={dynamic:true,source:'Codex local model catalog',models:[],configured_models:['gpt-6.1-sol'],
+ checked_at:'2026-11-01T12:00:00Z',catalog_fetched_at:null,complete:false,authoritative:false,
+ refreshing:false,error:'model metadata unavailable'};
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:[],model_catalog:catalog};
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?{...seat,model:'gpt-6.1-sol'}:seat)}];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh')return response({providers:[{...seatsSnapshot().providers[0],
+  adapter:'openai-compatible',name:'Prov One',models:[],model_catalog:catalog}]});
+ return base(call);
+};
+await boot();
+await until(()=>posts().some(call=>call.url==='/api/preflight/models/refresh'),'automatic catalog refresh');
+const alpha=seatCard('alpha'), model=alpha.querySelectorAll('select')[2];
+assert.deepStrictEqual(model.children.map(option=>option.value),['','gpt-6.1-sol']);
+assert(model.children[1].textContent.includes('configured fallback'));
+assert.strictEqual(model.value,'gpt-6.1-sol','configured model fallback keeps the saved model ID');
+const status=alpha.querySelectorAll('p').find(p=>p.textContent.includes('model metadata unavailable'));
+assert(status&&status.textContent.includes('discovery is unavailable'));
+""")
+
+    def test_default_only_cli_preset_is_grouped_and_explained(self):
+        self.run_js(r"""
+const base=responder;
+const noModel={id:'codex',name:'Codex',adapter:'cli',supports_model:false,models:[],reasoning_efforts:[],
+ model_selection_note:'This preset uses the native client default. Choose a model-enabled preset to set a model.',
+ model_catalog:{dynamic:true,models:[],configured_models:[],source:'codex cache',complete:false,authoritative:false,refreshing:false,error:null}};
+const managed={id:'codex-release',name:'Codex CLI',adapter:'cli',supports_model:true,models:['gpt-6.1-sol'],
+ reasoning_efforts:[],model_catalog:{dynamic:true,models:[{id:'gpt-6.1-sol',name:'GPT-6.1-Sol',available:true,
+ reasoning_known:true,reasoning_efforts:['low']}],configured_models:['gpt-6.1-sol'],source:'codex cache',
+ complete:true,authoritative:true,refreshing:false,error:null}};
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers=[noModel,managed];
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?
+   {...seat,provider:'codex',adapter:'cli',secret_ref:''}:
+   {...seat,provider:'codex-release',adapter:'cli',secret_ref:''})}];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh')return response({providers:[noModel,managed]});
+ return base(call);
+};
+await boot();
+const alpha=seatCard('alpha');
+const provider=alpha.querySelectorAll('select')[1];
+assert.strictEqual(provider.value,'codex','an existing legacy provider selection must remain selected');
+const group=provider.children.find(node=>node.tagName==='OPTGROUP');
+assert(group&&group.label==='Legacy/default-only clients');
+const legacy=group.children.find(option=>option.value==='codex');
+assert(legacy&&legacy.textContent.includes('native default only'));
+assert(provider.children.some(option=>option.value==='codex-release'),'managed choice remains a primary option');
+assert(alpha.querySelectorAll('select')[2].disabled);
+const note=alpha.querySelectorAll('p').find(p=>p.textContent.includes('Choose a model-enabled preset'));
+assert(note,'backend model_selection_note should appear beside the model control');
+""")
+
+    def test_saved_model_missing_from_template_stays_selectable_and_is_preserved(self):
+        self.run_js(r"""
+const base=responder;
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:['m1'],default_model:'m1'};
+  s.packages=[{...TEAM,seats:TEAM.seats.map(seat=>seat.id==='alpha'?{...seat,model:'legacy-model'}:seat)}];
+  return response(s);
+ }
+ if(call.url==='/api/preflight/packages'){
+  TEAM.seats[0].model=call.body.seats[0].model;
+  return response({id:'team'});
+ }
+ return base(call);
+};
+launchReply=()=>readyState('s1');
+await boot();
+const alpha=seatCard('alpha');
+const model=alpha.querySelectorAll('select')[2];
+const legacy=model.children.find(option=>option.value==='legacy-model');
+assert(legacy,'saved model missing from current template should remain an explicit option');
+assert(legacy.textContent.includes('saved, unverified'));
+assert.strictEqual(model.value,'legacy-model','opening a saved team must not silently select Provider default');
+const [name]=textInputs(alpha);
+name.value='Alpha edited';
+await name.dispatch('input');
+await goButton().click();
+await until(()=>assigned.length>0,'redirect');
+const saved=posts().find(call=>call.url==='/api/preflight/packages');
+assert.strictEqual(saved.body.seats[0].model,'legacy-model','unlisted saved model ID must survive an unrelated edit');
+""")
+
     def test_seat_toggles_share_one_row(self):
         # Idea 2: "Configure" and "Status details" sit side by side instead of stacking.
         self.run_js(r"""
@@ -408,7 +810,7 @@ await until(()=>seatCard('alpha').runtime.stateChip.textContent==='Ready for cha
 launchReply=()=>readyState('s1');
 await boot();
 const alpha=seatCard('alpha');
-const [name,,,secret]=textInputs(alpha);
+const [name,,secret]=textInputs(alpha);
 assert.strictEqual(secret.value,'KEY_ENV');
 name.value='Alpha renamed';
 await name.dispatch('input');

@@ -66,12 +66,14 @@ def probe_health(url, identity, timeout=2):
     except (urllib.error.HTTPError, HTTPException, ValueError, UnicodeError):
         return 'foreign'
     except (urllib.error.URLError, OSError):
-        # A listener that stalls or speaks a different protocol is a conflict.
+        # A newly spawned server can bind between the HTTP attempt and this
+        # socket check. Keep that bounded readiness state distinct from an
+        # actual HTTP response from a different application or installation.
         from urllib.parse import urlsplit
         address = urlsplit(url)
         try:
             with socket.create_connection((address.hostname, address.port), timeout=min(timeout, 0.2)):
-                return 'foreign'
+                return 'pending'
         except OSError:
             return 'absent'
 
@@ -252,7 +254,7 @@ def ensure_server(root, config, timeout=60, setup=False):
         state = probe_health(url, identity, timeout=min(2, max(0.01, deadline - time.monotonic())))
         if state == 'matching':
             return url + '/preflight'
-        if state == 'foreign':
+        if state in ('foreign', 'pending'):
             raise LaunchError(f'Port {config.get("server", {}).get("port", 8300)} is occupied by another service '
                               'or a different agentchattr installation/configuration. It was not stopped. '
                               'Choose another configured port or close the conflicting service yourself.')

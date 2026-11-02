@@ -58,9 +58,12 @@ def build_cli_args(seat, template):
         if value is not None and (not isinstance(value, str) or not value.strip() or
                 len(value) > 256 or value.startswith('-') or any(ord(c) < 32 for c in value)):
             raise SeatError(f'CLI {setting} must be a nonempty value without leading dash or control characters.')
-        if setting == 'reasoning' and value is not None and value not in template.get('reasoning_efforts', []):
+        if setting == 'reasoning' and value is not None and not template.get('_catalog_dynamic') and value not in template.get('reasoning_efforts', []):
             raise SeatError('This CLI template does not declare the selected reasoning effort.')
         result.extend(_setting_args(template, setting, value))
+    if template.get('_catalog_dynamic'):
+        from model_catalog import validate_frozen_effort
+        validate_frozen_effort(seat, template)
     return result
 
 def build_fresh_context_args(template, context_id):
