@@ -7,7 +7,7 @@ import unittest
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import SeatError
 from tests import test_restart_launch as fixture
 

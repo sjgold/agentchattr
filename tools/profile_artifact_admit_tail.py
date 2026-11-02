@@ -16,7 +16,7 @@ from unittest.mock import patch
 import uuid
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT))
+sys.path.insert(0,str(ROOT / 'src'))
 import profile_artifact_authority_phases as authority
 import measure_artifact_diagnostics as diagnostics
 from artifact_measurement_support import MeasurementReceipt,interval,overlaps,instrument_valid
@@ -99,7 +99,7 @@ def study_summary(rows,sentinel):
 def main():
     parser=ArgumentParser(description=__doc__);parser.add_argument('--samples',type=int,default=30);args=parser.parse_args()
     if args.samples<30:parser.error('At least30 fresh samples in EACH arm required')
-    product_hashes={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in ('artifact_store.py','artifact_service.py','api_seats.py','mcp_bridge.py')}
+    product_hashes={name:hashlib.sha256((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()).hexdigest() for name in ('artifact_store.py','artifact_service.py','api_seats.py','mcp_bridge.py')}
     authority.verify_frozen_product(product_hashes)
     report={'kind':'DESIGN two-arm admit_saved tail attribution, NOT acceptance','samples':[],'phase_observations':[],
         'source_sha256':product_hashes,'product_pin':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),

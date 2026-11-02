@@ -21,7 +21,7 @@ from unittest.mock import patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 import artifact_store as storage
 from tests.test_artifact_store import ArtifactStoreTests
 
@@ -248,7 +248,7 @@ def design_checkpoint(count):
     report = {'kind': 'DESIGN checkpoint: facade heavy, summary and structural; NO imports',
               'samples': [], 'phase_observations': [], 'fsync_mocked': False,
               'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
-              'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
+              'source_sha256': {name: hashlib.sha256((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()).hexdigest()
                   for name in ('artifact_store.py','artifact_service.py','api_seats.py','mcp_bridge.py')},
               'tool_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               'authoring_builder_tool_sha256': hashlib.sha256((ROOT/'tools/profile_artifact_authority_phases.py').read_bytes()).hexdigest(),

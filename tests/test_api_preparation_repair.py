@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from tests import test_cold_retry_settlement as engine_fixture
 from api_seats import SeatError, SeatStore, atomic_json
 from api_seat_runtime import SeatManager
@@ -100,7 +100,7 @@ class APIPreparationRepairTests(unittest.TestCase):
         owned = []
         def start_toy(argv, **kwargs):
             path = Path(argv[argv.index('--seat-file') + 1])
-            code = ('import sys,json,time;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+            code = ('import sys,json,time;sys.path.insert(0,' + repr(str(ROOT / 'src')) + ');'
                 'from pathlib import Path;from runtime_ownership import record_worker_birth;from api_seats import atomic_json;'
                 'p=Path(' + repr(str(path)) + ');s=json.loads(p.read_text(encoding="utf-8"));'
                 'record_worker_birth(p,s)\n'

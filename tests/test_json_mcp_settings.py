@@ -18,7 +18,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT / 'src'))
 
 import json_mcp_settings as jm  # noqa: E402
 from json_mcp_settings import JsonSettingsError  # noqa: E402

@@ -24,7 +24,7 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from launcher import stop_owned_child
 
 
@@ -111,7 +111,12 @@ run.main()
             with connect(base.replace("http://", "ws://") + "/ws?token=" + token, proxy=None) as connection:
                 connection.send(json.dumps({"type": "message", "sender": "test-human",
                                            "text": text, "channel": "general"}))
-                connection.recv(timeout=5)
+                while True:
+                    event = json.loads(connection.recv(timeout=5))
+                    if event.get('type') == 'message_error':
+                        raise AssertionError(event.get('error'))
+                    if event.get('type') == 'message_accepted':
+                        break
 
         seat = {"id": "one", "name": "First fake CLI seat", "adapter": "cli", "provider": "fakecli",
                 "model": "requested-one", "reasoning": "high", "launch_profile": "standard", "secret_ref": ""}

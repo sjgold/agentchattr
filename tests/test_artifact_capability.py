@@ -145,7 +145,7 @@ class ArtifactCapabilityTests(unittest.TestCase):
                 self.assertIn('runtime_protocol.py', manifest['sources'])
                 for name, digest in manifest['sources'].items():
                     self.assertEqual(Path(name).name, name)
-                    self.assertEqual(digest, hashlib.sha256((fixture.ROOT / name).read_bytes()).hexdigest())
+                    self.assertEqual(digest, hashlib.sha256((fixture.ROOT / 'src' / name).read_bytes()).hexdigest())
                 synthetic = deepcopy(manifest)
                 synthetic['capabilities'] = ['artifact-v1']
                 validated = protocol.validate_manifest(synthetic, adapter)
@@ -178,11 +178,12 @@ class ArtifactCapabilityTests(unittest.TestCase):
         for adapter in ('cli', 'openai-compatible'):
             checkout = self.root / ('checkout-' + adapter)
             checkout.mkdir()
+            (checkout / 'src').mkdir()
             for name in protocol.SOURCE_FILES[adapter]:
-                (checkout / name).write_bytes((fixture.ROOT / name).read_bytes())
+                (checkout / 'src' / name).write_bytes((fixture.ROOT / 'src' / name).read_bytes())
             manifest = protocol.build_manifest(checkout, adapter)
             self.assertTrue(protocol.sources_match(checkout, manifest))
-            source = checkout / protocol.SOURCE_FILES[adapter][0]
+            source = checkout / 'src' / protocol.SOURCE_FILES[adapter][0]
             original = source.read_bytes()
             source.write_bytes(original + b'\n# fixture-controlled source drift\n')
             self.assertFalse(protocol.sources_match(checkout, manifest))

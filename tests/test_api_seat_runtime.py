@@ -8,14 +8,14 @@ import unittest
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import SeatStore, atomic_json
 from registry import RuntimeRegistry
 
 
 class APISeatRuntimeTests(unittest.TestCase):
     def setUp(self):
-        self.assertTrue((ROOT / 'api_seat_runtime.py').exists(), 'API-seat process manager missing')
+        self.assertTrue((ROOT / 'src' / 'api_seat_runtime.py').exists(), 'API-seat process manager missing')
         self.module = importlib.import_module('api_seat_runtime')
         self.tmp = tempfile.TemporaryDirectory(dir=ROOT / '.audit-tmp')
         self.addCleanup(self.tmp.cleanup)

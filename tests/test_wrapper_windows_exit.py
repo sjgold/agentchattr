@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+    sys.path.insert(0, str(ROOT / 'src'))
 
 if sys.platform != "win32":
     raise unittest.SkipTest("wrapper_windows only importable on win32")

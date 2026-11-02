@@ -25,7 +25,7 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT))
+sys.path.insert(0,str(ROOT / 'src'))
 from api_seats import atomic_json
 from invocation_evidence import classify, classify_history
 from result_outbox import ResultOutbox
@@ -49,7 +49,7 @@ parse.argtypes=[ctypes.c_wchar_p,ctypes.POINTER(ctypes.c_int)]
 parse.restype=ctypes.POINTER(ctypes.c_wchar_p)
 free=ctypes.WinDLL('kernel32',use_last_error=True).LocalFree
 free.argtypes=[ctypes.c_void_p]
-scripts={{str((Path({str(ROOT)!r})/name).resolve()).casefold() for name in ('wrapper_api.py','cli_worker.py')}}
+scripts={{str((Path({str(ROOT)!r})/'src'/name).resolve()).casefold() for name in ('wrapper_api.py','cli_worker.py')}}
 def audit(event,args):
     if event!='subprocess.Popen':return
     argv=args[1]

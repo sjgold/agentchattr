@@ -24,7 +24,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import atomic_json
 from process_identity import open_verified_process
 from runtime_ownership import _manifest, _validate
@@ -388,7 +388,7 @@ class Fixture:
                 CHANNEL_GUARD_POLICY=json.dumps({'forbidden_roots': forbidden, 'forbidden_ports': sorted(forbidden_ports),
                     'allowed_python_roots': [str(ROOT), str(self.root), sys.prefix, sys.base_prefix],
                     'guard_sha256': self.guard_source_hash}),
-                PYTHONPATH=str(bootstrap) + os.pathsep + str(ROOT), PYTHONNOUSERSITE='1')
+                PYTHONPATH=str(bootstrap) + os.pathsep + str(ROOT / 'src') + os.pathsep + str(ROOT / 'src') + os.pathsep + str(ROOT), PYTHONNOUSERSITE='1')
             self.env.update(dict(zip(('AGENTCHATTR_PORT', 'AGENTCHATTR_MCP_HTTP_PORT', 'AGENTCHATTR_MCP_SSE_PORT'), map(str, self.ports))))
         finally:
             close_errors = []

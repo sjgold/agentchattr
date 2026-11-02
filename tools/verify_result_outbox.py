@@ -24,7 +24,7 @@ import time
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import atomic_json
 from review_brief import BriefStore
 from result_outbox import ResultOutbox

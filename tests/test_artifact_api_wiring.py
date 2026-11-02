@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ArtifactApiWiringTests(unittest.TestCase):
     def test_actual_call_model_default_and_per_result_observation(self):
-        tree = ast.parse((ROOT / 'wrapper_api.py').read_text(encoding='utf-8'))
+        tree = ast.parse((ROOT / 'src' / 'wrapper_api.py').read_text(encoding='utf-8'))
         main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'main')
         function = next(n for n in main.body if isinstance(n, ast.FunctionDef) and n.name == 'call_model')
         managed = {'seat': {'model':'requested'}, 'provider': {}}
@@ -41,7 +41,7 @@ class ArtifactApiWiringTests(unittest.TestCase):
         case = self.context()
         instance, attempt, audit, consumer, record, owned = case.api_scope()
         client = case.queue_client(instance, consumer=consumer)
-        tree = ast.parse((ROOT / 'wrapper_api.py').read_text(encoding='utf-8'))
+        tree = ast.parse((ROOT / 'src' / 'wrapper_api.py').read_text(encoding='utf-8'))
         main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'main')
         functions = [n for n in main.body if isinstance(n, ast.FunctionDef)
                      and n.name in ('call_model', 'handle_artifact_trigger')]

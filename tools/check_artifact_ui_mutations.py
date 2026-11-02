@@ -8,14 +8,14 @@ import unittest
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT))
+sys.path.insert(0,str(ROOT / 'src'))
 from tests.test_artifact_ui import ArtifactUITests
 
 
 def main():
     paths=['static/artifacts.js','static/sessions.js','static/artifacts.css','static/index.html','tests/test_artifact_ui.py']
-    sources={name:(ROOT/name).read_text(encoding='utf-8') for name in paths}
-    hashes=lambda:{name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in paths}
+    sources={name:(ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_text(encoding='utf-8') for name in paths}
+    hashes=lambda:{name:hashlib.sha256((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()).hexdigest() for name in paths}
     before=hashes()
     checks=[
         ('card source after session switch','static/artifacts.js',"const cardLabel = otherSession ? 'Latest request: ' + requestTitle + ' · ' : '';","const cardLabel = '';",'test_switching_selected_session_labels_card_source_without_changing_saved_request'),

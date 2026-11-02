@@ -11,7 +11,7 @@ from unittest.mock import patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import SeatError, SeatStore, atomic_json
 from api_seat_runtime import SeatManager
 from registry import RuntimeRegistry
@@ -53,7 +53,7 @@ class RuntimeAdoptionTests(unittest.TestCase):
         record_spawn_outcome(self.path, self.snapshot, 'pending')
         self.child_log = (self.data / 'child.log').open('wb')
         self.addCleanup(self.child_log.close)
-        code = ('import sys,json;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+        code = ('import sys,json;sys.path.insert(0,' + repr(str(ROOT / 'src')) + ');'
                 'from pathlib import Path;from runtime_ownership import record_worker_birth;'
                 'p=Path(' + repr(str(self.path)) + ');record_worker_birth(p,json.loads(p.read_text(encoding="utf-8")));'
                 'sys.stdin.buffer.read(1)')
@@ -254,7 +254,7 @@ class RuntimeAdoptionTests(unittest.TestCase):
         snapshot = {**self.effective, 'attempt': attempt, 'base': base, 'ownership': identity}
         atomic_json(path, snapshot)
         record_spawn_outcome(path, snapshot, 'pending')
-        code = ('import sys,json;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+        code = ('import sys,json;sys.path.insert(0,' + repr(str(ROOT / 'src')) + ');'
                 'from pathlib import Path;from runtime_ownership import record_worker_birth;'
                 'p=Path(' + repr(str(path)) + ');record_worker_birth(p,json.loads(p.read_text(encoding="utf-8")));'
                 'sys.stdin.buffer.read(1)')

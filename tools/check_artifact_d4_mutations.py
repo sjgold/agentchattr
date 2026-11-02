@@ -15,7 +15,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT))
+sys.path.insert(0,str(ROOT / 'src'))
 import artifact_service as service
 import artifact_store as storage
 from tests.test_artifact_diagnostic_phases import ArtifactDiagnosticPhaseTests as Tests

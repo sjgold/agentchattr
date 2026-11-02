@@ -12,7 +12,7 @@ import time
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from tools.channel_guard import install_guard
 install_guard('client')
 from api_seats import atomic_json

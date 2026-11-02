@@ -15,12 +15,12 @@ import unittest
 from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 
 
 class LauncherTests(unittest.TestCase):
     def setUp(self):
-        self.assertTrue((ROOT / 'launcher.py').exists(), 'shared bootstrap is missing')
+        self.assertTrue((ROOT / 'src' / 'launcher.py').exists(), 'shared bootstrap is missing')
         self.launcher = importlib.import_module('launcher')
         scratch = ROOT / '.audit-tmp'
         scratch.mkdir(exist_ok=True)

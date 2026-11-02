@@ -3,7 +3,7 @@ from contextlib import contextmanager
 import hashlib,inspect,io,json,sys,textwrap,unittest
 from pathlib import Path
 from unittest.mock import patch
-ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT / 'src'))
 import artifact_operator as operator
 import artifact_routes as routes
 import artifact_sources as sources

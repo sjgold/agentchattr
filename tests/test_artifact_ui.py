@@ -95,7 +95,7 @@ class ArtifactUITests(unittest.TestCase):
     def allow_inflight_reentry(self, old, new):
         """VM-only fault injection makes a redundant serial guard reachable."""
         name='static/artifacts.js'
-        source=self.source_overrides.get(name,(ROOT/name).read_text(encoding='utf-8'))
+        source=self.source_overrides.get(name,(ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_text(encoding='utf-8'))
         self.assertEqual(source.count(old),1)
         self.source_overrides={**self.source_overrides,name:source.replace(old,new,1)}
 

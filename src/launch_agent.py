@@ -8,7 +8,7 @@ import sys
 from config_loader import CLI_OVERRIDE_FLAGS, apply_cli_overrides, load_config
 from launcher import LaunchError, ensure_environment, ensure_server
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def main(argv=None, *, root=ROOT):
@@ -31,7 +31,7 @@ def main(argv=None, *, root=ROOT):
         ensure_server(root, config, setup=args.setup)
         python = ensure_environment(root, setup=False)
         script = 'wrapper_api.py' if api else 'wrapper.py'
-        command = [str(python), str(root / script), args.agent]
+        command = [str(python), str(root / 'src' / script), args.agent]
         if not api:
             command.append('--no-restart')
         if extra and extra[0] == '--':

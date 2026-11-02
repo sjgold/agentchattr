@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0.."
 where python >nul 2>nul
 if not errorlevel 1 (
-    python launcher.py %*
+    python src\launcher.py %*
 ) else (
     where py >nul 2>nul
     if errorlevel 1 (
@@ -11,7 +11,7 @@ if not errorlevel 1 (
         pause
         exit /b 1
     )
-    py -3 launcher.py %*
+    py -3 src\launcher.py %*
 )
 set "launch_code=%ERRORLEVEL%"
 if not "%launch_code%"=="0" (

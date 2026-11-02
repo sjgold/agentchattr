@@ -547,7 +547,7 @@ class ArtifactHarnessControls(unittest.TestCase):
     def test_all_scripts_parse_and_source_capability_unchanged(self):
         for name in harness.PIN_FILES:
             if name.endswith('.py'): ast.parse((harness.ROOT / name).read_text(encoding='utf-8'))
-        self.assertIn('SUPPORTED_CAPABILITIES = ()', (harness.ROOT / 'runtime_protocol.py').read_text(encoding='utf-8'))
+        self.assertIn('SUPPORTED_CAPABILITIES = ()', (harness.ROOT / 'src' / 'runtime_protocol.py').read_text(encoding='utf-8'))
 
     def test_no_acceptance_claim_from_finish_marker(self):
         source = (harness.ROOT / 'tools/verify_artifact_ui.py').read_text(encoding='utf-8')

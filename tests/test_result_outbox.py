@@ -16,7 +16,7 @@ from unittest.mock import patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import atomic_json
 from runtime_ownership import new_launch_identity, record_spawn_outcome
 
@@ -337,7 +337,7 @@ class ResultOutboxTests(unittest.TestCase):
         self.assertIn(self.module.verify_result(winners[0], self.secret), candidates)
 
     def test_concurrent_process_save_and_ack_share_one_stable_acknowledgement(self):
-        code = ('import json,sys;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+        code = ('import json,sys;sys.path.insert(0,' + repr(str(ROOT / 'src')) + ');'
                 'from result_outbox import ResultOutbox;packet=json.load(sys.stdin);'
                 'box=ResultOutbox(packet["runtime"]);box.save(packet["payload"],packet["secret"]);'
                 'print(json.dumps(box.acknowledge(packet["payload"]["result_id"],packet["payload"]["event_id"])))')

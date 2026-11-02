@@ -41,7 +41,7 @@ def validate_manifest(value, adapter):
 
 
 def _source_hashes(root, adapter):
-    root = Path(root).resolve()
+    root = (Path(root) / 'src').resolve()
     result = {}
     for name in SOURCE_FILES[adapter]:
         source = root / name

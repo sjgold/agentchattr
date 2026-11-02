@@ -21,7 +21,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from dispatch_queue import QueueStore
 from launcher import stop_owned_child
 from session_store import SessionStore

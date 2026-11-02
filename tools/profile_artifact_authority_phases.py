@@ -23,7 +23,7 @@ from unittest.mock import patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import atomic_json
 from artifact_delivery import ArtifactOutbox
 from artifact_store import ArtifactUnavailable, request_ids, _empty
@@ -77,7 +77,7 @@ def checkpoint_provenance(tool):
             'detected_implementations': {'r2_diagnostic_owner': r2, 'd1_scandir': d1, 'd2_single_write_byte_identity': d2},
             'r2_d1_d2_present': r2 and d1 and d2, 'authoring_schema': artifact_store._empty()['version'],
             'dirty_tree': bool(dirty), 'git_status_porcelain': dirty,
-            'fixture_and_support_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in extra},
+            'fixture_and_support_sha256': {name: hashlib.sha256((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()).hexdigest() for name in extra},
             'tool_sha256': hashlib.sha256(Path(tool).read_bytes()).hexdigest(),
             'closed_a1_base': '2c34bbfb159a3334ad4ba66eb7a8fbd4175594ca',
             'preserved_r2_parent': 'be6fd6522474fe2fab0e6f0573ec6e9ccb9eab4a'}
@@ -557,7 +557,7 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
     destination = ROOT / '.audit-tmp' / (('d4-smoke-' if smoke else 'd4-design-attribution-' if attribution else 'd4-production-') + ('reads-imports-' if facade else 'summary-' if supplemental else 'service-') + uuid.uuid4().hex + '.json')
     result = {'kind': 'SMOKE, not counted; timing is not evidence' if smoke else 'D4 DESIGN admit_saved A attribution' if attribution else 'D4 PRODUCTION acceptance gate', 'samples': [], 'phase_observations': [],
         'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
-        'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
+        'source_sha256': {name: hashlib.sha256((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()).hexdigest()
             for name in ('artifact_store.py','artifact_service.py','mcp_bridge.py','api_seats.py')},
         'fixed_order': list(kinds), 'samples_per_caller': count, 'warmup_discarded': 0,
         'resampling': 'None; every original miss, retry and error retained.',
@@ -577,7 +577,7 @@ def production_gate(count, *, facade=False, supplemental=False, attribution=Fals
         'Journal flushes per update and fsyncs at close; progress JSON uses native temp+replace.']
     freeze_files=[*result['source_sha256'],'tools/artifact_measurement_support.py','tools/profile_artifact_authority_phases.py',
         'tools/measure_artifact_diagnostics.py','tools/profile_artifact_diagnostics.py','tools/test_artifact_checkpoint_controls.py','tools/verify_artifact_machine_repeats.py']
-    result['freeze_sha256_table']={name:hashlib.sha256((ROOT/name).read_bytes()).hexdigest() for name in freeze_files}
+    result['freeze_sha256_table']={name:hashlib.sha256((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()).hexdigest() for name in freeze_files}
     print(json.dumps({'frozen_hashes':result['freeze_sha256_table'],'tool_sha256':result['tool_sha256']}),flush=True)
     from artifact_measurement_support import MeasurementReceipt,classify_misses,instrument_valid,last_attempt_stop_reason
     if facade:
@@ -789,7 +789,7 @@ def historical_design(count):
     result = {'kind': 'DESIGN checkpoint: R2-on-closed-A1 authority phases', 'samples': rows, 'phase_observations': [],
               'fsync_mocked': False, 'harness_edits_product': False,
               'product_pin': subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
-              'source_sha256': {name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
+              'source_sha256': {name: hashlib.sha256((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()).hexdigest()
                   for name in ('artifact_store.py','artifact_service.py','mcp_bridge.py','api_seats.py')},
               'tool_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               'peer_measured': False, 'reference_seconds': .270,

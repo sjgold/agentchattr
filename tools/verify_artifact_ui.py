@@ -328,7 +328,7 @@ def safe_env(original, root, ports, nonce, policy):
         CHANNEL_FIXTURE_ROOT=str(root), CHANNEL_FIXTURE_NONCE=nonce,
         CHANNEL_GUARD_POLICY=json.dumps(policy), ARTIFACT_FIXTURE_PORTS=json.dumps(ports),
         ARTIFACT_FIXTURE_REQUIRED='1', PYTHONNOUSERSITE='1',
-        PYTHONPATH=str(root / 'bootstrap') + os.pathsep + str(ROOT), NO_PROXY='127.0.0.1,localhost,::1',
+        PYTHONPATH=str(root / 'bootstrap') + os.pathsep + str(ROOT / 'src') + os.pathsep + str(ROOT / 'src') + os.pathsep + str(ROOT), NO_PROXY='127.0.0.1,localhost,::1',
         AGENTCHATTR_DATA_DIR=str(root / 'data'), AGENTCHATTR_UPLOAD_DIR=str(root / 'uploads'),
         AGENTCHATTR_PORT=str(ports[0]), AGENTCHATTR_MCP_HTTP_PORT=str(ports[1]),
         AGENTCHATTR_MCP_SSE_PORT=str(ports[2]), ARTIFACT_FIXTURE_DUMMY_KEY='fixture-only-no-provider')
@@ -827,8 +827,8 @@ class Fixture:
         from tools.verify_channel_lifecycle import repository_head
         self.trusted = trusted_manifest()
         self.pin = repository_head()
-        self.hashes = {name: hash_bytes((ROOT / name).read_bytes()) for name in PIN_FILES}
-        if 'SUPPORTED_CAPABILITIES = ()' not in (ROOT / 'runtime_protocol.py').read_text(encoding='utf-8'):
+        self.hashes = {name: hash_bytes((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()) for name in PIN_FILES}
+        if 'SUPPORTED_CAPABILITIES = ()' not in (ROOT / 'src' / 'runtime_protocol.py').read_text(encoding='utf-8'):
             raise ValueError('Source capability must stay empty')
         scratch = ROOT / '.audit-tmp'; scratch.mkdir(exist_ok=True)
         self.root = Path(tempfile.mkdtemp(prefix='artifact-ui-', dir=scratch))
@@ -982,10 +982,10 @@ class Fixture:
             if not {row['pid'] for row in guards}.issuperset(guarded_pids):
                 raise ValueError('A child has no corresponding guard evidence')
             if list((self.root / 'audit').glob('unowned-port-*.json')): raise ValueError('Owned-port guard violation')
-            if self.hashes != {name: hash_bytes((ROOT / name).read_bytes()) for name in PIN_FILES}: raise ValueError('Frozen source changed')
+            if self.hashes != {name: hash_bytes((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()) for name in PIN_FILES}: raise ValueError('Frozen source changed')
             if self.trusted != trusted_manifest(): raise ValueError('Trusted bootstrap changed')
             for name, digest in self.config_hashes.items():
-                if hash_bytes((ROOT / name).read_bytes()) != digest: raise ValueError('Repository config changed')
+                if hash_bytes((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()) != digest: raise ValueError('Repository config changed')
         except Exception as error: unresolved.append({'stage': 'evidence', 'error': type(error).__name__})
         self.cleanup = {'unresolved': unresolved, 'probes':probes,'cooperative_shutdown':shutdown,'births_visited': len(births), 'retained_root': str(self.root),
             'browser_and_forwards': 'controller must separately record closed owned browser and forward ids'}
@@ -1097,7 +1097,7 @@ def external_control(root, action):
     manifest,_ = owned_manifest(root)
     if action=='cleanup': return standalone_cleanup(root)
     if manifest.get('control_only'): raise ValueError('Not an acceptance fixture')
-    if any(hash_bytes((ROOT / name).read_bytes()) != value for name, value in manifest['hashes'].items()):
+    if any(hash_bytes((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()) != value for name, value in manifest['hashes'].items()):
         raise ValueError('Source/tool freeze changed')
     if time.time() > manifest['expires_at']:
         raise ValueError('Fixture lease expired')
@@ -1133,7 +1133,7 @@ def main():
     if args.compile_only:
         compile(bootstrap_source(), '<owned-sitecustomize>', 'exec')
         for name in ('tools/verify_artifact_ui.py', 'tools/fake_artifact_client.py', 'tools/test_artifact_ui_harness_controls.py'):
-            compile((ROOT / name).read_text(encoding='utf-8'), name, 'exec')
+            compile((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_text(encoding='utf-8'), name, 'exec')
         print('Compile only: no fixture/listener/process/profile constructed')
         return
     if args.serve:

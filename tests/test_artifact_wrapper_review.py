@@ -16,7 +16,7 @@ from tests import test_artifact_transport as transport_fixture
 ROOT=Path(__file__).resolve().parents[1]
 class ArtifactWrapperReviewTests(unittest.TestCase):
     def test_actual_cli_status_preserves_unrelated_receipt_error_and_clears_only_own_guidance(self):
-        tree=ast.parse((ROOT/'cli_worker.py').read_text(encoding='utf-8'))
+        tree=ast.parse((ROOT/'src'/'cli_worker.py').read_text(encoding='utf-8'))
         run=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='run')
         function=next(n for n in run.body if isinstance(n,ast.FunctionDef) and n.name=='artifact_status')
         with tempfile.TemporaryDirectory(dir=ROOT/'.audit-tmp') as directory:

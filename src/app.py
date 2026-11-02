@@ -371,7 +371,7 @@ def _install_security_middleware(token: str, cfg: dict):
 async def get_health():
     from launcher import instance_identity, PROTOCOL
     return JSONResponse({"app": "agentchattr", "protocol": PROTOCOL,
-                         "identity": instance_identity(Path(__file__).parent, config),
+                         "identity": instance_identity(Path(__file__).resolve().parent.parent, config),
                          "state": "ready"}, headers={"Cache-Control": "no-store"})
 
 
@@ -624,7 +624,7 @@ def configure(cfg: dict, session_token: str = ""):
         api_seat_manager.shutdown()
     from cli_seats import cli_templates
     api_seat_store = SeatStore(Path(data_dir).resolve(), {**provider_templates(cfg), **cli_templates(cfg)})
-    api_seat_manager = SeatManager(Path(__file__).parent, cfg, api_seat_store, registry, monitor=False)
+    api_seat_manager = SeatManager(Path(__file__).resolve().parent.parent, cfg, api_seat_store, registry, monitor=False)
 
     # Router starts with base agent names (backward compat for direct MCP users),
     # registry.on_change updates it dynamically when instances register/deregister
@@ -638,7 +638,7 @@ def configure(cfg: dict, session_token: str = ""):
     agents = AgentTrigger(registry, data_dir=data_dir)
 
     # Sessions
-    ROOT = Path(__file__).parent
+    ROOT = Path(__file__).resolve().parent.parent
     session_store = SessionStore(
         str(Path(data_dir) / "session_runs.json"),
         templates_dir=str(ROOT / "session_templates"),
@@ -4308,7 +4308,7 @@ _VERSION_CACHE_TTL = 1800  # 30 minutes
 
 def _read_local_version() -> str:
     """Read version from VERSION file in project root."""
-    vfile = Path(__file__).parent / "VERSION"
+    vfile = Path(__file__).resolve().parent.parent / "VERSION"
     try:
         return vfile.read_text().strip()
     except Exception:
@@ -4322,7 +4322,7 @@ def _detect_install_kind() -> str:
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
             capture_output=True, text=True, timeout=5,
-            cwd=Path(__file__).parent,
+            cwd=Path(__file__).resolve().parent.parent,
         )
         url = result.stdout.strip().lower()
         if "bcurts/agentchattr" in url:

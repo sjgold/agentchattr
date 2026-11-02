@@ -14,7 +14,7 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from launcher import stop_owned_child
 
 
@@ -113,7 +113,12 @@ run.main()
             from websockets.sync.client import connect
             with connect(base.replace('http://', 'ws://') + '/ws?token=' + token, proxy=None) as connection:
                 connection.send(json.dumps({'type': 'message', 'sender': 'test-human', 'text': text, 'channel': 'general'}))
-                connection.recv(timeout=5)
+                while True:
+                    event = json.loads(connection.recv(timeout=5))
+                    if event.get('type') == 'message_error':
+                        raise AssertionError(event.get('error'))
+                    if event.get('type') == 'message_accepted':
+                        break
         seat = {'id': 'one', 'name': 'First fake seat', 'adapter': 'openai-compatible', 'provider': 'fake',
                 'model': 'requested-one', 'reasoning': 'high', 'launch_profile': 'standard', 'secret_ref': 'TICKET3_FAKE_SECRET'}
         package = {'id': 'fake-team', 'name': 'Fake test team', 'seats': [seat, {**seat, 'id': 'two', 'name': 'Second fake seat', 'model': 'requested-two'}]}

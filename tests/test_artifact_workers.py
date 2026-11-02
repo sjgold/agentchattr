@@ -514,7 +514,7 @@ class ArtifactWorkerTests(unittest.TestCase):
                 worker.validate_artifact_dispatch(record, **owned)
         finally:
             birth_path.write_bytes(birth_bytes)
-        source = Path(self.manager.root) / next(iter(owned['manifest']['sources']))
+        source = Path(self.manager.root) / 'src' / next(iter(owned['manifest']['sources']))
         read_bytes = Path.read_bytes
         # Controlled source BYTE read drift exercises the actual source hasher, no repo edit.
         def changed_bytes(path):

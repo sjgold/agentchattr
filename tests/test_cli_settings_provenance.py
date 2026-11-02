@@ -11,7 +11,7 @@ class CliSettingsProvenanceTests(unittest.TestCase):
  def test_all_worker_consumed_mcp_keys_are_provenance_bound(self):
   consumed=set()
   for name in ('cli_worker.py','wrapper.py','cli_seats.py'):
-   for node in ast.walk(ast.parse((ROOT/name).read_text(encoding='utf-8'))):
+   for node in ast.walk(ast.parse((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_text(encoding='utf-8'))):
     if (isinstance(node,ast.Call) and isinstance(node.func,ast.Attribute) and node.func.attr=='get'
       and node.args and isinstance(node.args[0],ast.Constant) and isinstance(node.args[0].value,str)
       and node.args[0].value.startswith('mcp_')):consumed.add(node.args[0].value)

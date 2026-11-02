@@ -152,10 +152,10 @@ def record_worker_birth(snapshot_path, snapshot):
     if manifest['spawn_outcome'] == 'failed':
         raise ValueError('A failed spawn cannot claim a worker birth.')
     result = {**capture_birth(), 'attempt': snapshot['attempt'], 'base': snapshot['base'],
-              'ownership': identity, 'worker_root': str(Path(__file__).resolve().parent)}
+              'ownership': identity, 'worker_root': str(Path(__file__).resolve().parent.parent)}
     if 'wrapper_protocol' in snapshot:
         from runtime_protocol import sources_match
-        if sources_match(Path(__file__).resolve().parent, snapshot['wrapper_protocol']):
+        if sources_match(Path(__file__).resolve().parent.parent, snapshot['wrapper_protocol']):
             result['wrapper_protocol'] = deepcopy(snapshot['wrapper_protocol'])
     if 'invocation_protocol' in snapshot:
         if (type(snapshot['invocation_protocol']) is not int or snapshot['invocation_protocol'] != 1

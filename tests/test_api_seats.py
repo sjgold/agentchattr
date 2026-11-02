@@ -7,12 +7,12 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 
 
 class APISeatConfigurationTests(unittest.TestCase):
     def setUp(self):
-        self.assertTrue((ROOT / 'api_seats.py').exists(), 'API-seat configuration module missing')
+        self.assertTrue((ROOT / 'src' / 'api_seats.py').exists(), 'API-seat configuration module missing')
         self.module = importlib.import_module('api_seats')
         (ROOT / '.audit-tmp').mkdir(exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=ROOT / '.audit-tmp')

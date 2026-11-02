@@ -18,7 +18,7 @@ import urllib.request
 
 from config_loader import apply_cli_overrides, load_config
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 PROTOCOL = 1
 
 
@@ -226,7 +226,7 @@ def spawn_server(root, python, config):
             kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
         else:
             kwargs['start_new_session'] = True
-        return subprocess.Popen([str(python), str(Path(root) / 'run.py')], **kwargs)
+        return subprocess.Popen([str(python), str(Path(root) / 'src' / 'run.py')], **kwargs)
 
 
 def stop_owned_child(process):

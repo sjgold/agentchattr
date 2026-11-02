@@ -15,7 +15,7 @@ import urllib.error
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from launcher import stop_owned_child
 
 TEMPLATE = {'id': 'brief-fixture', 'name': 'Frozen brief fixture',

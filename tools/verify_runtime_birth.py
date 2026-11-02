@@ -14,7 +14,7 @@ import time
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from launcher import stop_owned_child
 from process_identity import open_verified_process
 

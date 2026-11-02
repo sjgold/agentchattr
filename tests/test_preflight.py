@@ -4,7 +4,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 import app
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -32,7 +32,7 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data['app'], 'agentchattr')
-        self.assertEqual(data['identity'], instance_identity(Path(app.__file__).parent, self.cfg))
+        self.assertEqual(data['identity'], instance_identity(Path(app.__file__).resolve().parent.parent, self.cfg))
         self.assertNotIn('token', response.text)
 
     def test_preflight_requires_authentication_and_does_not_expose_secret_refs(self):

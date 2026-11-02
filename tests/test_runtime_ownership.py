@@ -12,7 +12,7 @@ from unittest.mock import patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 
 
 class RuntimeOwnershipTests(unittest.TestCase):
@@ -194,7 +194,7 @@ class RuntimeOwnershipTests(unittest.TestCase):
         self.assertEqual(record['attempt'], snapshot['attempt'])
         self.assertEqual(record['base'], snapshot['base'])
         self.assertEqual(record['ownership'], snapshot['ownership'])
-        self.assertEqual(record['worker_root'], str(Path(self.ownership.__file__).resolve().parent))
+        self.assertEqual(record['worker_root'], str(Path(self.ownership.__file__).resolve().parent.parent))
         before = record_path.read_bytes()
         self.ownership.record_worker_birth(path, snapshot)
         self.assertEqual(record_path.read_bytes(), before)

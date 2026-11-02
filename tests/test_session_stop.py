@@ -12,7 +12,7 @@ from unittest.mock import patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from agents import AgentTrigger
 from dispatch_queue import QueueAccessError, QueueBusy, QueueConflict
 from registry import RuntimeRegistry

@@ -12,7 +12,7 @@ import urllib.request
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 import launcher
 from config_loader import load_config
 
@@ -42,7 +42,7 @@ def main():
                 target = launcher.ensure_server(ROOT, cfg, timeout=30)
                 assert len(children) == 1, 'expected one owned server'
                 # Real separate bootstrap processes contend/reuse through the kernel lock.
-                command = [sys.executable, str(ROOT / 'launcher.py'), '--no-browser', '--timeout', '10']
+                command = [sys.executable, str(ROOT / 'src' / 'launcher.py'), '--no-browser', '--timeout', '10']
                 launches = [subprocess.Popen(command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for _ in range(2)]
                 for process in launches:
                     out, err = process.communicate(timeout=15)

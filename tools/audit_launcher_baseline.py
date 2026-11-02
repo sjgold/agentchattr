@@ -78,7 +78,7 @@ def characterize(installed):
     with tempfile.TemporaryDirectory(prefix="baseline-", dir=scratch_parent) as scratch:
         root = Path(scratch)
         # Run the actual JSON writer against disposable malformed input.
-        writer = extract(ROOT / "wrapper.py", "_write_json_mcp_settings",
+        writer = extract(ROOT / 'src' / "wrapper.py", "_write_json_mcp_settings",
                          {"Path": Path, "json": json, "SERVER_NAME": "agentchattr"})
         target = root / "settings.json"
         original = b'{"keep": [malformed'
@@ -90,7 +90,7 @@ def characterize(installed):
 
         # The Windows runner sees a failed child but returns None.
         fake_process = SimpleNamespace(pid=123, returncode=23, wait=lambda: 23)
-        runner = extract(ROOT / "wrapper_windows.py", "run_agent", {
+        runner = extract(ROOT / 'src' / "wrapper_windows.py", "run_agent", {
             "enable_vt_mode": lambda: None, "_vt_keepalive_thread": lambda: None,
             "subprocess": SimpleNamespace(Popen=lambda *a, **k: fake_process),
             "inject": lambda *a, **k: None,
@@ -105,7 +105,7 @@ def characterize(installed):
             {"channel": "alpha", "job_id": 41}, {"channel": "beta", "prompt": "SECOND-PROMPT"}
         ]), encoding="utf-8")
         injected = []
-        watcher = extract(ROOT / "wrapper.py", "_queue_watcher", {
+        watcher = extract(ROOT / 'src' / "wrapper.py", "_queue_watcher", {
             "json": json, "time": SimpleNamespace(sleep=stop_poll),
             "_fetch_role": lambda *a: "", "_fetch_active_rules": lambda *a: None,
         })
@@ -118,7 +118,7 @@ def characterize(installed):
 
         # Compile the exact API polling loop for one iteration; replace only
         # its dependencies. Same-channel prompts collapse before handle_trigger.
-        api_tree = ast.parse((ROOT / "wrapper_api.py").read_text(encoding="utf-8"))
+        api_tree = ast.parse((ROOT / 'src' / "wrapper_api.py").read_text(encoding="utf-8"))
         main = next(n for n in api_tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
         loop = next(n for n in ast.walk(main) if isinstance(n, ast.While)
                     and any(isinstance(child, ast.Name) and child.id == "channels_triggered"
@@ -148,8 +148,8 @@ def characterize(installed):
             "call_model": lambda messages: payloads.append(messages) or "result",
             "send_message": lambda *a, **kw: sent.append((a, kw)),
         }
-        extract(ROOT / "wrapper_api.py", "format_messages", api_scope)
-        handle = extract(ROOT / "wrapper_api.py", "handle_trigger", api_scope)
+        extract(ROOT / 'src' / "wrapper_api.py", "format_messages", api_scope)
+        handle = extract(ROOT / 'src' / "wrapper_api.py", "handle_trigger", api_scope)
         with contextlib.redirect_stdout(io.StringIO()):
             handle(channel="alpha")
         payload = json.dumps(payloads)
@@ -175,18 +175,18 @@ def characterize(installed):
         instance = SimpleNamespace(_store=store, _messages=Mock(), _trigger=Mock(),
                                    _get_expected_agent=lambda s: "fake", _is_agent=lambda n: n == "fake",
                                    _advance=lambda *a: None)
-        handler = extract(ROOT / "session_engine.py", "_handle_participant_message", {
+        handler = extract(ROOT / 'src' / "session_engine.py", "_handle_participant_message", {
             "threading": SimpleNamespace(Timer=lambda *a, **kw: SimpleNamespace(start=lambda: timers.append((a, kw)))),
         })
         handler(instance, {"id": 10, "type": "chat", "text": "Still working"}, "alpha", "fake")
         assert len(timers) == 1 and store.resume.call_count == 1
         observations.append({"id": "E07", "status_schedules_advance": True, "paused_session_resumed": True})
-        end_session = extract(ROOT / "session_engine.py", "end_session", {"log": Mock()})
+        end_session = extract(ROOT / 'src' / "session_engine.py", "end_session", {"log": Mock()})
         end_session(instance, 1)
         assert store.interrupt.call_count == 1 and instance._trigger.mock_calls == []
         observations.append({"id": "E08", "end_updates_store": True, "trigger_cancellation_calls": 0})
 
-        validate = extract(ROOT / "session_store.py", "validate_session_template")
+        validate = extract(ROOT / 'src' / "session_store.py", "validate_session_template")
         roles = [f"seat{i}" for i in range(6)]
         errors = validate({"name": "Six", "roles": roles, "phases": [
             {"name": "Review", "participants": roles, "prompt": "Review", "is_output": True}]})

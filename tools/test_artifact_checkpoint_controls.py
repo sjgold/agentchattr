@@ -13,7 +13,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 import measure_artifact_diagnostics as m
 import profile_artifact_authority_phases as a
 
@@ -371,7 +371,7 @@ class CheckpointControlTests(unittest.TestCase):
 
     def test_h6_frozen_product_mismatch_refuses(self):
         from hashlib import sha256
-        hashes={name:sha256((ROOT/name).read_bytes()).hexdigest() for name in ('artifact_store.py','artifact_service.py','api_seats.py','mcp_bridge.py')}
+        hashes={name:sha256((ROOT / 'src' / name if name.endswith('.py') and '/' not in name else ROOT / name).read_bytes()).hexdigest() for name in ('artifact_store.py','artifact_service.py','api_seats.py','mcp_bridge.py')}
         a.verify_frozen_product(hashes)
         hashes['artifact_store.py']='wrong'
         with self.assertRaises(RuntimeError):a.verify_frozen_product(hashes)

@@ -23,7 +23,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import atomic_json
 from invocation_evidence import classify_history
 from process_identity import open_verified_process
@@ -54,7 +54,7 @@ parse_argv.restype=ctypes.POINTER(ctypes.c_wchar_p)
 free_argv=ctypes.WinDLL('kernel32',use_last_error=True).LocalFree
 free_argv.argtypes=[ctypes.c_void_p]
 free_argv.restype=ctypes.c_void_p
-managed_scripts={{str((Path({str(ROOT)!r})/name).resolve()).casefold():name
+managed_scripts={{str((Path({str(ROOT)!r})/'src'/name).resolve()).casefold():name
     for name in ('wrapper_api.py','cli_worker.py')}}
 def audit(event,args):
     if event!='subprocess.Popen':

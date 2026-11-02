@@ -23,7 +23,8 @@ class RuntimeProtocolManifestTests(unittest.TestCase):
 
     def test_fixed_sets_cover_real_adapter_repo_import_closures(self):
         protocol = importlib.import_module('runtime_protocol')
-        modules = {path.stem: path.name for path in ROOT.glob('*.py')}
+        source_root = ROOT / 'src'
+        modules = {path.stem: path.name for path in source_root.glob('*.py')}
         for adapter, entries in (('cli', ('wrapper.py', 'cli_worker.py')),
                                  ('openai-compatible', ('wrapper.py', 'wrapper_api.py'))):
             with self.subTest(adapter=adapter):
@@ -31,14 +32,14 @@ class RuntimeProtocolManifestTests(unittest.TestCase):
                 self.assertIn('runtime_protocol.py', listed)
                 for filename in listed:
                     self.assertEqual(Path(filename).name, filename)
-                    self.assertTrue((ROOT / filename).is_file(), 'Missing manifest file: ' + filename)
+                    self.assertTrue((source_root / filename).is_file(), 'Missing manifest file: ' + filename)
                 seen, pending = set(), list(entries)
                 while pending:
                     filename = pending.pop()
                     if filename in seen:
                         continue
                     seen.add(filename)
-                    tree = ast.parse((ROOT / filename).read_text(encoding='utf-8'))
+                    tree = ast.parse((source_root / filename).read_text(encoding='utf-8'))
                     for node in ast.walk(tree):
                         imports = ([part.name for part in node.names] if isinstance(node, ast.Import)
                             else [node.module] if isinstance(node, ast.ImportFrom) and node.module else [])

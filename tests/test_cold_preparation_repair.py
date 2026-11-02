@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from api_seats import SeatError, SeatStore, atomic_json
 from api_seat_runtime import SeatManager
 from process_identity import open_verified_process
@@ -66,7 +66,7 @@ class ColdPreparationRepairTests(unittest.TestCase):
             snapshot['invocation_protocol'] = invocation_protocol
         atomic_json(path, snapshot)
         record_spawn_outcome(path, snapshot, 'pending')
-        code = ('import sys,json;sys.path.insert(0,' + repr(str(ROOT)) + ');'
+        code = ('import sys,json;sys.path.insert(0,' + repr(str(ROOT / 'src')) + ');'
             'from pathlib import Path;from runtime_ownership import record_worker_birth;'
             'p=Path(' + repr(str(path)) + ');record_worker_birth(p,json.loads(p.read_text(encoding="utf-8")));'
             'sys.stdin.buffer.read(1);sys.exit(7)')

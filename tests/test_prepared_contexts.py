@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / 'src'))
 from agents import AgentTrigger
 from api_seat_runtime import SeatManager
 from api_seats import SeatStore, atomic_json

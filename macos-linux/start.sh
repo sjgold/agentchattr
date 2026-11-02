@@ -9,4 +9,4 @@ else
     echo "Python 3.11 or newer is required. Install Python and retry." >&2
     exit 1
 fi
-exec "$PYTHON_BIN" "$ROOT/launcher.py" "$@"
+exec "$PYTHON_BIN" "$ROOT/src/launcher.py" "$@"

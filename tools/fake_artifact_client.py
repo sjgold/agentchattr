@@ -70,7 +70,7 @@ def validate_reply(tool, text, brief_id, dispatch_id, markdown):
 
 
 def main():
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
     from tools.verify_artifact_ui import require_guard, CANNED, read_json, write_json
     try: root = require_guard()
     except RuntimeError: raise SystemExit(91) from None

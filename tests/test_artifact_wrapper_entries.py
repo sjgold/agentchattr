@@ -61,7 +61,7 @@ class ArtifactWrapperEntryTests(unittest.TestCase):
                                                error_category='local_delivery_failure')
 
     def test_actual_api_dispatch_loop_forwards_artifact_record_before_legacy_handle_trigger(self):
-        tree = ast.parse((ROOT / 'wrapper_api.py').read_text(encoding='utf-8'))
+        tree = ast.parse((ROOT / 'src' / 'wrapper_api.py').read_text(encoding='utf-8'))
         main = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main')
         loops = [node for node in ast.walk(main) if isinstance(node, ast.While)
             and any(isinstance(call, ast.Call) and isinstance(call.func, ast.Name)

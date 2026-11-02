@@ -227,7 +227,7 @@ class SeatManager:
             atomic_json(attempt['snapshot'], snapshot)
             record_spawn_outcome(attempt['snapshot'], snapshot, 'pending')
             # No secret values in arguments, snapshot or managed diagnostics.
-            command = [sys.executable, '-u', str(self.root / ('cli_worker.py' if cli else 'wrapper_api.py')), base,
+            command = [sys.executable, '-u', str(self.root / 'src' / ('cli_worker.py' if cli else 'wrapper_api.py')), base,
                        '--seat-file', str(attempt['snapshot'])]
             options = {'cwd': str(self.root), 'stdin': subprocess.DEVNULL,
                        'stdout': subprocess.DEVNULL, 'stderr': subprocess.DEVNULL,
