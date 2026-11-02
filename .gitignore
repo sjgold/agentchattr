@@ -37,6 +37,7 @@ docs/plans/*
 docs/superpowers/*
 !docs/superpowers/plans/
 docs/superpowers/plans/*
+!docs/superpowers/plans/2026-11-01-canonical-cutover.md
 !docs/superpowers/plans/2026-10-12-stage-a.md
 .lavish/
 goals.py

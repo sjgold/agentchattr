@@ -20,6 +20,7 @@ INCLUDE_FILES = [
     "config.local.toml.example",
     "requirements.txt",
     "README.md",
+    "STATUS.md",
     "LICENSE",
     "VERSION",
     "screenshot.png",
@@ -42,6 +43,11 @@ def build():
         for f in INCLUDE_FILES:
             src = ROOT / f
             shutil.copy2(src, dest / f)
+        # Keep release guidance small; detailed evidence lives with the source.
+        for name in ('README.md', 'STATUS.md'):
+            page = dest / name
+            page.write_text(page.read_text(encoding='utf-8').replace(
+                '](docs/', '](https://github.com/sjgold/agentchattr/blob/main/docs/'), encoding='utf-8')
 
         shutil.copy2(ROOT / 'Start Agentchattr.bat', dest / 'Start Agentchattr.bat')
         source_dir = dest / 'src'

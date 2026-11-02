@@ -1,5 +1,6 @@
 """Build and boot an extracted release using the existing test interpreter."""
 import json
+import hashlib
 from pathlib import Path
 import socket
 import sys
@@ -27,15 +28,18 @@ def main():
         root = Path(temporary) / build_release.OUT_NAME
         assert not list(root.glob('*.py'))
         assert {p.name for p in (root / 'src').glob('*.py')} == {p.name for p in (ROOT / 'src').glob('*.py')}
+        for source in (ROOT / 'src').glob('*.py'):
+            assert hashlib.sha256(source.read_bytes()).digest() == hashlib.sha256((root / 'src' / source.name).read_bytes()).digest()
         sockets = [socket.socket() for _ in range(3)]
         for item in sockets:
             item.bind(('127.0.0.1', 0))
         ports = [item.getsockname()[1] for item in sockets]
         for item in sockets:
             item.close()
-        env = dict(zip(('AGENTCHATTR_PORT', 'AGENTCHATTR_MCP_HTTP_PORT', 'AGENTCHATTR_MCP_SSE_PORT'), map(str, ports)))
+        env = {key: value for key, value in os.environ.items() if key.upper() != 'PYTHONPATH'}
+        env.update(zip(('AGENTCHATTR_PORT', 'AGENTCHATTR_MCP_HTTP_PORT', 'AGENTCHATTR_MCP_SSE_PORT'), map(str, ports)))
         env.update(AGENTCHATTR_DATA_DIR=str(root / 'data'), AGENTCHATTR_UPLOAD_DIR=str(root / 'uploads'))
-        with patch.dict(os.environ, env):
+        with patch.dict(os.environ, env, clear=True):
             cfg = load_config(root)
             process = launcher.spawn_server(root, sys.executable, cfg)
             try:

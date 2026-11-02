@@ -17,6 +17,10 @@
 
 ## Working practice
 
+- The canonical delivery is `C:\Users\SJG\Documents\CodePlayground\agentchattr` on `main`. Keep accepted product work integrated here; a worktree URL is not a stakeholder delivery.
+- Create worktrees or frozen side-builds only when Seth explicitly requests them. Use a frozen commit and read-only inspection for review by default. When a temporary checkout is authorized, integrate its accepted work and retire it within the same assignment after preserving unique data and evidence.
+- Application Python modules belong in `src/`. Keep the root launcher, README and current status easy to find. Runtime data, credentials and recovery archives stay ignored.
+
 - Keep changes bounded to the user's request and preserve unrelated work.
 - Follow the current scope, review requirements, and operating constraints recorded in `status.md` and the specification; avoid duplicating volatile project details here.
 - Run verification appropriate to the change and record the outcome in `status.md`. Documentation-only changes need a content/diff review, not application tests.

@@ -65,6 +65,7 @@ class PreflightTests(unittest.TestCase):
         from api_seat_runtime import SeatManager
         from registry import RuntimeRegistry
         root = Path(__file__).resolve().parents[1]
+        (root / '.audit-tmp').mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=root / '.audit-tmp') as temporary:
             store = SeatStore(temporary, {'fake': {'type': 'api', 'base_url': 'http://127.0.0.1:19999/v1'}})
             manager = SeatManager(root, self.cfg, store, RuntimeRegistry(temporary), monitor=False)
