@@ -6,7 +6,9 @@ Canonical directory: `C:\Users\SJG\Documents\CodePlayground\agentchattr`.
 Entry point: `Start Agentchattr.bat`. Python application code lives in `src/`.
 Local main contains reviewed RC2 `05a16095` and source-layout commit `567b9a6`.
 Canonical Pre-flight is running at http://127.0.0.1:8300/preflight.
-Final verification passed. GitHub publication and external worktree removal are in progress.
+Final verification and independent review passed. Canonical main is published to GitHub.
+All nine external worktrees and their nested side-builds are retired. Eleven obsolete side-build branch refs were removed. Their recoverable private archives are in data/recovery-evidence.
+One empty Orca halibut directory remains locked by another process; it contains no application and is no longer a Git worktree.
 
 ## Verification
 
@@ -27,6 +29,6 @@ Final verification passed. GitHub publication and external worktree removal are 
 
 ## Next
 
-Codex completes the release layout, updates affected tests/tooling, verifies the extracted package, obtains independent review, publishes canonical source and removes superseded development copies after preserving unique evidence. The Desktop installation and its history remain preserved.
+Next owner: Seth, RC2 end-to-end acceptance. Open Start Agentchattr.bat, launch the saved Six-agent review team, and assess a small review plus document/task visibility, Stop and corrected restart. Record observed failures before expanding scope. The Desktop installation and its history remain preserved. This candidate is not yet stakeholder-accepted; the known unread defects above remain open.
 
 Evidence: [RC2 handoff](docs/history/STATUS-RC2-2026-10-27.md), [earlier history](docs/history/STATUS-2026-10-26.md), [specification](docs/agentchattr-fork-spec.md), [cutover plan](docs/superpowers/plans/2026-11-01-canonical-cutover.md).

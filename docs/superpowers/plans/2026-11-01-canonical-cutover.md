@@ -9,7 +9,7 @@ Seth authorized one authoritative application in this directory, GitHub reflecti
 - [x] Replace the current dashboard with a short status and root Start Agentchattr.bat. Keep historical evidence linked.
 - [x] Verify tracked product parity with RC2 before layout changes, and exercise the relocated launcher, native fake CLI, fake API and extracted release. Known unread losses and pending six-provider acceptance remain explicit.
 - [x] Obtain independent different-family review: native Claude CLI resolved sonnet to claude-sonnet-5-5 and completed two read-only reviews successfully.
-- [ ] Publish main after verification and review, then remove superseded external worktrees and branches after checking their unique files and runtime ownership.
+- [x] Publish main after verification and review; retire all nine external worktrees and eleven obsolete side-build refs after checking runtime ownership and validating private recovery archives. One empty Orca halibut directory is held by another process; it contains no checkout and has no Git registration.
 
 Cleanup inventory: six worktrees under C:/Users/SJG/.traycer/worktrees/sjgold__agentchattr; two under C:/Users/SJG/Documents/CodePlayground/_staged-for-delete/agentchattr-2026-10-27; C:/Users/SJG/orca/workspaces/agentchattr/halibut. Nested frozen builds require separate data/config inspection before removal. No broad recursive deletion of parent workspace directories.
 
