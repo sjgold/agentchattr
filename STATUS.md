@@ -16,7 +16,7 @@ Python lives in `src/`. Only the canonical Git worktree remains. External side-b
 - Dynamic model probes populate real dropdowns. Live catalogs: Claude 17 alias/resolved entries, Codex 8, Antigravity 6, GLM 11, Muse 9, DeepSeek 2.
 - Live UI: Claude/Codex efforts enabled; selecting Codex Luna removes ultra; refreshing preserves an unsaved effort selection. Saved six-seat models and default efforts stayed unchanged.
 - Catalog refresh does not change an unchanged running team's launch settings. The final controlled reload launched six fresh workers successfully; all remain ready.
-- Final combined focused selection: **135 tests passed** in 7.838s. Earlier runtime selection: 64 passed; catalog backend: 96 passed; catalog UI: 37 passed. Different-family source reviews and corrective rechecks passed. No repeated full-suite reassurance run.
+- Combined focused selection: **135 tests passed** in 7.838s. Runtime selection: 64 passed; catalog backend: 96 passed; final catalog UI: 38 passed after adding the provider capability disclosure. Different-family source reviews and corrective rechecks passed. No repeated full-suite reassurance run.
 
 ## Limits still open
 

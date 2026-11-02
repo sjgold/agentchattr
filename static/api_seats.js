@@ -389,7 +389,8 @@
             modelActions.hidden = selected?.model_catalog?.dynamic !== true || (cli && !selected?.supports_model);
             refreshModelsButton.disabled = !selected || modelRefreshPending.has('*') ||
                 modelRefreshPending.has(selected.id) || !!selected.model_catalog?.refreshing;
-            modelStatus.textContent = catalogStatus(selected);
+            modelStatus.textContent = [catalogStatus(selected), selected?.model_catalog?.capability_note]
+                .filter(Boolean).join(' ');
             modelSelectionNote.textContent = selected?.model_selection_note || '';
             modelSelectionNote.hidden = !modelSelectionNote.textContent;
             summarize();

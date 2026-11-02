@@ -676,6 +676,27 @@ const status=alpha.querySelectorAll('p').find(p=>p.textContent.includes('model m
 assert(status&&status.textContent.includes('discovery is unavailable'));
 """)
 
+    def test_catalog_capability_note_is_shown_near_model_picker(self):
+        self.run_js(r"""
+const base=responder;
+const note='This provider catalog does not declare chat compatibility for every model. Verify the selected model supports chat completions.';
+const catalog={dynamic:true,source:'Muse models endpoint',complete:true,authoritative:true,refreshing:false,error:null,
+ capability_note:note,models:[{id:'muse-basic',name:'Muse Basic',available:true,reasoning_known:false,reasoning_efforts:[]}]};
+responder=async call=>{
+ if(call.url==='/api/preflight/seats'){
+  const s=seatsSnapshot();
+  s.providers[0]={...s.providers[0],models:[],model_catalog:catalog};
+  return response(s);
+ }
+ if(call.url==='/api/preflight/models/refresh')return response({providers:[{...seatsSnapshot().providers[0],model_catalog:catalog}]});
+ return base(call);
+};
+await boot();
+const alpha=seatCard('alpha');
+const status=alpha.querySelectorAll('p').find(p=>p.classList.contains('pf-dim')&&p.textContent.includes('models endpoint'));
+assert(status&&status.textContent.includes(note),'catalog capability context must be visible by the model picker');
+""")
+
     def test_default_only_cli_preset_is_grouped_and_explained(self):
         self.run_js(r"""
 const base=responder;
