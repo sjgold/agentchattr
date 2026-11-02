@@ -1,6 +1,6 @@
 # Agentchattr status
 
-Updated: 2026-11-01. Recovery lead: Codex. Implementation delegated to Sol and Luna; independent reviews by Claude Sonnet 5.5.
+Updated: 2026-11-01, 8:46 PM Central. Recovery lead: Codex. Implementation delegated to Sol and Luna; independent reviews by Claude Sonnet 5.5. Session handoff prepared for the morning report.
 
 ## Open the application
 
@@ -25,10 +25,12 @@ Python lives in `src/`. Only the canonical Git worktree remains. External side-b
 - Browser local-storage channel names still share the localhost origin with the older installation. Back to general unblocked the stale radar-review selection; permanent storage isolation remains pending.
 - The inherited operator name "must not change" still needs cleanup. The working Desktop installation and history remain unchanged.
 - Native catalogs are picker lists, not exhaustive retirement authority. Missing effort/capability metadata remains unknown; Muse/GLM catalog membership alone does not prove chat compatibility.
-- Styling warnings were audited and left unchanged, without ignores, at Seth's direction.
+- The confirmed 10px Channels label was raised to 12px and visually verified after Seth authorized judgment. The unmapped padding warnings and other audit findings remain open; no ignores were added.
 
 ## Next
 
-Seth reviews the repaired basic chat and dynamic Pre-flight controls. Recovery lead handles observed defects only; no automatic backlog continuation. Model/effort edits apply on the next explicit seat restart. Preserve current history and failed-attempt evidence.
+Morning-report owner: reporting agent. Read the [session handoff](2026-11-01-SESSION-HANDOFF-gpt-6-astra.md) and report that the basic six-agent flow is proven, while broader release acceptance remains pending. Do not replay provider tests or start backlog work to prepare the report.
+
+Next decision owner: Seth. Recommended next bounded implementation assignment is the two confirmed unread-cursor losses; implementation owner is unassigned. Completion means send does not advance the read cursor and limited unread reads deliver the oldest unread messages without gaps. After that, perform document/task visibility and Stop/corrected-restart acceptance in an agreed live window. Model/effort edits apply on the next explicit seat restart. Preserve current history and failed-attempt evidence.
 
 Evidence: [six-seat proof](docs/testing/2026-11-01-six-seat-recovery.md), [catalog review](docs/testing/2026-11-01-model-catalog-review.md), [catalog plan](docs/plans/2026-11-01-dynamic-model-catalog.md), [style audit](docs/testing/2026-11-01-ui-warning-audit.md), [cleanup](docs/testing/2026-11-01-cleanup-receipt.md).
